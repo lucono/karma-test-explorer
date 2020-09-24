@@ -1,0 +1,146 @@
+{
+	"name": "karma-test-explorer",
+	"displayName": "Karma Test Explorer",
+	"description": "Run your Karma Tests in the Sidebar of Visual Studio Code",
+	"icon": "img/test-explorer_icon.png",
+	"author": "Patricio Ferraggi <pattferraggi@gmail.com>",
+	"publisher": "lucono",
+	"version": "0.1.0",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/lucono/karma_test-explorer"
+	},
+	"bugs": {
+		"url": "https://github.com/lucono/karma_test-explorer/issues"
+	},
+	"categories": [
+		"Other"
+	],
+	"jest": {
+		"testEnvironment": "node"
+	},
+	"keywords": [
+		"test",
+		"testing",
+		"karma"
+	],
+	"main": "out/main.js",
+	"scripts": {
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"clean": "rimraf out *.vsix",
+		"build": "tsc",
+		"watch": "tsc -w",
+		"rebuild": "npm run clean && npm run build",
+		"prettify": "npx prettier --write '**/*.ts'",
+		"package": "npx vsce package",
+		"publish": "npx vsce publish",
+		"test": "jest -c jest.config.js"
+	},
+	"dependencies": {
+		"cross-spawn": "^7.0.0",
+		"escape-string-regexp": "^2.0.0",
+		"express": "^4.17.1",
+		"glob": "^7.1.4",
+		"karma": "^5.0.0",
+		"karma-chrome-launcher": "^3.1.0",
+		"karma-jasmine": "^2.0.1",
+		"node": "^13.1.0",
+		"request-promise": "^4.2.4",
+		"resolve-global": "^1.0.0",
+		"socket.io": "2.2.0",
+		"socket.io-client": "2.2.0",
+		"tree-kill": "^1.2.2",
+		"tslib": "^1.10.0",
+		"vscode-test-adapter-api": "^1.7.0",
+		"vscode-test-adapter-util": "^0.7.0"
+	},
+	"devDependencies": {
+		"@types/cross-spawn": "^6.0.0",
+		"@types/decamelize": "^3.0.3",
+		"@types/express": "~4.17.1",
+		"@types/glob": "^7.1.1",
+		"@types/jest": "^24.0.18",
+		"@types/jest-when": "^2.7.0",
+		"@types/karma": "^3.0.3",
+		"@types/lodash": "^4.14.138",
+		"@types/node": "~12.7.5",
+		"@types/semver": "~6.0.2",
+		"@types/socket.io-client": "^1.4.32",
+		"jest": "^24.9.0",
+		"jest-when": "^2.7.0",
+		"lodash": "^4.17.15",
+		"ts-jest": "^24.1.0",
+		"tslint": "^5.20.0",
+		"tslint-config-prettier": "^1.18.0",
+		"typescript": "^3.6.3",
+		"vsce": "^1.66.0",
+		"vscode": "^1.1.36"
+	},
+	"engines": {
+		"vscode": "^1.23.0"
+	},
+	"extensionDependencies": [
+		"hbenl.vscode-test-explorer"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "Karma Test Explorer configuration",
+			"properties": {
+				"karmaTestExplorer.projectRootPath": {
+					"description": "The working directory where the project is located (relative to the root folder)",
+					"type": "string",
+					"scope": "resource"
+				},
+				"karmaTestExplorer.karmaConfFilePath": {
+					"description": "The path where the karma.conf.js is located (relative to the project folder)",
+					"type": "string",
+					"scope": "resource",
+					"default": "karma.conf.js"
+				},
+				"karmaTestExplorer.defaultSocketConnectionPort": {
+					"description": "This is the port that will be used to connect Karma with the test explorer",
+					"type": "number",
+					"scope": "resource",
+					"default": 9999
+				},
+				"karmaTestExplorer.debugMode": {
+					"description": "This will enable debug mode, which will create a new output channel with detailed logs",
+					"type": "boolean",
+					"scope": "resource",
+					"default": false
+				},
+				"karmaTestExplorer.debuggerConfig": {
+					"description": "Specify the debugger configuration for vscode chrome debugger as you would do in vscode with a json object",
+					"type": "object",
+					"scope": "resource",
+					"default": {
+						"name": "Debug tests",
+						"type": "pwa-chrome",
+						"request": "launch",
+						"port": 9222,
+						"sourceMaps": true,
+						"webRoot": "${workspaceRoot}",
+						"sourceMapPathOverrides": {
+							"webpack:/*": "${webRoot}/*",
+							"/./*": "${webRoot}/*",
+							"/src/*": "${webRoot}/*",
+							"/*": "*",
+							"/./~/*": "${webRoot}/node_modules/*"
+						}
+					}
+				},
+				"karmaTestExplorer.env": {
+					"description": "Environment variables to be set when running the tests",
+					"type": "object",
+					"scope": "resource",
+					"default": {}
+				}
+			}
+		}
+	}
+}

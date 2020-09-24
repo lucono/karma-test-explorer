@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [   
+    {
+      "type": "extensionHost",
+      "request": "launch",
+      "name": "Debug Karma Test Explorer",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Unit Tests",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "disableOptimisticBPs": true,
+      "windows": {
+        "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+      }
+    }
+  ]
+}
