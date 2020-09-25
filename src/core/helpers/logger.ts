@@ -4,7 +4,7 @@ import { LogLevel } from "../../model/enums/log-level.enum";
 
 export const OUTPUT_CHANNEL = "Karma Test Explorer Log";
 
-interface Ilog {
+interface Log {
   message: string;
   date: Date;
   level: LogLevel;
@@ -85,7 +85,7 @@ export class Logger {
   }
 
   private formatMsg(msg: string, loglevel: LogLevel): string {
-    const { message, date, level }: Ilog = {
+    const { message, date, level }: Log = {
       message: msg,
       date: new Date(),
       level: loglevel,

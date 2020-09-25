@@ -4,7 +4,6 @@ import { FileHelper } from "../../../src/core/helpers/file-helper";
 import { Logger } from "../../../src/core/helpers/logger";
 import { TestExplorerConfiguration } from "../../../src/model/test-explorer-configuration";
 import { CommandlineProcessHandler } from "../../../src/core/integration/commandline-process-handler";
-import { KarmaProcessConfigurator } from "../../../src/core/karma/karma-process-configurator";
 
 jest.mock("../../../src/core/integration/karma-event-listener");
 jest.mock("../../../src/core/helpers/file-helper");
@@ -33,7 +32,7 @@ beforeEach(() => {
 test("start should effectively start a new karma process", async () => {
   // Arrange
   fileHelper.doesFileExists.mockReturnValue(true);
-  const karmaServer = new KarmaServer(karmaEventListener, new loggerMockedClass(), processHandler, new KarmaProcessConfigurator());
+  const karmaServer = new KarmaServer(karmaEventListener, new loggerMockedClass(), processHandler);
 
   // Act
   await karmaServer.start(testExplorerConfiguration);
@@ -46,7 +45,7 @@ test("start should effectively start a new karma process", async () => {
 test("stop should effectively stop a the running karma process", async () => {
   // Arrange
   karmaEventListener.isServerLoaded = true;
-  const karmaServer = new KarmaServer(karmaEventListener, new loggerMockedClass(), processHandler, new KarmaProcessConfigurator());
+  const karmaServer = new KarmaServer(karmaEventListener, new loggerMockedClass(), processHandler);
 
   // Act
   karmaServer.stop();

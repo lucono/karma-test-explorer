@@ -9,7 +9,7 @@ export class FileHelper {
     return JSON.parse(fs.readFileSync(path, "utf8"));
   }
 
-  public readFile(path: string, encoding: any) {
+  public readFile(path: string, encoding: string): string {
     return fs.readFileSync(path, encoding);
   }
 }

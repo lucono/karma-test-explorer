@@ -19,7 +19,6 @@ import { KarmaEventListener } from "./core/integration/karma-event-listener";
 import { KarmaRunner } from "./core/karma/karma-runner";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
-import { KarmaProcessConfigurator } from "./core/karma/karma-process-configurator";
 import { KarmaHttpClient } from "./core/integration/karma-http-client";
 
 export class Adapter implements TestAdapter {
@@ -95,10 +94,9 @@ export class Adapter implements TestAdapter {
     const karmaEventListener = new KarmaEventListener(logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
     const karmaRunner = new KarmaRunner(karmaEventListener, logger, new KarmaHttpClient());
     const commandLineProcessHandler = new CommandlineProcessHandler(logger, karmaEventListener);
-    const karmaProcessConfigurator = new KarmaProcessConfigurator();
-    const testServer = new KarmaServer(karmaEventListener, logger, commandLineProcessHandler, karmaProcessConfigurator);
+    const karmaServer = new KarmaServer(karmaEventListener, logger, commandLineProcessHandler);
 
-    this.testExplorer = new KarmaTestExplorer(karmaRunner, logger, testServer, karmaEventListener);
+    this.testExplorer = new KarmaTestExplorer(karmaRunner, logger, karmaServer, karmaEventListener);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));
   }
 

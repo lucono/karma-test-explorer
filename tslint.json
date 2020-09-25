@@ -5,7 +5,7 @@
   "rules": {
     "ordered-imports": false,
     "object-literal-sort-keys": false,
-    "interface-name": true,
+    "interface-name": false,
     "max-line-length": [true, { "limit": 150, "ignore-pattern": "^import |^export {(.*?)}" }],
     "no-shadowed-variable": false,
     "variable-name": false,

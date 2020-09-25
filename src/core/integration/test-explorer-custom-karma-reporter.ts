@@ -61,7 +61,7 @@ function TestExplorerCustomReporter(
     const filePath = pathFinder.getTestFilePath(paths, spec.suite[0], spec.description);
 
     if (filePath) {
-      lineNumber = pathFinder.getSpecLine(spec.description, filePath, ENCODING);
+      lineNumber = pathFinder.getSpecLine(spec.suite, spec.description, filePath, ENCODING);
     }
 
     const result = new SpecCompleteResponse(
