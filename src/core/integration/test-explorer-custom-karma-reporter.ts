@@ -6,10 +6,7 @@ import * as io from "socket.io-client";
 import * as karma from "karma";
 
 const ENCODING = "utf-8";
-const DEFAULT_TEST_FILES_PATTERNS = [
-  "**/*.spec.js", 
-  "**/*.spec.ts"
-];
+const DEFAULT_TEST_FILE_PATTERNS = [ "**/*.spec.{ts,js}" ];
 
 function TestExplorerCustomReporter(
   this: any, 
@@ -19,17 +16,19 @@ function TestExplorerCustomReporter(
   emitter: any, 
   injector: any
 ) {
-  const defaultSocketPort = process.env.defaultSocketPort as string;
-  const testFiles = config.files || DEFAULT_TEST_FILES_PATTERNS;
-  const pathFinder = new PathFinder(testFiles, ENCODING);
-
   this.config = config;
   this.emitter = emitter;
+
+  const defaultSocketPort = process.env.defaultSocketPort as string;
   this.socket = io("http://localhost:" + defaultSocketPort + "/", { forceNew: true, reconnection: true });
   this.socket.heartbeatTimeout = 24 * 60 * 60 * 1000;
   this.socket.heartbeatInterval = 24 * 60 * 60 * 1000;
 
   configureTimeouts(injector);
+
+  const testFiles = config.files || DEFAULT_TEST_FILE_PATTERNS;
+  const pathFinder = new PathFinder(testFiles, process.cwd(), ENCODING);
+
   baseReporterDecorator(this);
   this.adapters = [];
 

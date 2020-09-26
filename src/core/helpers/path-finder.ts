@@ -1,4 +1,5 @@
 import fs = require("fs");
+import path = require("path");
 import * as glob from "glob";
 import { FilePattern } from 'karma';
 
@@ -25,12 +26,13 @@ export class PathFinder {
   private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
   private readonly fileInfoMap: TestSuiteFileInfoMap;
 
-  public constructor(filePatterns: Array<string|FilePattern>, fileEncoding: string = "utf-8") {
+  public constructor(filePatterns: Array<string|FilePattern>, cwd: string | undefined, fileEncoding: string = "utf-8") {
     this.fileInfoMap = {};
 
     filePatterns.map(filePattern => (filePattern as FilePattern).pattern || filePattern as string)
-      .map(filePatternString => glob.sync(filePatternString))
-      .reduce((consolidatedFilePaths, moreFilePaths) => [...consolidatedFilePaths, ...moreFilePaths], [])
+      .map(patternString => cwd && path.isAbsolute(patternString) ? path.relative(cwd, patternString) : patternString)
+      .map(patternString => glob.sync(patternString))
+      .reduce((consolidatedPaths, morePaths) => [...consolidatedPaths, ...morePaths], [])
       .forEach(filePath => this.fileInfoMap[filePath] = this.parseTestFile(filePath, fileEncoding));
   }
 
