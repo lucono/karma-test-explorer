@@ -1,8 +1,8 @@
 import { KarmaConfigurator } from "./karma-configurator";
 import { Config } from "karma";
 
-const karmaConfigurator = new KarmaConfigurator();
 const originalConfigPath = process.env.userKarmaConfigPath as string;
+const karmaConfigurator = new KarmaConfigurator();
 
 module.exports = (config: Config) => {
   karmaConfigurator.loadOriginalUserConfiguration(config, originalConfigPath);

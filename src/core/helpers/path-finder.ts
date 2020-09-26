@@ -1,109 +1,158 @@
-import { FileHelper } from "./file-helper";
+import fs = require("fs");
 import * as glob from "glob";
-import * as RegExpEscape from "escape-string-regexp";
+import { FilePattern } from 'karma';
 
-export interface TestFilesStructureInfo {
-  [key: string]: {
-    describe: string[],
-    it: string[]
-  }
-}
-
-enum TestNodeType {
+export enum TestNodeType {
   Describe = "describe",
   It = "it"
 };
 
+export interface SpecLocation {
+  file: string,
+  line: number
+}
+
+export interface TestSuiteFileInfoMap {
+  [key: string]: TestSuiteFileInfo
+}
+
+export interface TestSuiteFileInfo {
+  descriptions: { [key in TestNodeType]: string[] },
+  lineNumbers: { [key in TestNodeType]: Array<number|undefined> }
+}
+
 export class PathFinder {
-  private readonly regexPattern: RegExp = /((describe)|(it))\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\4))*.?)\4/gi;
-  //private readonly describeType = "describe";
-  //private readonly itType = "it";
-  public constructor(private readonly fileHelper: FileHelper) {}
+  private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf](describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
+  private readonly fileInfoMap: TestSuiteFileInfoMap;
 
-  public getTestFilesPaths(pattern: string, encoding: string): TestFilesStructureInfo {
-    const paths = {};
-    const results = glob.sync(pattern);
-    results.map((path) => {
-      this.parseTestFile(paths, path, this.getTestFileData(path, encoding));
-    });
+  public constructor(filePatterns: Array<string|FilePattern>, fileEncoding: string) {
+    this.fileInfoMap = {};
 
-    return paths;
+    filePatterns.map(filePattern => (filePattern as FilePattern).pattern || filePattern as string)
+      .map(filePatternString => glob.sync(filePatternString))
+      .reduce((consolidatedFilePaths, moreFilePaths) => [...consolidatedFilePaths, ...moreFilePaths], [])
+      .forEach(filePath => this.fileInfoMap[filePath] = this.parseTestFile(filePath, fileEncoding));
   }
 
-  public getSpecLine(suite: string[], spec: string, path: string, encoding: string): number | undefined {
-    const fileText = this.fileHelper.readFile(path, encoding);
+  public getSpecLocation(specSuite: string[], specDescription: string): SpecLocation | undefined {
+    for (const filePath of Object.keys(this.fileInfoMap)) {
+      const specLineNumber = this.getSpecLineNumber(specSuite, specDescription, this.fileInfoMap[filePath]);
 
-    if (!fileText) {
-      return;
+      if (specLineNumber !== undefined) {
+        return { file: filePath, line: specLineNumber };
+      }
+    }
+    return undefined;
+  }
+
+  private getSpecLineNumber(
+    specSuite: string[] | undefined, 
+    specDescription: string | undefined, 
+    suiteFileInfo: TestSuiteFileInfo | undefined
+  ): number | undefined {
+
+    if ((!specSuite && !specDescription) || !suiteFileInfo) {
+      return undefined;
+    }
+    
+    const findSpecIndex = (specType: TestNodeType, description: string, startIndex: number): number => {
+      const specDescriptions = suiteFileInfo.descriptions[specType];      
+      let searchIndex = startIndex;
+
+      while (searchIndex < specDescriptions.length) {
+        if (specDescriptions[searchIndex] === description) {
+          return searchIndex;
+        }
+        searchIndex++;
+      }
+      return -1;
+    };
+
+    const describeSpecsToFind = specSuite || [];
+    let describeSearchStartIndex = 0;
+    let lastDescribeFoundIndex = -1;
+
+    for (const describeSpec of describeSpecsToFind) {
+      lastDescribeFoundIndex = findSpecIndex(TestNodeType.Describe, describeSpec, describeSearchStartIndex);
+
+      if (lastDescribeFoundIndex < 0) {
+        break;
+      }
+      describeSearchStartIndex = (lastDescribeFoundIndex + 1);
+    }
+    
+    if (lastDescribeFoundIndex < 0) {
+      return undefined;
     }
 
-    return this.findLineContaining(suite, spec, fileText);
-  }
-  public getTestFilePath(paths: TestFilesStructureInfo, describe: string, it: string) {
-    const testFile = Object.keys(paths).find(path => this.exist(paths, path, describe, it));
+    const lastDescribeFoundLineNumber = suiteFileInfo.lineNumbers[TestNodeType.Describe][lastDescribeFoundIndex];
 
-    return testFile;
+    if (!lastDescribeFoundLineNumber) {
+      return undefined;
+    }
+
+    if (!specDescription) {
+      return lastDescribeFoundLineNumber;
+    }
+
+    const itSearchStartIndex = suiteFileInfo.lineNumbers[TestNodeType.It]
+      .map((itLineNumber, itIndex) => ({ line: itLineNumber, index: itIndex }))
+      .find(item => item.line && item.line > lastDescribeFoundLineNumber)
+      ?.index;
+
+    if (!itSearchStartIndex) {
+      return undefined;
+    }
+
+    const itSpecFoundIndex = findSpecIndex(TestNodeType.It, specDescription, itSearchStartIndex);
+    
+    if (itSpecFoundIndex < 0) {
+      return undefined;
+    }
+
+    const itSpecFoundLineNumber = suiteFileInfo.lineNumbers[TestNodeType.It][itSpecFoundIndex];
+
+    return itSpecFoundLineNumber;
   }
 
   private getTestFileData(path: string, encoding: string): string {
-    const fileText = this.fileHelper.readFile(path, encoding);
+    const fileText = this.readFile(path, encoding)
+      .split('\n')
+      .map((lineText, lineNumber) => `${lineNumber}. ${lineText}`)
+      .join('\n');
 
-    return this.removeNewLines(this.removeComments(fileText));
+    return this.removeComments(fileText);
   }
 
-  private parseTestFile(paths: TestFilesStructureInfo, path: string, data: string) {
-    let result: RegExpExecArray | null;
-    while ((result = this.regexPattern.exec(data)) != null) {
-      const type = (result[2] || result[3]) as TestNodeType;
-      const text = result[5];
+  private readFile(path: string, encoding: string): string {
+    return fs.readFileSync(path, encoding);
+  }
 
-      if (paths[path] === undefined) {
-        paths[path] = { describe: [], it: [] };
+  private parseTestFile(filePath: string, encoding: string): TestSuiteFileInfo {
+    const data = this.getTestFileData(filePath, encoding);
+    const fileInfo: TestSuiteFileInfo = {
+      descriptions: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] },
+      lineNumbers: { describe: [], it: [] }
+    };
+
+    let matchResult: RegExpExecArray | null;
+    let currentLineNumber: number | undefined;
+
+    while ((matchResult = this.regexPattern.exec(data)) != null) {
+      currentLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : currentLineNumber;
+      const type = matchResult[4] as TestNodeType;
+      const text = matchResult[6];
+
+      if (!type || !text) {
+        continue;
       }
-      const fileEntry = paths[path];
-      fileEntry[type].push(text);
+      fileInfo.descriptions[type].push(text);
+      fileInfo.lineNumbers[type].push(currentLineNumber);
     }
-  }
-
-  private exist(paths: TestFilesStructureInfo, path: string, describe: string, it: string) {
-    const existsDescribe = paths[path].describe.some((element) => describe.startsWith(element));
-    const existsIt = paths[path].it.some((element) => it.startsWith(element));
-
-    return existsDescribe && existsIt;
+    return fileInfo;
   }
 
   private removeComments(data: string): string {
     return data.replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
-  }
-
-  private removeNewLines(data: string): string {
-    return data.replace(/\r?\n|\r/g, "");
-  }
-
-  private findLineContaining(predecessorLines: string[] | undefined, lineText: string | undefined, fileText: string | undefined): number | undefined {
-    if ((!predecessorLines && !lineText) || !fileText) {
-      return undefined;
-    }
-
-    const linesToFind = predecessorLines || [];
-
-    if (lineText) {
-      linesToFind.push(lineText);
-    }
-
-    let searchStartPosition = 0;
-    let lastFoundPosition = -1;
-
-    for (const lineString of linesToFind) {
-      const foundPosition = fileText.substr(searchStartPosition).search(RegExpEscape(lineString));
-
-      if (foundPosition < 0) {
-        return undefined;
-      }
-      lastFoundPosition = (searchStartPosition + foundPosition);
-      searchStartPosition = (lastFoundPosition + lineString.length);
-    }
-
-    return fileText.substr(0, lastFoundPosition).split("\n").length - 1;
   }
 }

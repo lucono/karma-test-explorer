@@ -1,4 +1,3 @@
-import { FileHelper } from "../helpers/file-helper";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { RunStatus } from "../../model/enums/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
@@ -6,50 +5,41 @@ import { PathFinder } from "../helpers/path-finder";
 import * as io from "socket.io-client";
 import * as karma from "karma";
 
-// import { ErrorCodes } from "../../model/enums/error-codes.enum";
+const ENCODING = "utf-8";
+const DEFAULT_TEST_FILES_PATTERNS = [
+  "**/*.spec.js", 
+  "**/*.spec.ts"
+];
 
 function TestExplorerCustomReporter(
   this: any, 
   baseReporterDecorator: any, 
-  config: any, 
+  config: karma.ConfigOptions, 
   logger: any, 
   emitter: any, 
   injector: any
 ) {
+  const defaultSocketPort = process.env.defaultSocketPort as string;
+  const testFiles = config.files || DEFAULT_TEST_FILES_PATTERNS;
+  const pathFinder = new PathFinder(testFiles, ENCODING);
+
   this.config = config;
   this.emitter = emitter;
-  const defaultSocketPort = process.env.defaultSocketPort as string;
   this.socket = io("http://localhost:" + defaultSocketPort + "/", { forceNew: true, reconnection: true });
   this.socket.heartbeatTimeout = 24 * 60 * 60 * 1000;
   this.socket.heartbeatInterval = 24 * 60 * 60 * 1000;
 
-  // this.socket.on("disconnect", (event: any) => {
-  //   const isKarmaBeingClosedByChrome = event === ErrorCodes.TransportClose;
-
-  //   if (isKarmaBeingClosedByChrome) {
-  //     this.socket.connect();
-  //   }
-  // });
-
   configureTimeouts(injector);
+  baseReporterDecorator(this);
+  this.adapters = [];
 
   const emitEvent = (eventName: any, eventResults: any = null) => {
     this.socket.emit(eventName, { name: eventName, results: eventResults });
   };
 
-  //const FILE_PATTERN = "**/*spec.ts";
-  const FILE_PATTERN = "**/*.unit.js";
-  const ENCODING = "utf-8";
-
-  const pathFinder = new PathFinder(new FileHelper());
-  const paths = pathFinder.getTestFilesPaths(FILE_PATTERN, ENCODING);
-
-  baseReporterDecorator(this);
-
-  this.adapters = [];
-
   this.onSpecComplete = (browser: any, spec: any) => {
     let status: TestResult = TestResult.Failed;
+
     if (spec.skipped) {
       status = TestResult.Skipped;
       this.specSkipped(browser, spec);
@@ -57,13 +47,7 @@ function TestExplorerCustomReporter(
       status = TestResult.Success;
     }
 
-    let lineNumber;
-    const filePath = pathFinder.getTestFilePath(paths, spec.suite[0], spec.description);
-
-    if (filePath) {
-      lineNumber = pathFinder.getSpecLine(spec.suite, spec.description, filePath, ENCODING);
-    }
-
+    const specLocation = pathFinder.getSpecLocation(spec.suite, spec.description);
     const result = new SpecCompleteResponse(
       spec.id,
       spec.log,
@@ -72,13 +56,16 @@ function TestExplorerCustomReporter(
       spec.fullName,
       status,
       spec.time,
-      filePath,
-      lineNumber
-    ) as any;
+      specLocation?.file,
+      specLocation?.line
+    );
 
+    /*
+    TODO: Figure out if this is required
     if (result.status === TestResult.Failed) {
       result.fullResponse = spec;
     }
+    */
 
     emitEvent("spec_complete", result);
   };

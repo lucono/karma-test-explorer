@@ -37,6 +37,7 @@ npm-debug.log
 yarn-error.log
 testem.log
 *.vsix
+.tmp/
 
 # System Files
 .DS_Store

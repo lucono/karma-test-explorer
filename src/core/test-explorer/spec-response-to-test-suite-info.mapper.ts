@@ -89,6 +89,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       label: specComplete.suite[specComplete.suite.length - 1],
       file: specComplete.filePath ? path.join(this.projectRootPath, specComplete.filePath as string) : undefined,
       type: "suite",
+      line: specComplete.line ? (specComplete.line as number) : undefined,
       children: [],
     } as TestSuiteInfo;
   }
