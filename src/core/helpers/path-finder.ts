@@ -2,30 +2,30 @@ import fs = require("fs");
 import * as glob from "glob";
 import { FilePattern } from 'karma';
 
-export enum TestNodeType {
+enum TestNodeType {
   Describe = "describe",
   It = "it"
 };
+
+interface TestSuiteFileInfo {
+  descriptions: { [key in TestNodeType]: string[] },
+  lineNumbers: { [key in TestNodeType]: Array<number|undefined> }
+}
+
+interface TestSuiteFileInfoMap {
+  [key: string]: TestSuiteFileInfo
+}
 
 export interface SpecLocation {
   file: string,
   line: number
 }
 
-export interface TestSuiteFileInfoMap {
-  [key: string]: TestSuiteFileInfo
-}
-
-export interface TestSuiteFileInfo {
-  descriptions: { [key in TestNodeType]: string[] },
-  lineNumbers: { [key in TestNodeType]: Array<number|undefined> }
-}
-
 export class PathFinder {
-  private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf](describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
+  private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
   private readonly fileInfoMap: TestSuiteFileInfoMap;
 
-  public constructor(filePatterns: Array<string|FilePattern>, fileEncoding: string) {
+  public constructor(filePatterns: Array<string|FilePattern>, fileEncoding: string = "utf-8") {
     this.fileInfoMap = {};
 
     filePatterns.map(filePattern => (filePattern as FilePattern).pattern || filePattern as string)
@@ -51,7 +51,7 @@ export class PathFinder {
     suiteFileInfo: TestSuiteFileInfo | undefined
   ): number | undefined {
 
-    if ((!specSuite && !specDescription) || !suiteFileInfo) {
+    if ((!specSuite && specDescription === undefined) || !suiteFileInfo) {
       return undefined;
     }
     
@@ -87,20 +87,20 @@ export class PathFinder {
 
     const lastDescribeFoundLineNumber = suiteFileInfo.lineNumbers[TestNodeType.Describe][lastDescribeFoundIndex];
 
-    if (!lastDescribeFoundLineNumber) {
+    if (lastDescribeFoundLineNumber === undefined) {
       return undefined;
     }
 
-    if (!specDescription) {
+    if (specDescription === undefined) {
       return lastDescribeFoundLineNumber;
     }
 
     const itSearchStartIndex = suiteFileInfo.lineNumbers[TestNodeType.It]
       .map((itLineNumber, itIndex) => ({ line: itLineNumber, index: itIndex }))
-      .find(item => item.line && item.line > lastDescribeFoundLineNumber)
+      .find(item => (item.line !== undefined) && item.line > lastDescribeFoundLineNumber)
       ?.index;
 
-    if (!itSearchStartIndex) {
+    if (itSearchStartIndex === undefined) {
       return undefined;
     }
 
@@ -132,7 +132,7 @@ export class PathFinder {
     const data = this.getTestFileData(filePath, encoding);
     const fileInfo: TestSuiteFileInfo = {
       descriptions: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] },
-      lineNumbers: { describe: [], it: [] }
+      lineNumbers: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] }
     };
 
     let matchResult: RegExpExecArray | null;
