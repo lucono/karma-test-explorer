@@ -55,7 +55,9 @@ export class Adapter implements TestAdapter {
           configChange.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri)
+          configChange.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri)
         ) {
           this.log.info("Sending reload event");
 
@@ -87,15 +89,16 @@ export class Adapter implements TestAdapter {
       })
     );
 
-    this.loadConfig();
+    const config = this.loadConfig();
 
     const isDebugMode = vscode.workspace.getConfiguration("karmaTestExplorer", workspace.uri).get("debugMode") as boolean;
     const logger = new Logger(channel, isDebugMode);
-    const karmaEventListener = new KarmaEventListener(logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
+    const karmaEventListener = new KarmaEventListener(config, logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
     const karmaRunner = new KarmaRunner(karmaEventListener, logger, new KarmaHttpClient());
     const commandLineProcessHandler = new CommandlineProcessHandler(logger, karmaEventListener);
     const karmaServer = new KarmaServer(karmaEventListener, logger, commandLineProcessHandler);
 
+    this.config = config;
     this.testExplorer = new KarmaTestExplorer(karmaRunner, logger, karmaServer, karmaEventListener);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));
   }
@@ -151,9 +154,9 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
-  private loadConfig() {
+  private loadConfig(): TestExplorerConfiguration {
     const config = vscode.workspace.getConfiguration("karmaTestExplorer", this.workspace.uri);
-    this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
+    return new TestExplorerConfiguration(config, this.workspace.uri.path);
   }
 
   private findNode(node: any, suiteLookup: string, propertyLookup: string): any {

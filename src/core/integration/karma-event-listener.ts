@@ -8,6 +8,7 @@ import { EventEmitter } from "../helpers/event-emitter";
 import { commands } from "vscode";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { ErrorCodes } from "../../model/enums/error-codes.enum";
+import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 
 export class KarmaEventListener {
   public isServerLoaded: boolean = false;
@@ -20,7 +21,11 @@ export class KarmaEventListener {
   private server: any;
   private karmaBeingReloaded: boolean = false;
 
-  public constructor(private readonly logger: Logger, private readonly eventEmitter: EventEmitter) {}
+  public constructor(
+    private readonly config: TestExplorerConfiguration, 
+    private readonly logger: Logger, 
+    private readonly eventEmitter: EventEmitter
+  ) {}
 
   public listenTillKarmaReady(defaultSocketPort?: number): Promise<void> {
     return new Promise<void>(resolve => {
@@ -68,7 +73,7 @@ export class KarmaEventListener {
   }
 
   public getLoadedTests(projectRootPath: string): TestSuiteInfo {
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(projectRootPath);
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(this.config);
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 

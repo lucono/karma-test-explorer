@@ -10,6 +10,8 @@ export class TestExplorerConfiguration {
     this.projectRootPath = path.join(workspacePath, projectRootPath);
     this.userKarmaConfFilePath = path.join(workspacePath, projectRootPath, karmaConfFilePath);
     this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
+    this.testFiles = config.get("testFiles") as string[];
+    this.excludeFiles = config.get("excludeFiles") as string[];
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get("debuggerConfig")));
     this.env = JSON.parse(JSON.stringify(config.get("env")));
   }
@@ -18,6 +20,8 @@ export class TestExplorerConfiguration {
   public projectRootPath: string;
   public userKarmaConfFilePath: string;
   public baseKarmaConfFilePath: string;
+  public testFiles: string[];
+  public excludeFiles: string[];
   public debuggerConfig: any;
   public env: { [key: string]: string };
 }

@@ -1,9 +1,18 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
+import { PathFinder, PathFinderOptions } from "../helpers/path-finder";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import * as path from "path";
+import { TestExplorerConfiguration } from '../../model/test-explorer-configuration';
+
+const ENCODING = "utf-8";
 
 export class SpecResponseToTestSuiteInfoMapper {
-  public constructor(private readonly projectRootPath: string) {}
+  private readonly pathFinder: PathFinder;
+  
+  public constructor(private readonly config: TestExplorerConfiguration) {
+    const pathFinderOptions: PathFinderOptions = { ignore: config.excludeFiles };
+    this.pathFinder = new PathFinder(config.testFiles, pathFinderOptions, ENCODING);
+  }
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     const rootSuiteNode = {
@@ -16,14 +25,21 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     for (const spec of specs) {
       const suiteNames = this.filterSuiteNames(spec.suite);
-      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, spec, suiteNames);
-      this.createTest(spec, suiteNode, suiteNames.join(" "));
+      const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);
+      const testFile = specLocation?.file;
+      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, spec, suiteNames, testFile);
+      this.createTest(spec, suiteNode, suiteNames, testFile);
     }
 
     return rootSuiteNode;
   }
 
-  private getOrCreateLowerSuiteNode(node: TestSuiteInfo, spec: SpecCompleteResponse, suiteNames: string[]): TestSuiteInfo {
+  private getOrCreateLowerSuiteNode(
+    node: TestSuiteInfo, 
+    spec: SpecCompleteResponse, 
+    suiteNames: string[],
+    testFile?: string): TestSuiteInfo {
+
     for (const suiteName of suiteNames) {
       let nextNode = this.findNodeByKey(node, suiteName);
       if (!nextNode) {
@@ -37,12 +53,11 @@ export class SpecResponseToTestSuiteInfoMapper {
           return [previousValue, currentValue].join(" ");
         });
 
-        nextNode = this.createSuite(spec, locationHint);
+        nextNode = this.createSuite(spec, locationHint, testFile);
         node.children.push(nextNode);
       }
       node = nextNode;
     }
-
     return node;
   }
 
@@ -71,25 +86,30 @@ export class SpecResponseToTestSuiteInfoMapper {
     return suiteNames;
   }
 
-  private createTest(specComplete: SpecCompleteResponse, suiteNode: TestSuiteInfo, suiteLookup: string) {
+  private createTest(specComplete: SpecCompleteResponse, suiteNode: TestSuiteInfo, suiteNames: string[], testFile?: string) {
+    const specLocation = this.pathFinder.getSpecLocation(suiteNames, specComplete.description, testFile);
+
     suiteNode.children.push({
-      id: specComplete.id,
-      fullName: suiteLookup + " " + specComplete.description,
-      label: specComplete.description,
-      file: specComplete.filePath ? path.join(this.projectRootPath, specComplete.filePath as string) : undefined,
       type: "test",
-      line: specComplete.line ? (specComplete.line as number) : undefined,
+      id: specComplete.id,
+      fullName: [...suiteNames, specComplete.description].join(" "),
+      label: specComplete.description,
+      file: specLocation?.file ? path.join(this.config.projectRootPath, specLocation.file) : undefined,
+      line: specLocation?.line,
     } as TestInfo);
   }
 
-  private createSuite(specComplete: SpecCompleteResponse, suiteLookup: string): TestSuiteInfo {
+  private createSuite(specComplete: SpecCompleteResponse, suiteLookup: string, testFile?: string): TestSuiteInfo {
+    const suiteName = specComplete.suite[specComplete.suite.length - 1];
+    const suiteLocation = this.pathFinder.getSpecLocation(specComplete.suite, undefined, testFile);
+
     return {
-      id: suiteLookup,
-      fullName: specComplete.suite[specComplete.suite.length - 1],
-      label: specComplete.suite[specComplete.suite.length - 1],
-      file: specComplete.filePath ? path.join(this.projectRootPath, specComplete.filePath as string) : undefined,
       type: "suite",
-      line: specComplete.line ? (specComplete.line as number) : undefined,
+      id: suiteLookup,
+      fullName: suiteName,
+      label: suiteName,
+      file: suiteLocation?.file ? path.join(this.config.projectRootPath, suiteLocation.file) : undefined,
+      line: suiteLocation?.line,
       children: [],
     } as TestSuiteInfo;
   }

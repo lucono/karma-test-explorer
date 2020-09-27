@@ -1,5 +1,4 @@
 import fs = require("fs");
-import path = require("path");
 import * as glob from "glob";
 import { FilePattern } from 'karma';
 
@@ -22,23 +21,33 @@ export interface SpecLocation {
   line: number
 }
 
+export interface PathFinderOptions {
+  cwd?: string,
+  ignore?: string[]
+}
+
+const DEFAULT_FILE_ENCODING = "utf-8";
+
 export class PathFinder {
   private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
   private readonly fileInfoMap: TestSuiteFileInfoMap;
 
-  public constructor(filePatterns: Array<string|FilePattern>, cwd: string | undefined, fileEncoding: string = "utf-8") {
+  public constructor(
+    filePatterns: Array<string|FilePattern>, 
+    options?: PathFinderOptions, 
+    fileEncoding?: string
+  ) {
     this.fileInfoMap = {};
 
     filePatterns.map(filePattern => (filePattern as FilePattern).pattern || filePattern as string)
-      .map(patternString => cwd && path.isAbsolute(patternString) ? path.relative(cwd, patternString) : patternString)
-      .map(patternString => glob.sync(patternString))
+      .map(patternString => glob.sync(patternString, options))
       .reduce((consolidatedPaths, morePaths) => [...consolidatedPaths, ...morePaths], [])
       .forEach(filePath => this.fileInfoMap[filePath] = this.parseTestFile(filePath, fileEncoding));
   }
 
-  public getSpecLocation(specSuite: string[], specDescription: string): SpecLocation | undefined {
+  public getSpecLocation(specSuite: string[], specDescription?: string, specfile?: string): SpecLocation | undefined {
     for (const filePath of Object.keys(this.fileInfoMap)) {
-      const specLineNumber = this.getSpecLineNumber(specSuite, specDescription, this.fileInfoMap[filePath]);
+      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap[filePath], specSuite, specDescription);
 
       if (specLineNumber !== undefined) {
         return { file: filePath, line: specLineNumber };
@@ -48,9 +57,9 @@ export class PathFinder {
   }
 
   private getSpecLineNumber(
+    suiteFileInfo: TestSuiteFileInfo | undefined, 
     specSuite: string[] | undefined, 
-    specDescription: string | undefined, 
-    suiteFileInfo: TestSuiteFileInfo | undefined
+    specDescription?: string | undefined
   ): number | undefined {
 
     if ((!specSuite && specDescription === undefined) || !suiteFileInfo) {
@@ -117,7 +126,7 @@ export class PathFinder {
     return itSpecFoundLineNumber;
   }
 
-  private getTestFileData(path: string, encoding: string): string {
+  private getTestFileData(path: string, encoding?: string): string {
     const fileText = this.readFile(path, encoding)
       .split('\n')
       .map((lineText, lineNumber) => `${lineNumber}. ${lineText}`)
@@ -126,11 +135,11 @@ export class PathFinder {
     return this.removeComments(fileText);
   }
 
-  private readFile(path: string, encoding: string): string {
-    return fs.readFileSync(path, encoding);
+  private readFile(path: string, encoding?: string): string {
+    return fs.readFileSync(path, encoding || DEFAULT_FILE_ENCODING);
   }
 
-  private parseTestFile(filePath: string, encoding: string): TestSuiteFileInfo {
+  private parseTestFile(filePath: string, encoding?: string): TestSuiteFileInfo {
     const data = this.getTestFileData(filePath, encoding);
     const fileInfo: TestSuiteFileInfo = {
       descriptions: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] },

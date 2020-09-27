@@ -2,5 +2,26 @@
   "files.exclude": {
     ".git": true,
     "node_modules": true
+  },
+
+  "todo-tree.highlights.defaultHighlight": {
+    "type": "tag",
+    "foreground": "#ffffff",
+    "fontWeight": "300",
+    "borderRadius": "0px",
+    "gutterIcon": false
+  },
+  "todo-tree.highlights.customHighlight": {
+    "TODO": {
+      "background": "#f7a306",
+      "foreground": "#ffffff"
+    },
+    "FIXME": {
+      "background": "#ea5991",
+      "icon": "$(close)"
+    },
+    "BUG": {
+      "background": "#ff0000"
+    }
   }
 }

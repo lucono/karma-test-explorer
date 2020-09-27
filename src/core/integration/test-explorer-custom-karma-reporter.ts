@@ -1,12 +1,8 @@
 import { TestResult } from "../../model/enums/test-status.enum";
 import { RunStatus } from "../../model/enums/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { PathFinder } from "../helpers/path-finder";
 import * as io from "socket.io-client";
 import * as karma from "karma";
-
-const ENCODING = "utf-8";
-const DEFAULT_TEST_FILE_PATTERNS = [ "**/*.spec.{ts,js}" ];
 
 function TestExplorerCustomReporter(
   this: any, 
@@ -25,10 +21,6 @@ function TestExplorerCustomReporter(
   this.socket.heartbeatInterval = 24 * 60 * 60 * 1000;
 
   configureTimeouts(injector);
-
-  const testFiles = config.files || DEFAULT_TEST_FILE_PATTERNS;
-  const pathFinder = new PathFinder(testFiles, process.cwd(), ENCODING);
-
   baseReporterDecorator(this);
   this.adapters = [];
 
@@ -46,7 +38,6 @@ function TestExplorerCustomReporter(
       status = TestResult.Success;
     }
 
-    const specLocation = pathFinder.getSpecLocation(spec.suite, spec.description);
     const result = new SpecCompleteResponse(
       spec.id,
       spec.log,
@@ -54,9 +45,7 @@ function TestExplorerCustomReporter(
       spec.description,
       spec.fullName,
       status,
-      spec.time,
-      specLocation?.file,
-      specLocation?.line
+      spec.time
     );
 
     /*
