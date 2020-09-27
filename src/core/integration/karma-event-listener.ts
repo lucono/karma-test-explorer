@@ -8,7 +8,7 @@ import { EventEmitter } from "../helpers/event-emitter";
 import { commands } from "vscode";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { ErrorCodes } from "../../model/enums/error-codes.enum";
-import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
+import { PathFinder } from "../helpers/path-finder";
 
 export class KarmaEventListener {
   public isServerLoaded: boolean = false;
@@ -22,7 +22,6 @@ export class KarmaEventListener {
   private karmaBeingReloaded: boolean = false;
 
   public constructor(
-    private readonly config: TestExplorerConfiguration, 
     private readonly logger: Logger, 
     private readonly eventEmitter: EventEmitter
   ) {}
@@ -72,8 +71,8 @@ export class KarmaEventListener {
     });
   }
 
-  public getLoadedTests(projectRootPath: string): TestSuiteInfo {
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(this.config);
+  public getLoadedTests(projectRootPath: string, pathFinder: PathFinder): TestSuiteInfo {
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(projectRootPath, pathFinder);
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 

@@ -4,9 +4,11 @@ import { Logger } from "./helpers/logger";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
 import { TestServer } from "../model/test-server";
+import { PathFinder } from './helpers/path-finder';
 
 export class KarmaTestExplorer {
   private loadedProjectRootPath: string = "";
+
   public constructor(
     private readonly karmaRunner: KarmaRunner,
     private readonly logger: Logger,
@@ -14,14 +16,13 @@ export class KarmaTestExplorer {
     private readonly karmaEventListener: KarmaEventListener
   ) {}
 
-  public async loadTests(config: TestExplorerConfiguration): Promise<TestSuiteInfo> {
+  public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     if (this.karmaRunner.isKarmaRunning()) {
       await this.testServer.stopAsync();
     }
 
     this.loadedProjectRootPath = await this.testServer.start(config);
-
-    const testSuiteInfo = await this.karmaRunner.loadTests(this.loadedProjectRootPath);
+    const testSuiteInfo = await this.karmaRunner.loadTests(this.loadedProjectRootPath, pathFinder);
 
     if (testSuiteInfo.children.length === 0) {
       this.logger.info("Test loading completed - No tests found");
@@ -32,12 +33,13 @@ export class KarmaTestExplorer {
     return testSuiteInfo;
   }
 
-  public async reloadTestDefinitions(): Promise<TestSuiteInfo> {
-    await this.karmaRunner.loadTests(this.loadedProjectRootPath);
+  public async reloadTestDefinitions(pathFinder: PathFinder): Promise<TestSuiteInfo> {
+    await this.karmaRunner.loadTests(this.loadedProjectRootPath, pathFinder);
 
+    // FIXME: Is there a workaround for this?
     // We have to call it twice to force karma reload the definitions
     // without having to enable autowatch = true;
-    return await this.karmaRunner.loadTests(this.loadedProjectRootPath);
+    return await this.karmaRunner.loadTests(this.loadedProjectRootPath, pathFinder);
   }
 
   public async runTests(tests: string[], isComponentRun: boolean): Promise<void> {

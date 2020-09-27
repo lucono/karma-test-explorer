@@ -1,18 +1,10 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { PathFinder, PathFinderOptions } from "../helpers/path-finder";
+import { PathFinder } from "../helpers/path-finder";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import * as path from "path";
-import { TestExplorerConfiguration } from '../../model/test-explorer-configuration';
-
-const ENCODING = "utf-8";
 
 export class SpecResponseToTestSuiteInfoMapper {
-  private readonly pathFinder: PathFinder;
-  
-  public constructor(private readonly config: TestExplorerConfiguration) {
-    const pathFinderOptions: PathFinderOptions = { ignore: config.excludeFiles };
-    this.pathFinder = new PathFinder(config.testFiles, pathFinderOptions, ENCODING);
-  }
+  public constructor(private readonly projectRootPath: string, private readonly pathFinder: PathFinder) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     const rootSuiteNode = {
@@ -94,7 +86,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       id: specComplete.id,
       fullName: [...suiteNames, specComplete.description].join(" "),
       label: specComplete.description,
-      file: specLocation?.file ? path.join(this.config.projectRootPath, specLocation.file) : undefined,
+      file: specLocation?.file ? path.join(this.projectRootPath, specLocation.file) : undefined,
       line: specLocation?.line,
     } as TestInfo);
   }
@@ -108,7 +100,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       id: suiteLookup,
       fullName: suiteName,
       label: suiteName,
-      file: suiteLocation?.file ? path.join(this.config.projectRootPath, suiteLocation.file) : undefined,
+      file: suiteLocation?.file ? path.join(this.projectRootPath, suiteLocation.file) : undefined,
       line: suiteLocation?.line,
       children: [],
     } as TestSuiteInfo;

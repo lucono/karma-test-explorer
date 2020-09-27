@@ -20,6 +20,7 @@ import { KarmaRunner } from "./core/karma/karma-runner";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { KarmaHttpClient } from "./core/integration/karma-http-client";
+import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
 
 export class Adapter implements TestAdapter {
   public config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
@@ -28,6 +29,7 @@ export class Adapter implements TestAdapter {
   private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
   private readonly testExplorer: KarmaTestExplorer;
+  private pathFinder?: PathFinder;
   private readonly debugger: Debugger;
   private isTestProcessRunning: boolean = false;
   public loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
@@ -60,7 +62,6 @@ export class Adapter implements TestAdapter {
           configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri)
         ) {
           this.log.info("Sending reload event");
-
           this.load();
         }
       })
@@ -89,16 +90,15 @@ export class Adapter implements TestAdapter {
       })
     );
 
-    const config = this.loadConfig();
+    this.loadConfig();
 
     const isDebugMode = vscode.workspace.getConfiguration("karmaTestExplorer", workspace.uri).get("debugMode") as boolean;
     const logger = new Logger(channel, isDebugMode);
-    const karmaEventListener = new KarmaEventListener(config, logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
+    const karmaEventListener = new KarmaEventListener(logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
     const karmaRunner = new KarmaRunner(karmaEventListener, logger, new KarmaHttpClient());
     const commandLineProcessHandler = new CommandlineProcessHandler(logger, karmaEventListener);
     const karmaServer = new KarmaServer(karmaEventListener, logger, commandLineProcessHandler);
 
-    this.config = config;
     this.testExplorer = new KarmaTestExplorer(karmaRunner, logger, karmaServer, karmaEventListener);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));
   }
@@ -107,11 +107,14 @@ export class Adapter implements TestAdapter {
     if (!this.isTestProcessRunning) {
       this.isTestProcessRunning = true;
       this.loadConfig();
+
+      const pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
+      this.pathFinder = pathFinder;
+
       this.log.info("Loading tests");
 
       this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
-
-      this.loadedTests = await this.testExplorer.loadTests(this.config);
+      this.loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
 
       this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
       this.isTestProcessRunning = false;
@@ -154,9 +157,14 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
-  private loadConfig(): TestExplorerConfiguration {
+  private loadConfig() {
     const config = vscode.workspace.getConfiguration("karmaTestExplorer", this.workspace.uri);
-    return new TestExplorerConfiguration(config, this.workspace.uri.path);
+    this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
+  }
+
+  private loadTestInfo(testFiles: string[], excludeFiles?: string[]): PathFinder {
+    const pathFinderOptions = { ignore: excludeFiles } as PathFinderOptions;
+    return new PathFinder(testFiles, pathFinderOptions);
   }
 
   private findNode(node: any, suiteLookup: string, propertyLookup: string): any {

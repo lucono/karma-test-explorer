@@ -109,7 +109,9 @@
 						"type": "string"
 					},
 					"scope": "resource",
-					"default": "**/*.spec.{ts,js}"
+					"default": [
+						"**/*.spec.{ts,js}"
+					]
 				},
 				"karmaTestExplorer.excludeFiles": {
 					"description": "The path glob patterns identifying files to be excluded from `testFiles` relative to the karma.conf.js file location",
@@ -118,7 +120,9 @@
 						"type": "string"
 					},
 					"scope": "resource",
-					"default": "**/node_modules/*"
+					"default": [
+						"**/node_modules/*"
+					]
 				},
 				"karmaTestExplorer.defaultSocketConnectionPort": {
 					"description": "This is the port that will be used to connect Karma with the test explorer",

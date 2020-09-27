@@ -49,7 +49,7 @@ function TestExplorerCustomReporter(
     );
 
     /*
-    TODO: Figure out if this is required
+    // TODO: Figure out if this is required:
     if (result.status === TestResult.Failed) {
       result.fullResponse = spec;
     }

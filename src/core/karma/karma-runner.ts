@@ -2,6 +2,7 @@ import { KarmaHttpClient } from "../integration/karma-http-client";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
+import { PathFinder } from "../helpers/path-finder";
 
 export class KarmaRunner {
   public constructor(
@@ -14,14 +15,13 @@ export class KarmaRunner {
     return this.karmaEventListener.isServerLoaded;
   }
 
-  public async loadTests(projectRootPath: string): Promise<TestSuiteInfo> {
+  public async loadTests(projectRootPath: string, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     const fakeTestPatternForSkippingEverything = "$#%#";
     const karmaRunParameters = this.karmaHttpCaller.createKarmaRunCallConfiguration(fakeTestPatternForSkippingEverything);
     this.karmaEventListener.lastRunTests = "root";
 
     await this.karmaHttpCaller.callKarmaRunWithConfig(karmaRunParameters.config);
-
-    return this.karmaEventListener.getLoadedTests(projectRootPath);
+    return this.karmaEventListener.getLoadedTests(projectRootPath, pathFinder);
   }
 
   public async runTests(tests: string[], isComponentRun: boolean): Promise<void> {
