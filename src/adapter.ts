@@ -54,12 +54,14 @@ export class Adapter implements TestAdapter {
         this.log.info("Configuration changed");
 
         if (
-          configChange.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri)
+          configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.debugMode", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.env", this.workspace.uri)
         ) {
           this.log.info("Sending reload event");
           this.load();
@@ -163,7 +165,10 @@ export class Adapter implements TestAdapter {
   }
 
   private loadTestInfo(testFiles: string[], excludeFiles?: string[]): PathFinder {
-    const pathFinderOptions = { ignore: excludeFiles } as PathFinderOptions;
+    const pathFinderOptions = {
+      ignore: excludeFiles,
+      cwd: this.config.projectRootPath
+    } as PathFinderOptions;
     return new PathFinder(testFiles, pathFinderOptions);
   }
 

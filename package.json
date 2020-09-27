@@ -103,7 +103,7 @@
 					"default": "karma.conf.js"
 				},
 				"karmaTestExplorer.testFiles": {
-					"description": "The path glob patterns identifying the test files relative to the karma.conf.js file location",
+					"description": "The path glob patterns identifying the test files relative to `projectRootPath`",
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -114,7 +114,7 @@
 					]
 				},
 				"karmaTestExplorer.excludeFiles": {
-					"description": "The path glob patterns identifying files to be excluded from `testFiles` relative to the karma.conf.js file location",
+					"description": "The path glob patterns identifying files to be excluded from `testFiles` relative to `projectRootPath`",
 					"type": "array",
 					"items": {
 						"type": "string"

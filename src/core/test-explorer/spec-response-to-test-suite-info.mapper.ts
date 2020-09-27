@@ -1,5 +1,5 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { PathFinder } from "../helpers/path-finder";
+import { PathFinder, SpecLocation } from "../helpers/path-finder";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import * as path from "path";
 
@@ -19,33 +19,25 @@ export class SpecResponseToTestSuiteInfoMapper {
       const suiteNames = this.filterSuiteNames(spec.suite);
       const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);
       const testFile = specLocation?.file;
-      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, spec, suiteNames, testFile);
-      this.createTest(spec, suiteNode, suiteNames, testFile);
+      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, suiteNames, testFile);
+      this.createTest(spec, suiteNode, suiteNames, specLocation);
     }
-
     return rootSuiteNode;
   }
 
   private getOrCreateLowerSuiteNode(
-    node: TestSuiteInfo, 
-    spec: SpecCompleteResponse, 
+    node: TestSuiteInfo,
     suiteNames: string[],
     testFile?: string): TestSuiteInfo {
 
+    const currentSuiteNames = [] as string[];
+
     for (const suiteName of suiteNames) {
+      currentSuiteNames.push(suiteName);
       let nextNode = this.findNodeByKey(node, suiteName);
+
       if (!nextNode) {
-        const locationHint = suiteNames.reduce((previousValue: any, currentValue: any, index: number) => {
-          if (previousValue === suiteName) {
-            spec.suite = [suiteName];
-            return suiteName;
-          }
-
-          spec.suite = suiteNames;
-          return [previousValue, currentValue].join(" ");
-        });
-
-        nextNode = this.createSuite(spec, locationHint, testFile);
+        nextNode = this.createSuite(currentSuiteNames, testFile);
         node.children.push(nextNode);
       }
       node = nextNode;
@@ -62,12 +54,11 @@ export class SpecResponseToTestSuiteInfoMapper {
       return node;
     } else {
       for (const child of node.children) {
-        if (child.label === suiteLookup) {
+        if (child.type === "suite" && child.label === suiteLookup) {
           return child as TestSuiteInfo;
         }
       }
     }
-
     return undefined;
   }
 
@@ -78,8 +69,11 @@ export class SpecResponseToTestSuiteInfoMapper {
     return suiteNames;
   }
 
-  private createTest(specComplete: SpecCompleteResponse, suiteNode: TestSuiteInfo, suiteNames: string[], testFile?: string) {
-    const specLocation = this.pathFinder.getSpecLocation(suiteNames, specComplete.description, testFile);
+  private createTest(
+    specComplete: SpecCompleteResponse, 
+    suiteNode: TestSuiteInfo, 
+    suiteNames: string[],
+    specLocation?: SpecLocation) {
 
     suiteNode.children.push({
       type: "test",
@@ -91,18 +85,21 @@ export class SpecResponseToTestSuiteInfoMapper {
     } as TestInfo);
   }
 
-  private createSuite(specComplete: SpecCompleteResponse, suiteLookup: string, testFile?: string): TestSuiteInfo {
-    const suiteName = specComplete.suite[specComplete.suite.length - 1];
-    const suiteLocation = this.pathFinder.getSpecLocation(specComplete.suite, undefined, testFile);
+  private createSuite(suiteNames: string[], testFile?: string): TestSuiteInfo {
+    const suiteName = suiteNames[suiteNames.length - 1];
+    const suiteFullName = suiteNames.join(" ");
+    const suiteLocation = this.pathFinder.getSpecLocation(suiteNames, undefined, testFile);
 
-    return {
+    const suiteNode = {
       type: "suite",
-      id: suiteLookup,
-      fullName: suiteName,
+      id: suiteFullName,
+      fullName: suiteFullName,
       label: suiteName,
       file: suiteLocation?.file ? path.join(this.projectRootPath, suiteLocation.file) : undefined,
       line: suiteLocation?.line,
       children: [],
     } as TestSuiteInfo;
+
+    return suiteNode;
   }
 }

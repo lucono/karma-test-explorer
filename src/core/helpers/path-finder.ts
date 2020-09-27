@@ -1,6 +1,6 @@
 import fs = require("fs");
 import * as glob from "glob";
-import { FilePattern } from 'karma';
+import * as path from 'path';
 
 enum TestNodeType {
   Describe = "describe",
@@ -31,29 +31,72 @@ const DEFAULT_FILE_ENCODING = "utf-8";
 export class PathFinder {
   private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
   private readonly fileInfoMap: TestSuiteFileInfoMap;
+  private readonly suiteFilesCache: { [key: string]: string };
+  private readonly cwd: string;
 
-  public constructor(
-    filePatterns: Array<string|FilePattern>, 
-    options?: PathFinderOptions, 
-    fileEncoding?: string
-  ) {
+  public constructor(filePatterns: string[], options?: PathFinderOptions, fileEncoding?: string) {
     this.fileInfoMap = {};
+    this.suiteFilesCache = {};
+    this.cwd = options?.cwd || process.cwd();
 
-    filePatterns.map(filePattern => (filePattern as FilePattern).pattern || filePattern as string)
+    filePatterns
       .map(patternString => glob.sync(patternString, options))
-      .reduce((consolidatedPaths, morePaths) => [...consolidatedPaths, ...morePaths], [])
-      .forEach(filePath => this.fileInfoMap[filePath] = this.parseTestFile(filePath, fileEncoding));
+      .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
+      .forEach(filePath => {
+        const fileAbsolutePath = path.resolve(this.cwd, filePath);
+        const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
+        this.fileInfoMap[filePath] = fileTestInfo;
+      });
   }
 
-  public getSpecLocation(specSuite: string[], specDescription?: string, specfile?: string): SpecLocation | undefined {
+  public getSpecLocation(specSuite: string[], specDescription?: string, specFile?: string): SpecLocation | undefined {
+    let isCached: boolean = false;
+
+    if (!specFile) {
+      specFile = this.checkSuiteCache(specSuite);
+      isCached = !!specFile;
+    }
+
+    if (specFile) {
+      const specLine = this.getSpecLineNumber(this.fileInfoMap[specFile], specSuite, specDescription);
+      return specLine !== undefined ? { file: specFile, line: specLine } : undefined;
+    }
+
     for (const filePath of Object.keys(this.fileInfoMap)) {
       const specLineNumber = this.getSpecLineNumber(this.fileInfoMap[filePath], specSuite, specDescription);
 
       if (specLineNumber !== undefined) {
+        if (!isCached) {
+          this.cacheSuite(specSuite, filePath);
+        }
         return { file: filePath, line: specLineNumber };
       }
     }
     return undefined;
+  }
+
+  private checkSuiteCache(suite: string[]): string | undefined {
+    let suiteKey = "";
+
+    for (const suiteAncestor of suite) {
+      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
+      const suiteFile = this.suiteFilesCache[suiteKey];
+      if (suiteFile !== undefined) {
+        return suiteFile;
+      }
+    }
+    return undefined;
+  }
+
+  private cacheSuite(suite: string[], filePath: string) {
+    let suiteKey = "";
+
+    for (const suiteAncestor of suite) {
+      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
+      if (this.suiteFilesCache[suiteKey] === undefined) {
+        this.suiteFilesCache[suiteKey] = filePath;
+      }
+    }
   }
 
   private getSpecLineNumber(
@@ -62,7 +105,7 @@ export class PathFinder {
     specDescription?: string | undefined
   ): number | undefined {
 
-    if ((!specSuite && specDescription === undefined) || !suiteFileInfo) {
+    if (!suiteFileInfo || !specSuite) {
       return undefined;
     }
     
@@ -139,7 +182,7 @@ export class PathFinder {
     return fs.readFileSync(path, encoding || DEFAULT_FILE_ENCODING);
   }
 
-  private parseTestFile(filePath: string, encoding?: string): TestSuiteFileInfo {
+  private parseTestSuiteFile(filePath: string, encoding?: string): TestSuiteFileInfo {
     const data = this.getTestFileData(filePath, encoding);
     const fileInfo: TestSuiteFileInfo = {
       descriptions: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] },
