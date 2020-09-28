@@ -32,7 +32,6 @@ export class KarmaServer implements TestServer {
     const processArguments = ["karma", "start", baseKarmaConfigFilePath];
     
     this.processHandler.create(command, processArguments, options);
-
     await this.karmaEventListener.listenTillKarmaReady(config.defaultSocketConnectionPort);
 
     return config.projectRootPath;

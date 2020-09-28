@@ -25,7 +25,7 @@ The `Karma Test Explorer` extension allows you to run or debug your Angular or K
 - Loads values from user karma.conf.js (some get removed to make the explorer work correctly).
 - Detects configuration changes and reload tests automatically.
 - Allows configuration for different type of workflows: Angular project path, project type, karma.conf path, default project name for multiple projects inside one root.
-- Forwards the console output from Karma to a VS Code output channel(Karma Test Explorer Log).
+- Forwards the console output from Karma to a VS Code output channel(Karma Test Explorer).
 
 ## How to use it?
 
@@ -37,7 +37,7 @@ The `Karma Test Explorer` extension allows you to run or debug your Angular or K
 
 ## What about bugs and fixes?
 
-- If something goes wrong you will see error logs on vscode `Karma Test Explorer Log` output channel.
+- If something goes wrong you will see error logs on vscode `Karma Test Explorer` output channel.
 - If you find a bug or think that a feature is missing and is not in the backlog please report it using the appropiate github issue template.
 - If you wanna help out please read the [contribution guidelines for this project](.github/CONTRIBUTING.md).
 - If you have any urgent question you might wanna check our [Gitter Channel](https://gitter.im/Angular-Karma-Test-Explorer/Bugs) for a direct chat with me or other people using the extension.

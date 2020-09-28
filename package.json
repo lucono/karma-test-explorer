@@ -97,13 +97,13 @@
 					"scope": "resource"
 				},
 				"karmaTestExplorer.karmaConfFilePath": {
-					"description": "The path where the karma.conf.js is located (relative to the project folder)",
+					"description": "The path where the karma.conf.js is located (absolute path or relative to `projectRootPath`)",
 					"type": "string",
 					"scope": "resource",
 					"default": "karma.conf.js"
 				},
 				"karmaTestExplorer.testFiles": {
-					"description": "The path glob patterns identifying the test files relative to `projectRootPath`",
+					"description": "The path glob patterns identifying the test files (absolute paths or relative to `projectRootPath`)",
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -114,7 +114,7 @@
 					]
 				},
 				"karmaTestExplorer.excludeFiles": {
-					"description": "The path glob patterns identifying files to be excluded from `testFiles` relative to `projectRootPath`",
+					"description": "The path glob patterns identifying files to be excluded from `testFiles` (absolute paths or relative to `projectRootPath`)",
 					"type": "array",
 					"items": {
 						"type": "string"

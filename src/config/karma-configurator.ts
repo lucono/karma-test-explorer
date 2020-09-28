@@ -23,8 +23,7 @@ export class KarmaConfigurator {
         base: "ChromeHeadless",
         debug: true,
         flags: [
-          "--remote-debugging-port=9222",
-          //"--no-sandbox"
+          "--remote-debugging-port=9222"
         ],
       },
     };

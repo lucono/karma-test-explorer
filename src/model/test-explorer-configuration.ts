@@ -3,12 +3,10 @@ import path = require("path");
 export class TestExplorerConfiguration {
   public constructor(config: any, workspaceVSCODEPath: string) {
     const workspacePath = workspaceVSCODEPath.replace(/^\/([A-Za-z]):\//, "$1:/");
-    const projectRootPath = config.get("projectRootPath") as string;
-    const karmaConfFilePath = config.get("karmaConfFilePath") as string;
 
+    this.projectRootPath = path.join(workspacePath, config.get("projectRootPath") as string);
     this.defaultSocketConnectionPort = config.get("defaultSocketConnectionPort") as number;
-    this.projectRootPath = path.join(workspacePath, projectRootPath);
-    this.userKarmaConfFilePath = path.join(workspacePath, projectRootPath, karmaConfFilePath);
+    this.userKarmaConfFilePath = path.resolve(this.projectRootPath, config.get("karmaConfFilePath") as string);
     this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
     this.testFiles = config.get("testFiles") as string[];
     this.excludeFiles = config.get("excludeFiles") as string[];

@@ -26,10 +26,10 @@ export interface PathFinderOptions {
   ignore?: string[]
 }
 
+const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
 const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class PathFinder {
-  private readonly regexPattern: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
   private readonly fileInfoMap: TestSuiteFileInfoMap;
   private readonly suiteFilesCache: { [key: string]: string };
   private readonly cwd: string;
@@ -192,7 +192,7 @@ export class PathFinder {
     let matchResult: RegExpExecArray | null;
     let currentLineNumber: number | undefined;
 
-    while ((matchResult = this.regexPattern.exec(data)) != null) {
+    while ((matchResult = DEFAULT_FRAMEWORK_SPEC_REGEX.exec(data)) != null) {
       currentLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : currentLineNumber;
       const type = matchResult[4] as TestNodeType;
       const text = matchResult[6];

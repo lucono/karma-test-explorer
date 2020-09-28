@@ -2,7 +2,7 @@ import { OutputChannel } from "vscode";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { LogLevel } from "../../model/enums/log-level.enum";
 
-export const OUTPUT_CHANNEL = "Karma Test Explorer Log";
+export const OUTPUT_CHANNEL = "Karma Test Explorer";
 
 interface Log {
   message: string;

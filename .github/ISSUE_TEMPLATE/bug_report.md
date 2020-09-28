@@ -8,7 +8,7 @@ assignees: lucono
 ---
 
 **Before submitting the bug report**
-- Make sure you enable DebugMode in vscode preferences and check the output channel Karma Test Explorer Log.
+- Make sure you enable DebugMode in vscode preferences and check the output channel `Karma Test Explorer`.
 - Make sure your project runs and 'ng test' properly runs all tests.
 
 **Describe the bug**
