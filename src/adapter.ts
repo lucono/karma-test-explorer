@@ -96,12 +96,18 @@ export class Adapter implements TestAdapter {
 
     const isDebugMode = vscode.workspace.getConfiguration("karmaTestExplorer", workspace.uri).get("debugMode") as boolean;
     const logger = new Logger(channel, isDebugMode);
-    const karmaEventListener = new KarmaEventListener(logger, new EventEmitter(this.testStatesEmitter, this.testsEmitter));
-    const karmaRunner = new KarmaRunner(karmaEventListener, logger, new KarmaHttpClient());
-    const commandLineProcessHandler = new CommandlineProcessHandler(logger, karmaEventListener);
-    const karmaServer = new KarmaServer(karmaEventListener, logger, commandLineProcessHandler);
+    const karmaPort = this.config.karmaPort;
 
-    this.testExplorer = new KarmaTestExplorer(karmaRunner, logger, karmaServer, karmaEventListener);
+    const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
+    const karmaEventListener = new KarmaEventListener(karmaEventEmitter, logger);
+    
+    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, logger);
+    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, logger);
+    
+    const karmaHttpClient = new KarmaHttpClient(karmaPort);
+    const karmaRunner = new KarmaRunner(karmaHttpClient, karmaEventListener, karmaPort, logger);
+      
+    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, logger);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));
   }
 

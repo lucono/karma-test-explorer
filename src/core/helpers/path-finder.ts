@@ -26,6 +26,10 @@ export interface PathFinderOptions {
   ignore?: string[]
 }
 
+// TODO: Use enum and a new vscode setting to allow selection of
+// underlying test framework, such as Jasmine or Mocha or Jest etc,
+// which will change the describe/it regex being used and tailor
+// it to the suite and spec keywords of the selected framework.
 const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
 const DEFAULT_FILE_ENCODING = "utf-8";
 
@@ -44,8 +48,9 @@ export class PathFinder {
       .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
       .forEach(filePath => {
         const fileAbsolutePath = path.resolve(this.cwd, filePath);
+        const fileRelativePath = path.resolve(this.cwd, fileAbsolutePath);
         const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
-        this.fileInfoMap[filePath] = fileTestInfo;
+        this.fileInfoMap[fileRelativePath] = fileTestInfo;
       });
   }
 

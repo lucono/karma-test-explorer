@@ -10,10 +10,10 @@ export class KarmaTestExplorer {
   private loadedProjectRootPath: string = "";
 
   public constructor(
-    private readonly karmaRunner: KarmaRunner,
-    private readonly logger: Logger,
     private readonly testServer: TestServer,
-    private readonly karmaEventListener: KarmaEventListener
+    private readonly karmaRunner: KarmaRunner,
+    private readonly karmaEventListener: KarmaEventListener,
+    private readonly logger: Logger
   ) {}
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {

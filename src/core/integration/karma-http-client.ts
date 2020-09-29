@@ -1,15 +1,14 @@
 export class KarmaHttpClient {
-  public constructor() {}
+  public constructor(private serverPort: number) {}
   public createKarmaRunCallConfiguration(tests: any) {
     // if testName is undefined, reset jasmine.getEnv().specFilter function
     // otherwise, last specified specFilter will be used
     if (tests[0] === "root" || tests[0] === undefined) {
       tests = "";
     }
-    const serverPort = 9876;
     const urlRoot = "/run";
     const config = {
-      port: serverPort,
+      port: this.serverPort,
       refresh: true,
       urlRoot,
       hostname: "localhost",

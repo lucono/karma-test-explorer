@@ -22,8 +22,8 @@ export class KarmaEventListener {
   private karmaBeingReloaded: boolean = false;
 
   public constructor(
-    private readonly logger: Logger, 
-    private readonly eventEmitter: EventEmitter
+    private readonly eventEmitter: EventEmitter, 
+    private readonly logger: Logger
   ) {}
 
   public listenTillKarmaReady(defaultSocketPort?: number): Promise<void> {

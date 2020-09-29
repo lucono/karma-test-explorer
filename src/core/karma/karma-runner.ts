@@ -6,9 +6,10 @@ import { PathFinder } from "../helpers/path-finder";
 
 export class KarmaRunner {
   public constructor(
+    private readonly karmaHttpCaller: KarmaHttpClient,
     private readonly karmaEventListener: KarmaEventListener,
-    private readonly logger: Logger,
-    private readonly karmaHttpCaller: KarmaHttpClient
+    private readonly karmaPort: number,
+    private readonly logger: Logger
   ) {}
 
   public isKarmaRunning(): boolean {
@@ -38,7 +39,7 @@ export class KarmaRunner {
   public async stopRun() {
     return new Promise<void>(resolve => {
       const stopper = require("karma").stopper;
-      stopper.stop({ port: 9876 }, (exitCode: any) => {
+      stopper.stop({ port: this.karmaPort }, (exitCode: any) => {
         resolve();
       });
     });

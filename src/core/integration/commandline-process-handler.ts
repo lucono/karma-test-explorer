@@ -4,7 +4,7 @@ import { Logger } from "../helpers/logger";
 const spawn = require("cross-spawn");
 export class CommandlineProcessHandler {
   private process: any;
-  public constructor(private readonly logger: Logger, private readonly karmaEventListener: KarmaEventListener) {}
+  public constructor(private readonly karmaEventListener: KarmaEventListener, private readonly logger: Logger) {}
 
   public create(command: string, processArguments: string[], options: SpawnOptions): any {
     this.process = spawn(command, processArguments, options);
