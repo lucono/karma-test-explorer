@@ -1,8 +1,11 @@
 import { KarmaHttpClient } from "../integration/karma-http-client";
+import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
+import { SpawnOptions } from "child_process";
 import { PathFinder } from "../helpers/path-finder";
+import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
 
 export class KarmaRunner {
   public constructor(
@@ -25,6 +28,7 @@ export class KarmaRunner {
     return this.karmaEventListener.getLoadedTests(projectRootPath, pathFinder);
   }
 
+  /*
   public async runTests(tests: string[], isComponentRun: boolean): Promise<void> {
     this.log(tests);
 
@@ -34,6 +38,59 @@ export class KarmaRunner {
     this.karmaEventListener.lastRunTests = karmaRunParameters.tests;
     this.karmaEventListener.isComponentRun = isComponentRun;
     await this.karmaHttpCaller.callKarmaRunWithConfig(karmaRunParameters.config);
+  }
+  */
+
+  public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<string> {
+    this.log(tests);
+
+    if (tests[0] === "root" || tests[0] === undefined) {
+      tests = [""];
+    }
+    const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
+
+    const testExplorerEnvironment = {
+      ...process.env,
+      ...config.env,
+      userKarmaConfigPath: config.userKarmaConfFilePath,
+      defaultSocketPort: `${config.defaultSocketConnectionPort}`
+    };
+
+    const options = {
+      cwd: config.projectRootPath,
+      shell: true,
+      env: testExplorerEnvironment,
+    } as SpawnOptions;
+
+    let command = "npx";
+    let processArguments = [ "karma" ];
+
+    if (config.karmaProcessExecutable) {
+      command = config.karmaProcessExecutable;
+      processArguments = [];
+    }
+
+    const testsString = `${tests.join(",")}`;
+    const testsArg = testsString.replace("'", "\\'");
+
+    processArguments = [
+      ...processArguments,
+      "run",
+      baseKarmaConfigFilePath,
+      `--port=${config.karmaPort}`,
+      "--",
+      `--grep='${testsArg}'`
+    ];
+
+    this.karmaEventListener.isTestRunning = true;
+    this.karmaEventListener.lastRunTests = testsString;
+    this.karmaEventListener.isComponentRun = isComponentRun;
+
+    const runTestsProcessHandler = new CommandlineProcessHandler(this.karmaEventListener, this.logger);
+    runTestsProcessHandler.create(command, processArguments, options);
+    await this.karmaEventListener.listenTillKarmaReady(config.defaultSocketConnectionPort);
+
+    return config.projectRootPath;
   }
 
   public async stopRun() {

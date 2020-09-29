@@ -139,7 +139,7 @@ export class Adapter implements TestAdapter {
       const testSpec = this.findNode(this.loadedTests, tests[0], "id");
       const isComponent = testSpec.type === "suite";
 
-      await this.testExplorer.runTests([testSpec.fullName], isComponent);
+      await this.testExplorer.runTests(this.config, [testSpec.fullName], isComponent);
 
       this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
       this.isTestProcessRunning = false;

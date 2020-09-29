@@ -33,17 +33,8 @@ export class KarmaTestExplorer {
     return testSuiteInfo;
   }
 
-  public async reloadTestDefinitions(pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    await this.karmaRunner.loadTests(this.loadedProjectRootPath, pathFinder);
-
-    // FIXME: Is there a workaround for this?
-    // We have to call it twice to force karma reload the definitions
-    // without having to enable autowatch = true;
-    return await this.karmaRunner.loadTests(this.loadedProjectRootPath, pathFinder);
-  }
-
-  public async runTests(tests: string[], isComponentRun: boolean): Promise<void> {
-    await this.karmaRunner.runTests(tests, isComponentRun);
+  public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
+    await this.karmaRunner.runTests(config, tests, isComponentRun);
     this.logger.status(this.karmaEventListener.testStatus);
   }
 
