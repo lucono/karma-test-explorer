@@ -31,6 +31,8 @@ export class KarmaRunner {
 
   private async callKarma(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
     this.log(tests);
+
+    const isRootComponent = tests[0] === SKIP_ALL_TESTS_PATTERN;
     const isAllTestRun = tests[0] === "root" || tests[0] === undefined;
 
     if (isAllTestRun) {
@@ -72,7 +74,7 @@ export class KarmaRunner {
     ];
 
     this.karmaEventListener.isTestRunning = true;
-    this.karmaEventListener.lastRunTests = testsString === SKIP_ALL_TESTS_PATTERN ? "root" : testsString;
+    this.karmaEventListener.lastRunTests = isRootComponent ? "root" : testsString;
     this.karmaEventListener.isComponentRun = isComponentRun;
 
     const runTestsProcessHandler = new CommandlineProcessHandler(this.karmaEventListener, this.logger);

@@ -7,12 +7,15 @@ export class CommandlineProcessHandler {
   public constructor(private readonly karmaEventListener: KarmaEventListener, private readonly logger: Logger) {}
 
   public create(command: string, processArguments: string[], options: SpawnOptions): Promise<any> {
-    if (this.process) {
-      this.kill();
-      this.process = undefined;
-    }
-    this.process = spawn(command, processArguments, options);
-    return this.setupProcessOutputs();
+    return new Promise(resolve => {
+      if (this.process) {
+        this.kill();
+        this.process = undefined;
+      }
+      this.process = spawn(command, processArguments, options);
+      this.setupProcessOutputs();
+      this.process.on("exit", () => resolve());
+    });
   }
 
   public isProcessRunning(): boolean {
@@ -36,33 +39,27 @@ export class CommandlineProcessHandler {
     this.process = undefined;
   }
 
-  private setupProcessOutputs(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this.process.stdout.on("data", (data: any) => {
-        const { isTestRunning } = this.karmaEventListener;
-        const regex = new RegExp(/\(.*?)\m/, "g");
-        if (isTestRunning) {
-          let log = data.toString().replace(regex, "");
-          if (log.startsWith("e ")) {
-            log = "HeadlessChrom" + log;
-          }
-          this.logger.karmaLogs(`${log}`);
+  private setupProcessOutputs() {
+    this.process.stdout.on("data", (data: any) => {
+      const { isTestRunning } = this.karmaEventListener;
+      const regex = new RegExp(/\(.*?)\m/, "g");
+      if (isTestRunning) {
+        let log = data.toString().replace(regex, "");
+        if (log.startsWith("e ")) {
+          log = "HeadlessChrom" + log;
         }
-      });
-      this.process.stderr.on("data", (data: any) => this.logger.error(`stderr: ${data}`));
-      this.process.on("error", (err: any) => {
-        this.logger.error(`error from child process: ${err}`);
-        reject();
-      });
-  
-      // Prevent karma server from being an orphan process.
-      // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.
-      // When VSCODE is terminated, karma server's standard input is closed automatically.
-      process.stdin.on("close", async () => {
-        // terminating orphan process
-        this.kill();
-        resolve();
-      });
+        this.logger.karmaLogs(`${log}`);
+      }
+    });
+    this.process.stderr.on("data", (data: any) => this.logger.error(`stderr: ${data}`));
+    this.process.on("error", (err: any) => this.logger.error(`error from child process: ${err}`));
+
+    // Prevent karma server from being an orphan process.
+    // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.
+    // When VSCODE is terminated, karma server's standard input is closed automatically.
+    process.stdin.on("close", async () => {
+      // terminating orphan process
+      this.kill();
     });
   }
 }
