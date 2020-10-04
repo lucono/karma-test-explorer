@@ -71,8 +71,8 @@ export class KarmaEventListener {
     });
   }
 
-  public getLoadedTests(projectRootPath: string, pathFinder: PathFinder): TestSuiteInfo {
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(projectRootPath, pathFinder);
+  public getLoadedTests(pathFinder: PathFinder): TestSuiteInfo {
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder);
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 

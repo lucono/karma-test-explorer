@@ -30,7 +30,7 @@ export interface PathFinderOptions {
 // underlying test framework, such as Jasmine or Mocha or Jest etc,
 // which will change the describe/it regex being used and tailor
 // it to the suite and spec keywords of the selected framework.
-const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*([\`\'\"])((((?!\5).)|\\.)*?)\5/gis;
+const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5/gis;
 const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class PathFinder {
@@ -48,39 +48,33 @@ export class PathFinder {
       .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
       .forEach(filePath => {
         const fileAbsolutePath = path.resolve(this.cwd, filePath);
-        const fileRelativePath = path.resolve(this.cwd, fileAbsolutePath);
         const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
-        this.fileInfoMap[fileRelativePath] = fileTestInfo;
+        this.fileInfoMap[fileAbsolutePath] = fileTestInfo;
       });
   }
 
-  public getSpecLocation(specSuite: string[], specDescription?: string, specFile?: string): SpecLocation | undefined {
-    let isCached: boolean = false;
-
-    if (!specFile) {
-      specFile = this.checkSuiteCache(specSuite);
-      isCached = !!specFile;
-    }
+  public getSpecLocation(specSuite: string[], specDescription?: string): SpecLocation | undefined {
+    let specFile = this.getSuiteFromCache(specSuite);
 
     if (specFile) {
       const specLine = this.getSpecLineNumber(this.fileInfoMap[specFile], specSuite, specDescription);
-      return specLine !== undefined ? { file: specFile, line: specLine } : undefined;
+      if (specLine !== undefined) {
+        return { file: specFile, line: specLine };
+      }
     }
 
-    for (const filePath of Object.keys(this.fileInfoMap)) {
-      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap[filePath], specSuite, specDescription);
+    for (specFile of Object.keys(this.fileInfoMap)) {
+      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap[specFile], specSuite, specDescription);
 
       if (specLineNumber !== undefined) {
-        if (!isCached) {
-          this.cacheSuite(specSuite, filePath);
-        }
-        return { file: filePath, line: specLineNumber };
+        this.addSuiteToCache(specSuite, specFile);
+        return { file: specFile, line: specLineNumber };
       }
     }
     return undefined;
   }
 
-  private checkSuiteCache(suite: string[]): string | undefined {
+  private getSuiteFromCache(suite: string[]): string | undefined {
     let suiteKey = "";
 
     for (const suiteAncestor of suite) {
@@ -93,7 +87,7 @@ export class PathFinder {
     return undefined;
   }
 
-  private cacheSuite(suite: string[], filePath: string) {
+  private addSuiteToCache(suite: string[], filePath: string) {
     let suiteKey = "";
 
     for (const suiteAncestor of suite) {
@@ -195,18 +189,18 @@ export class PathFinder {
     };
 
     let matchResult: RegExpExecArray | null;
-    let currentLineNumber: number | undefined;
+    let activeLineNumber: number | undefined;
 
     while ((matchResult = DEFAULT_FRAMEWORK_SPEC_REGEX.exec(data)) != null) {
-      currentLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : currentLineNumber;
-      const type = matchResult[4] as TestNodeType;
-      const text = matchResult[6];
+      activeLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : activeLineNumber;
+      const testType = matchResult[4] as TestNodeType;
+      const testDescription = matchResult[6]?.replace(/\\(['"`])/g, "$1");
 
-      if (!type || !text) {
+      if (!testType || !testDescription) {
         continue;
       }
-      fileInfo.descriptions[type].push(text);
-      fileInfo.lineNumbers[type].push(currentLineNumber);
+      fileInfo.descriptions[testType].push(testDescription);
+      fileInfo.lineNumbers[testType].push(activeLineNumber);
     }
     return fileInfo;
   }

@@ -19,7 +19,6 @@ import { KarmaEventListener } from "./core/integration/karma-event-listener";
 import { KarmaRunner } from "./core/karma/karma-runner";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
-import { KarmaHttpClient } from "./core/integration/karma-http-client";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
 
 export class Adapter implements TestAdapter {
@@ -56,6 +55,8 @@ export class Adapter implements TestAdapter {
         if (
           configChange.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.karmaProcessExecutable", this.workspace.uri) ||
+          configChange.affectsConfiguration("karmaTestExplorer.karmaPort", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri) ||
           configChange.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
@@ -104,8 +105,7 @@ export class Adapter implements TestAdapter {
     const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, logger);
     const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, logger);
     
-    const karmaHttpClient = new KarmaHttpClient(karmaPort);
-    const karmaRunner = new KarmaRunner(karmaHttpClient, karmaEventListener, karmaPort, logger);
+    const karmaRunner = new KarmaRunner(karmaEventListener, karmaPort, logger);
       
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, logger);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));

@@ -1,11 +1,10 @@
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
-import { TestServer } from "../../model/test-server";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
 
-export class KarmaServer implements TestServer {
+export class KarmaServer {
   public constructor(
     private readonly processHandler: CommandlineProcessHandler,
     private readonly karmaEventListener: KarmaEventListener,
@@ -13,7 +12,7 @@ export class KarmaServer implements TestServer {
     private readonly logger: Logger
   ) {}
 
-  public async start(config: TestExplorerConfiguration): Promise<string> {
+  public async start(config: TestExplorerConfiguration): Promise<void> {
     const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
 
     const testExplorerEnvironment = {
@@ -46,11 +45,17 @@ export class KarmaServer implements TestServer {
 
     this.processHandler.create(command, processArguments, options);
     await this.karmaEventListener.listenTillKarmaReady(config.defaultSocketConnectionPort);
-
-    return config.projectRootPath;
   }
 
   public stop(): void {
+    if (this.processHandler.isProcessRunning()) {
+      this.processHandler.kill();
+      this.logger.info(`Stopped Karma`);
+    } else {
+      this.logger.info(`Karma is not running`);
+    }
+    this.karmaEventListener.stopListeningToKarma();
+    /*
     if (this.karmaEventListener.isServerLoaded) {
       const stopper = require("karma").stopper;
       stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
@@ -58,6 +63,7 @@ export class KarmaServer implements TestServer {
       });
       this.karmaEventListener.stopListeningToKarma();
     }
+    */
   }
 
   public async stopAsync(): Promise<void> {
