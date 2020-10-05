@@ -31,7 +31,7 @@ export class HttpClientTestRunner implements TestRunner {
     const karmaRunParameters = this.createKarmaRunCallConfiguration(tests);
 
     this.karmaEventListener.isTestRunning = true;
-    this.karmaEventListener.lastRunTests = karmaRunParameters.tests;
+    this.karmaEventListener.lastRunTests = tests[0];
     this.karmaEventListener.isComponentRun = isComponentRun;
     await this.callKarmaRunWithConfig(karmaRunParameters.config);
   }

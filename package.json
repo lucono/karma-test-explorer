@@ -1,7 +1,7 @@
 {
 	"name": "karma-test-explorer",
 	"displayName": "Karma Test Explorer",
-	"description": "Run your Karma Tests in the Sidebar of Visual Studio Code",
+	"description": "Run Karma Tests from the Visual Studio Code Test panel",
 	"icon": "img/test-explorer_icon.png",
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
