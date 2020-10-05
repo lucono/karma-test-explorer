@@ -1,6 +1,7 @@
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
+import { TestRunner } from "./test-runner";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { SpawnOptions } from "child_process";
 import { PathFinder } from "../helpers/path-finder";
@@ -8,7 +9,7 @@ import { CommandlineProcessHandler } from "../integration/commandline-process-ha
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 
-export class KarmaRunner {
+export class KarmaCliTestRunner implements TestRunner {
 
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,
@@ -16,7 +17,7 @@ export class KarmaRunner {
     private readonly logger: Logger
   ) {}
 
-  public isKarmaRunning(): boolean {
+  public isServerRunning(): boolean {
     return this.karmaEventListener.isServerLoaded;
   }
 
@@ -27,6 +28,15 @@ export class KarmaRunner {
 
   public async runTests(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
     return this.callKarma(tests, config, isComponentRun);
+  }
+
+  public async stopRun() {
+    return new Promise<void>(resolve => {
+      const stopper = require("karma").stopper;
+      stopper.stop({ port: this.karmaPort }, (exitCode: any) => {
+        resolve();
+      });
+    });
   }
 
   private async callKarma(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
@@ -79,15 +89,6 @@ export class KarmaRunner {
 
     const runTestsProcessHandler = new CommandlineProcessHandler(this.karmaEventListener, this.logger);
     await runTestsProcessHandler.create(command, processArguments, options);
-  }
-
-  public async stopRun() {
-    return new Promise<void>(resolve => {
-      const stopper = require("karma").stopper;
-      stopper.stop({ port: this.karmaPort }, (exitCode: any) => {
-        resolve();
-      });
-    });
   }
 
   private log(tests: string[]): void {

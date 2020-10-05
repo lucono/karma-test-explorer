@@ -1,4 +1,4 @@
-import { KarmaRunner } from "./karma/karma-runner";
+import { TestRunner } from "./karma/test-runner";
 import { KarmaEventListener } from "./integration/karma-event-listener";
 import { Logger } from "./helpers/logger";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
@@ -9,18 +9,18 @@ import { PathFinder } from './helpers/path-finder';
 export class KarmaTestExplorer {
   public constructor(
     private readonly karmaServer: KarmaServer,
-    private readonly karmaRunner: KarmaRunner,
+    private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger
   ) {}
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    if (this.karmaRunner.isKarmaRunning()) {
+    if (this.testRunner.isServerRunning()) {
       await this.karmaServer.stopAsync();
     }
 
     await this.karmaServer.start(config);
-    const testSuiteInfo = await this.karmaRunner.loadTests(config, pathFinder);
+    const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
 
     if (testSuiteInfo.children.length === 0) {
       this.logger.info("Test loading completed - No tests found");
@@ -32,18 +32,18 @@ export class KarmaTestExplorer {
   }
 
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
-    await this.karmaRunner.runTests(tests, config, isComponentRun);
+    await this.testRunner.runTests(tests, config, isComponentRun);
     this.logger.status(this.karmaEventListener.testStatus);
   }
 
   public async stopCurrentRun(): Promise<void> {
-    if (this.karmaRunner.isKarmaRunning()) {
+    if (this.testRunner.isServerRunning()) {
       await this.karmaServer.stopAsync();
     }
   }
 
   public dispose(): void {
-    if (this.karmaRunner.isKarmaRunning()) {
+    if (this.testRunner.isServerRunning()) {
       this.karmaServer.stop();
     }
   }

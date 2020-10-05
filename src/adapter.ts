@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
 import { EventEmitter } from "./core/helpers/event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
-import { KarmaRunner } from "./core/karma/karma-runner";
+import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
@@ -105,7 +105,8 @@ export class Adapter implements TestAdapter {
     const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, logger);
     const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, logger);
     
-    const karmaRunner = new KarmaRunner(karmaEventListener, karmaPort, logger);
+    const testRunnerFactory = new TestRunnerFactory(karmaEventListener, karmaPort, logger);
+    const karmaRunner = testRunnerFactory.createTestRunner();
       
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, logger);
     this.debugger = new Debugger(new Logger(channel, isDebugMode));
@@ -116,8 +117,7 @@ export class Adapter implements TestAdapter {
       this.isTestProcessRunning = true;
       this.loadConfig();
 
-      const pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
-      this.pathFinder = pathFinder;
+      this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
       this.log.info("Loading tests");
 

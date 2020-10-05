@@ -86,7 +86,7 @@ export class KarmaEventListener {
     const { results } = event;
 
     const testName = results.fullName;
-    const isTestNamePerfectMatch = testName === this.lastRunTests[0];
+    const isTestNamePerfectMatch = testName === this.lastRunTests;
     const isRootComponent = this.lastRunTests === "root";
     const isComponent = this.isComponentRun && testName.includes(this.lastRunTests);
 
