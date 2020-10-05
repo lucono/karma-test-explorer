@@ -103,7 +103,7 @@
 					"default": "karma.conf.js"
 				},
 				"karmaTestExplorer.karmaProcessExecutable": {
-					"description": "The path to the Karma executable or command to execute to launch Karma",
+					"description": "The path to a custom Karma executable or command for launching Karma",
 					"type": "string",
 					"scope": "resource",
 					"default": ""

@@ -105,7 +105,7 @@ export class Adapter implements TestAdapter {
     const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, logger);
     const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, logger);
     
-    const testRunnerFactory = new TestRunnerFactory(karmaEventListener, karmaPort, logger);
+    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, karmaPort, logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
       
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, logger);
