@@ -7,7 +7,8 @@ import {
   TestRunFinishedEvent,
   TestSuiteEvent,
   TestEvent,
-  TestSuiteInfo,
+  TestInfo,
+  TestSuiteInfo
 } from "vscode-test-adapter-api";
 import { Log } from "vscode-test-adapter-util";
 import { KarmaTestExplorer } from "./core/karma-test-explorer";
@@ -136,7 +137,7 @@ export class Adapter implements TestAdapter {
 
       this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
 
-      const testSpec = this.findNode(this.loadedTests, tests[0], "id");
+      const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
       const isComponent = testSpec.type === "suite";
 
       await this.testExplorer.runTests(this.config, [testSpec.fullName], isComponent);
@@ -178,13 +179,13 @@ export class Adapter implements TestAdapter {
     return new PathFinder(testFiles, pathFinderOptions);
   }
 
-  private findNode(node: any, suiteLookup: string, propertyLookup: string): any {
-    if (node[propertyLookup] === suiteLookup) {
-      return node;
+  private findTestNode(testNode: TestSuiteInfo | TestInfo, suiteLookup: string, propertyLookup: keyof (TestSuiteInfo | TestInfo)): any {
+    if (testNode[propertyLookup] === suiteLookup) {
+      return testNode;
     } else {
-      if (node.children !== undefined) {
-        for (const child of node.children) {
-          const result = this.findNode(child, suiteLookup, propertyLookup);
+      if ((testNode as TestSuiteInfo).children !== undefined) {
+        for (const child of (testNode as TestSuiteInfo).children) {
+          const result = this.findTestNode(child, suiteLookup, propertyLookup);
           if (result != null) {
             return result;
           }

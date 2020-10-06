@@ -5,6 +5,8 @@ import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { PathFinder } from "../helpers/path-finder";
 import { TestRunner } from "./test-runner";
 
+const SKIP_ALL_TESTS_PATTERN = "$#%#";
+
 export class HttpClientTestRunner implements TestRunner {
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,
@@ -17,8 +19,7 @@ export class HttpClientTestRunner implements TestRunner {
   }
 
   public async  loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    const fakeTestPatternForSkippingEverything = "$#%#";
-    const karmaRunParameters = this.createKarmaRunCallConfiguration(fakeTestPatternForSkippingEverything);
+    const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN);
     this.karmaEventListener.lastRunTests = "root";
 
     await this.callKarmaRunWithConfig(karmaRunParameters.config);

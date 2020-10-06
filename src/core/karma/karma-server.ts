@@ -19,6 +19,7 @@ export class KarmaServer {
       ...process.env,
       ...config.env,
       userKarmaConfigPath: config.userKarmaConfFilePath,
+      karmaPort: `${config.karmaPort}`,
       defaultSocketPort: `${config.defaultSocketConnectionPort}`
     };
 
