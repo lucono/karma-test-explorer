@@ -10,12 +10,19 @@ export class CommandlineProcessHandler {
     return new Promise(resolve => {
       if (this.process) {
         this.kill();
-        this.updateProcessAsEnded();
+        this.updateProcessEnded();
       }
+
+      this.logger.info(
+        `Executing command: '${command}'`,
+        `with args: ${JSON.stringify(processArguments)}`,
+        `and options: ${JSON.stringify(options)}`
+      );
+
       this.process = spawn(command, processArguments, options);
       this.setupProcessOutputs();
       this.process.on("exit", () => {
-        this.updateProcessAsEnded();
+        this.updateProcessEnded();
         resolve();
       });
     });
@@ -25,7 +32,7 @@ export class CommandlineProcessHandler {
     return this.process !== undefined;
   }
 
-  private updateProcessAsEnded() {
+  private updateProcessEnded() {
     this.process = undefined;
   }
 
@@ -45,7 +52,7 @@ export class CommandlineProcessHandler {
   public kill(): void {
     const kill = require("tree-kill");
     kill(this.process.pid, "SIGKILL");
-    this.updateProcessAsEnded();
+    this.updateProcessEnded();
   }
 
   private setupProcessOutputs() {
@@ -57,7 +64,7 @@ export class CommandlineProcessHandler {
         if (log.startsWith("e ")) {
           log = "HeadlessChrom" + log;
         }
-        this.logger.karmaLogs(`${log}`);
+        this.logger.info(`${log}`, { divider: "Karma Logs" });
       }
     });
     this.process.stderr.on("data", (data: any) => this.logger.error(`stderr: ${data}`));

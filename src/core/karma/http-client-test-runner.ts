@@ -103,9 +103,11 @@ export class HttpClientTestRunner implements TestRunner {
   }
 
   private log(tests: string[]): void {
-    const [suit, ...description] = tests[0].split(" ");
-    this.logger.info(`Running [ suite: ${suit}${description.length > 0 ? ", test: " + description.join(" ") : ""} ]`, {
-      addDividerForKarmaLogs: true,
-    });
+    // TODO: What's going on here?
+    const [suite, ...description] = tests[0].split(" ");
+    this.logger.info(
+      `Running [ suite: ${suite}${description.length > 0 ? ", test: " + description.join(" ") : ""} ]`,
+      { divider: "Karma Logs" }
+    );
   }
 }

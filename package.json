@@ -5,7 +5,7 @@
 	"icon": "img/test-explorer_icon.png",
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -85,7 +85,7 @@
 		"hbenl.vscode-test-explorer"
 	],
 	"activationEvents": [
-		"*"
+		"onStartupFinished"
 	],
 	"contributes": {
 		"configuration": {
@@ -143,12 +143,6 @@
 					"scope": "resource",
 					"default": 9999
 				},
-				"karmaTestExplorer.debugMode": {
-					"description": "This will enable debug mode, which will create a new output channel with detailed logs",
-					"type": "boolean",
-					"scope": "resource",
-					"default": false
-				},
 				"karmaTestExplorer.debuggerConfig": {
 					"description": "Specify the debugger configuration for vscode chrome debugger as you would do in vscode with a json object",
 					"type": "object",
@@ -174,6 +168,18 @@
 					"type": "object",
 					"scope": "resource",
 					"default": {}
+				},
+				"karmaTestExplorer.logpanel": {
+					"description": "Enables logging to the output channel",
+					"type": "boolean",
+					"scope": "resource",
+					"default": true
+				},
+				"karmaTestExplorer.logfile": {
+					"description": "Enables logging to the specified file",
+					"type": "string",
+					"scope": "resource",
+					"default": ""
 				}
 			}
 		}

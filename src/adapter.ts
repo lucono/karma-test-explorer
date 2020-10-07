@@ -21,10 +21,12 @@ import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
+import { ConfigSetting } from "./model/enums/config-setting"
 
 export class Adapter implements TestAdapter {
 
-  public config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
+  private logger: Logger;
+  private config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
   private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
   private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
@@ -47,32 +49,32 @@ export class Adapter implements TestAdapter {
     return this.autorunEmitter.event;
   }
 
-  constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly log: Log, channel: vscode.OutputChannel) {
-    this.log.info("Initializing adapter");
+  constructor(public readonly workspace: vscode.WorkspaceFolder, configPrefix: string, log: Log) {
+    this.logger = new Logger(log);
+    this.logger.info("Initializing adapter");
 
     this.disposables.push(this.testsEmitter);
     this.disposables.push(this.testStatesEmitter);
     this.disposables.push(this.autorunEmitter);
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange));
     this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(configChangeEvent => {
+      this.handleConfigurationChange(configChangeEvent, configPrefix);
+    }));
 
-    this.loadConfig();
+    this.loadConfig(configPrefix);
 
-    const isDebugMode = vscode.workspace.getConfiguration("karmaTestExplorer", workspace.uri).get("debugMode") as boolean;
-    const logger = new Logger(channel, isDebugMode);
     const karmaPort = this.config.karmaPort;
-
     const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
-    const karmaEventListener = new KarmaEventListener(karmaEventEmitter, logger);
-    
-    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, logger);
-    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, logger);
-    
-    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, karmaPort, logger);
+    const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
+
+    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
+    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, this.logger);
+
+    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, karmaPort, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
-      
-    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, logger);
-    this.debugger = new Debugger(new Logger(channel, isDebugMode));
+
+    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
+    this.debugger = new Debugger(this.logger);
   }
 
   public async load(): Promise<void> {
@@ -84,14 +86,14 @@ export class Adapter implements TestAdapter {
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
 
-    let loadedTests;
+    let loadedTests: TestSuiteInfo | undefined;
 
     while (!loadedTests) {
-      this.log.info("Loading tests");
+      this.logger.info("Loading tests");
       try {
         loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
       } catch (error) {
-        this.log.error(`Could not load tests - ${error.message || error}`);
+        this.logger.error(`Could not load tests - ${error.message || error}`);
       }
     }
     
@@ -105,7 +107,7 @@ export class Adapter implements TestAdapter {
       return;
     }
     this.isTestProcessRunning = true;
-    this.log.info(`Running tests ${JSON.stringify(tests)}`);
+    this.logger.info(`Running tests ${JSON.stringify(tests)}`);
 
     this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
     const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
@@ -137,8 +139,8 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
-  private loadConfig() {
-    const config = vscode.workspace.getConfiguration("karmaTestExplorer", this.workspace.uri);
+  private loadConfig(configPrefix: string) {
+    const config = vscode.workspace.getConfiguration(configPrefix, this.workspace.uri);
     this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
   }
 
@@ -171,24 +173,23 @@ export class Adapter implements TestAdapter {
     return null;
   }
 
-  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent) {
-    this.log.info("Configuration changed");
+  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent, configPrefix: string) {
+    this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange =
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaProcessExecutable", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaPort", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.debugMode", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration("karmaTestExplorer.env", this.workspace.uri);
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.ProjectRootPath}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaConfFilePath}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaProcessExecutable}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaPort}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.TestFiles}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.ExcludeFiles}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.DefaultSocketConnectionPort}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.DebuggerConfig}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.Env}`, this.workspace.uri);
 
     if (hasRelevantSettingsChange) {
-      this.log.info("Sending reload event");
-      this.loadConfig();
+      this.logger.info("Sending reload event");
+      this.loadConfig(configPrefix);
       this.load();
     }
   }
@@ -209,7 +210,7 @@ export class Adapter implements TestAdapter {
 
       // this.isTestProcessRunning = false;
 
-      this.log.info("Sending autorun event");
+      this.logger.info("Sending autorun event");
       this.autorunEmitter.fire();
     }
   }
