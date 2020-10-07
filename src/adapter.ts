@@ -23,6 +23,7 @@ import { CommandlineProcessHandler } from "./core/integration/commandline-proces
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
 
 export class Adapter implements TestAdapter {
+
   public config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
   private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
@@ -37,62 +38,23 @@ export class Adapter implements TestAdapter {
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
     return this.testsEmitter.event;
   }
+
   get testStates(): vscode.Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
     return this.testStatesEmitter.event;
   }
+
   get autorun(): vscode.Event<void> | undefined {
     return this.autorunEmitter.event;
   }
 
   constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly log: Log, channel: vscode.OutputChannel) {
     this.log.info("Initializing adapter");
+
     this.disposables.push(this.testsEmitter);
     this.disposables.push(this.testStatesEmitter);
     this.disposables.push(this.autorunEmitter);
-    this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration(async (configChange) => {
-        this.log.info("Configuration changed");
-
-        if (
-          configChange.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.karmaProcessExecutable", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.karmaPort", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.debugMode", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
-          configChange.affectsConfiguration("karmaTestExplorer.env", this.workspace.uri)
-        ) {
-          this.log.info("Sending reload event");
-          this.load();
-        }
-      })
-    );
-
-    this.disposables.push(
-      vscode.workspace.onDidSaveTextDocument(async (document) => {
-        if (!this.config) {
-          return;
-        }
-
-        const filename = document.uri.fsPath;
-        if (filename.startsWith(workspace.uri.fsPath)) {
-          // this.isTestProcessRunning = true;
-          // this.loadedTests = {} as TestSuiteInfo;
-          // this.loadedTests = await this.testExplorer.reloadTestDefinitions();
-
-          // this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
-          // this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
-
-          // this.isTestProcessRunning = false;
-
-          this.log.info("Sending autorun event");
-          this.autorunEmitter.fire();
-        }
-      })
-    );
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange));
+    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved));
 
     this.loadConfig();
 
@@ -114,37 +76,36 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
-    if (!this.isTestProcessRunning) {
-      this.isTestProcessRunning = true;
-      this.loadConfig();
-
-      this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
-
-      this.log.info("Loading tests");
-
-      this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
-      this.loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
-
-      this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
-      this.isTestProcessRunning = false;
+    if (this.isTestProcessRunning) {
+      return;
     }
+    this.isTestProcessRunning = true;
+    this.log.info("Loading tests");
+
+    this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
+    this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
+
+    this.loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+    this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
+    this.isTestProcessRunning = false;
   }
 
   public async run(tests: string[]): Promise<void> {
-    if (!this.isTestProcessRunning) {
-      this.isTestProcessRunning = true;
-      this.log.info(`Running tests ${JSON.stringify(tests)}`);
-
-      this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
-
-      const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
-      const isComponent = testSpec.type === "suite";
-
-      await this.testExplorer.runTests(this.config, [testSpec.fullName], isComponent);
-
-      this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
-      this.isTestProcessRunning = false;
+    if (this.isTestProcessRunning) {
+      return;
     }
+    this.isTestProcessRunning = true;
+    this.log.info(`Running tests ${JSON.stringify(tests)}`);
+
+    this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
+    const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
+    const isComponent = testSpec?.type === "suite";
+    const testList = [testSpec?.fullName || ""];
+
+    await this.testExplorer.runTests(this.config, testList, isComponent);
+
+    this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
+    this.isTestProcessRunning = false;
   }
 
   public async debug(tests: string[]): Promise<void> {
@@ -179,19 +140,67 @@ export class Adapter implements TestAdapter {
     return new PathFinder(testFiles, pathFinderOptions);
   }
 
-  private findTestNode(testNode: TestSuiteInfo | TestInfo, suiteLookup: string, propertyLookup: keyof (TestSuiteInfo | TestInfo)): any {
+  private findTestNode(
+    testNode: TestSuiteInfo | TestInfo, 
+    suiteLookup: string, 
+    propertyLookup: keyof (TestSuiteInfo | TestInfo)
+  ): TestSuiteInfo | TestInfo | null {
+
     if (testNode[propertyLookup] === suiteLookup) {
       return testNode;
-    } else {
-      if ((testNode as TestSuiteInfo).children !== undefined) {
-        for (const child of (testNode as TestSuiteInfo).children) {
-          const result = this.findTestNode(child, suiteLookup, propertyLookup);
-          if (result != null) {
-            return result;
-          }
+    }
+    
+    if ((testNode as TestSuiteInfo).children !== undefined) {
+      for (const child of (testNode as TestSuiteInfo).children) {
+        const result = this.findTestNode(child, suiteLookup, propertyLookup);
+        if (result) {
+          return result;
         }
       }
     }
     return null;
+  }
+
+  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent) {
+    this.log.info("Configuration changed");
+
+    const hasRelevantSettingsChange =
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.projectRootPath", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaConfFilePath", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaProcessExecutable", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.karmaPort", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.testFiles", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.excludeFiles", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.defaultSocketConnectionPort", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.debugMode", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.debuggerConfig", this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration("karmaTestExplorer.env", this.workspace.uri);
+
+    if (hasRelevantSettingsChange) {
+      this.log.info("Sending reload event");
+      this.loadConfig();
+      this.load();
+    }
+  }
+
+  private async handleDocumentSaved(document:vscode.TextDocument) {
+    if (!this.config) {
+      return;
+    }
+
+    const filename = document.uri.fsPath;
+    if (filename.startsWith(this.workspace.uri.fsPath)) {
+      // this.isTestProcessRunning = true;
+      // this.loadedTests = {} as TestSuiteInfo;
+      // this.loadedTests = await this.testExplorer.reloadTestDefinitions();
+
+      // this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
+      // this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
+
+      // this.isTestProcessRunning = false;
+
+      this.log.info("Sending autorun event");
+      this.autorunEmitter.fire();
+    }
   }
 }

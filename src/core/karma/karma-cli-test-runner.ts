@@ -18,7 +18,7 @@ export class KarmaCliTestRunner implements TestRunner {
   ) {}
 
   public isServerRunning(): boolean {
-    return this.karmaEventListener.isServerLoaded;
+    return this.karmaEventListener.isServerConnected;
   }
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {

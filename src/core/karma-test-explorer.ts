@@ -5,6 +5,7 @@ import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
 import { KarmaServer } from "./karma/karma-server";
 import { PathFinder } from './helpers/path-finder';
+import { TestResult } from "../model/enums/test-status.enum";
 
 export class KarmaTestExplorer {
   public constructor(
@@ -33,7 +34,7 @@ export class KarmaTestExplorer {
 
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
     await this.testRunner.runTests(tests, config, isComponentRun);
-    this.logger.status(this.karmaEventListener.testStatus);
+    this.logger.status(this.karmaEventListener.testStatus as TestResult);
   }
 
   public async stopCurrentRun(): Promise<void> {

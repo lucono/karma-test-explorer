@@ -4,4 +4,7 @@ declare module "vscode-test-adapter-api" {
   export interface TestSuiteInfo extends VSCodeTestAPI.TestSuiteInfo {
     fullName?: string;
   }
+  export interface TestInfo extends VSCodeTestAPI.TestInfo {
+    fullName?: string;
+  }
 }

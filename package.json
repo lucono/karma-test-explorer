@@ -38,6 +38,7 @@
 		"test": "jest -c jest.config.js"
 	},
 	"dependencies": {
+		"@types/socket.io": "^2.1.11",
 		"cross-spawn": "^7.0.0",
 		"escape-string-regexp": "^2.0.0",
 		"express": "^4.17.1",

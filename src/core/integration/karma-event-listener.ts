@@ -1,3 +1,4 @@
+import { commands } from "vscode";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { SpecResponseToTestSuiteInfoMapper } from "../../core/test-explorer/spec-response-to-test-suite-info.mapper";
 import { KarmaEvent } from "../../model/karma-event";
@@ -5,21 +6,24 @@ import { KarmaEventName } from "../../model/enums/karma-event-name.enum";
 import { TestState } from "../../model/enums/test-state.enum";
 import { Logger } from "../helpers/logger";
 import { EventEmitter } from "../helpers/event-emitter";
-import { commands } from "vscode";
 import { TestResult } from "../../model/enums/test-status.enum";
-import { ErrorCodes } from "../../model/enums/error-codes.enum";
+import { ErrorCode } from "../../model/enums/error-code.enum";
 import { PathFinder } from "../helpers/path-finder";
+import { SpecCompleteResponse } from "../../model/spec-complete-response";
+import * as http from "http"
+import * as express from "express"
+import * as SocketIO from "socket.io"
 
 export class KarmaEventListener {
-  public isServerLoaded: boolean = false;
+  public isServerConnected: boolean = false;
   public isTestRunning: boolean = false;
   public lastRunTests: string = "";
-  public testStatus: TestResult | any;
-  public runCompleteEvent: KarmaEvent | any;
+  public testStatus: TestResult | undefined;
+  public runCompleteEvent: KarmaEvent | undefined;
   public isComponentRun: boolean = false;
-  private savedSpecs: any[] = [];
-  private server: any;
-  private karmaBeingReloaded: boolean = false;
+  private savedSpecs: SpecCompleteResponse[] = [];
+  private server: http.Server | undefined;
+  private karmaShutdownInitiated: boolean = false;
 
   public constructor(
     private readonly eventEmitter: EventEmitter, 
@@ -28,16 +32,20 @@ export class KarmaEventListener {
 
   public listenTillKarmaReady(defaultSocketPort?: number): Promise<void> {
     return new Promise<void>(resolve => {
-      this.karmaBeingReloaded = false;
-      const app = require("express")();
-      this.server = require("http").createServer(app);
-      const io = require("socket.io")(this.server, { forceNew: true });
-      io.set("heartbeat interval", 24 * 60 * 60 * 1000);
-      io.set("heartbeat timeout", 24 * 60 * 60 * 1000);
+      this.karmaShutdownInitiated = false;
+      const app = express();
+      this.server = http.createServer(app);
 
+      const socketOptions = {
+        forceNew: true,
+        pingInterval: 24 * 60 * 60 * 1000,
+        pingTimeout: 24 * 60 * 60 * 1000
+      } as SocketIO.ServerOptions;
+
+      const io = SocketIO(this.server, socketOptions);
       const port = defaultSocketPort !== 0 ? defaultSocketPort : 9999;
 
-      io.on("connection", (socket: any) => {
+      io.on("connection", (socket) => {
         socket.on(KarmaEventName.BrowserConnected, () => {
           this.onBrowserConnected(resolve);
         });
@@ -54,18 +62,19 @@ export class KarmaEventListener {
           this.onSpecComplete(event);
         });
 
-        socket.on("disconnect", (event: any) => {
-          const isKarmaBeingClosedByChrome = event === ErrorCodes.TransportClose && !this.karmaBeingReloaded;
+        socket.on("disconnect", (event: ErrorCode) => {
+          const isKarmaBeingClosedByChrome = event === ErrorCode.TransportClose && !this.karmaShutdownInitiated;
 
           // workaround: if the connection is closed by chrome, we just reload the test enviroment
           // TODO: fix chrome closing all socket connections.
+          // FIXME: This should be reloading just the karma tests rather than all types of tests in test explorer
           if (isKarmaBeingClosedByChrome) {
             commands.executeCommand("test-explorer.reload");
           }
         });
       });
 
-      this.server.listen(port, () => {
+      this.server!.listen(port, () => {
         this.logger.info("Listening to KarmaReporter events on port " + port);
       });
     });
@@ -77,9 +86,9 @@ export class KarmaEventListener {
   }
 
   public stopListeningToKarma() {
-    this.isServerLoaded = false;
-    this.karmaBeingReloaded = true;
-    this.server.close();
+    this.isServerConnected = false;
+    this.karmaShutdownInitiated = true;
+    this.server?.close();
   }
 
   private onSpecComplete(event: KarmaEvent) {
@@ -103,7 +112,7 @@ export class KarmaEventListener {
   }
 
   private onBrowserConnected(resolve: (value?: void | PromiseLike<void>) => void) {
-    this.isServerLoaded = true;
+    this.isServerConnected = true;
     resolve();
   }
 }

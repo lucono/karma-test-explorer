@@ -15,10 +15,10 @@ export class HttpClientTestRunner implements TestRunner {
   ) {}
 
   public isServerRunning(): boolean {
-    return this.karmaEventListener.isServerLoaded;
+    return this.karmaEventListener.isServerConnected;
   }
 
-  public async  loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
+  public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN);
     this.karmaEventListener.lastRunTests = "root";
 

@@ -69,7 +69,7 @@ export class KarmaServer {
 
   public async stopAsync(): Promise<void> {
     return new Promise<void>(resolve => {
-      if (this.karmaEventListener.isServerLoaded) {
+      if (this.karmaEventListener.isServerConnected) {
         const stopper = require("karma").stopper;
         stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
           this.logger.info(`Karma exited succesfully`);

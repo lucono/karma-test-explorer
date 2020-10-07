@@ -10,11 +10,14 @@ export class CommandlineProcessHandler {
     return new Promise(resolve => {
       if (this.process) {
         this.kill();
-        this.process = undefined;
+        this.updateProcessAsEnded();
       }
       this.process = spawn(command, processArguments, options);
       this.setupProcessOutputs();
-      this.process.on("exit", () => resolve());
+      this.process.on("exit", () => {
+        this.updateProcessAsEnded();
+        resolve();
+      });
     });
   }
 
@@ -22,21 +25,27 @@ export class CommandlineProcessHandler {
     return this.process !== undefined;
   }
 
+  private updateProcessAsEnded() {
+    this.process = undefined;
+  }
+
+  /*
   public killAsync(): Promise<void> {
     return new Promise<void>(resolve => {
       const treeKill = require("tree-kill");
       treeKill(this.process.pid, "SIGTERM", () => {
-        this.process = undefined;
+        this.updateProcessEnded();
         this.logger.info(`Karma exited succesfully`);
         resolve();
       });
     });
   }
+  */
 
   public kill(): void {
     const kill = require("tree-kill");
     kill(this.process.pid, "SIGKILL");
-    this.process = undefined;
+    this.updateProcessAsEnded();
   }
 
   private setupProcessOutputs() {
