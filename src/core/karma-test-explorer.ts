@@ -16,20 +16,24 @@ export class KarmaTestExplorer {
   ) {}
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    if (this.testRunner.isServerRunning()) {
-      await this.karmaServer.stopAsync();
+    try {
+      if (this.testRunner.isServerRunning()) {
+        await this.karmaServer.stopAsync();
+      }
+
+      await this.karmaServer.start(config);
+      const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
+
+      if (testSuiteInfo.children.length === 0) {
+        this.logger.info("Test loading completed - No tests found");
+      } else {
+        this.logger.info("Test loading completed");
+      }
+
+      return testSuiteInfo;
+    } catch(error) {
+      throw new Error(`Test loading failed: ${error.message || error}`)
     }
-
-    await this.karmaServer.start(config);
-    const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
-
-    if (testSuiteInfo.children.length === 0) {
-      this.logger.info("Test loading completed - No tests found");
-    } else {
-      this.logger.info("Test loading completed");
-    }
-
-    return testSuiteInfo;
   }
 
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {

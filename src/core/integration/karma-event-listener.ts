@@ -30,7 +30,7 @@ export class KarmaEventListener {
     private readonly logger: Logger
   ) {}
 
-  public listenTillKarmaReady(defaultSocketPort?: number): Promise<void> {
+  public listenTillBrowserConnected(defaultSocketPort?: number): Promise<void> {
     return new Promise<void>(resolve => {
       this.karmaShutdownInitiated = false;
       const app = express();

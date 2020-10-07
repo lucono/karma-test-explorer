@@ -80,12 +80,22 @@ export class Adapter implements TestAdapter {
       return;
     }
     this.isTestProcessRunning = true;
-    this.log.info("Loading tests");
 
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
 
-    this.loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+    let loadedTests;
+
+    while (!loadedTests) {
+      this.log.info("Loading tests");
+      try {
+        loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+      } catch (error) {
+        this.log.error(`Could not load tests - ${error.message || error}`);
+      }
+    }
+    
+    this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
     this.isTestProcessRunning = false;
   }

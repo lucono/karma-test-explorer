@@ -44,8 +44,15 @@ export class KarmaServer {
       `--port=${config.karmaPort}`
     ];
 
-    this.processHandler.create(command, processArguments, options);
-    await this.karmaEventListener.listenTillKarmaReady(config.defaultSocketConnectionPort);
+    const futureServerExit = this.processHandler.create(command, processArguments, options);
+    const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
+    const futureBrowserConnectOrServerExit = Promise.race([futureBrowserConnect, futureServerExit]);
+
+    try {
+      await futureBrowserConnectOrServerExit;
+    } catch (error) {
+      throw new Error(`Server quit unexpectedly: ${error.message || error}`);
+    }
   }
 
   public stop(): void {
