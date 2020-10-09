@@ -8,36 +8,42 @@ import { TestRunner } from "./test-runner";
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 
 export class HttpClientTestRunner implements TestRunner {
+  private karmaPort?: number;
+
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,
-    private readonly karmaPort: number,
     private readonly logger: Logger
   ) {}
-
-  public isServerRunning(): boolean {
-    return this.karmaEventListener.isServerConnected;
-  }
-
+  
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN);
+    this.karmaEventListener.isTestRunning = true;
+    const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN, config);
     this.karmaEventListener.lastRunTests = "root";
+    this.karmaPort = config.karmaPort;
 
     await this.callKarmaRunWithConfig(karmaRunParameters.config);
+    this.karmaEventListener.isTestRunning = false;
+    
     return this.karmaEventListener.getLoadedTests(pathFinder);
   }
 
   public async runTests(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
+    this.karmaEventListener.isTestRunning = true;
     this.log(tests);
 
-    const karmaRunParameters = this.createKarmaRunCallConfiguration(tests);
+    const karmaRunParameters = this.createKarmaRunCallConfiguration(tests, config);
 
-    this.karmaEventListener.isTestRunning = true;
     this.karmaEventListener.lastRunTests = tests[0];
     this.karmaEventListener.isComponentRun = isComponentRun;
+    this.karmaPort = config.karmaPort;
     await this.callKarmaRunWithConfig(karmaRunParameters.config);
+    this.karmaEventListener.isTestRunning = false;
   }
 
-  public async stopRun() {
+  public async stopCurrentRun() {
+    if (!this.isTestCurrentlyRunning()) {
+      return;
+    }
     return new Promise<void>(resolve => {
       const stopper = require("karma").stopper;
       stopper.stop({ port: this.karmaPort }, (exitCode: any) => {
@@ -46,7 +52,11 @@ export class HttpClientTestRunner implements TestRunner {
     });
   }
 
-  private createKarmaRunCallConfiguration(tests: any) {
+  public isTestCurrentlyRunning(): boolean {
+    return this.karmaEventListener.isTestRunning;
+  }
+
+  private createKarmaRunCallConfiguration(tests: any, explorerConfig: TestExplorerConfiguration) {
     // if testName is undefined, reset jasmine.getEnv().specFilter function
     // otherwise, last specified specFilter will be used
     if (tests[0] === "root" || tests[0] === undefined) {
@@ -54,7 +64,7 @@ export class HttpClientTestRunner implements TestRunner {
     }
     const urlRoot = "/run";
     const config = {
-      port: this.karmaPort,
+      port: explorerConfig.karmaPort,
       refresh: true,
       urlRoot,
       hostname: "localhost",

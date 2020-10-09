@@ -1,7 +1,8 @@
-import { commands } from "vscode";
+// import { commands } from "vscode";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { SpecResponseToTestSuiteInfoMapper } from "../../core/test-explorer/spec-response-to-test-suite-info.mapper";
 import { KarmaEvent } from "../../model/karma-event";
+import { SocketEvent } from "../../model/enums/socket-event.enum";
 import { KarmaEventName } from "../../model/enums/karma-event-name.enum";
 import { TestState } from "../../model/enums/test-state.enum";
 import { Logger } from "../helpers/logger";
@@ -14,8 +15,12 @@ import * as http from "http"
 import * as express from "express"
 import * as SocketIO from "socket.io"
 
+export interface KarmaEventListenerOptions {
+  connectionDroppedHandler?: () => void
+}
+
 export class KarmaEventListener {
-  public isServerConnected: boolean = false;
+  private browserConnected: boolean = false;
   public isTestRunning: boolean = false;
   public lastRunTests: string = "";
   public testStatus: TestResult | undefined;
@@ -23,16 +28,17 @@ export class KarmaEventListener {
   public isComponentRun: boolean = false;
   private savedSpecs: SpecCompleteResponse[] = [];
   private server: http.Server | undefined;
-  private karmaShutdownInitiated: boolean = false;
+  private isKarmaDisconnectInProgress: boolean = false;
 
   public constructor(
     private readonly eventEmitter: EventEmitter, 
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly options?: KarmaEventListenerOptions
   ) {}
 
-  public listenTillBrowserConnected(defaultSocketPort?: number): Promise<void> {
+  public receiveBrowserConnection(defaultSocketPort?: number): Promise<void> {
     return new Promise<void>(resolve => {
-      this.karmaShutdownInitiated = false;
+      this.isKarmaDisconnectInProgress = false;
       const app = express();
       this.server = http.createServer(app);
 
@@ -45,32 +51,56 @@ export class KarmaEventListener {
       const io = SocketIO(this.server, socketOptions);
       const port = defaultSocketPort !== 0 ? defaultSocketPort : 9999;
 
-      io.on("connection", (socket) => {
+      io.on(SocketEvent.Connect, (socket) => {
+
         socket.on(KarmaEventName.BrowserConnected, () => {
-          this.onBrowserConnected(resolve);
+          this.logger.info(`Karma Event Listener: Browser connected`);
+          this.browserConnected = true;
+          resolve();
         });
+
         socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
-          this.logger.info("browser_error " + event.results);
+          this.logger.info(`Karma Event Listener: Got browser error: ${event.results}`);
         });
+
         socket.on(KarmaEventName.BrowserStart, () => {
+          this.logger.info(`Karma Event Listener: Browser started`);
           this.savedSpecs = [];
         });
+
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
           this.runCompleteEvent = event;
         });
+
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
           this.onSpecComplete(event);
         });
 
-        socket.on("disconnect", (event: ErrorCode) => {
-          const isKarmaBeingClosedByChrome = event === ErrorCode.TransportClose && !this.karmaShutdownInitiated;
+        socket.on(SocketEvent.Disconnect, (event: ErrorCode) => {
+          const connectionDropped = !this.isKarmaDisconnectInProgress;
 
+          this.logger.info(
+            `Karma Event Listener: Browser connection ` +
+            `${connectionDropped ? "dropped" : "disconnected normally"} ` +
+            `with code: ${JSON.stringify(event)}`);
+
+          this.browserConnected = false;
+
+          if (connectionDropped) {
+            this.options?.connectionDroppedHandler?.();
+          }
+          /*
+          // FIXME: Remove this workaround if no longer necessary
+          // FIXME: Also, this should be reloading just the karma tests rather than all types of tests in test explorer
+          // ----------
           // workaround: if the connection is closed by chrome, we just reload the test enviroment
           // TODO: fix chrome closing all socket connections.
-          // FIXME: This should be reloading just the karma tests rather than all types of tests in test explorer
+          const isKarmaBeingClosedByChrome = event === ErrorCode.TransportClose && !this.isKarmaDisconnectInProgress;
           if (isKarmaBeingClosedByChrome) {
+            this.logger.debug("Detected Chrome must be closing the socket connection - Reloading the test environment");
             commands.executeCommand("test-explorer.reload");
           }
+          */
         });
       });
 
@@ -85,10 +115,15 @@ export class KarmaEventListener {
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 
-  public stopListeningToKarma() {
-    this.isServerConnected = false;
-    this.karmaShutdownInitiated = true;
+  public disconnectFromKarma() {
+    this.logger.info(`Disconnecting from Karma`);
+    this.isKarmaDisconnectInProgress = true;
     this.server?.close();
+    this.isKarmaDisconnectInProgress = false;
+  }
+
+  public isBrowserConnected() {
+    return this.browserConnected;
   }
 
   private onSpecComplete(event: KarmaEvent) {
@@ -109,10 +144,5 @@ export class KarmaEventListener {
         this.testStatus = results.status;
       }
     }
-  }
-
-  private onBrowserConnected(resolve: (value?: void | PromiseLike<void>) => void) {
-    this.isServerConnected = true;
-    resolve();
   }
 }

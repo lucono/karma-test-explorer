@@ -1,4 +1,4 @@
-import { Log as TestExplorerLog } from "vscode-test-adapter-util";
+import { Log } from "vscode-test-adapter-util";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { LogLevel } from "../../model/enums/log-level.enum";
 
@@ -7,7 +7,7 @@ type LogAction = (...msg: any[]) => void;
 
 export class Logger {
 
-  constructor(private readonly logger: TestExplorerLog) {}
+  constructor(private readonly logger: Log) {}
 
   public debug(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);

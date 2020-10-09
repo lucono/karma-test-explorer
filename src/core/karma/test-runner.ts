@@ -4,12 +4,12 @@ import { PathFinder } from "../helpers/path-finder";
 
 export interface TestRunner {
 
-  isServerRunning(): boolean;
-
   loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo>;
 
   runTests(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void>;
 
-  stopRun(): any;
+  isTestCurrentlyRunning(): boolean;
+
+  stopCurrentRun(): any;
 
 }

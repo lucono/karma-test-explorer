@@ -1,4 +1,3 @@
-import { Logger } from "./core/helpers/logger";
 import {
   TestAdapter,
   TestLoadStartedEvent,
@@ -8,12 +7,14 @@ import {
   TestSuiteEvent,
   TestEvent,
   TestInfo,
-  TestSuiteInfo
+  TestSuiteInfo,
+  RetireEvent
 } from "vscode-test-adapter-api";
+import * as vscode from "vscode";
 import { Log } from "vscode-test-adapter-util";
+import { Logger } from "./core/helpers/logger";
 import { KarmaTestExplorer } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
-import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
 import { EventEmitter } from "./core/helpers/event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
@@ -28,6 +29,7 @@ export class Adapter implements TestAdapter {
   private logger: Logger;
   private config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
+  private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
   private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
@@ -61,16 +63,28 @@ export class Adapter implements TestAdapter {
       this.handleConfigurationChange(configChangeEvent, configPrefix);
     }));
 
+    const failureHandler = (failureMsg: string) => {
+      this.logger.info(`${failureMsg} - Reloading tests`);
+      this.load();
+    };
+
     this.loadConfig(configPrefix);
 
-    const karmaPort = this.config.karmaPort;
     const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
-    const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
+
+    const karmaEventListener = new KarmaEventListener(
+      karmaEventEmitter, 
+      this.logger,
+      { connectionDroppedHandler: () => failureHandler("Browser connection dropped") });
 
     const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
-    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, this.logger);
 
-    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, karmaPort, this.logger);
+    const karmaServer = new KarmaServer(
+      karmaCommandLineProcessHandler, 
+      this.logger, 
+      { serverCrashHandler: () => failureHandler("Karma server crashed") });
+
+    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
@@ -78,32 +92,35 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
+    this.logger.debug("Test load started");
+
     if (this.isTestProcessRunning) {
+      this.logger.debug("Aborting test load - Another test operation is still running");
       return;
     }
     this.isTestProcessRunning = true;
-
+    this.testsEmitter.fire({ type: "started" });
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
-    this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
 
-    let loadedTests: TestSuiteInfo | undefined;
+    const loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
 
-    while (!loadedTests) {
-      this.logger.info("Loading tests");
-      try {
-        loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
-      } catch (error) {
-        this.logger.error(`Could not load tests - ${error.message || error}`);
-      }
-    }
+    this.logger.info(
+      `Test load completed ` +
+      `${loadedTests.children.length === 0 ? "- No tests found" : ""}`);
     
     this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
+    this.retireEmitter.fire({});
+    
     this.isTestProcessRunning = false;
+    this.logger.debug("Test load finished");
   }
 
   public async run(tests: string[]): Promise<void> {
+    this.logger.debug("Test run started");
+
     if (this.isTestProcessRunning) {
+      this.logger.debug("Aborting test run - Another test operation is still running");
       return;
     }
     this.isTestProcessRunning = true;
@@ -118,6 +135,7 @@ export class Adapter implements TestAdapter {
 
     this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
     this.isTestProcessRunning = false;
+    this.logger.debug("Test run finished");
   }
 
   public async debug(tests: string[]): Promise<void> {
@@ -188,7 +206,7 @@ export class Adapter implements TestAdapter {
       configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.Env}`, this.workspace.uri);
 
     if (hasRelevantSettingsChange) {
-      this.logger.info("Sending reload event");
+      this.logger.info("Reloading tests with updated configuration");
       this.loadConfig(configPrefix);
       this.load();
     }

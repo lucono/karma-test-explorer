@@ -1,18 +1,25 @@
-import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
-import { KarmaEventListener } from "../integration/karma-event-listener";
+import { CommandlineProcessHandler, CommandlineProcessHandlerRunOptions } from "../integration/commandline-process-handler";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
-import { SpawnOptions } from "child_process";
+
+export interface KarmaServerOptions {
+  serverCrashHandler?: () => void
+}
 
 export class KarmaServer {
   public constructor(
-    private readonly processHandler: CommandlineProcessHandler,
-    private readonly karmaEventListener: KarmaEventListener,
-    private readonly karmaPort: number,
-    private readonly logger: Logger
+    private readonly karmaServerProcessHandler: CommandlineProcessHandler,
+    private readonly logger: Logger,
+    private readonly serverOptions?: KarmaServerOptions
   ) {}
 
   public async start(config: TestExplorerConfiguration): Promise<void> {
+    this.logger.info(`Starting Karma server`);
+
+    if (this.isServerRunning()) {
+      this.logger.info(`Karma server is already running`);
+      return;
+    }
     const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
 
     const testExplorerEnvironment = {
@@ -27,7 +34,9 @@ export class KarmaServer {
       cwd: config.projectRootPath,
       shell: true,
       env: testExplorerEnvironment,
-    } as SpawnOptions;
+      autoRestart: false,
+      processCrashHandler: this.serverOptions?.serverCrashHandler
+    } as CommandlineProcessHandlerRunOptions;
 
     let command = "npx";
     let processArguments = [ "karma" ];
@@ -44,8 +53,12 @@ export class KarmaServer {
       `--port=${config.karmaPort}`
     ];
 
-    const futureServerExit = this.processHandler.create(command, processArguments, options);
-    const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
+    this.karmaServerProcessHandler.run(command, processArguments, options);
+    // const futureBrowserConnect = this.karmaEventListener.receiveBrowserConnection(config.defaultSocketConnectionPort);
+
+    /*
+    // FIXME: Revisit error handlers that were premised on the promise race of either server exit or server connect
+    const futureBrowserConnect = this.karmaEventListener.receiveBrowserConnection(config.defaultSocketConnectionPort);
     const futureBrowserConnectOrServerExit = Promise.race([futureBrowserConnect, futureServerExit]);
 
     try {
@@ -53,37 +66,31 @@ export class KarmaServer {
     } catch (error) {
       throw new Error(`Server quit unexpectedly: ${error.message || error}`);
     }
-  }
-
-  public stop(): void {
-    if (this.processHandler.isProcessRunning()) {
-      this.processHandler.kill();
-      this.logger.info(`Stopped Karma`);
-    } else {
-      this.logger.info(`Karma is not running`);
-    }
-    this.karmaEventListener.stopListeningToKarma();
-    /*
-    if (this.karmaEventListener.isServerLoaded) {
-      const stopper = require("karma").stopper;
-      stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
-        this.logger.info(`Karma exited succesfully`);
-      });
-      this.karmaEventListener.stopListeningToKarma();
-    }
     */
   }
 
-  public async stopAsync(): Promise<void> {
-    return new Promise<void>(resolve => {
-      if (this.karmaEventListener.isServerConnected) {
-        const stopper = require("karma").stopper;
-        stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
-          this.logger.info(`Karma exited succesfully`);
-          resolve();
-          this.karmaEventListener.stopListeningToKarma();
-        });
-      }
-    });
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping Karma server`);
+    // this.karmaEventListener.disconnectFromKarma();
+
+    if (this.karmaServerProcessHandler.isProcessRunning()) {
+      await this.karmaServerProcessHandler.kill();
+      this.logger.info(`Stopped Karma server`);
+    } else {
+      this.logger.info(`Karma server is not running`);
+    }
+  }
+
+  public async restart(config: TestExplorerConfiguration): Promise<void> {
+    this.logger.info(`Restarting Karma server`);
+    
+    if (this.isServerRunning()) {
+      await this.stop();
+    }
+    this.start(config);
+  }
+
+  public isServerRunning(): boolean {
+    return this.karmaServerProcessHandler.isProcessRunning();
   }
 }

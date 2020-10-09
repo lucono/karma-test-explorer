@@ -57,7 +57,7 @@
 		"vscode-test-adapter-util": "^0.7.0"
 	},
 	"devDependencies": {
-		"@types/cross-spawn": "^6.0.0",
+		"@types/cross-spawn": "^6.0.2",
 		"@types/decamelize": "^3.0.3",
 		"@types/express": "~4.17.1",
 		"@types/glob": "^7.1.1",

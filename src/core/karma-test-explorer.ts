@@ -16,39 +16,53 @@ export class KarmaTestExplorer {
   ) {}
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
+    this.karmaServer.restart(config);
+    await this.karmaEventListener.receiveBrowserConnection(config.defaultSocketConnectionPort);
+
+    const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
+    return testSuiteInfo;
+
+    /*
     try {
-      if (this.testRunner.isServerRunning()) {
-        await this.karmaServer.stopAsync();
-      }
-
-      await this.karmaServer.start(config);
+      await this.karmaServer.restart(config);
       const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
-
-      if (testSuiteInfo.children.length === 0) {
-        this.logger.info("Test loading completed - No tests found");
-      } else {
-        this.logger.info("Test loading completed");
-      }
 
       return testSuiteInfo;
     } catch(error) {
       throw new Error(`Test loading failed: ${error.message || error}`)
     }
+    */
   }
 
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
+    if (!this.karmaEventListener.isBrowserConnected()) {
+      this.logger.warn(`Request to run tests: Cannot proceed - Browser is not connected`);
+      return;
+    }
+
+    if (this.testRunner.isTestCurrentlyRunning()) {
+      this.logger.info("Request to run tests: Cannot proceed - Another test is currently running");
+      return;
+    }
+
     await this.testRunner.runTests(tests, config, isComponentRun);
     this.logger.status(this.karmaEventListener.testStatus as TestResult);
   }
 
   public async stopCurrentRun(): Promise<void> {
-    if (this.testRunner.isServerRunning()) {
-      await this.karmaServer.stopAsync();
+    if (!this.testRunner.isTestCurrentlyRunning()) {
+      this.logger.info("No test currently running");
+      return;
     }
+    await this.testRunner.stopCurrentRun();
+    this.logger.info("Stopped current test run");
   }
 
   public dispose(): void {
-    if (this.testRunner.isServerRunning()) {
+    if (this.testRunner.isTestCurrentlyRunning()) {
+      this.testRunner.stopCurrentRun();
+    }
+    if (this.karmaServer.isServerRunning()) {
       this.karmaServer.stop();
     }
   }
