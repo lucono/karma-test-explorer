@@ -18,7 +18,7 @@ import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import { Debugger } from "./core/test-explorer/debugger";
 import { EventEmitter } from "./core/helpers/event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
-import { TestRunnerFactory } from "./core/karma/test-runner-factory";
+import { KarmaCliTestRunner } from "./core/karma/karma-cli-test-runner";
 import { KarmaServer } from "./core/karma/karma-server";
 import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
@@ -77,15 +77,15 @@ export class Adapter implements TestAdapter {
       this.logger,
       { connectionDroppedHandler: () => failureHandler("Browser connection dropped") });
 
-    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
+    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(this.logger);
 
     const karmaServer = new KarmaServer(
       karmaCommandLineProcessHandler, 
       this.logger, 
       { serverCrashHandler: () => failureHandler("Karma server crashed") });
 
-    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, this.logger);
-    const karmaRunner = testRunnerFactory.createTestRunner();
+    const testRunnerProcessHandler = new CommandlineProcessHandler(this.logger);
+    const karmaRunner = new KarmaCliTestRunner(testRunnerProcessHandler, karmaEventListener, this.logger)
 
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
     this.debugger = new Debugger(this.logger);
@@ -95,8 +95,8 @@ export class Adapter implements TestAdapter {
     this.logger.debug("Test load started");
 
     if (this.isTestProcessRunning) {
-      this.logger.debug("Aborting test load - Another test operation is still running");
-      return;
+      this.logger.debug("Aborting previously running test operation");
+      this.cancel();
     }
     this.isTestProcessRunning = true;
     this.testsEmitter.fire({ type: "started" });
@@ -111,7 +111,7 @@ export class Adapter implements TestAdapter {
     this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
     this.retireEmitter.fire({});
-    
+
     this.isTestProcessRunning = false;
     this.logger.debug("Test load finished");
   }
@@ -144,7 +144,7 @@ export class Adapter implements TestAdapter {
   }
 
   public async cancel(): Promise<void> {
-    await this.testExplorer.stopCurrentRun();
+    await this.testExplorer.stopCurrentOperation();
     this.isTestProcessRunning = false;
   }
 

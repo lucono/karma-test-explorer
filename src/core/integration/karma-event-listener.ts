@@ -21,7 +21,6 @@ export interface KarmaEventListenerOptions {
 
 export class KarmaEventListener {
   private browserConnected: boolean = false;
-  public isTestRunning: boolean = false;
   public lastRunTests: string = "";
   public testStatus: TestResult | undefined;
   public runCompleteEvent: KarmaEvent | undefined;
@@ -77,7 +76,7 @@ export class KarmaEventListener {
         });
 
         socket.on(SocketEvent.Disconnect, (event: ErrorCode) => {
-          const connectionDropped = !this.isKarmaDisconnectInProgress;
+          const connectionDropped = !this.isKarmaDisconnectInProgress && event === ErrorCode.TransportClose;
 
           this.logger.info(
             `Karma Event Listener: Browser connection ` +

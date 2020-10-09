@@ -1,7 +1,6 @@
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
-import { TestRunner } from "./test-runner";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { SpawnOptions } from "child_process";
 import { PathFinder } from "../helpers/path-finder";
@@ -9,7 +8,7 @@ import { CommandlineProcessHandler } from "../integration/commandline-process-ha
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 
-export class KarmaCliTestRunner implements TestRunner {
+export class KarmaCliTestRunner {
 
   public constructor(
     private readonly testRunnerProcessHandler: CommandlineProcessHandler,
@@ -75,7 +74,7 @@ export class KarmaCliTestRunner implements TestRunner {
       "--grep", testsArg
     ];
 
-    this.karmaEventListener.isTestRunning = true;
+    // this.karmaEventListener.isTestRunning = true;
     this.karmaEventListener.lastRunTests = isRootComponent ? "root" : testsString;
     this.karmaEventListener.isComponentRun = isComponentRun;
 

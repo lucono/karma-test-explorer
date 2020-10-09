@@ -1,4 +1,4 @@
-import { KarmaEventListener } from "./karma-event-listener";
+// import { KarmaEventListener } from "./karma-event-listener";
 import { ChildProcess, SpawnOptions } from "child_process";
 import { Logger } from "../helpers/logger";
 import * as spawn from "cross-spawn";
@@ -7,8 +7,7 @@ import * as treeKill from "tree-kill";
 
 
 export interface CommandlineProcessHandlerRunOptions extends SpawnOptions {
-  // autoRestart?: boolean,
-  processCrashHandler?: (pid?: number) => void
+  prematureTerminationHandler?: (pid?: number) => void
 }
 
 export class CommandlineProcessHandler {
@@ -16,7 +15,9 @@ export class CommandlineProcessHandler {
   private futureTermination?: Promise<void>;
   private isProcessTerminationInProgress: boolean = false;
 
-  public constructor(private readonly karmaEventListener: KarmaEventListener, private readonly logger: Logger) {}
+  public constructor(
+    // private readonly karmaEventListener: KarmaEventListener, 
+    private readonly logger: Logger) {}
 
   public run(command: string, processArguments: string[], runOptions?: CommandlineProcessHandlerRunOptions): Promise<any> {
     this.futureTermination = new Promise(resolve => {
@@ -33,31 +34,24 @@ export class CommandlineProcessHandler {
       this.process = spawn(command, processArguments, runOptions);
       this.setupProcessOutputs();
 
-      this.process.on("exit", (code, signal) => {
-        const processCrashed = !this.isProcessTerminationInProgress;
+      this.process.on("exit", async (code, signal) => {
+        const processTerminatedPrematurely = !this.isProcessTerminationInProgress && (code !== 0 || !!signal);
         const processCommand = `${command} ${processArguments.join(" ")}`;
         const terminatedPid = this.process?.pid;
 
         this.logger.debug(
-          `Process ${processCrashed ? "crashed" : "exited normally"} ` +
+          `Process ${processTerminatedPrematurely ? "terminated prematurely" : "exited normally"} ` +
           `with code '${code}' and signal '${signal}' ` +
           `for command: ${processCommand}`);
 
-        this.updateProcessEnded();
+        if (processTerminatedPrematurely && terminatedPid !== undefined) {
+          await this.kill();
+          runOptions?.prematureTerminationHandler?.(terminatedPid);
+        } else {
+          this.updateProcessEnded();
+        }
+
         resolve();
-
-        if (processCrashed) {
-          runOptions?.processCrashHandler?.(terminatedPid);
-        }
-
-        /*
-        if (options.autoRestart) {
-          setTimeout(() => {
-            this.logger.info(`Auto-restarting process: ${processCommand}`);
-            this.create(command, processArguments, options);
-          }, 0);
-        }
-        */
       });
     });
 
@@ -109,6 +103,8 @@ export class CommandlineProcessHandler {
 
   private setupProcessOutputs() {
     this.process?.stdout?.on("data", (data: any) => {
+      this.logger.info(`${data.toString()}`);
+      /*
       const { isTestRunning } = this.karmaEventListener;
       const regex = new RegExp(/\(.*?)\m/, "g");
       if (isTestRunning) {
@@ -118,6 +114,7 @@ export class CommandlineProcessHandler {
         }
         this.logger.info(`${log}`, { divider: "Karma Logs" });
       }
+      */
     });
 
     this.process?.stderr?.on("data", (data: any) => this.logger.error(`stderr: ${data}`));
@@ -128,7 +125,9 @@ export class CommandlineProcessHandler {
     // When VSCODE is terminated, karma server's standard input is closed automatically.
     this.process?.stdin?.on("close", async () => {
       // terminating orphan process
-      this.kill();
+      if (this.isProcessRunning()) {
+        this.kill();
+      }
     });
   }
 

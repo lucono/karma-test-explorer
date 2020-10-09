@@ -34,8 +34,7 @@ export class KarmaServer {
       cwd: config.projectRootPath,
       shell: true,
       env: testExplorerEnvironment,
-      autoRestart: false,
-      processCrashHandler: this.serverOptions?.serverCrashHandler
+      prematureTerminationHandler: this.serverOptions?.serverCrashHandler
     } as CommandlineProcessHandlerRunOptions;
 
     let command = "npx";

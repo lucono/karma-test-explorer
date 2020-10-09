@@ -1,4 +1,4 @@
-import { TestRunner } from "./karma/test-runner";
+import { KarmaCliTestRunner } from "./karma/karma-cli-test-runner";
 import { KarmaEventListener } from "./integration/karma-event-listener";
 import { Logger } from "./helpers/logger";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
@@ -10,13 +10,19 @@ import { TestResult } from "../model/enums/test-status.enum";
 export class KarmaTestExplorer {
   public constructor(
     private readonly karmaServer: KarmaServer,
-    private readonly testRunner: TestRunner,
+    private readonly testRunner: KarmaCliTestRunner,
     private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger
   ) {}
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
-    this.karmaServer.restart(config);
+    if (this.karmaServer.isServerRunning()) {
+      this.karmaEventListener.disconnectFromKarma();
+      this.karmaServer.restart(config);
+    } else {
+      this.karmaServer.start(config);
+    }
+
     await this.karmaEventListener.receiveBrowserConnection(config.defaultSocketConnectionPort);
 
     const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
@@ -49,13 +55,18 @@ export class KarmaTestExplorer {
     this.logger.status(this.karmaEventListener.testStatus as TestResult);
   }
 
-  public async stopCurrentRun(): Promise<void> {
-    if (!this.testRunner.isTestCurrentlyRunning()) {
-      this.logger.info("No test currently running");
-      return;
+  public async stopCurrentOperation(): Promise<void> {
+    this.logger.info("Stopping current test operation");
+
+    if (this.testRunner.isTestCurrentlyRunning()) {
+      this.logger.info("Stopping current test run");
+      await this.testRunner.stopCurrentRun();
     }
-    await this.testRunner.stopCurrentRun();
-    this.logger.info("Stopped current test run");
+    if (!this.karmaEventListener.isBrowserConnected()) {
+      this.karmaEventListener.disconnectFromKarma();
+    }
+    // await this.testRunner.stopCurrentRun();
+    this.logger.info("Stopped current test operation");
   }
 
   public dispose(): void {
@@ -63,6 +74,7 @@ export class KarmaTestExplorer {
       this.testRunner.stopCurrentRun();
     }
     if (this.karmaServer.isServerRunning()) {
+      this.karmaEventListener.disconnectFromKarma();
       this.karmaServer.stop();
     }
   }
