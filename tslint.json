@@ -1,0 +1,21 @@
+{
+  "defaultSeverity": "error",
+  "extends": ["tslint:recommended", "tslint-config-prettier"],
+  "jsRules": {},
+  "rules": {
+    "ordered-imports": false,
+    "object-literal-sort-keys": false,
+    "interface-name": false,
+    "max-line-length": [true, { "limit": 150, "ignore-pattern": "^import |^export {(.*?)}" }],
+    "no-shadowed-variable": false,
+    "variable-name": false,
+    "member-ordering": false,
+    "no-var-requires": false,
+    "no-empty": false,
+    "max-func-body-length": [true, { "ignore-comments": true }],
+    "no-banned-terms": true,
+    "no-conditional-assignment": false,
+    "no-angle-bracket-type-assertion": false
+  },
+  "rulesDirectory": []
+}

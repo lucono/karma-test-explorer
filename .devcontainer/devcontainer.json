@@ -1,0 +1,17 @@
+{
+	"name": "Karma Test Explorer",
+	"remoteUser": "developer",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"postCreateCommand": [
+		"/bin/bash", "${containerWorkspaceFolder}/.devcontainer/project-setup.sh"
+	],
+	"settings": {
+		"terminal.integrated.shell.linux": "/bin/bash"
+	},
+	"extensions": [
+		"dbaeumer.vscode-eslint",
+		"ms-vscode.vscode-typescript-tslint-plugin"
+	]
+}
