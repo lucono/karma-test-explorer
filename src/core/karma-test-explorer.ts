@@ -17,12 +17,10 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     if (this.karmaServer.isServerRunning()) {
-      this.karmaEventListener.disconnectFromKarma();
-      this.karmaServer.restart(config);
-    } else {
-      this.karmaServer.start(config);
+      await this.stopCurrentOperation();
     }
 
+    await this.karmaServer.start(config);
     await this.karmaEventListener.receiveBrowserConnection(config.defaultSocketConnectionPort);
 
     const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
@@ -56,16 +54,17 @@ export class KarmaTestExplorer {
   }
 
   public async stopCurrentOperation(): Promise<void> {
-    this.logger.info("Stopping current test operation");
+    // this.logger.info("Stopping current test operation");
+
+    await this.karmaEventListener.disconnectFromKarma();
 
     if (this.testRunner.isTestCurrentlyRunning()) {
       this.logger.info("Stopping current test run");
       await this.testRunner.stopCurrentRun();
     }
-    if (!this.karmaEventListener.isBrowserConnected()) {
-      this.karmaEventListener.disconnectFromKarma();
+    if (this.karmaServer.isServerRunning()) {
+      await this.karmaServer.stop();
     }
-    // await this.testRunner.stopCurrentRun();
     this.logger.info("Stopped current test operation");
   }
 

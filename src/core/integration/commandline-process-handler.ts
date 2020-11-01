@@ -19,43 +19,47 @@ export class CommandlineProcessHandler {
     // private readonly karmaEventListener: KarmaEventListener, 
     private readonly logger: Logger) {}
 
-  public run(command: string, processArguments: string[], runOptions?: CommandlineProcessHandlerRunOptions): Promise<any> {
-    this.futureTermination = new Promise(resolve => {
-      if (this.process) {
-        this.kill();
-      }
+  public async run(command: string, processArguments: string[], runOptions?: CommandlineProcessHandlerRunOptions): Promise<void> {
+    if (this.isProcessRunning()) {
+      await this.kill();
+    }
 
-      this.logger.debug(
-        `Executing command: '${command}' ` +
-        `with args: ${JSON.stringify(processArguments)} ` +
-        `and options: ${JSON.stringify(runOptions)}`
-      );
+    this.logger.debug(
+      `Executing command: '${command}' ` +
+      `with args: ${JSON.stringify(processArguments)} `
+      //`and options: ${JSON.stringify(runOptions)}`
+    );
 
-      this.process = spawn(command, processArguments, runOptions);
-      this.setupProcessOutputs();
+    const process = spawn(command, processArguments, runOptions);
+    this.process = process;
+    
+    this.setupProcessOutputs(process);
 
-      this.process.on("exit", async (code, signal) => {
+    this.futureTermination = new Promise(async (resolve) => {
+      process.on("exit", async (code, signal) => {
         const processTerminatedPrematurely = !this.isProcessTerminationInProgress && (code !== 0 || !!signal);
         const processCommand = `${command} ${processArguments.join(" ")}`;
-        const terminatedPid = this.process?.pid;
+        const terminatedPid = process?.pid;
 
         this.logger.debug(
-          `Process ${processTerminatedPrematurely ? "terminated prematurely" : "exited normally"} ` +
+          `Process PID ${terminatedPid} ${processTerminatedPrematurely ? "terminated prematurely" : "exited normally"} ` +
           `with code '${code}' and signal '${signal}' ` +
           `for command: ${processCommand}`);
 
-        if (processTerminatedPrematurely && terminatedPid !== undefined) {
-          await this.kill();
-          runOptions?.prematureTerminationHandler?.(terminatedPid);
-        } else {
-          this.updateProcessEnded();
-        }
+          if (!this.isProcessTerminationInProgress) {
+            // Kill any descendant processes that might still be alive
+            this.logger.info(`Removing any orphan child processes for process PID: ${terminatedPid}`);
+            await this.killTree(true);
+          }
 
+        this.updateProcessEnded();
         resolve();
+
+        if (processTerminatedPrematurely && terminatedPid !== undefined) {
+          runOptions?.prematureTerminationHandler?.(terminatedPid);
+        }
       });
     });
-
-    return this.futureTermination;
   }
 
   /*
@@ -82,31 +86,46 @@ export class CommandlineProcessHandler {
   */
 
   public async kill(): Promise<void> {
+    if (!this.isProcessRunning()) {
+      this.logger.info(`Request to kill process - Process is not running`);
+      return;
+    }
+    this.logger.info(`Killing process PID: ${this.process?.pid}`);
+
+    //const futureTermination = this.futureTermination;
+
+    await this.killTree();
+    //await futureTermination;
+  }
+
+  private async killTree(noWait: boolean = false): Promise<void> {
+    const process = this.process;
     await new Promise<void>(resolve => {
-      if (!this.isProcessRunning()) {
-        this.logger.info(`Request to kill process - Process is not running`);
+      if (!process) {
         resolve();
         return;
       }
-
-      const processPid = this.process!.pid;
+      const futureTermination = this.futureTermination;
       this.isProcessTerminationInProgress = true;
 
-      treeKill(processPid, "SIGKILL", () => {
+      treeKill(process.pid, "SIGKILL", async () => {
+        if (!noWait) {
+          await futureTermination;
+        }
         this.updateProcessEnded();
-        this.logger.info(`Succesfully killed process PID: ${processPid}`);
+        //this.logger.info(`Successfully killed process PID: ${processPid}`);
         this.isProcessTerminationInProgress = false;
         resolve();
       });
     });
   }
 
-  private setupProcessOutputs() {
-    this.process?.stdout?.on("data", (data: any) => {
+  private setupProcessOutputs(process: ChildProcess) {
+    process?.stdout?.on("data", (data: any) => {
       this.logger.info(`${data.toString()}`);
       /*
       const { isTestRunning } = this.karmaEventListener;
-      const regex = new RegExp(/\(.*?)\m/, "g");
+      const regex = new RegExp(/\(.*?)\m/, "g");
       if (isTestRunning) {
         let log = data.toString().replace(regex, "");
         if (log.startsWith("e ")) {
@@ -117,21 +136,22 @@ export class CommandlineProcessHandler {
       */
     });
 
-    this.process?.stderr?.on("data", (data: any) => this.logger.error(`stderr: ${data}`));
-    this.process?.on("error", (err: any) => this.logger.error(`error from child process: ${err}`));
+    process?.stderr?.on("data", (data: any) => this.logger.error(`stderr: ${data}`));
+    process?.on("error", (err: any) => this.logger.error(`error from child process: ${err}`));
 
     // Prevent karma server from being an orphan process.
     // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.
     // When VSCODE is terminated, karma server's standard input is closed automatically.
-    this.process?.stdin?.on("close", async () => {
-      // terminating orphan process
+    process?.stdin?.on("close", async () => {
+      // terminating any orphan processes
       if (this.isProcessRunning()) {
-        this.kill();
+        await this.killTree();
       }
     });
   }
 
   private updateProcessEnded() {
     this.process = undefined;
+    this.futureTermination = undefined;
   }
 }

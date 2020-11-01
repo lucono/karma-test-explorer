@@ -28,6 +28,7 @@ export class KarmaEventListener {
   private savedSpecs: SpecCompleteResponse[] = [];
   private server: http.Server | undefined;
   private isKarmaDisconnectInProgress: boolean = false;
+  //private futureSocketDisconnect?: Promise<void>;
 
   public constructor(
     private readonly eventEmitter: EventEmitter, 
@@ -37,7 +38,15 @@ export class KarmaEventListener {
 
   public receiveBrowserConnection(defaultSocketPort?: number): Promise<void> {
     return new Promise<void>(resolve => {
-      this.isKarmaDisconnectInProgress = false;
+      //this.isKarmaDisconnectInProgress = false;
+
+      if (this.isBrowserConnected()) {
+        this.logger.info(`Browser is already connected`);
+        resolve();
+        return;
+      }
+
+      this.disconnectSocketServer();
       const app = express();
       this.server = http.createServer(app);
 
@@ -47,7 +56,7 @@ export class KarmaEventListener {
         pingTimeout: 24 * 60 * 60 * 1000
       } as SocketIO.ServerOptions;
 
-      const io = SocketIO(this.server, socketOptions);
+      const io = new SocketIO(this.server, socketOptions);
       const port = defaultSocketPort !== 0 ? defaultSocketPort : 9999;
 
       io.on(SocketEvent.Connect, (socket) => {
@@ -75,6 +84,7 @@ export class KarmaEventListener {
           this.onSpecComplete(event);
         });
 
+        //this.futureSocketDisconnect = new Promise(async (resolve) => {
         socket.on(SocketEvent.Disconnect, (event: ErrorCode) => {
           const connectionDropped = !this.isKarmaDisconnectInProgress && event === ErrorCode.TransportClose;
 
@@ -83,7 +93,8 @@ export class KarmaEventListener {
             `${connectionDropped ? "dropped" : "disconnected normally"} ` +
             `with code: ${JSON.stringify(event)}`);
 
-          this.browserConnected = false;
+          this.updateServerClosed();
+          //resolve();
 
           if (connectionDropped) {
             this.options?.connectionDroppedHandler?.();
@@ -101,6 +112,7 @@ export class KarmaEventListener {
           }
           */
         });
+        //});
       });
 
       this.server!.listen(port, () => {
@@ -114,11 +126,30 @@ export class KarmaEventListener {
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 
-  public disconnectFromKarma() {
+  public async disconnectFromKarma(): Promise<void> {
     this.logger.info(`Disconnecting from Karma`);
+    await this.disconnectSocketServer();
+  }
+
+  private async disconnectSocketServer(): Promise<void> {
     this.isKarmaDisconnectInProgress = true;
-    this.server?.close();
-    this.isKarmaDisconnectInProgress = false;
+
+    const serverClose = new Promise(resolve => {
+      this.server?.close(async () => {
+        //await this.futureSocketDisconnect;
+        this.updateServerClosed();
+        this.isKarmaDisconnectInProgress = false;
+        resolve();
+      });
+    });
+
+    await serverClose;
+  }
+
+  private updateServerClosed() {
+    this.server = undefined;
+    //this.futureSocketDisconnect = undefined;
+    this.browserConnected = false;
   }
 
   public isBrowserConnected() {

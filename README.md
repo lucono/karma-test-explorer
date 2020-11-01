@@ -10,5 +10,6 @@ It provides:
 * Better support for remote development (devcontainers)
 * Support for JavaScript tests (in addition to TypeScript)
 * Support for providing environment variables
-* Better support for code lens in much more scenarios
+* Better support for code lens in more scenarios
+* Support for reloading Karma on changes to the Karma configuration file
 * _And a few other enhancements_

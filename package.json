@@ -137,6 +137,21 @@
 						"**/node_modules/*"
 					]
 				},
+				"karmaTestExplorer.reloadWatchedFiles": {
+					"description": "The files which when modified will trigger a Karma reload",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"scope": "resource",
+					"default": []
+				},
+				"karmaTestExplorer.reloadOnKarmaConfigurationFileChange": {
+					"description": "Enables reloading of Karma on changes to the Karma configuration file",
+					"type": "boolean",
+					"scope": "resource",
+					"default": true
+				},
 				"karmaTestExplorer.defaultSocketConnectionPort": {
 					"description": "This is the port that will be used to connect Karma with the test explorer",
 					"type": "number",

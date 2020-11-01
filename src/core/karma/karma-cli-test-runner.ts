@@ -30,7 +30,7 @@ export class KarmaCliTestRunner {
   }
 
   public async stopCurrentRun() {
-    return this.testRunnerProcessHandler.kill();
+    await this.testRunnerProcessHandler.kill();
   }
 
   private async callKarma(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
