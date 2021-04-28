@@ -17,10 +17,6 @@ export class KarmaCliTestRunner implements TestRunner {
     private readonly logger: Logger
   ) {}
 
-  public isServerRunning(): boolean {
-    return this.karmaEventListener.isServerConnected;
-  }
-
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     await this.callKarma([SKIP_ALL_TESTS_PATTERN], config, true);
     return this.karmaEventListener.getLoadedTests(pathFinder);
@@ -28,6 +24,11 @@ export class KarmaCliTestRunner implements TestRunner {
 
   public async runTests(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
     return this.callKarma(tests, config, isComponentRun);
+  }
+
+  /*
+  public isTestsRunning(): boolean {
+    return this.karmaEventListener.isTestRunning;
   }
 
   public async stopRun() {
@@ -38,6 +39,7 @@ export class KarmaCliTestRunner implements TestRunner {
       });
     });
   }
+  */
 
   private async callKarma(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
     this.log(tests);
@@ -78,7 +80,7 @@ export class KarmaCliTestRunner implements TestRunner {
       ...processArguments,
       "run",
       baseKarmaConfigFilePath,
-      `--port=${config.karmaPort}`,
+      `--port=${this.karmaPort}`,
       "--",
       "--grep", testsArg
     ];
@@ -89,6 +91,7 @@ export class KarmaCliTestRunner implements TestRunner {
 
     const runTestsProcessHandler = new CommandlineProcessHandler(this.karmaEventListener, this.logger);
     await runTestsProcessHandler.create(command, processArguments, options);
+    this.karmaEventListener.isTestRunning = false;
   }
 
   private log(tests: string[]): void {

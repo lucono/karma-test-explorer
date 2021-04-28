@@ -8,7 +8,6 @@ export class KarmaServer {
   public constructor(
     private readonly karmaServerProcessHandler: CommandlineProcessHandler,
     private readonly karmaEventListener: KarmaEventListener,
-    private readonly karmaPort: number,
     private readonly logger: Logger
   ) {}
 
@@ -55,36 +54,18 @@ export class KarmaServer {
     }
   }
 
-  public stop(): void {
+  public async stop(): Promise<void> {
     this.logger.info(`Stopping Karma server`);
-    if (this.karmaServerProcessHandler.isProcessRunning()) {
-      this.karmaServerProcessHandler.kill();
+    if (this.isServerRunning()) {
+      await this.karmaServerProcessHandler.kill();
       this.logger.info(`Stopped Karma server`);
     } else {
       this.logger.info(`Karma server is not running`);
     }
     this.karmaEventListener.stopListeningToKarma();
-    /*
-    if (this.karmaEventListener.isServerLoaded) {
-      const stopper = require("karma").stopper;
-      stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
-        this.logger.info(`Karma exited succesfully`);
-      });
-      this.karmaEventListener.stopListeningToKarma();
-    }
-    */
   }
 
-  public async stopAsync(): Promise<void> {
-    return new Promise<void>(resolve => {
-      if (this.karmaEventListener.isServerConnected) {
-        const stopper = require("karma").stopper;
-        stopper.stop({ port: this.karmaPort }, (exitCode: number) => {
-          this.logger.info(`Karma exited succesfully`);
-          resolve();
-          this.karmaEventListener.stopListeningToKarma();
-        });
-      }
-    });
+  public isServerRunning(): boolean  {
+    return this.karmaServerProcessHandler.isProcessRunning();
   }
 }

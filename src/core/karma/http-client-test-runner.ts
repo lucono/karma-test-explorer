@@ -14,10 +14,6 @@ export class HttpClientTestRunner implements TestRunner {
     private readonly logger: Logger
   ) {}
 
-  public isServerRunning(): boolean {
-    return this.karmaEventListener.isServerConnected;
-  }
-
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN);
     this.karmaEventListener.lastRunTests = "root";
@@ -28,13 +24,18 @@ export class HttpClientTestRunner implements TestRunner {
 
   public async runTests(tests: string[], config: TestExplorerConfiguration, isComponentRun: boolean): Promise<void> {
     this.log(tests);
-
     const karmaRunParameters = this.createKarmaRunCallConfiguration(tests);
 
     this.karmaEventListener.isTestRunning = true;
     this.karmaEventListener.lastRunTests = tests[0];
     this.karmaEventListener.isComponentRun = isComponentRun;
     await this.callKarmaRunWithConfig(karmaRunParameters.config);
+    this.karmaEventListener.isTestRunning = false;
+  }
+
+  /*
+  public isTestsRunning(): boolean {
+    return this.karmaEventListener.isTestRunning;
   }
 
   public async stopRun() {
@@ -45,6 +46,7 @@ export class HttpClientTestRunner implements TestRunner {
       });
     });
   }
+  */
 
   private createKarmaRunCallConfiguration(tests: any) {
     // if testName is undefined, reset jasmine.getEnv().specFilter function

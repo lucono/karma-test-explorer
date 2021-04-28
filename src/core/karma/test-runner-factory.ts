@@ -9,7 +9,6 @@ export class TestRunnerFactory {
     public constructor(
         private readonly testExplorerConfig: TestExplorerConfiguration,
         private readonly karmaEventListener: KarmaEventListener,
-        private readonly karmaPort: number,
         private readonly logger: Logger
     ) {}
 
@@ -17,7 +16,7 @@ export class TestRunnerFactory {
         const useCliTestRunner = !!this.testExplorerConfig.karmaProcessExecutable;
 
         return useCliTestRunner
-            ? new KarmaCliTestRunner(this.karmaEventListener, this.karmaPort, this.logger)
-            : new HttpClientTestRunner(this.karmaEventListener, this.karmaPort, this.logger);
+            ? new KarmaCliTestRunner(this.karmaEventListener, this.testExplorerConfig.karmaPort, this.logger)
+            : new HttpClientTestRunner(this.karmaEventListener, this.testExplorerConfig.karmaPort, this.logger);
     }
 }

@@ -63,14 +63,13 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
-    const karmaPort = this.config.karmaPort;
     const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
     const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
 
     const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
-    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, karmaPort, this.logger);
+    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, this.logger);
 
-    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, karmaPort, this.logger);
+    const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
@@ -78,25 +77,23 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
-    this.logger.debug(`Loading tests`);
+    this.logger.debug(`Test loading started`);
     if (this.isTestProcessRunning) {
       this.logger.debug(`Test load aborted - Another test operation is currently running`);
       return;
     }
     this.isTestProcessRunning = true;
-    this.testsEmitter.fire({ type: "started" });
-    this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
+    this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
     const loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
     this.logger.info(`Test load completed ${loadedTests.children.length === 0 ? "- No tests found" : ""}`);
-    
     this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
     this.retireEmitter.fire({});
 
     this.isTestProcessRunning = false;
-    this.logger.debug(`Test load finished`);
+    this.logger.debug(`Test loading finished`);
   }
 
   private async reload(): Promise<void> {
@@ -186,24 +183,18 @@ export class Adapter implements TestAdapter {
   private handleConfigurationChange = (configChangeEvent: vscode.ConfigurationChangeEvent) => {
     this.logger.info("Configuration changed");
 
-    const hasRelevantSettingsChange =
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ProjectRootPath}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaConfFilePath}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaProcessExecutable}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaPort}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.TestFiles}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ExcludeFiles}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ReloadWatchedFiles}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ReloadOnKarmaConfigurationFileChange}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.DefaultSocketConnectionPort}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.DebuggerConfig}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.Env}`, this.workspace.uri);
+    const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
+      (result, setting) => result || configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
+      false
+    );
 
-    if (hasRelevantSettingsChange) {
-      this.logger.info(`Reloading tests with updated configuration`);
-      this.loadConfig(this.configPrefix);
-      this.reload();
+    if (!hasRelevantSettingsChange) {
+      this.logger.info(`No relevant configuration change`);
+      return;
     }
+    this.logger.info(`Reloading tests with updated configuration`);
+    this.loadConfig(this.configPrefix);
+    this.reload();
   }
 
   private handleDocumentSaved = (document:vscode.TextDocument) => {

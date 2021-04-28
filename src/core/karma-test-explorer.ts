@@ -17,8 +17,8 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
-      if (this.testRunner.isServerRunning()) {
-        await this.karmaServer.stopAsync();
+      if (this.karmaServer.isServerRunning()) {
+        await this.karmaServer.stop();
       }
 
       await this.karmaServer.start(config);
@@ -42,14 +42,14 @@ export class KarmaTestExplorer {
   }
 
   public async stopCurrentRun(): Promise<void> {
-    if (this.testRunner.isServerRunning()) {
-      await this.karmaServer.stopAsync();
-    }
+    // if (this.testRunner.isServerRunning()) {
+      await this.karmaServer.stop();
+    // }
   }
 
   public dispose(): void {
-    if (this.testRunner.isServerRunning()) {
+    // if (this.testRunner.isServerRunning()) {
       this.karmaServer.stop();
-    }
+    // }
   }
 }
