@@ -11,8 +11,8 @@ import { ErrorCode } from "../../model/enums/error-code.enum";
 import { PathFinder } from "../helpers/path-finder";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
-import * as express from "express"
 import { Server as SocketIOServer, ServerOptions} from "socket.io"
+import * as express from "express"
 
 export class KarmaEventListener {
   public isServerConnected: boolean = false;
@@ -47,17 +47,24 @@ export class KarmaEventListener {
 
       io.on("connection", (socket) => {
         socket.on(KarmaEventName.BrowserConnected, () => {
-          this.onBrowserConnected(resolve);
+          this.logger.info(`Karma Event Listener: Browser connected`);
+          this.isServerConnected = true;
+          resolve();
         });
+
         socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
-          this.logger.info("browser_error " + event.results);
+          this.logger.info(`Karma Event Listener: Got browser error: ${event.results}`);
         });
+
         socket.on(KarmaEventName.BrowserStart, () => {
+          this.logger.info(`Karma Event Listener: Browser started`);
           this.savedSpecs = [];
         });
+
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
           this.runCompleteEvent = event;
         });
+
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
           this.onSpecComplete(event);
         });
@@ -109,10 +116,5 @@ export class KarmaEventListener {
         this.testStatus = results.status;
       }
     }
-  }
-
-  private onBrowserConnected(resolve: (value?: void | PromiseLike<void>) => void) {
-    this.isServerConnected = true;
-    resolve();
   }
 }

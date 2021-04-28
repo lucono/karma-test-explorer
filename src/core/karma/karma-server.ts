@@ -6,7 +6,7 @@ import { SpawnOptions } from "child_process";
 
 export class KarmaServer {
   public constructor(
-    private readonly processHandler: CommandlineProcessHandler,
+    private readonly karmaServerProcessHandler: CommandlineProcessHandler,
     private readonly karmaEventListener: KarmaEventListener,
     private readonly karmaPort: number,
     private readonly logger: Logger
@@ -44,7 +44,7 @@ export class KarmaServer {
       `--port=${config.karmaPort}`
     ];
 
-    const futureServerExit = this.processHandler.create(command, processArguments, options);
+    const futureServerExit = this.karmaServerProcessHandler.create(command, processArguments, options);
     const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
     const futureBrowserConnectOrServerExit = Promise.race([futureBrowserConnect, futureServerExit]);
 
@@ -56,11 +56,12 @@ export class KarmaServer {
   }
 
   public stop(): void {
-    if (this.processHandler.isProcessRunning()) {
-      this.processHandler.kill();
-      this.logger.info(`Stopped Karma`);
+    this.logger.info(`Stopping Karma server`);
+    if (this.karmaServerProcessHandler.isProcessRunning()) {
+      this.karmaServerProcessHandler.kill();
+      this.logger.info(`Stopped Karma server`);
     } else {
-      this.logger.info(`Karma is not running`);
+      this.logger.info(`Karma server is not running`);
     }
     this.karmaEventListener.stopListeningToKarma();
     /*

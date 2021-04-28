@@ -8,7 +8,8 @@ import {
   TestSuiteEvent,
   TestEvent,
   TestInfo,
-  TestSuiteInfo
+  TestSuiteInfo,
+  RetireEvent
 } from "vscode-test-adapter-api";
 import { Log } from "vscode-test-adapter-util";
 import { KarmaTestExplorer } from "./core/karma-test-explorer";
@@ -28,6 +29,7 @@ export class Adapter implements TestAdapter {
   private logger: Logger;
   private config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
+  private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
   private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
@@ -49,7 +51,7 @@ export class Adapter implements TestAdapter {
     return this.autorunEmitter.event;
   }
 
-  constructor(public readonly workspace: vscode.WorkspaceFolder, configPrefix: string, log: Log) {
+  constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly configPrefix: string, log: Log) {
     this.logger = new Logger(log);
     this.logger.info("Initializing adapter");
 
@@ -57,9 +59,7 @@ export class Adapter implements TestAdapter {
     this.disposables.push(this.testStatesEmitter);
     this.disposables.push(this.autorunEmitter);
     this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(configChangeEvent => {
-      this.handleConfigurationChange(configChangeEvent, configPrefix);
-    }));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange));
 
     this.loadConfig(configPrefix);
 
@@ -78,32 +78,41 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
+    this.logger.debug(`Loading tests`);
     if (this.isTestProcessRunning) {
+      this.logger.debug(`Test load aborted - Another test operation is currently running`);
       return;
     }
     this.isTestProcessRunning = true;
-
+    this.testsEmitter.fire({ type: "started" });
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
 
-    let loadedTests: TestSuiteInfo | undefined;
-
-    while (!loadedTests) {
-      this.logger.info("Loading tests");
-      try {
-        loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
-      } catch (error) {
-        this.logger.error(`Could not load tests - ${error.message || error}`);
-      }
-    }
+    const loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+    this.logger.info(`Test load completed ${loadedTests.children.length === 0 ? "- No tests found" : ""}`);
     
     this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
+    this.retireEmitter.fire({});
+
     this.isTestProcessRunning = false;
+    this.logger.debug(`Test load finished`);
+  }
+
+  private async reload(): Promise<void> {
+    this.logger.debug(`Test reload started`);
+
+    if (this.isTestProcessRunning) {
+      this.logger.debug(`Aborting previously running test operation`);
+      await this.cancel();
+    }
+    this.load();
   }
 
   public async run(tests: string[]): Promise<void> {
+    this.logger.debug(`Test run started`);
     if (this.isTestProcessRunning) {
+      this.logger.debug(`Aborting test run - Another test operation is still running`);
       return;
     }
     this.isTestProcessRunning = true;
@@ -118,6 +127,7 @@ export class Adapter implements TestAdapter {
 
     this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
     this.isTestProcessRunning = false;
+    this.logger.debug(`Test run finished`);
   }
 
   public async debug(tests: string[]): Promise<void> {
@@ -173,45 +183,44 @@ export class Adapter implements TestAdapter {
     return null;
   }
 
-  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent, configPrefix: string) {
+  private handleConfigurationChange = (configChangeEvent: vscode.ConfigurationChangeEvent) => {
     this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange =
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.ProjectRootPath}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaConfFilePath}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaProcessExecutable}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.KarmaPort}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.TestFiles}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.ExcludeFiles}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.DefaultSocketConnectionPort}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.DebuggerConfig}`, this.workspace.uri) ||
-      configChangeEvent.affectsConfiguration(`${configPrefix}.${ConfigSetting.Env}`, this.workspace.uri);
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ProjectRootPath}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaConfFilePath}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaProcessExecutable}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.KarmaPort}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.TestFiles}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ExcludeFiles}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ReloadWatchedFiles}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.ReloadOnKarmaConfigurationFileChange}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.DefaultSocketConnectionPort}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.DebuggerConfig}`, this.workspace.uri) ||
+      configChangeEvent.affectsConfiguration(`${this.configPrefix}.${ConfigSetting.Env}`, this.workspace.uri);
 
     if (hasRelevantSettingsChange) {
-      this.logger.info("Sending reload event");
-      this.loadConfig(configPrefix);
-      this.load();
+      this.logger.info(`Reloading tests with updated configuration`);
+      this.loadConfig(this.configPrefix);
+      this.reload();
     }
   }
 
-  private async handleDocumentSaved(document:vscode.TextDocument) {
-    if (!this.config) {
+  private handleDocumentSaved = (document:vscode.TextDocument) => {
+    const isConfigLoadCompleted = !!this.config;
+    const savedFilePath = document.uri.fsPath;
+    const isFileInWorkspace = savedFilePath.startsWith(this.workspace.uri.fsPath);
+
+    if (!isConfigLoadCompleted || !isFileInWorkspace) {
       return;
     }
 
-    const filename = document.uri.fsPath;
-    if (filename.startsWith(this.workspace.uri.fsPath)) {
-      // this.isTestProcessRunning = true;
-      // this.loadedTests = {} as TestSuiteInfo;
-      // this.loadedTests = await this.testExplorer.reloadTestDefinitions();
+    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
+      ? [this.config.baseKarmaConfFilePath, ...this.config.reloadWatchedFiles]
+      : this.config.reloadWatchedFiles;
 
-      // this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
-      // this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
-
-      // this.isTestProcessRunning = false;
-
-      this.logger.info("Sending autorun event");
-      this.autorunEmitter.fire();
+    if (reloadTriggerFiles.includes(savedFilePath)) {
+      this.reload();
     }
   }
 }

@@ -12,6 +12,9 @@ export class TestExplorerConfiguration {
     this.karmaProcessExecutable = config.get(ConfigSetting.KarmaProcessExecutable) as string;
     this.testFiles = config.get(ConfigSetting.TestFiles) as string[];
     this.excludeFiles = config.get(ConfigSetting.ExcludeFiles) as string[];
+    this.reloadWatchedFiles = (config.get(ConfigSetting.ReloadWatchedFiles) as string[])
+      .map(filePath => path.resolve(this.projectRootPath, filePath));
+    this.reloadOnKarmaConfigurationFileChange = config.get(ConfigSetting.ReloadOnKarmaConfigurationFileChange) as boolean;
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
@@ -25,6 +28,8 @@ export class TestExplorerConfiguration {
   public karmaProcessExecutable: string;
   public testFiles: string[];
   public excludeFiles: string[];
+  public reloadWatchedFiles: string[];
+  public reloadOnKarmaConfigurationFileChange: boolean;
   public defaultSocketConnectionPort: number;
   public env: { [key: string]: string };
   public debuggerConfig: any;

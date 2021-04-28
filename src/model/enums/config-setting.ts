@@ -5,6 +5,8 @@ export enum ConfigSetting {
     KarmaPort = "karmaPort",
     TestFiles = "testFiles",
     ExcludeFiles = "excludeFiles",
+    ReloadWatchedFiles = "reloadWatchedFiles", // TODO: Find a better name for this config prop
+    ReloadOnKarmaConfigurationFileChange = "reloadOnKarmaConfigurationFileChange",
     DefaultSocketConnectionPort = "defaultSocketConnectionPort",
     DebuggerConfig = "debuggerConfig",
     Env = "env",
