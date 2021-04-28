@@ -10,9 +10,9 @@ import { TestResult } from "../../model/enums/test-status.enum";
 import { ErrorCode } from "../../model/enums/error-code.enum";
 import { PathFinder } from "../helpers/path-finder";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import * as http from "http"
+import { Server as HttpServer, createServer} from "http"
 import * as express from "express"
-import * as SocketIO from "socket.io"
+import { Server as SocketIOServer, ServerOptions} from "socket.io"
 
 export class KarmaEventListener {
   public isServerConnected: boolean = false;
@@ -22,7 +22,7 @@ export class KarmaEventListener {
   public runCompleteEvent: KarmaEvent | undefined;
   public isComponentRun: boolean = false;
   private savedSpecs: SpecCompleteResponse[] = [];
-  private server: http.Server | undefined;
+  private server: HttpServer | undefined;
   private karmaShutdownInitiated: boolean = false;
 
   public constructor(
@@ -34,15 +34,15 @@ export class KarmaEventListener {
     return new Promise<void>(resolve => {
       this.karmaShutdownInitiated = false;
       const app = express();
-      this.server = http.createServer(app);
+      this.server = createServer(app);
 
-      const socketOptions = {
-        forceNew: true,
+      const socketServerOptions = {
+        // forceNew: true,
         pingInterval: 24 * 60 * 60 * 1000,
         pingTimeout: 24 * 60 * 60 * 1000
-      } as SocketIO.ServerOptions;
+      } as ServerOptions;
 
-      const io = SocketIO(this.server, socketOptions);
+      const io = new SocketIOServer(this.server, socketServerOptions);
       const port = defaultSocketPort !== 0 ? defaultSocketPort : 9999;
 
       io.on("connection", (socket) => {

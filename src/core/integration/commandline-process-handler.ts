@@ -6,7 +6,7 @@ export class CommandlineProcessHandler {
   private process: any;
   public constructor(private readonly karmaEventListener: KarmaEventListener, private readonly logger: Logger) {}
 
-  public create(command: string, processArguments: string[], options: SpawnOptions): Promise<any> {
+  public create(command: string, processArguments: string[], options: SpawnOptions): Promise<void> {
     return new Promise(resolve => {
       if (this.process) {
         this.kill();
@@ -14,9 +14,9 @@ export class CommandlineProcessHandler {
       }
 
       this.logger.info(
-        `Executing command: '${command}'`,
-        `with args: ${JSON.stringify(processArguments)}`,
-        `and options: ${JSON.stringify(options)}`
+        `Executing command: '${command}'
+        with args: ${JSON.stringify(processArguments)}
+        and options: ${JSON.stringify(options)}`
       );
 
       this.process = spawn(command, processArguments, options);

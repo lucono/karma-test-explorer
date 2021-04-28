@@ -48,6 +48,8 @@ export class KarmaCliTestRunner implements TestRunner {
     if (isAllTestRun) {
       tests = [""];
     }
+    const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
+
     const testExplorerEnvironment = {
       ...process.env,
       ...config.env,
@@ -75,6 +77,7 @@ export class KarmaCliTestRunner implements TestRunner {
     processArguments = [
       ...processArguments,
       "run",
+      baseKarmaConfigFilePath,
       `--port=${config.karmaPort}`,
       "--",
       "--grep", testsArg

@@ -38,7 +38,6 @@
 		"test": "jest -c jest.config.js"
 	},
 	"dependencies": {
-		"@types/socket.io": "^2.1.11",
 		"cross-spawn": "^7.0.0",
 		"escape-string-regexp": "^2.0.0",
 		"express": "^4.17.1",
@@ -49,8 +48,8 @@
 		"node": "^13.1.0",
 		"request-promise": "^4.2.4",
 		"resolve-global": "^1.0.0",
-		"socket.io": "2.2.0",
-		"socket.io-client": "2.2.0",
+		"socket.io": "^3.1.2",
+		"socket.io-client": "^3.1.2",
 		"tree-kill": "^1.2.2",
 		"tslib": "^1.10.0",
 		"vscode-test-adapter-api": "^1.7.0",
@@ -67,7 +66,6 @@
 		"@types/lodash": "^4.14.138",
 		"@types/node": "~12.7.5",
 		"@types/semver": "~6.0.2",
-		"@types/socket.io-client": "^1.4.32",
 		"jest": "^24.9.0",
 		"jest-when": "^2.7.0",
 		"lodash": "^4.17.15",

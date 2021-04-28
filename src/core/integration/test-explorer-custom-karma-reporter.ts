@@ -1,8 +1,13 @@
 import { TestResult } from "../../model/enums/test-status.enum";
 import { RunStatus } from "../../model/enums/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import * as io from "socket.io-client";
+import { Server as SocketIOServer} from "socket.io"
+import { io } from "socket.io-client";
 import * as karma from "karma";
+
+
+const HEARTBEAT_TIMEOUT = 24 * 60 * 60 * 1000;
+const HEARTBEAT_INTERVAL = 24 * 60 * 60 * 1000;
 
 function TestExplorerCustomReporter(
   this: any, 
@@ -16,9 +21,16 @@ function TestExplorerCustomReporter(
   this.emitter = emitter;
 
   const defaultSocketPort = process.env.defaultSocketPort as string;
-  this.socket = io("http://localhost:" + defaultSocketPort + "/", { forceNew: true, reconnection: true });
-  this.socket.heartbeatTimeout = 24 * 60 * 60 * 1000;
-  this.socket.heartbeatInterval = 24 * 60 * 60 * 1000;
+  const socket = io("http://localhost:" + defaultSocketPort + "/", { 
+    forceNew: true, 
+    reconnection: true
+  });
+  const socketOptions = {
+    pingTimeout: HEARTBEAT_TIMEOUT,
+    pingInterval: HEARTBEAT_INTERVAL
+  };
+  Object.assign(socket, socketOptions);
+  this.socket = socket;
 
   configureTimeouts(injector);
   baseReporterDecorator(this);
@@ -97,15 +109,19 @@ function configureTimeouts(injector: any) {
       // Disable timeout, as by default httpServer.timeout=120 seconds, not enough for suspended execution.
       webServer.timeout = 0;
     }
-    const socketServer = injector.get("socketServer");
+    const socketServer = injector.get("socketServer") as SocketIOServer;
     if (socketServer) {
       // Disable socket.io heartbeat (ping) to avoid browser disconnecting when debugging tests,
       // because no ping requests are sent when test execution is suspended on a breakpoint.
       // Default values are not enough for suspended execution:
       //    'heartbeat timeout' (pingTimeout) = 60000 ms
       //    'heartbeat interval' (pingInterval) = 25000 ms
-      socketServer.set("heartbeat timeout", 24 * 60 * 60 * 1000);
-      socketServer.set("heartbeat interval", 24 * 60 * 60 * 1000);
+
+      const socketOptions = {
+        pingTimeout: HEARTBEAT_TIMEOUT,
+        pingInterval: HEARTBEAT_INTERVAL
+      };
+      Object.assign(socketServer, socketOptions);
     }
   });
 }
