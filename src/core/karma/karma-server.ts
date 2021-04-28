@@ -3,11 +3,16 @@ import { KarmaEventListener } from "../integration/karma-event-listener";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
+import { Karma6Server } from "./karma6-server";
+// import {stopper as karmaStopper } from "karma";
 
-export class KarmaServer {
+export { Karma6Server as KarmaServer };
+
+export class KarmaCLIServer {
   public constructor(
     private readonly karmaServerProcessHandler: CommandlineProcessHandler,
     private readonly karmaEventListener: KarmaEventListener,
+    private readonly karmaPort: number,
     private readonly logger: Logger
   ) {}
 
@@ -18,7 +23,7 @@ export class KarmaServer {
       ...process.env,
       ...config.env,
       userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${config.karmaPort}`,
+      karmaPort: `${this.karmaPort}`,
       defaultSocketPort: `${config.defaultSocketConnectionPort}`
     };
 
@@ -56,6 +61,13 @@ export class KarmaServer {
 
   public async stop(): Promise<void> {
     this.logger.info(`Stopping Karma server`);
+    
+    /*
+    karmaStopper.stop({ port: this.karmaPort }, (exitCode: number) => {
+      this.logger.info(`Karma exited succesfully`);
+    });
+    */
+
     if (this.isServerRunning()) {
       await this.karmaServerProcessHandler.kill();
       this.logger.info(`Stopped Karma server`);

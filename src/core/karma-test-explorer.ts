@@ -13,25 +13,25 @@ export class KarmaTestExplorer {
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger
-  ) {}
+  ) { }
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
-      if (this.karmaServer.isServerRunning()) {
+      // if (this.karmaServer.isServerRunning()) {
         await this.karmaServer.stop();
-      }
+      // }
 
       await this.karmaServer.start(config);
       const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
 
       if (testSuiteInfo.children.length === 0) {
-        this.logger.info("Test loading completed - No tests found");
+        this.logger.info("Test loading - No tests found");
       } else {
-        this.logger.info("Test loading completed");
+        this.logger.info("Test loading - Tests found");
       }
 
       return testSuiteInfo;
-    } catch(error) {
+    } catch (error) {
       throw new Error(`Test loading failed: ${error.message || error}`)
     }
   }
@@ -43,13 +43,13 @@ export class KarmaTestExplorer {
 
   public async stopCurrentRun(): Promise<void> {
     // if (this.testRunner.isServerRunning()) {
-      await this.karmaServer.stop();
+    await this.karmaServer.stop();
     // }
   }
 
   public dispose(): void {
     // if (this.testRunner.isServerRunning()) {
-      this.karmaServer.stop();
+    this.karmaServer.stop();
     // }
   }
 }

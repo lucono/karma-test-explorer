@@ -3,7 +3,7 @@ import { RunStatus } from "../../model/enums/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
-import * as karma from "karma";
+import { ConfigOptions, TestResults as KarmaTestResults } from "karma";
 
 
 const HEARTBEAT_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -12,7 +12,7 @@ const HEARTBEAT_INTERVAL = 24 * 60 * 60 * 1000;
 function TestExplorerCustomReporter(
   this: any, 
   baseReporterDecorator: any, 
-  config: karma.ConfigOptions, 
+  config: ConfigOptions, 
   logger: any, 
   emitter: any, 
   injector: any
@@ -126,7 +126,7 @@ function configureTimeouts(injector: any) {
   });
 }
 
-function collectRunState(runResult: karma.TestResults): RunStatus {
+function collectRunState(runResult: KarmaTestResults): RunStatus {
   if (runResult.disconnected) {
     return RunStatus.Timeout;
   } else if (runResult.error) {

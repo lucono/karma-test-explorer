@@ -11,9 +11,9 @@ export class CommandlineProcessHandler {
     private readonly logger: Logger) {}
 
   public create(command: string, processArguments: string[], runOptions?: SpawnOptions): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise(async resolve => {
       if (this.process) {
-        this.kill();
+        await this.kill();
       }
 
       this.logger.debug(

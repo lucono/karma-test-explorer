@@ -20,7 +20,7 @@ import { EventEmitter } from "./core/helpers/event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
-import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
+// import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
 import { ConfigSetting } from "./model/enums/config-setting"
 
@@ -66,8 +66,9 @@ export class Adapter implements TestAdapter {
     const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
     const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
 
-    const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
-    const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, this.logger);
+    // const karmaCommandLineProcessHandler = new CommandlineProcessHandler(karmaEventListener, this.logger);
+    // const karmaServer = new KarmaServer(karmaCommandLineProcessHandler, karmaEventListener, this.config.karmaPort, this.logger);
+    const karmaServer = new KarmaServer(karmaEventListener, this.logger);
 
     const testRunnerFactory = new TestRunnerFactory(this.config, karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
@@ -87,7 +88,6 @@ export class Adapter implements TestAdapter {
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
     const loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
-    this.logger.info(`Test load completed ${loadedTests.children.length === 0 ? "- No tests found" : ""}`);
     this.loadedTests = loadedTests;
     this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
     this.retireEmitter.fire({});
@@ -207,7 +207,7 @@ export class Adapter implements TestAdapter {
     }
 
     const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
-      ? [this.config.baseKarmaConfFilePath, ...this.config.reloadWatchedFiles]
+      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
       : this.config.reloadWatchedFiles;
 
     if (reloadTriggerFiles.includes(savedFilePath)) {

@@ -7,7 +7,6 @@ import { TestState } from "../../model/enums/test-state.enum";
 import { Logger } from "../helpers/logger";
 import { EventEmitter } from "../helpers/event-emitter";
 import { TestResult } from "../../model/enums/test-status.enum";
-import { ErrorCode } from "../../model/enums/error-code.enum";
 import { PathFinder } from "../helpers/path-finder";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
@@ -69,8 +68,8 @@ export class KarmaEventListener {
           this.onSpecComplete(event);
         });
 
-        socket.on("disconnect", (event: ErrorCode) => {
-          const isKarmaBeingClosedByChrome = event === ErrorCode.TransportClose && !this.karmaShutdownInitiated;
+        socket.on("disconnect", (reason: string) => {
+          const isKarmaBeingClosedByChrome = (reason === "transport close" && !this.karmaShutdownInitiated);
 
           // workaround: if the connection is closed by chrome, we just reload the test enviroment
           // TODO: fix chrome closing all socket connections.
