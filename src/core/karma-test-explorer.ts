@@ -33,8 +33,9 @@ export class KarmaTestExplorer {
         throw new Error(failureMessage);
       }
 
-      if (!this.karmaServer.isRunning()) {
-        const failureMessage = `Failed to load tests - Failed restarting Karma server`;
+      if (!this.karmaEventListener.isServerConnected()) {
+        const failureMessage = `Failed to load tests - Server failed to connect`;
+        this.logger.error(failureMessage);
         throw new Error(failureMessage);
       }
 
@@ -50,6 +51,7 @@ export class KarmaTestExplorer {
       return testSuiteInfo;
     } catch (error) {
       const failureMessage = `Test loading failed: ${error.message || error}`;
+      this.logger.error(failureMessage);
       throw new Error(failureMessage);
     }
   }
@@ -57,6 +59,7 @@ export class KarmaTestExplorer {
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
     if (!this.karmaServer.isRunning()) {
       const failureMessage = `Failed to run tests - Karma server is not running`;
+      this.logger.error(failureMessage);
       throw new Error(failureMessage);
     }
 

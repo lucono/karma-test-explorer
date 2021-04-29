@@ -87,7 +87,7 @@ export class CommandlineProcessHandler {
 
   private setupProcessOutputs(process: ChildProcess) {
     process.stdout?.on("data", (data: any) => {
-      const regex = new RegExp(/\(.*?)\m/, "g");
+      const regex = new RegExp(/\(.*?)\m/, "g");
       const { isTestRunning } = this.karmaEventListener;
 
       if (isTestRunning) {

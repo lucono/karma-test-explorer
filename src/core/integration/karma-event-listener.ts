@@ -14,7 +14,7 @@ import { Server as SocketIOServer, ServerOptions} from "socket.io"
 import * as express from "express"
 
 export class KarmaEventListener {
-  public isServerConnected: boolean = false;
+  private serverConnected: boolean = false;
   public isTestRunning: boolean = false;
   public lastRunTests: string = "";
   public testStatus: TestResult | undefined;
@@ -47,7 +47,7 @@ export class KarmaEventListener {
       io.on("connection", (socket) => {
         socket.on(KarmaEventName.BrowserConnected, () => {
           this.logger.info(`Karma Event Listener: Browser connected`);
-          this.isServerConnected = true;
+          this.serverConnected = true;
           resolve();
         });
 
@@ -92,7 +92,7 @@ export class KarmaEventListener {
   }
 
   public stopListeningToKarma() {
-    this.isServerConnected = false;
+    this.serverConnected = false;
     this.karmaShutdownInitiated = true;
     this.server?.close();
   }
@@ -115,5 +115,9 @@ export class KarmaEventListener {
         this.testStatus = results.status;
       }
     }
+  }
+
+  public isServerConnected(): boolean {
+    return this.serverConnected;
   }
 }

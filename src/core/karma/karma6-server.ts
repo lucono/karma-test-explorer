@@ -2,6 +2,7 @@ import { KarmaEventListener } from "../integration/karma-event-listener";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { config, Server, Config as KarmaConfig, stopper as karmaStopper } from "karma";
+import * as portFinder from "portfinder";
 
 export class Karma6Server {
   private server?: Server;
@@ -15,6 +16,16 @@ export class Karma6Server {
   public async start(testExplorerConfig: TestExplorerConfiguration): Promise<void> {
     await this.stop();
     this.logger.info(`Starting Karma server`);
+
+    const availablePort = await portFinder.getPortPromise({ startPort: testExplorerConfig.karmaPort });
+
+    const testExplorerEnvironment = {
+      ...testExplorerConfig.env,
+      userKarmaConfigPath: testExplorerConfig.userKarmaConfFilePath,
+      karmaPort: `${availablePort}`,
+      defaultSocketPort: `${testExplorerConfig.defaultSocketConnectionPort}`
+    };
+    Object.assign(process.env, testExplorerEnvironment);
 
     try {
       const karmaConfig = await config.parseConfig(

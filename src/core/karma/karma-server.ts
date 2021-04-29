@@ -17,7 +17,7 @@ export class KarmaServer {
 
   public async start(config: TestExplorerConfiguration): Promise<void> {
     // const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
-    const availablePort = await portFinder.getPortPromise({ startPort: config.karmaPort });
+    const availablePort = await portFinder.getPortPromise({ port: config.karmaPort });
 
     const testExplorerEnvironment = {
       ...process.env,
