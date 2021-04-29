@@ -19,6 +19,8 @@ export class KarmaServer {
     // const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
     const availablePort = await portFinder.getPortPromise({ port: config.karmaPort });
 
+    this.logger.info(`Available port lookup result: ${config.karmaPort} --> ${availablePort}`);
+
     const testExplorerEnvironment = {
       ...process.env,
       ...config.env,

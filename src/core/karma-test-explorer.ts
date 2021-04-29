@@ -17,6 +17,10 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
+      if (this.karmaEventListener.isServerConnected()) {
+        this.karmaEventListener.stopListeningToKarma();
+      }
+      
       if (this.karmaServer.isRunning()) {
         await this.karmaServer.stop();
       }

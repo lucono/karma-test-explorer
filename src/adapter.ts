@@ -83,9 +83,27 @@ export class Adapter implements TestAdapter {
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
-    const loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+    let loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
+    let loadError: string | undefined;
+    
+    try {
+      loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+    } catch (error) {
+      loadError = error?.message ?? error ?? 'Failed to load tests';
+    }
+
     this.loadedTests = loadedTests;
-    this.testsEmitter.fire({ type: "finished", suite: this.loadedTests } as TestLoadFinishedEvent);
+
+    if (loadedTests.children.length > 0) {
+      this.testsEmitter.fire({
+        type: "finished",
+        suite: this.loadedTests });
+    } else {
+      this.testsEmitter.fire({
+        type: "finished",
+        errorMessage: loadError });
+    }
+
     this.retireEmitter.fire({});
 
     this.isTestProcessRunning = false;
@@ -148,6 +166,8 @@ export class Adapter implements TestAdapter {
   }
 
   private loadTestInfo(testFiles: string[], excludeFiles?: string[]): PathFinder {
+    this.logger.info(`Loading test info from test files`);
+
     const pathFinderOptions = {
       ignore: excludeFiles,
       cwd: this.config.projectRootPath
@@ -208,6 +228,10 @@ export class Adapter implements TestAdapter {
 
     if (reloadTriggerFiles.includes(savedFilePath)) {
       this.reload();
+      return;
     }
+
+    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath);
+    this.retireEmitter.fire({ tests: specsForFile });
   }
 }

@@ -74,6 +74,12 @@ export class PathFinder {
     return undefined;
   }
 
+  public getSpecsForFile(absoluteFilePath: string): string[] {
+    const fileInfo = this.fileInfoMap[absoluteFilePath];
+    const fileItSpecs = fileInfo ? Object.values(fileInfo.descriptions.it) : [];
+    return fileItSpecs;
+  }
+
   private getSuiteFromCache(suite: string[]): string | undefined {
     let suiteKey = "";
 
