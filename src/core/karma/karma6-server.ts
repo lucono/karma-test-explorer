@@ -23,7 +23,7 @@ export class Karma6Server {
       ...testExplorerConfig.env,
       userKarmaConfigPath: testExplorerConfig.userKarmaConfFilePath,
       karmaPort: `${availablePort}`,
-      defaultSocketPort: `${testExplorerConfig.defaultSocketConnectionPort}`
+      karmaSocketPort: `${testExplorerConfig.defaultSocketConnectionPort}`
     };
     Object.assign(process.env, testExplorerEnvironment);
 
@@ -48,7 +48,7 @@ export class Karma6Server {
       }
       await this.server.start();
 
-      const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(testExplorerConfig.defaultSocketConnectionPort);
+      const futureBrowserConnect = this.karmaEventListener.connect(testExplorerConfig.defaultSocketConnectionPort);
       const futureBrowserConnectOrServerExit = Promise.race([futureBrowserConnect, futureServerExit]);
       await futureBrowserConnectOrServerExit;
       
@@ -70,7 +70,7 @@ export class Karma6Server {
     } else {
       this.logger.info(`Karma Server is not running`);
     }
-    this.karmaEventListener.stopListeningToKarma();
+    this.karmaEventListener.disconnect();
   }
 
   private setCurrentServer(karmaServer: Server, karmaConfig: KarmaConfig) {

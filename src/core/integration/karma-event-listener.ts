@@ -1,4 +1,3 @@
-import { commands } from "vscode";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { SpecResponseToTestSuiteInfoMapper } from "../../core/test-explorer/spec-response-to-test-suite-info.mapper";
 import { KarmaEvent } from "../../model/karma-event";
@@ -13,8 +12,9 @@ import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions} from "socket.io"
 import * as express from "express"
 
+const DEFAULT_SOCKET_PORT = 9999;
+
 export class KarmaEventListener {
-  private serverConnected: boolean = false;
   public isTestRunning: boolean = false;
   public lastRunTests: string = "";
   public testStatus: TestResult | undefined;
@@ -22,32 +22,31 @@ export class KarmaEventListener {
   public isComponentRun: boolean = false;
   private savedSpecs: SpecCompleteResponse[] = [];
   private server: HttpServer | undefined;
-  private karmaShutdownInitiated: boolean = false;
+  // private serverDisconnectRequested: boolean = false;
 
   public constructor(
     private readonly eventEmitter: EventEmitter, 
     private readonly logger: Logger
   ) {}
 
-  public listenTillBrowserConnected(defaultSocketPort?: number): Promise<void> {
+  public connect(socketPort?: number): Promise<void> {
+    const app = express();
+    const server = createServer(app);
+
+    const socketServerOptions = {
+      // forceNew: true,
+      pingInterval: 24 * 60 * 60 * 1000,
+      pingTimeout: 24 * 60 * 60 * 1000
+    } as ServerOptions;
+
+    const io = new SocketIOServer(server, socketServerOptions);
+    const port = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
+
     return new Promise<void>(resolve => {
-      this.karmaShutdownInitiated = false;
-      const app = express();
-      this.server = createServer(app);
-
-      const socketServerOptions = {
-        // forceNew: true,
-        pingInterval: 24 * 60 * 60 * 1000,
-        pingTimeout: 24 * 60 * 60 * 1000
-      } as ServerOptions;
-
-      const io = new SocketIOServer(this.server, socketServerOptions);
-      const port = defaultSocketPort !== 0 ? defaultSocketPort : 9999;
-
       io.on("connection", (socket) => {
         socket.on(KarmaEventName.BrowserConnected, () => {
           this.logger.info(`Karma Event Listener: Browser connected`);
-          this.serverConnected = true;
+          this.setServerInfo(server);
           resolve();
         });
 
@@ -69,18 +68,19 @@ export class KarmaEventListener {
         });
 
         socket.on("disconnect", (reason: string) => {
-          const isKarmaBeingClosedByChrome = (reason === "transport close" && !this.karmaShutdownInitiated);
+          this.clearServerInfo(server);
+          // const isKarmaBeingClosedByChrome = (reason === "transport close" && !this.serverDisconnectRequested);
 
-          // workaround: if the connection is closed by chrome, we just reload the test enviroment
-          // TODO: fix chrome closing all socket connections.
-          // FIXME: This should be reloading just the karma tests rather than all types of tests in test explorer
-          if (isKarmaBeingClosedByChrome) {
-            commands.executeCommand("test-explorer.reload");
-          }
+          // // workaround: if the connection is closed by chrome, we just reload the test enviroment
+          // // TODO: fix chrome closing all socket connections.
+          // // FIXME: This should be reloading just the karma tests rather than all types of tests in test explorer
+          // if (isKarmaBeingClosedByChrome) {
+          //   commands.executeCommand("test-explorer.reload");
+          // }
         });
       });
 
-      this.server!.listen(port, () => {
+      server!.listen(port, () => {
         this.logger.info("Listening to KarmaReporter events on port " + port);
       });
     });
@@ -91,10 +91,34 @@ export class KarmaEventListener {
     return specToTestSuiteMapper.map(this.savedSpecs);
   }
 
-  public stopListeningToKarma() {
-    this.serverConnected = false;
-    this.karmaShutdownInitiated = true;
-    this.server?.close();
+  public async disconnect(): Promise<void> {
+    this.logger.info(`Disconnecting from karma server`);
+    // this.serverConnected = false; // FIXME: set to false on actual disconnection eent
+    // this.serverDisconnectRequested = true;
+
+    if (!this.isConnected()) {
+      return;
+    }
+    const server = this.server!;
+
+    return new Promise<void>((resolve, reject) => {
+      server.close(error => error === undefined ? resolve() : reject(error));
+    });
+  }
+
+  public isConnected(): boolean {
+    return this.server !== undefined;
+  }
+
+  private setServerInfo(server: HttpServer) {
+    this.server = server;
+    // this.serverDisconnectRequested = false;
+  }
+
+  private clearServerInfo(server: HttpServer) {
+    if (this.server && this.server === server) {
+      this.server = undefined;
+    }
   }
 
   private onSpecComplete(event: KarmaEvent) {
@@ -115,9 +139,5 @@ export class KarmaEventListener {
         this.testStatus = results.status;
       }
     }
-  }
-
-  public isServerConnected(): boolean {
-    return this.serverConnected;
   }
 }

@@ -17,12 +17,14 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
-      if (this.karmaEventListener.isServerConnected()) {
-        this.karmaEventListener.stopListeningToKarma();
+      if (this.karmaEventListener.isConnected()) {
+        await this.karmaEventListener.disconnect();
       }
 
       const futureKarmaServerExit = this.karmaServer.restart(config);
-      const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
+      const karmaSocketPort = this.karmaServer.getSocketPort();
+
+      const futureBrowserConnect = this.karmaEventListener.connect(karmaSocketPort);
       const futureBrowserConnectOrKarmaServerExit = Promise.race([futureBrowserConnect, futureKarmaServerExit]);
 
       try {
@@ -33,7 +35,7 @@ export class KarmaTestExplorer {
         throw new Error(failureMessage);
       }
 
-      if (!this.karmaEventListener.isServerConnected()) {
+      if (!this.karmaEventListener.isConnected()) {
         const failureMessage = `Failed to load tests - Server failed to connect`;
         this.logger.error(failureMessage);
         throw new Error(failureMessage);

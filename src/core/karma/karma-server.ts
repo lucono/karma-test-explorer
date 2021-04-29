@@ -9,6 +9,7 @@ import {stopper as karmaStopper } from "karma";
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
   private serverPort?: number;
+  private socketPort?: number;
 
   public constructor(
     // private readonly karmaEventListener: KarmaEventListener,
@@ -23,15 +24,25 @@ export class KarmaServer {
       this.logger.info(`Request to start karma server - server is already or still running`);
       return this.serverProcess?.futureExit();
     }
-    const karmaPort = await portFinder.getPortPromise({ port: config.karmaPort });
-    this.logger.info(`Available port lookup result: ${config.karmaPort} --> ${karmaPort}`);
+
+    const serverKarmaPort = await portFinder.getPortPromise({ port: config.karmaPort });
+    const minSocketConnectionPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
+
+    const serverSocketPort = await new Promise<number>(resolve => {
+      portFinder.getPort(
+        { port: minSocketConnectionPort }, 
+        (err: Error, port: number) => resolve(port));
+    });
+
+    this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
+    this.logger.info(`Using available socket port: ${config.defaultSocketConnectionPort} --> ${serverSocketPort}`);
 
     const testExplorerEnvironment = {
       ...process.env,
       ...config.env,
       userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${karmaPort}`,
-      defaultSocketPort: `${config.defaultSocketConnectionPort}`
+      karmaPort: `${serverKarmaPort}`,
+      karmaSocketPort: `${serverSocketPort}`
     };
 
     const options = {
@@ -52,7 +63,7 @@ export class KarmaServer {
       ...processArguments,
       "start",
       config.baseKarmaConfFilePath,
-      `--port=${karmaPort}`
+      `--port=${serverKarmaPort}`
     ];
 
     const karmaServerProcess = new CommandlineProcessHandler(
@@ -60,10 +71,10 @@ export class KarmaServer {
       command, 
       processArguments, 
       options,
-      (data) => this.serverProcessLogger(data, karmaPort),
-      (data) => this.serverProcessErrorLogger(data, karmaPort));
+      (data) => this.serverProcessLogger(data, serverKarmaPort),
+      (data) => this.serverProcessErrorLogger(data, serverKarmaPort));
 
-    this.setServerInfo(karmaServerProcess, karmaPort);
+    this.setServerInfo(karmaServerProcess, serverKarmaPort, serverSocketPort);
 
     const futureServerExit = karmaServerProcess.futureExit();
     futureServerExit.then(() => this.clearServerInfo(karmaServerProcess));
@@ -116,20 +127,26 @@ export class KarmaServer {
     });
   }
 
-  private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number) {
+  private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number, socketPort: number) {
     this.serverProcess = serverProcess;
     this.serverPort = serverPort;
+    this.socketPort = socketPort;
   }
 
   private clearServerInfo(serverProcess?: CommandlineProcessHandler) {
     if (this.serverProcess && this.serverProcess === serverProcess) {
       this.serverProcess = undefined;
       this.serverPort = undefined;
+      this.socketPort = undefined;
     }
   }
 
   public getServerPort(): number | undefined {
     return this.serverPort;
+  }
+
+  public getSocketPort(): number | undefined {
+    return this.socketPort;
   }
 
   public isRunning(): boolean {

@@ -244,7 +244,11 @@ export class Adapter implements TestAdapter {
       return;
     }
 
-    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath);
-    this.retireEmitter.fire({ tests: specsForFile });
+    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath) ?? [];
+
+    if (specsForFile.length > 0) {
+      this.logger.info(`Retiring ${specsForFile.length} specs of saved file: ${savedFilePath}`);
+      this.retireEmitter.fire({ tests: specsForFile });
+    }
   }
 }
