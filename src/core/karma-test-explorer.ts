@@ -17,12 +17,29 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
-      // if (this.karmaServer.isServerRunning()) {
+      if (this.karmaServer.isRunning()) {
         await this.karmaServer.stop();
-      // }
+      }
 
-      await this.karmaServer.start(config);
-      const testSuiteInfo = await this.testRunner.loadTests(config, pathFinder);
+      const futureKarmaServerExit = this.karmaServer.start(config);
+      const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
+      const futureBrowserConnectOrKarmaServerExit = Promise.race([futureBrowserConnect, futureKarmaServerExit]);
+
+      try {
+        await futureBrowserConnectOrKarmaServerExit;
+      } catch (error) {
+        const failureMessage = `Failed to start and connect to karma server: ${error.message || error}`;
+        this.logger.error(failureMessage);
+        throw new Error(failureMessage);
+      }
+
+      if (!this.karmaServer.isRunning()) {
+        const failureMessage = `Failed to load tests - Failed restarting Karma server`;
+        throw new Error(failureMessage);
+      }
+
+      const karmaPort = this.karmaServer.getServerPort() as number;
+      const testSuiteInfo = await this.testRunner.loadTests(pathFinder, karmaPort);
 
       if (testSuiteInfo.children.length === 0) {
         this.logger.info("Test loading - No tests found");
@@ -32,24 +49,27 @@ export class KarmaTestExplorer {
 
       return testSuiteInfo;
     } catch (error) {
-      throw new Error(`Test loading failed: ${error.message || error}`)
+      const failureMessage = `Test loading failed: ${error.message || error}`;
+      throw new Error(failureMessage);
     }
   }
 
   public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
-    await this.testRunner.runTests(tests, config, isComponentRun);
+    if (!this.karmaServer.isRunning()) {
+      const failureMessage = `Failed to run tests - Karma server is not running`;
+      throw new Error(failureMessage);
+    }
+
+    const karmaPort = this.karmaServer.getServerPort() as number;
+    await this.testRunner.runTests(tests, isComponentRun, karmaPort);
     this.logger.status(this.karmaEventListener.testStatus as TestResult);
   }
 
   public async stopCurrentRun(): Promise<void> {
-    // if (this.testRunner.isServerRunning()) {
     await this.karmaServer.stop();
-    // }
   }
 
   public dispose(): void {
-    // if (this.testRunner.isServerRunning()) {
     this.karmaServer.stop();
-    // }
   }
 }

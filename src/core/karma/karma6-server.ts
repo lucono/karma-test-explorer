@@ -14,6 +14,7 @@ export class Karma6Server {
 
   public async start(testExplorerConfig: TestExplorerConfiguration): Promise<void> {
     await this.stop();
+    this.logger.info(`Starting Karma server`);
 
     try {
       const karmaConfig = await config.parseConfig(
@@ -55,6 +56,8 @@ export class Karma6Server {
         }
         this.clearCurrentServer();
       });
+    } else {
+      this.logger.info(`Karma Server is not running`);
     }
     this.karmaEventListener.stopListeningToKarma();
   }
