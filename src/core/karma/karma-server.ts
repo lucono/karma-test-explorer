@@ -1,5 +1,5 @@
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
-import { KarmaEventListener } from "../integration/karma-event-listener";
+// import { KarmaEventListener } from "../integration/karma-event-listener";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
@@ -7,25 +7,30 @@ import * as portFinder from "portfinder";
 import {stopper as karmaStopper } from "karma";
 
 export class KarmaServer {
-  // private isServerRunning: boolean;
   private serverProcess?: CommandlineProcessHandler;
   private serverPort?: number;
 
   public constructor(
-    private readonly karmaEventListener: KarmaEventListener,
-    private readonly logger: Logger) { }
+    // private readonly karmaEventListener: KarmaEventListener,
+    private readonly logger: Logger,
+    private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
+    private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }
 
-  public async start(config: TestExplorerConfiguration): Promise<void> {
-    // const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
-    const availablePort = await portFinder.getPortPromise({ port: config.karmaPort });
-
-    this.logger.info(`Available port lookup result: ${config.karmaPort} --> ${availablePort}`);
+  public async start(
+    config: TestExplorerConfiguration): Promise<void> 
+  {
+    if (this.isRunning()) {
+      this.logger.info(`Request to start karma server - server is already or still running`);
+      return this.serverProcess?.futureExit();
+    }
+    const karmaPort = await portFinder.getPortPromise({ port: config.karmaPort });
+    this.logger.info(`Available port lookup result: ${config.karmaPort} --> ${karmaPort}`);
 
     const testExplorerEnvironment = {
       ...process.env,
       ...config.env,
       userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${availablePort}`,
+      karmaPort: `${karmaPort}`,
       defaultSocketPort: `${config.defaultSocketConnectionPort}`
     };
 
@@ -47,22 +52,68 @@ export class KarmaServer {
       ...processArguments,
       "start",
       config.baseKarmaConfFilePath,
-      `--port=${availablePort}`
+      `--port=${karmaPort}`
     ];
 
     const karmaServerProcess = new CommandlineProcessHandler(
-      this.karmaEventListener, 
       this.logger, 
       command, 
       processArguments, 
-      options);
+      options,
+      (data) => this.serverProcessLogger(data, karmaPort),
+      (data) => this.serverProcessErrorLogger(data, karmaPort));
 
-    this.setServerInfo(karmaServerProcess, availablePort);
+    this.setServerInfo(karmaServerProcess, karmaPort);
 
     const futureServerExit = karmaServerProcess.futureExit();
-    futureServerExit.then(() => this.clearServerInfo());
-
+    futureServerExit.then(() => this.clearServerInfo(karmaServerProcess));
     return futureServerExit;
+  }
+
+  public async restart(config: TestExplorerConfiguration): Promise<void> {
+    if (this.isRunning()) {
+      await this.kill();
+    }
+    return this.start(config);
+  }
+
+  public async stop(): Promise<void> {
+    if (!this.isRunning()) {
+      this.logger.info(`Request to stop karma server - server is not running`);
+      return;
+    }
+    const serverProcess = this.serverProcess;
+    const serverPort = this.serverPort;
+
+    this.logger.info(`Stopping Karma server on port ${serverPort}`);
+    this.clearServerInfo(serverProcess);
+
+    return new Promise<void>((resolve) => {
+      karmaStopper.stop({ port: this.serverPort }, async (exitCode) => {
+        await serverProcess?.futureExit();
+        this.logger.info(`Karma server on port ${serverPort} stopped with exit code: ${exitCode ?? 'unknown'}`);
+        resolve();
+      });
+    });
+  }
+
+  public async kill(): Promise<void> {
+    if (!this.isRunning()) {
+      this.logger.info(`Request to kill karma server - server is not running`);
+      return;
+    }
+    const serverProcess = this.serverProcess;
+    const serverPort = this.serverPort;
+
+    this.logger.info(`Killing Karma server on port ${serverPort}`);
+    this.clearServerInfo(serverProcess);
+
+    return new Promise<void>(async (resolve) => {
+      await serverProcess?.kill();
+      await serverProcess?.futureExit();
+      this.logger.info(`Karma server on port ${serverPort} killed`);
+      resolve();
+    });
   }
 
   private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number) {
@@ -70,9 +121,11 @@ export class KarmaServer {
     this.serverPort = serverPort;
   }
 
-  private clearServerInfo() {
-    this.serverProcess = undefined;
-    this.serverPort = undefined;
+  private clearServerInfo(serverProcess?: CommandlineProcessHandler) {
+    if (this.serverProcess && this.serverProcess === serverProcess) {
+      this.serverProcess = undefined;
+      this.serverPort = undefined;
+    }
   }
 
   public getServerPort(): number | undefined {
@@ -82,48 +135,4 @@ export class KarmaServer {
   public isRunning(): boolean {
     return this.serverProcess !== undefined;
   }
-
-  public async stop(): Promise<void> {
-    if (!this.isRunning()) {
-      this.logger.info(`Karma Server is not running`);
-      return;
-    }
-    this.logger.info(`Stopping Karma server`);
-    
-    return new Promise<void>((resolve) => {
-      this.karmaEventListener.stopListeningToKarma();
-      karmaStopper.stop({ port: this.serverPort }, (exitCode) => {
-        if (exitCode === 0) {
-          this.logger.info(`Server stopped with exit code: ${exitCode}`);
-        }
-        this.clearServerInfo();
-        resolve();
-      });
-    });
-  }
-
-  // public async stop(): Promise<void> {
-  //   if (!this.isRunning()) {
-  //     this.logger.info(`Request to stop karma server - server is not running`);
-  //     return;
-  //   }
-  //   this.logger.info(`Stopping karma server`);
-  //   return this.serverProcess?.kill();
-  // }
-
-  // public async stop(): Promise<void> {
-  //   this.logger.info(`Stopping Karma server`);
-    
-  //   // karmaStopper.stop({ port: this.karmaPort }, (exitCode: number) => {
-  //   //   this.logger.info(`Karma exited succesfully`);
-  //   // });
-
-  //   if (this.isServerRunning()) {
-  //     await this.karmaServerProcessHandler.kill();
-  //     this.logger.info(`Stopped Karma server`);
-  //   } else {
-  //     this.logger.info(`Karma server is not running`);
-  //   }
-  //   this.karmaEventListener.stopListeningToKarma();
-  // }
 }

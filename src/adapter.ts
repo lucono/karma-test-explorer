@@ -65,10 +65,23 @@ export class Adapter implements TestAdapter {
 
     const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
     const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
-    const karmaServer = new KarmaServer(karmaEventListener, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
+    const karmaServerProcessLogger = (data: string, serverPort: number) => {
+      const regex = new RegExp(/\(.*?)\m/, "g");
+      const { isTestRunning } = karmaEventListener;
+
+      if (isTestRunning) {
+        let log = data.toString().replace(regex, "");
+        if (log.startsWith("e ")) {
+          log = `HeadlessChrom${log}`;
+        }
+        this.logger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+      }
+    };
+
+    const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
     this.debugger = new Debugger(this.logger);
   }

@@ -1,19 +1,22 @@
-import { KarmaEventListener } from "./karma-event-listener";
+// import { KarmaEventListener } from "./karma-event-listener";
 import { ChildProcess, SpawnOptions } from "child_process";
 import { Logger } from "../helpers/logger";
 import * as spawn from "cross-spawn";
 import * as treeKill from "tree-kill";
+
 export class CommandlineProcessHandler {
   private process: ChildProcess | undefined;
   private futureProcessExit: Promise<void>;
   private hasExited: boolean;
 
   public constructor(
-    private readonly karmaEventListener: KarmaEventListener,
+    // private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger,
     command: string,
     processArguments: string[],
-    runOptions?: SpawnOptions)
+    runOptions?: SpawnOptions,
+    private readonly processLogger: (data: string) => void = logger.info,
+    private readonly processErrorLogger: (data: string) => void = logger.error)
   {
     this.hasExited = false;
 
@@ -86,20 +89,8 @@ export class CommandlineProcessHandler {
   }
 
   private setupProcessOutputs(process: ChildProcess) {
-    process.stdout?.on("data", (data: any) => {
-      const regex = new RegExp(/\(.*?)\m/, "g");
-      const { isTestRunning } = this.karmaEventListener;
-
-      if (isTestRunning) {
-        let log = data.toString().replace(regex, "");
-        if (log.startsWith("e ")) {
-          log = "HeadlessChrom" + log;
-        }
-        this.logger.info(`${log}`, { divider: "Karma Logs" });
-      }
-    });
-
-    process.stderr?.on(`data`, (data: any) => this.logger.error(`stderr: ${data}`));
+    process.stdout?.on("data", (data: any) => this.processLogger(`${data}`));
+    process.stderr?.on(`data`, (data: any) => this.processErrorLogger(`stderr: ${data}`));
     process.on(`error`, (err: any) => this.logger.error(`error from child process: ${err}`));
 
     // Prevent karma server from being an orphan process.

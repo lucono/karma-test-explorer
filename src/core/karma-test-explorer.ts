@@ -20,12 +20,8 @@ export class KarmaTestExplorer {
       if (this.karmaEventListener.isServerConnected()) {
         this.karmaEventListener.stopListeningToKarma();
       }
-      
-      if (this.karmaServer.isRunning()) {
-        await this.karmaServer.stop();
-      }
 
-      const futureKarmaServerExit = this.karmaServer.start(config);
+      const futureKarmaServerExit = this.karmaServer.restart(config);
       const futureBrowserConnect = this.karmaEventListener.listenTillBrowserConnected(config.defaultSocketConnectionPort);
       const futureBrowserConnectOrKarmaServerExit = Promise.race([futureBrowserConnect, futureKarmaServerExit]);
 
