@@ -1,12 +1,11 @@
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
-// import { KarmaEventListener } from "../integration/karma-event-listener";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
 import { readFile } from "fs";
 import {stopper as karmaStopper } from "karma";
 import { parse as parseEnvironmentFile } from "dotenv";
-import * as dotenvExpand from "dotenv-expand";
+// import * as dotenvExpand from "dotenv-expand";
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -33,8 +32,8 @@ export class KarmaServer {
     if (config.envFile) {
       this.logger.info(`Reading environment from file: ${config.envFile}`);
 
-      const envFileContent = await new Promise<Buffer>((resolve, reject) => {
-        readFile(config.envFile!, (err, data) => {
+      const envFileContent = await new Promise<string>((resolve, reject) => {
+        readFile(config.envFile!, "utf-8", (err, data) => {
           if (err) {
             this.logger.error(`Failed to read configured environment file: ${err}`);
             reject(err);
@@ -45,17 +44,17 @@ export class KarmaServer {
       });
 
       if (envFileContent) {
-        const unexpandedEnvironment = parseEnvironmentFile(envFileContent);
-        envFileEnvironment = dotenvExpand({ parsed: unexpandedEnvironment }).parsed ?? {};
+        envFileEnvironment = parseEnvironmentFile(envFileContent);
+        // envFileEnvironment = dotenvExpand({ parsed: unexpandedEnvironment }).parsed ?? {};
         const entryCount = Object.keys(envFileEnvironment).length;
         this.logger.info(`Processed ${entryCount} entries from environment file: ${config.envFile}`);
       }
     }
 
     const testExplorerEnvironment = {
-      ...process.env,
       ...envFileEnvironment,
       ...config.env,
+      ...process.env,
       ...extraEnv,
       userKarmaConfigPath: config.userKarmaConfFilePath,
       karmaPort: `${karmaPort}`
