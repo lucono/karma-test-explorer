@@ -116,7 +116,7 @@ export class Adapter implements TestAdapter {
         type: "finished",
         errorMessage: loadError
       });
-    } else if (loadedTests.children?.length === 0) {
+    } else if (loadedTests?.children?.length === 0) {
       this.testsEmitter.fire({
         type: "finished"
       });
@@ -223,7 +223,7 @@ export class Adapter implements TestAdapter {
     this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
-      (result, setting) => result ?? configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
+      (result, setting) => result || configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
       false
     );
 
