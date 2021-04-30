@@ -3,18 +3,17 @@ import { CommandlineProcessHandler } from "../integration/commandline-process-ha
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
-import * as portFinder from "portfinder";
 import {stopper as karmaStopper } from "karma";
 
 
-export interface KarmaServerStartupResult {
-  serverKarmaPort: number,
-  serverSocketPort: number
-}
+// export interface KarmaServerStartupResult {
+//   serverKarmaPort: number,
+//   serverSocketPort: number
+// }
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
-  private serverStartupResult?: KarmaServerStartupResult;
+  private serverPort?: number;
 
   public constructor(
     // private readonly karmaEventListener: KarmaEventListener,
@@ -22,32 +21,24 @@ export class KarmaServer {
     private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
     private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }
 
-  public async start(config: TestExplorerConfiguration): Promise<KarmaServerStartupResult> 
+  public async start(
+    config: TestExplorerConfiguration, 
+    karmaPort: number, 
+    extraEnv: {[key: string]: string} = {}): Promise<void> 
   {
     if (this.isRunning()) {
       this.logger.info(`Request to start karma server - server is already or still running`);
-      return { ...this.serverStartupResult! };
+      return;
     }
     this.logger.info(`Starting karma server`);
-
-    const serverKarmaPort = await portFinder.getPortPromise({ port: config.karmaPort });
-    const minSocketConnectionPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
-
-    const serverSocketPort = await new Promise<number>(resolve => {
-      portFinder.getPort(
-        { port: minSocketConnectionPort }, 
-        (err: Error, port: number) => resolve(port));
-    });
-
-    this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
-    this.logger.info(`Using available socket port: ${config.defaultSocketConnectionPort} --> ${serverSocketPort}`);
 
     const testExplorerEnvironment = {
       ...process.env,
       ...config.env,
+      ...extraEnv,
       userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${serverKarmaPort}`,
-      karmaSocketPort: `${serverSocketPort}`
+      karmaPort: `${karmaPort}`
+      // karmaSocketPort: `${serverSocketPort}`
     };
 
     const options = {
@@ -68,7 +59,7 @@ export class KarmaServer {
       ...processArguments,
       "start",
       config.baseKarmaConfFilePath,
-      `--port=${serverKarmaPort}`
+      `--port=${karmaPort}`
     ];
 
     const karmaServerProcess = new CommandlineProcessHandler(
@@ -76,26 +67,28 @@ export class KarmaServer {
       command, 
       processArguments, 
       options,
-      (data) => this.serverProcessLogger(data, serverKarmaPort),
-      (data) => this.serverProcessErrorLogger(data, serverKarmaPort));
+      (data) => this.serverProcessLogger(data, karmaPort),
+      (data) => this.serverProcessErrorLogger(data, karmaPort));
 
-    const serverStartupResult: KarmaServerStartupResult = { serverKarmaPort, serverSocketPort };
-    this.setServerInfo(karmaServerProcess, serverStartupResult);
+    // const serverStartupResult: KarmaServerStartupResult = { serverKarmaPort, serverSocketPort };
+    this.setServerInfo(karmaServerProcess, karmaPort);
     karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
-
-    return { ...serverStartupResult } as KarmaServerStartupResult;
   }
 
-  public async restart(config: TestExplorerConfiguration): Promise<KarmaServerStartupResult> {
-    this.logger.info(`Restarting karma server`);
+  // public async restart(
+  //   config: TestExplorerConfiguration, 
+  //   karmaPort: number, 
+  //   extraEnv: {[key: string]: string} = {}): Promise<number>
+  // { 
+  //   this.logger.info(`Restarting karma server`);
 
-    if (this.isRunning()) {
-      await this.kill();
-    } else {
-      this.logger.info(`Request to restart karma server - server is not already running`);
-    }
-    return this.start(config);
-  }
+  //   if (this.isRunning()) {
+  //     await this.kill();
+  //   } else {
+  //     this.logger.info(`Request to restart karma server - server is not already running`);
+  //   }
+  //   return this.start(config, karmaPort, extraEnv);
+  // }
 
   public async stop(): Promise<void> {
     if (!this.isRunning()) {
@@ -103,7 +96,7 @@ export class KarmaServer {
       return;
     }
     const serverProcess = this.serverProcess!;
-    const serverPort = this.serverStartupResult!.serverKarmaPort;
+    const serverPort = this.serverPort!;
 
     this.logger.info(`Stopping Karma server on port ${serverPort}`);
     this.clearServerInfo(serverProcess);
@@ -123,7 +116,7 @@ export class KarmaServer {
       return;
     }
     const serverProcess = this.serverProcess!;
-    const serverPort = this.serverStartupResult!.serverKarmaPort;
+    const serverPort = this.serverPort!;
 
     this.logger.info(`Killing Karma server on port ${serverPort}`);
     this.clearServerInfo(serverProcess);
@@ -136,25 +129,25 @@ export class KarmaServer {
     });
   }
 
-  private setServerInfo(serverProcess: CommandlineProcessHandler, serverStartupResult: KarmaServerStartupResult) {
+  private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number) {
     this.serverProcess = serverProcess;
-    this.serverStartupResult = serverStartupResult;
+    this.serverPort = serverPort;
   }
 
   private clearServerInfo(serverProcess?: CommandlineProcessHandler) {
     if (this.serverProcess && this.serverProcess === serverProcess) {
       this.serverProcess = undefined;
-      this.serverStartupResult = undefined;
+      this.serverPort = undefined;
     }
   }
 
   public getServerPort(): number | undefined {
-    return this.serverStartupResult?.serverKarmaPort;
+    return this.serverPort;
   }
 
-  public getSocketPort(): number | undefined {
-    return this.serverStartupResult?.serverSocketPort;
-  }
+  // public getSocketPort(): number | undefined {
+  //   return this.serverPort?.serverSocketPort;
+  // }
 
   public isRunning(): boolean {
     return this.serverProcess !== undefined;

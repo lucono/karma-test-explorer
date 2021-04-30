@@ -6,6 +6,7 @@ import { TestExplorerConfiguration } from "../model/test-explorer-configuration"
 import { KarmaServer } from "./karma/karma-server";
 import { PathFinder } from './helpers/path-finder';
 import { TestResult } from "../model/enums/test-status.enum";
+import { getPort as getAvailablePort, getPortPromise as getAvailablePortPromise } from "portfinder";
 
 export class KarmaTestExplorer {
   public constructor(
@@ -17,27 +18,32 @@ export class KarmaTestExplorer {
 
   public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
-      if (this.karmaEventListener.isConnected()) {
-        await this.karmaEventListener.disconnect();
+      this.karmaEventListener.stopListening();
+
+      if (this.karmaServer.isRunning()) {
+        await this.karmaServer.kill();
       }
+      
+      const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
+      const minKarmerListenerSocketPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
 
-      const karmaServerStartupResult = await this.karmaServer.restart(config);
-      const karmaSocketPort = karmaServerStartupResult.serverSocketPort;
+      const karmerListenerSocketPort = await new Promise<number>(resolve => {
+        getAvailablePort(
+          { port: minKarmerListenerSocketPort }, 
+          (err: Error, port: number) => resolve(port));
+      });
 
-      const futureKarmaServerExit = this.karmaServer.futureServerExit();
-      const futureBrowserConnect = this.karmaEventListener.connect(karmaSocketPort);
-      const futureBrowserConnectOrKarmaServerExit = Promise.race([futureBrowserConnect, futureKarmaServerExit]);
+      this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
+      this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
+
+      this.karmaServer.start(config, serverKarmaPort, {
+        "karmaSocketPort": `${karmerListenerSocketPort}`
+      });
 
       try {
-        await futureBrowserConnectOrKarmaServerExit;
+        await this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort);
       } catch (error) {
-        const failureMessage = `Failed to start and connect to karma server: ${error.message || error}`;
-        this.logger.error(failureMessage);
-        throw new Error(failureMessage);
-      }
-
-      if (!this.karmaEventListener.isConnected()) {
-        const failureMessage = `Failed to load tests - Server failed to connect`;
+        const failureMessage = `Failed to get connection from karma server: ${error.message || error}`;
         this.logger.error(failureMessage);
         throw new Error(failureMessage);
       }

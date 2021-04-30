@@ -9,10 +9,11 @@ import { TestResult } from "../../model/enums/test-status.enum";
 import { PathFinder } from "../helpers/path-finder";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
-import { Server as SocketIOServer, ServerOptions} from "socket.io"
+import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import * as express from "express"
 
 const DEFAULT_SOCKET_PORT = 9999;
+const KARMA_CONNECT_TIMEOUT = 300000;
 
 export class KarmaEventListener {
   public isTestRunning: boolean = false;
@@ -22,37 +23,48 @@ export class KarmaEventListener {
   public isComponentRun: boolean = false;
   private savedSpecs: SpecCompleteResponse[] = [];
   private server: HttpServer | undefined;
-  // private serverDisconnectRequested: boolean = false;
+  private readonly sockets: Set<Socket> = new Set();
 
   public constructor(
     private readonly eventEmitter: EventEmitter, 
     private readonly logger: Logger
   ) {}
 
-  public async connect(socketPort?: number): Promise<void> {
-    this.logger.info(`Connecting karma event listener - specified socket port is '${socketPort}'`);
+  public listenForNewConnection(socketPort?: number): Promise<void> {
+    this.stopListening();
 
-    const app = express();
-    const server = createServer(app);
+    return new Promise<void>((resolve, reject) => {
+      this.logger.info(`Karma Event Listener: Listen for new connection requrested with port '${socketPort}'`);
+  
+      const app = express();
+      const server = createServer(app);
+      this.server = server;
+  
+      const socketServerOptions = {
+        // forceNew: true,
+        pingInterval: 24 * 60 * 60 * 1000,
+        pingTimeout: 24 * 60 * 60 * 1000
+      } as ServerOptions;
+  
+      const io = new SocketIOServer(server, socketServerOptions);
+      const port = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
+  
+      if (port !== socketPort) {
+        this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${port}' instead`);
+      }
+      
+      this.logger.info(`Waiting to connect to Karma...`);
+      let connectTimeoutId: ReturnType<typeof setTimeout>;
 
-    const socketServerOptions = {
-      // forceNew: true,
-      pingInterval: 24 * 60 * 60 * 1000,
-      pingTimeout: 24 * 60 * 60 * 1000
-    } as ServerOptions;
-
-    const io = new SocketIOServer(server, socketServerOptions);
-    const port = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
-
-    if (port !== socketPort) {
-      this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${port}' instead`);
-    }
-
-    return new Promise<void>(resolve => {
       io.on("connection", (socket) => {
+        this.logger.info(`Karma Event Listener: New socket connection from Karma`);
+        this.sockets.add(socket);
+
         socket.on(KarmaEventName.BrowserConnected, () => {
+          if (connectTimeoutId !== undefined) {
+            clearTimeout(connectTimeoutId);
+          }
           this.logger.info(`Karma Event Listener: Browser connected`);
-          this.setServerInfo(server);
           resolve();
         });
 
@@ -74,57 +86,24 @@ export class KarmaEventListener {
         });
 
         socket.on("disconnect", (reason: string) => {
-          this.clearServerInfo(server);
-          // const isKarmaBeingClosedByChrome = (reason === "transport close" && !this.serverDisconnectRequested);
-
-          // // workaround: if the connection is closed by chrome, we just reload the test enviroment
-          // // TODO: fix chrome closing all socket connections.
-          // // FIXME: This should be reloading just the karma tests rather than all types of tests in test explorer
-          // if (isKarmaBeingClosedByChrome) {
-          //   commands.executeCommand("test-explorer.reload");
-          // }
+          this.logger.info(`Karma Event Listener: Karma disconnected from socket with reason: ${reason}`);
         });
       });
 
       server!.listen(port, () => {
-        this.logger.info("Listening to KarmaReporter events on port " + port);
+        this.logger.info(`Listening to KarmaReporter events on port ${port}`);
       });
+
+      connectTimeoutId = setTimeout(() => {
+        this.logger.error(`Timeout waiting on port ${port} to connect to Karma`);
+        reject(`Timeout waiting to connect to Karma`);
+      }, KARMA_CONNECT_TIMEOUT);
     });
   }
 
   public getLoadedTests(pathFinder: PathFinder): TestSuiteInfo {
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder);
     return specToTestSuiteMapper.map(this.savedSpecs);
-  }
-
-  public async disconnect(): Promise<void> {
-    this.logger.info(`Disconnecting from karma server`);
-    // this.serverConnected = false; // FIXME: set to false on actual disconnection eent
-    // this.serverDisconnectRequested = true;
-
-    if (!this.isConnected()) {
-      return;
-    }
-    const server = this.server!;
-
-    return new Promise<void>((resolve, reject) => {
-      server.close(error => error === undefined ? resolve() : reject(error));
-    });
-  }
-
-  public isConnected(): boolean {
-    return this.server !== undefined;
-  }
-
-  private setServerInfo(server: HttpServer) {
-    this.server = server;
-    // this.serverDisconnectRequested = false;
-  }
-
-  private clearServerInfo(server: HttpServer) {
-    if (this.server && this.server === server) {
-      this.server = undefined;
-    }
   }
 
   private onSpecComplete(event: KarmaEvent) {
@@ -146,4 +125,36 @@ export class KarmaEventListener {
       }
     }
   }
+
+  public stopListening(): void {
+    try {
+      this.sockets.forEach(socket => {
+        socket.removeAllListeners();
+        socket.disconnect(true);
+      });
+      
+      this.sockets.clear();
+      this.server?.close();
+      this.server = undefined;
+      this.savedSpecs = [];
+
+    } catch (error) {
+      this.logger.error(`${error}`);
+    }
+  }
+
+  // private setServerInfo(server: HttpServer) {
+  //   this.server = server;
+  //   // this.serverDisconnectRequested = false;
+  // }
+
+  // private clearServerInfo(server: HttpServer) {
+  //   if (this.server && this.server === server) {
+  //     this.server = undefined;
+  //   }
+  // }
+
+  // public isConnected(): boolean {
+  //   return this.server !== undefined;
+  // }
 }
