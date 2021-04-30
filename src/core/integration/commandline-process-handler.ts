@@ -6,6 +6,7 @@ import * as spawn from "cross-spawn";
 import * as psTree from "ps-tree";
 
 export class CommandlineProcessHandler {
+  private readonly uid: string;
   private process: ChildProcess | undefined;
   private futureProcessExit: Promise<void>;
   private hasExited: boolean;
@@ -19,17 +20,25 @@ export class CommandlineProcessHandler {
     private readonly processLogger: (data: string) => void = logger.info,
     private readonly processErrorLogger: (data: string) => void = logger.error)
   {
+    this.uid = Math.random().toString(36).slice(2);
     this.hasExited = false;
 
     this.futureProcessExit = new Promise(async resolve => {
       this.logger.debug(
-        `Executing command: '${command}'
+        `Process ${this.uid}:
+        Executing command: '${command}'
         with args: ${JSON.stringify(processArguments)}`
         // and options: ${JSON.stringify(runOptions)}`
       );
 
       const process = spawn(command, processArguments, runOptions);
       const processPid = process.pid;
+
+      this.logger.debug(
+        `Process ${this.uid}:
+        PID is ${processPid} for command: '${command}'
+        with args: ${JSON.stringify(processArguments)}`
+      );
 
       this.process = process;
       this.setupProcessOutputs(process);
@@ -38,9 +47,10 @@ export class CommandlineProcessHandler {
         "exit", (code, signal) => {
         const processCommand = `${command} ${processArguments.join(" ")}`;
         this.logger.debug(
-          `Process PID ${processPid} exited ` +
-          `with code '${code}' and signal '${signal}' ` +
-          `for command: ${processCommand}`);
+          `Process ${this.uid}:
+          PID ${processPid} exited
+          with code '${code}' and signal '${signal}'
+          for command: ${processCommand}`);
 
         this.updateProcessEnded();
         resolve();
@@ -62,12 +72,12 @@ export class CommandlineProcessHandler {
 
   public async kill(): Promise<void> {
     if (!this.isProcessRunning()) {
-      this.logger.info(`Request to kill process - Process already exited`);
+      this.logger.info(`Process ${this.uid}: Request to kill process - Process already exited`);
       return;
     }
     
     const runningProcess = this.process as ChildProcess;
-    this.logger.info(`Killing process tree of PID: ${runningProcess.pid}`);
+    this.logger.info(`Process ${this.uid}: Killing process tree of PID: ${runningProcess.pid}`);
 
     return new Promise<void>((resolve, reject) => {
       const processPid = runningProcess.pid;
@@ -79,11 +89,11 @@ export class CommandlineProcessHandler {
 
       psTree(processPid, (error, childProcesses) => {
         if (error) {
-          this.logger.error(`Failed to kill process tree for PID '${processPid}': ${error}`);
+          this.logger.error(`Process ${this.uid}: Failed to kill process tree for PID '${processPid}': ${error}`);
           reject(error);
         } else {
           childProcesses.forEach(childProcess => process.kill(Number(childProcess.PID), 'SIGKILL'));
-          this.logger.info(`Successfully killed process tree for PID '${processPid}'`);
+          this.logger.info(`Process ${this.uid}: Successfully killed process tree for PID '${processPid}'`);
           resolve();
         }
       });
@@ -103,7 +113,7 @@ export class CommandlineProcessHandler {
   private setupProcessOutputs(process: ChildProcess) {
     process.stdout?.on("data", (data: any) => this.processLogger(`${data}`));
     process.stderr?.on(`data`, (data: any) => this.processErrorLogger(`stderr: ${data}`));
-    process.on(`error`, (err: any) => this.logger.error(`error from child process: ${err}`));
+    process.on(`error`, (err: any) => this.logger.error(`Process ${this.uid}: Error from child process: ${err}`));
 
     // Prevent karma server from being an orphan process.
     // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.

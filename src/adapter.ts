@@ -91,11 +91,11 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
-    this.logger.debug(`Test loading started`);
     if (this.isTestProcessRunning) {
-      this.logger.debug(`Test load aborted - Another test operation is currently running`);
+      this.logger.debug(`New test load request ignored - Another test operation is currently running`);
       return;
     }
+    this.logger.debug(`Test loading started`);
     this.isTestProcessRunning = true;
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
@@ -144,11 +144,11 @@ export class Adapter implements TestAdapter {
   }
 
   public async run(tests: string[]): Promise<void> {
-    this.logger.debug(`Test run started`);
     if (this.isTestProcessRunning) {
-      this.logger.debug(`Aborting test run - Another test operation is still running`);
+      this.logger.debug(`New test run request ignored - Another test operation is still running`);
       return;
     }
+    this.logger.debug(`Test run started`);
     this.isTestProcessRunning = true;
     this.logger.info(`Running tests ${JSON.stringify(tests)}`);
 
@@ -259,6 +259,7 @@ export class Adapter implements TestAdapter {
       : this.config.reloadWatchedFiles;
 
     if (reloadTriggerFiles.includes(savedFilePath)) {
+      this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
       this.reload();
       return;
     }

@@ -95,25 +95,9 @@ export class KarmaServer {
       (data) => this.serverProcessLogger(data, karmaPort),
       (data) => this.serverProcessErrorLogger(data, karmaPort));
 
-    // const serverStartupResult: KarmaServerStartupResult = { serverKarmaPort, serverSocketPort };
     this.setServerInfo(karmaServerProcess, karmaPort);
     karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
   }
-
-  // public async restart(
-  //   config: TestExplorerConfiguration, 
-  //   karmaPort: number, 
-  //   extraEnv: {[key: string]: string} = {}): Promise<number>
-  // { 
-  //   this.logger.info(`Restarting karma server`);
-
-  //   if (this.isRunning()) {
-  //     await this.kill();
-  //   } else {
-  //     this.logger.info(`Request to restart karma server - server is not already running`);
-  //   }
-  //   return this.start(config, karmaPort, extraEnv);
-  // }
 
   public async stop(): Promise<void> {
     if (!this.isRunning()) {
@@ -169,10 +153,6 @@ export class KarmaServer {
   public getServerPort(): number | undefined {
     return this.serverPort;
   }
-
-  // public getSocketPort(): number | undefined {
-  //   return this.serverPort?.serverSocketPort;
-  // }
 
   public isRunning(): boolean {
     return this.serverProcess !== undefined;
