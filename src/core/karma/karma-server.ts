@@ -3,9 +3,10 @@ import { CommandlineProcessHandler } from "../integration/commandline-process-ha
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
+import { readFile } from "fs";
 import {stopper as karmaStopper } from "karma";
 import { parse as parseEnvironmentFile } from "dotenv";
-import { readFile } from "fs";
+import * as dotenvExpand from "dotenv-expand";
 
 
 // export interface KarmaServerStartupResult {
@@ -51,9 +52,10 @@ export class KarmaServer {
       });
 
       if (envFileContent) {
-        envFileEnvironment = parseEnvironmentFile(envFileContent);
+        const unexpandedEnvironment = parseEnvironmentFile(envFileContent);
+        envFileEnvironment = dotenvExpand({ parsed: unexpandedEnvironment }).parsed ?? {};
         const entryCount = Object.keys(envFileEnvironment).length;
-        this.logger.info(`Fetched ${entryCount} environment entries from file: ${config.envFile}`);
+        this.logger.info(`Processed ${entryCount} entries from environment file: ${config.envFile}`);
       }
     }
 

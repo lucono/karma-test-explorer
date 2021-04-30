@@ -34,7 +34,7 @@ export class KarmaEventListener {
     this.stopListening();
 
     return new Promise<void>((resolve, reject) => {
-      this.logger.info(`Karma Event Listener: Listen for new connection requrested with port '${socketPort}'`);
+      this.logger.info(`Karma Event Listener: Listen for new connection requested with port '${socketPort}'`);
   
       const app = express();
       const server = createServer(app);
