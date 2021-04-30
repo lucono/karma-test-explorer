@@ -233,18 +233,9 @@ export class Adapter implements TestAdapter {
   private handleDocumentSaved = (document:vscode.TextDocument) => {
     const isConfigLoadCompleted = !!this.config;
     const savedFilePath = document.uri.fsPath;
-    const isFileInWorkspace = savedFilePath.startsWith(this.workspace.uri.fsPath);
+    // const isFileInWorkspace = savedFilePath.startsWith(this.workspace.uri.fsPath);
 
-    if (!isConfigLoadCompleted || !isFileInWorkspace) {
-      return;
-    }
-
-    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
-      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
-      : this.config.reloadWatchedFiles;
-
-    if (reloadTriggerFiles.includes(savedFilePath)) {
-      this.reload();
+    if (!isConfigLoadCompleted) {
       return;
     }
 
@@ -255,6 +246,15 @@ export class Adapter implements TestAdapter {
         this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
         this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       }
+    }
+
+    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
+      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
+      : this.config.reloadWatchedFiles;
+
+    if (reloadTriggerFiles.includes(savedFilePath)) {
+      this.reload();
+      return;
     }
 
   }

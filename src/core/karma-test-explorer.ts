@@ -37,7 +37,7 @@ export class KarmaTestExplorer {
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
       this.karmaServer.start(config, serverKarmaPort, {
-        "karmaSocketPort": `${karmerListenerSocketPort}`
+        karmaSocketPort: `${karmerListenerSocketPort}`
       });
 
       try {
