@@ -39,6 +39,7 @@
 	},
 	"dependencies": {
 		"cross-spawn": "^7.0.0",
+		"dotenv": "^8.2.0",
 		"escape-string-regexp": "^2.0.0",
 		"express": "^4.17.1",
 		"glob": "^7.1.4",
@@ -60,6 +61,7 @@
 	"devDependencies": {
 		"@types/cross-spawn": "^6.0.2",
 		"@types/decamelize": "^3.0.3",
+		"@types/dotenv": "8.2.0",
 		"@types/express": "~4.17.1",
 		"@types/glob": "^7.1.1",
 		"@types/jest": "^24.0.18",
@@ -180,10 +182,16 @@
 					}
 				},
 				"karmaTestExplorer.env": {
-					"description": "Environment variables to be set when running the tests",
+					"description": "Additional environment variables to be set when running the tests. These take precedence over those from the 'envFile' setting",
 					"type": "object",
 					"scope": "resource",
 					"default": {}
+				},
+				"karmaTestExplorer.envFile": {
+					"description": "Path to environment file containing environment variables to be set when running the tests",
+					"type": "string",
+					"scope": "resource",
+					"default": ""
 				},
 				"karmaTestExplorer.logpanel": {
 					"description": "Enables logging to the output channel",

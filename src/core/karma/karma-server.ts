@@ -4,6 +4,8 @@ import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
 import {stopper as karmaStopper } from "karma";
+import { parse as parseEnvironmentFile } from "dotenv";
+import { readFile } from "fs";
 
 
 // export interface KarmaServerStartupResult {
@@ -32,13 +34,36 @@ export class KarmaServer {
     }
     this.logger.info(`Starting karma server`);
 
+    let envFileEnvironment = {} as { [key: string]: string};
+
+    if (config.envFile) {
+      this.logger.info(`Reading environment from file: ${config.envFile}`);
+
+      const envFileContent = await new Promise<Buffer>((resolve, reject) => {
+        readFile(config.envFile, (err, data) => {
+          if (err) {
+            this.logger.error(`Failed to read configured environment file: ${err}`);
+            reject(err);
+            return;
+          }
+          resolve(data);
+        });
+      });
+
+      if (envFileContent) {
+        envFileEnvironment = parseEnvironmentFile(envFileContent);
+        const entryCount = Object.keys(envFileEnvironment).length;
+        this.logger.info(`Fetched ${entryCount} environment entries from file: ${config.envFile}`);
+      }
+    }
+
     const testExplorerEnvironment = {
       ...process.env,
+      ...envFileEnvironment,
       ...config.env,
       ...extraEnv,
       userKarmaConfigPath: config.userKarmaConfFilePath,
       karmaPort: `${karmaPort}`
-      // karmaSocketPort: `${serverSocketPort}`
     };
 
     const options = {

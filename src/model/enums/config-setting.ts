@@ -10,6 +10,7 @@ export enum ConfigSetting {
     DefaultSocketConnectionPort = "defaultSocketConnectionPort",
     DebuggerConfig = "debuggerConfig",
     Env = "env",
+    EnvFile = "envFile",
     LogPanel = "logpanel",
     LogFile = "logfile"
 }

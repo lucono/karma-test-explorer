@@ -1,4 +1,4 @@
-import fs = require("fs");
+import { readFileSync } from "fs";
 import * as glob from "glob";
 import * as path from 'path';
 
@@ -200,7 +200,7 @@ export class PathFinder {
   }
 
   private readFile(path: string, encoding?: string): string {
-    return fs.readFileSync(path, encoding || DEFAULT_FILE_ENCODING);
+    return readFileSync(path, encoding || DEFAULT_FILE_ENCODING);
   }
 
   private parseTestSuiteFile(filePath: string, encoding?: string): TestSuiteFileInfo {
