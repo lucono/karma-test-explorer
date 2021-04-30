@@ -47,6 +47,10 @@ export class Adapter implements TestAdapter {
     return this.testStatesEmitter.event;
   }
 
+  get retire(): vscode.Event<RetireEvent> {
+      return this.retireEmitter.event;
+  }
+
   get autorun(): vscode.Event<void> | undefined {
     return this.autorunEmitter.event;
   }
@@ -244,7 +248,7 @@ export class Adapter implements TestAdapter {
       return;
     }
 
-    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath) ?? [];
+    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath) || [];
 
     if (specsForFile.length > 0) {
       this.logger.info(`Retiring ${specsForFile.length} specs of saved file: ${savedFilePath}`);

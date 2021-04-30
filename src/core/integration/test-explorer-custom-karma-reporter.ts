@@ -21,7 +21,7 @@ function TestExplorerCustomReporter(
   this.emitter = emitter;
 
   const socketPort = process.env.karmaSocketPort as string;
-  const socket = io("http://localhost:" + socketPort + "/", { 
+  const socket = io("http://localhost:" + socketPort + "/", {
     forceNew: true, 
     reconnection: true
   });

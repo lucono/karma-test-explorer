@@ -9,11 +9,13 @@ const SKIP_ALL_TESTS_PATTERN = "$#%#";
 
 export class HttpClientTestRunner implements TestRunner {
   public constructor(
-    private readonly karmaEventListener: KarmaEventListener,
+    private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
     private readonly logger: Logger
   ) {}
 
   public async loadTests(pathFinder: PathFinder, karmaPort: number): Promise<TestSuiteInfo> {
+    // FIXME: Should create new listener for each test load which can also then used to run the tests
+    
     const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN, karmaPort);
     this.karmaEventListener.lastRunTests = "root";
 

@@ -29,7 +29,9 @@ export class KarmaEventListener {
     private readonly logger: Logger
   ) {}
 
-  public connect(socketPort?: number): Promise<void> {
+  public async connect(socketPort?: number): Promise<void> {
+    this.logger.info(`Connecting karma event listener - specified socket port is '${socketPort}'`);
+
     const app = express();
     const server = createServer(app);
 
@@ -41,6 +43,10 @@ export class KarmaEventListener {
 
     const io = new SocketIOServer(server, socketServerOptions);
     const port = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
+
+    if (port !== socketPort) {
+      this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${port}' instead`);
+    }
 
     return new Promise<void>(resolve => {
       io.on("connection", (socket) => {

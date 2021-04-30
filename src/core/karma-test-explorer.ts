@@ -21,9 +21,10 @@ export class KarmaTestExplorer {
         await this.karmaEventListener.disconnect();
       }
 
-      const futureKarmaServerExit = this.karmaServer.restart(config);
-      const karmaSocketPort = this.karmaServer.getSocketPort();
+      const karmaServerStartupResult = await this.karmaServer.restart(config);
+      const karmaSocketPort = karmaServerStartupResult.serverSocketPort;
 
+      const futureKarmaServerExit = this.karmaServer.futureServerExit();
       const futureBrowserConnect = this.karmaEventListener.connect(karmaSocketPort);
       const futureBrowserConnectOrKarmaServerExit = Promise.race([futureBrowserConnect, futureKarmaServerExit]);
 
