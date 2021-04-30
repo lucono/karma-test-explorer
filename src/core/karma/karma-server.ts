@@ -8,18 +8,11 @@ import {stopper as karmaStopper } from "karma";
 import { parse as parseEnvironmentFile } from "dotenv";
 import * as dotenvExpand from "dotenv-expand";
 
-
-// export interface KarmaServerStartupResult {
-//   serverKarmaPort: number,
-//   serverSocketPort: number
-// }
-
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
   private serverPort?: number;
 
   public constructor(
-    // private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger,
     private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
     private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }

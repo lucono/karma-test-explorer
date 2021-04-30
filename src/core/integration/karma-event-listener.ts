@@ -91,12 +91,17 @@ export class KarmaEventListener {
       });
 
       server!.listen(port, () => {
-        this.logger.info(`Listening to KarmaReporter events on port ${port}`);
+        this.logger.info(`Karma Event Listener: Listening to KarmaReporter events on port ${port}`);
+      });
+
+      server!.on("close", () => {
+        this.logger.info(`Karma Event Listener: Connection closed on ${port}`);
+        clearTimeout(connectTimeoutId);
       });
 
       connectTimeoutId = setTimeout(() => {
-        this.logger.error(`Timeout waiting on port ${port} to connect to Karma`);
-        reject(`Timeout waiting to connect to Karma`);
+        this.logger.error(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect on port ${port}`);
+        reject(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect`);
       }, KARMA_CONNECT_TIMEOUT);
     });
   }

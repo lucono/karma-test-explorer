@@ -41,11 +41,20 @@ export class KarmaTestExplorer {
       });
 
       try {
-        await this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort);
+        await new Promise<void>((resolve, reject) => {
+          this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort)
+            .then(() => resolve())
+            .catch((failureReason) => reject(`${failureReason}`));
+          
+          this.karmaServer.futureServerExit()
+            .then(() => reject(`Karma server quit prematurely`));
+        });
+
+        // await this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort);
       } catch (error) {
-        const failureMessage = `Failed to get connection from karma server: ${error.message ?? error}`;
-        this.logger.error(failureMessage);
-        throw new Error(failureMessage);
+        this.logger.error(`Failed to load tests: ${error}`);
+        this.karmaEventListener.stopListening();
+        throw error;
       }
 
       const karmaPort = this.karmaServer.getServerPort() as number;
