@@ -57,7 +57,7 @@ export class KarmaEventListener {
       let connectTimeoutId: ReturnType<typeof setTimeout>;
 
       io.on("connection", (socket) => {
-        this.logger.info(`Karma Event Listener: New socket connection from Karma`);
+        this.logger.info(`Karma Event Listener: New socket connection from Karma on port ${port}`);
         this.sockets.add(socket);
 
         socket.on(KarmaEventName.BrowserConnected, () => {

@@ -32,8 +32,8 @@ export class KarmaServer {
     if (config.envFile) {
       this.logger.info(`Reading environment from file: ${config.envFile}`);
 
-      const envFileContent = await new Promise<string>((resolve, reject) => {
-        readFile(config.envFile!, "utf-8", (err, data) => {
+      const envFileContent = await new Promise<Buffer>((resolve, reject) => {
+        readFile(config.envFile!, (err, data) => {
           if (err) {
             this.logger.error(`Failed to read configured environment file: ${err}`);
             reject(err);
