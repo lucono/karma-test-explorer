@@ -46,7 +46,7 @@ export class PathFinder {
   public constructor(filePatterns: string[], options?: PathFinderOptions, fileEncoding?: string) {
     this.fileInfoMap = {};
     this.suiteFilesCache = {};
-    this.cwd = options?.cwd || process.cwd();
+    this.cwd = options?.cwd ?? process.cwd();
 
     filePatterns
       .map(patternString => glob.sync(patternString, options))
@@ -143,7 +143,7 @@ export class PathFinder {
       return -1;
     };
 
-    const describeSpecsToFind = specSuite || [];
+    const describeSpecsToFind = specSuite ?? [];
     let describeSearchStartIndex = 0;
     let lastDescribeFoundIndex = -1;
 

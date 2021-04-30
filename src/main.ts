@@ -10,7 +10,7 @@ const OUTPUT_CHANNEL_NAME = "Karma Test Explorer";
 const testExplorerAdapters: Adapter[] = [];
 
 export async function activate(context: vscode.ExtensionContext) {
-  const workspaceFolder = (vscode.workspace.workspaceFolders || [])[0];
+  const workspaceFolder = (vscode.workspace.workspaceFolders ?? [])[0];
   // create a simple logger that can be configured with the configuration variables
   // `karmaExplorer.logpanel` and `karmaExplorer.logfile`
   const logger = new Log(CONFIG_PREFIX, workspaceFolder, OUTPUT_CHANNEL_NAME);

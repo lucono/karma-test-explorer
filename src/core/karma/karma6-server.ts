@@ -53,7 +53,7 @@ export class Karma6Server {
       await futureBrowserConnectOrServerExit;
       
     } catch (error) {
-      throw new Error(`Failed to start and connect to server: ${error.message || error}`);
+      throw new Error(`Failed to start and connect to server: ${error.message ?? error}`);
     }
   }
 

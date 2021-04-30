@@ -106,19 +106,25 @@ export class Adapter implements TestAdapter {
     try {
       loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
     } catch (error) {
-      loadError = error?.message ?? error ?? 'Failed to load tests';
+      loadError = (error?.message ?? error) || 'Failed to load tests';
     }
 
     this.loadedTests = loadedTests;
 
-    if (loadedTests.children.length > 0) {
+    if (loadError) {
       this.testsEmitter.fire({
         type: "finished",
-        suite: this.loadedTests });
+        errorMessage: loadError
+      });
+    } else if (loadedTests.children?.length === 0) {
+      this.testsEmitter.fire({
+        type: "finished"
+      });
     } else {
       this.testsEmitter.fire({
         type: "finished",
-        errorMessage: loadError });
+        suite: this.loadedTests
+      });
     }
 
     this.retireEmitter.fire({});
@@ -149,7 +155,7 @@ export class Adapter implements TestAdapter {
     this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
     const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
     const isComponent = testSpec?.type === "suite";
-    const testList = [testSpec?.fullName || ""];
+    const testList = [testSpec?.fullName ?? ""];
 
     await this.testExplorer.runTests(this.config, testList, isComponent);
 
@@ -217,7 +223,7 @@ export class Adapter implements TestAdapter {
     this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
-      (result, setting) => result || configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
+      (result, setting) => result ?? configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
       false
     );
 

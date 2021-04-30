@@ -43,7 +43,7 @@ export class KarmaTestExplorer {
       try {
         await this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort);
       } catch (error) {
-        const failureMessage = `Failed to get connection from karma server: ${error.message || error}`;
+        const failureMessage = `Failed to get connection from karma server: ${error.message ?? error}`;
         this.logger.error(failureMessage);
         throw new Error(failureMessage);
       }
@@ -59,7 +59,7 @@ export class KarmaTestExplorer {
 
       return testSuiteInfo;
     } catch (error) {
-      const failureMessage = `Test loading failed: ${error.message || error}`;
+      const failureMessage = `Test loading failed: ${error.message ?? error}`;
       this.logger.error(failureMessage);
       throw new Error(failureMessage);
     }
