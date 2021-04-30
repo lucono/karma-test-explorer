@@ -5,7 +5,11 @@ import { SpawnOptions } from "child_process";
 import { readFile } from "fs";
 import {stopper as karmaStopper } from "karma";
 import { parse as parseEnvironmentFile } from "dotenv";
-// import * as dotenvExpand from "dotenv-expand";
+import * as dotenvExpand from "dotenv-expand";
+
+export interface KarmaServerExecution {
+  futureExit: Promise<void>
+}
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -19,78 +23,81 @@ export class KarmaServer {
   public async start(
     config: TestExplorerConfiguration, 
     karmaPort: number, 
-    extraEnv: {[key: string]: string} = {}): Promise<void> 
+    extraEnv: {[key: string]: string} = {}): Promise<KarmaServerExecution>
   {
-    if (this.isRunning()) {
-      this.logger.info(`Request to start karma server - server is already or still running`);
-      return;
-    }
-    this.logger.info(`Starting karma server`);
-
-    let envFileEnvironment = {} as { [key: string]: string};
-
-    if (config.envFile) {
-      this.logger.info(`Reading environment from file: ${config.envFile}`);
-
-      const envFileContent = await new Promise<Buffer>((resolve, reject) => {
-        readFile(config.envFile!, (err, data) => {
-          if (err) {
-            this.logger.error(`Failed to read configured environment file: ${err}`);
-            reject(err);
-            return;
-          }
-          resolve(data);
-        });
-      });
-
-      if (envFileContent) {
-        envFileEnvironment = parseEnvironmentFile(envFileContent);
-        // envFileEnvironment = dotenvExpand({ parsed: unexpandedEnvironment }).parsed ?? {};
-        const entryCount = Object.keys(envFileEnvironment).length;
-        this.logger.info(`Processed ${entryCount} entries from environment file: ${config.envFile}`);
+    return new Promise<KarmaServerExecution>(async (resolve) => {
+      if (this.isRunning()) {
+        this.logger.info(`Request to start karma server - server is already or still running`);
+        resolve({ futureExit: this.futureServerExit() });
       }
-    }
-
-    const testExplorerEnvironment = {
-      ...envFileEnvironment,
-      ...config.env,
-      ...process.env,
-      ...extraEnv,
-      userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${karmaPort}`
-    };
-
-    const options = {
-      cwd: config.projectRootPath,
-      shell: true,
-      env: testExplorerEnvironment,
-    } as SpawnOptions;
-
-    let command = "npx";
-    let processArguments = [ "karma" ];
-
-    if (config.karmaProcessExecutable) {
-      command = config.karmaProcessExecutable;
-      processArguments = [];
-    }
-
-    processArguments = [
-      ...processArguments,
-      "start",
-      config.baseKarmaConfFilePath,
-      `--port=${karmaPort}`
-    ];
-
-    const karmaServerProcess = new CommandlineProcessHandler(
-      this.logger, 
-      command, 
-      processArguments, 
-      options,
-      (data) => this.serverProcessLogger(data, karmaPort),
-      (data) => this.serverProcessErrorLogger(data, karmaPort));
-
-    this.setServerInfo(karmaServerProcess, karmaPort);
-    karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
+      this.logger.info(`Starting karma server`);
+  
+      let envFileEnvironment = {} as { [key: string]: string};
+  
+      if (config.envFile) {
+        this.logger.info(`Reading environment from file: ${config.envFile}`);
+  
+        const envFileContent = await new Promise<Buffer>((resolve, reject) => {
+          readFile(config.envFile!, (err, data) => {
+            if (err) {
+              this.logger.error(`Failed to read configured environment file: ${err}`);
+              reject(err);
+              return;
+            }
+            resolve(data);
+          });
+        });
+  
+        if (envFileContent) {
+          envFileEnvironment = parseEnvironmentFile(envFileContent);
+          dotenvExpand({ parsed: envFileEnvironment });
+          const entryCount = Object.keys(envFileEnvironment).length;
+          this.logger.info(`Processed ${entryCount} entries from environment file: ${config.envFile}`);
+        }
+      }
+  
+      const testExplorerEnvironment = {
+        ...envFileEnvironment,
+        ...config.env,
+        ...process.env,
+        ...extraEnv,
+        userKarmaConfigPath: config.userKarmaConfFilePath,
+        karmaPort: `${karmaPort}`
+      };
+  
+      const options = {
+        cwd: config.projectRootPath,
+        shell: true,
+        env: testExplorerEnvironment,
+      } as SpawnOptions;
+  
+      let command = "npx";
+      let processArguments = [ "karma" ];
+  
+      if (config.karmaProcessExecutable) {
+        command = config.karmaProcessExecutable;
+        processArguments = [];
+      }
+  
+      processArguments = [
+        ...processArguments,
+        "start",
+        config.baseKarmaConfFilePath,
+        `--port=${karmaPort}`
+      ];
+  
+      const karmaServerProcess = new CommandlineProcessHandler(
+        this.logger, 
+        command, 
+        processArguments, 
+        options,
+        (data) => this.serverProcessLogger(data, karmaPort),
+        (data) => this.serverProcessErrorLogger(data, karmaPort));
+  
+      this.setServerInfo(karmaServerProcess, karmaPort);
+      karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
+      resolve({ futureExit: karmaServerProcess.futureExit() });
+    });
   }
 
   public async stop(): Promise<void> {
@@ -132,6 +139,14 @@ export class KarmaServer {
     });
   }
 
+  public getServerPort(): number | undefined {
+    return this.serverPort;
+  }
+
+  public isRunning(): boolean {
+    return this.serverProcess !== undefined;
+  }
+
   private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number) {
     this.serverProcess = serverProcess;
     this.serverPort = serverPort;
@@ -144,15 +159,7 @@ export class KarmaServer {
     }
   }
 
-  public getServerPort(): number | undefined {
-    return this.serverPort;
-  }
-
-  public isRunning(): boolean {
-    return this.serverProcess !== undefined;
-  }
-
-  public async futureServerExit(): Promise<void> {
+  private async futureServerExit(): Promise<void> {
     return this.serverProcess?.futureExit();
   }
 }

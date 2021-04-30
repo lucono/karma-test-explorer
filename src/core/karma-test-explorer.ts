@@ -3,7 +3,7 @@ import { KarmaEventListener } from "./integration/karma-event-listener";
 import { Logger } from "./helpers/logger";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
-import { KarmaServer } from "./karma/karma-server";
+import { KarmaServer, KarmaServerExecution } from "./karma/karma-server";
 import { PathFinder } from './helpers/path-finder';
 import { TestResult } from "../model/enums/test-status.enum";
 import { getPort as getAvailablePort, getPortPromise as getAvailablePortPromise } from "portfinder";
@@ -36,7 +36,7 @@ export class KarmaTestExplorer {
       this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
-      await this.karmaServer.start(config, serverKarmaPort, {
+      const karmaServerExecution: KarmaServerExecution = await this.karmaServer.start(config, serverKarmaPort, {
         karmaSocketPort: `${karmerListenerSocketPort}`
       });
 
@@ -46,11 +46,9 @@ export class KarmaTestExplorer {
             .then(() => resolve())
             .catch((failureReason) => reject(`${failureReason}`));
           
-          this.karmaServer.futureServerExit()
-            .then(() => reject(`Karma server quit prematurely`));
+            karmaServerExecution.futureExit.then(() => reject(`Karma server quit prematurely`));
         });
 
-        // await this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort);
       } catch (error) {
         this.logger.error(`Failed to load tests: ${error}`);
         this.karmaEventListener.stopListening();
