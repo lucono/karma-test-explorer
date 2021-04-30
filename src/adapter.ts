@@ -248,11 +248,14 @@ export class Adapter implements TestAdapter {
       return;
     }
 
-    const specsForFile = this.pathFinder?.getSpecsForFile(savedFilePath) || [];
+    if (this.pathFinder?.isSpecFile(savedFilePath)) {
+      const savedSpecFileInfo = this.pathFinder.getSpecFileInfo(savedFilePath);
 
-    if (specsForFile.length > 0) {
-      this.logger.info(`Retiring ${specsForFile.length} specs of saved file: ${savedFilePath}`);
-      this.retireEmitter.fire({ tests: specsForFile });
+      if (savedSpecFileInfo) {
+        this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
+        this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
+      }
     }
+
   }
 }

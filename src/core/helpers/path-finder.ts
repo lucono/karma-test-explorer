@@ -21,6 +21,11 @@ export interface SpecLocation {
   line: number
 }
 
+export interface SpecFileInfo {
+  suiteName: string,
+  specCount: number
+}
+
 export interface PathFinderOptions {
   cwd?: string,
   ignore?: string[]
@@ -74,10 +79,21 @@ export class PathFinder {
     return undefined;
   }
 
-  public getSpecsForFile(absoluteFilePath: string): string[] {
-    const fileInfo = this.fileInfoMap[absoluteFilePath];
-    const fileItSpecs = fileInfo ? Object.values(fileInfo.descriptions.it) : [];
-    return fileItSpecs;
+  public isSpecFile(filePath: string): boolean {
+    const fileAbsolutePath = path.resolve(this.cwd, filePath);
+    return this.fileInfoMap.hasOwnProperty(fileAbsolutePath);
+  }
+
+  public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {
+    const fileAbsolutePath = path.resolve(this.cwd, filePath);
+    const fileInfo = this.fileInfoMap[fileAbsolutePath];
+
+    const specFileInfo = !fileInfo ? undefined : {
+        suiteName: fileInfo.descriptions.describe[0],
+        specCount: fileInfo.descriptions.it.length
+      };
+
+    return specFileInfo;
   }
 
   private getSuiteFromCache(suite: string[]): string | undefined {

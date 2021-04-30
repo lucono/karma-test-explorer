@@ -2,7 +2,8 @@
 import { ChildProcess, SpawnOptions } from "child_process";
 import { Logger } from "../helpers/logger";
 import * as spawn from "cross-spawn";
-import * as treeKill from "tree-kill";
+// import * as treeKill from "tree-kill";
+import * as psTree from "ps-tree";
 
 export class CommandlineProcessHandler {
   private process: ChildProcess | undefined;
@@ -65,26 +66,37 @@ export class CommandlineProcessHandler {
       return;
     }
     
-    const process = this.process as ChildProcess;
-    this.logger.info(`Killing process PID: ${process.pid}`);
+    const runningProcess = this.process as ChildProcess;
+    this.logger.info(`Killing process tree of PID: ${runningProcess.pid}`);
 
     return new Promise<void>((resolve, reject) => {
-      const processPid = process.pid;
+      const processPid = runningProcess.pid;
 
       if (!processPid) {
         resolve();
         return;
       }
-      treeKill(processPid, `SIGKILL`, async (error) => {
+
+      psTree(processPid, (error, childProcesses) => {
         if (error) {
-          this.logger.error(`Failed to kill process PID '${processPid}': ${error}`);
+          this.logger.error(`Failed to kill process tree for PID '${processPid}': ${error}`);
           reject(error);
         } else {
-          this.logger.info(`Successfully killed process PID '${processPid}'`);
-          // this.updateProcessEnded();
+          childProcesses.forEach(childProcess => process.kill(Number(childProcess.PID), 'SIGKILL'));
+          this.logger.info(`Successfully killed process tree for PID '${processPid}'`);
           resolve();
         }
       });
+
+      // treeKill(processPid, `SIGKILL`, (error) => {
+      //   if (error) {
+      //     this.logger.error(`Failed to kill process PID '${processPid}': ${error}`);
+      //     reject(error);
+      //   } else {
+      //     this.logger.info(`Successfully killed process PID '${processPid}'`);
+      //     resolve();
+      //   }
+      // });
     });
   }
 
