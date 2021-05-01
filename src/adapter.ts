@@ -91,6 +91,10 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
+    if (this.isTestProcessRunning) {
+      this.logger.debug(`New test load request ignored - Another test operation is still running`);
+      return;
+    }
     return this.refresh(true);
   }
 
@@ -100,11 +104,13 @@ export class Adapter implements TestAdapter {
       await this.cancel();
     }
     if (this.isTestProcessRunning) {
-      this.logger.debug(`Test refresh request ignored - Another test operation is currently running`);
+      this.logger.debug(
+        `Test ${isHardRefresh ? "hard" : ""} refresh request ignored - ` +
+        `Another test operation is currently running`);
       return;
     }
-    this.logger.debug(`Test loading started`);
     this.isTestProcessRunning = true;
+    this.logger.debug(`Test ${isHardRefresh ? "hard" : ""} refresh started`);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
@@ -263,7 +269,7 @@ export class Adapter implements TestAdapter {
 
     if (reloadTriggerFiles.includes(savedFilePath)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
-      this.refresh();
+      this.refresh(true);
       return;
     }
 
