@@ -3,6 +3,8 @@ import * as path from "path";
 import * as TestExplorerCustomReporter from "../core/integration/test-explorer-custom-karma-reporter";
 import { UtilityHelper } from "../core/helpers/utility-helper";
 
+const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
+
 export class KarmaConfigurator {
   private readonly testExplorerHelper: UtilityHelper;
   constructor() {
@@ -17,11 +19,11 @@ export class KarmaConfigurator {
     config.logLevel = config.LOG_INFO;
     config.autoWatch = false;
     config.autoWatchBatchDelay = 0;
-    config.browsers = ["ChromeTestExplorer"];
+    config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
     config.browserNoActivityTimeout = undefined;
     config.singleRun = false;
     config.customLaunchers = {
-      ChromeTestExplorer: {
+      [ CHROME_CUSTOM_LAUNCHER ]: {
         base: "ChromeHeadless",
         debug: true,
         flags: [

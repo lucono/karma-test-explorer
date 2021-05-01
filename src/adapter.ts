@@ -91,8 +91,16 @@ export class Adapter implements TestAdapter {
   }
 
   public async load(): Promise<void> {
+    return this.refresh(true);
+  }
+
+  private async refresh(isHardRefresh: boolean = false): Promise<void> {
+    if (isHardRefresh) {
+      this.logger.debug(`Hard refresh requested`);
+      await this.cancel();
+    }
     if (this.isTestProcessRunning) {
-      this.logger.debug(`New test load request ignored - Another test operation is currently running`);
+      this.logger.debug(`Test refresh request ignored - Another test operation is currently running`);
       return;
     }
     this.logger.debug(`Test loading started`);
@@ -104,7 +112,10 @@ export class Adapter implements TestAdapter {
     let loadError: string | undefined;
     
     try {
-      loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+      if (isHardRefresh) {
+        await this.testExplorer.restart(this.config);
+      }
+      loadedTests = await this.testExplorer.loadTests(this.pathFinder);
     } catch (error) {
       loadError = (error?.message ?? error) || 'Failed to load tests';
     }
@@ -131,16 +142,6 @@ export class Adapter implements TestAdapter {
 
     this.isTestProcessRunning = false;
     this.logger.debug(`Test loading finished`);
-  }
-
-  private async reload(): Promise<void> {
-    this.logger.debug(`Test reload started`);
-
-    if (this.isTestProcessRunning) {
-      this.logger.debug(`Aborting previously running test operation`);
-      await this.cancel();
-    }
-    this.load();
   }
 
   public async run(tests: string[]): Promise<void> {
@@ -170,6 +171,7 @@ export class Adapter implements TestAdapter {
   }
 
   public async cancel(): Promise<void> {
+    this.logger.debug(`Aborting any currently running test operation`);
     await this.testExplorer.stopCurrentRun();
     this.isTestProcessRunning = false;
   }
@@ -233,7 +235,7 @@ export class Adapter implements TestAdapter {
     }
     this.logger.info(`Reloading tests with updated configuration`);
     this.loadConfig(this.configPrefix);
-    this.reload();
+    this.refresh();
   }
 
   private handleDocumentSaved = (document:vscode.TextDocument) => {
@@ -252,6 +254,7 @@ export class Adapter implements TestAdapter {
         this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
         this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       }
+      this.refresh(false);
     }
 
     const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
@@ -260,7 +263,7 @@ export class Adapter implements TestAdapter {
 
     if (reloadTriggerFiles.includes(savedFilePath)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
-      this.reload();
+      this.refresh();
       return;
     }
 

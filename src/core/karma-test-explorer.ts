@@ -16,13 +16,9 @@ export class KarmaTestExplorer {
     private readonly logger: Logger
   ) { }
 
-  public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
+  public async restart(config: TestExplorerConfiguration): Promise<void> {
     try {
-      this.karmaEventListener.stopListening();
-
-      if (this.karmaServer.isRunning()) {
-        await this.karmaServer.kill();
-      }
+      this.stopCurrentRun();
       
       const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
       const minKarmerListenerSocketPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
@@ -40,21 +36,22 @@ export class KarmaTestExplorer {
         karmaSocketPort: `${karmerListenerSocketPort}`
       });
 
-      try {
-        await new Promise<void>((resolve, reject) => {
-          this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort)
-            .then(() => resolve())
-            .catch((failureReason) => reject(`${failureReason}`));
-          
-            karmaServerExecution.futureExit.then(() => reject(`Karma server quit prematurely`));
-        });
+      await new Promise<void>((resolve, reject) => {
+        this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort)
+          .then(() => resolve())
+          .catch((failureReason) => reject(`${failureReason}`));
+        
+          karmaServerExecution.futureExit.then(() => reject(`Karma server quit prematurely`));
+      });
+    } catch (error) {
+      this.logger.error(`Failed to load tests: ${error}`);
+      this.karmaEventListener.stopListening();
+      throw error;
+    }
+  }
 
-      } catch (error) {
-        this.logger.error(`Failed to load tests: ${error}`);
-        this.karmaEventListener.stopListening();
-        throw error;
-      }
-
+  public async loadTests(pathFinder: PathFinder): Promise<TestSuiteInfo> {
+    try {
       const karmaPort = this.karmaServer.getServerPort() as number;
       const testSuiteInfo = await this.testRunner.loadTests(pathFinder, karmaPort);
 
@@ -65,6 +62,7 @@ export class KarmaTestExplorer {
       }
 
       return testSuiteInfo;
+      
     } catch (error) {
       const failureMessage = `Test loading failed: ${error.message ?? error}`;
       this.logger.error(failureMessage);
@@ -85,7 +83,11 @@ export class KarmaTestExplorer {
   }
 
   public async stopCurrentRun(): Promise<void> {
-    await this.karmaServer.stop();
+    this.karmaEventListener.stopListening();
+
+    if (this.karmaServer.isRunning()) {
+      await this.karmaServer.kill();
+    }
   }
 
   public dispose(): void {
