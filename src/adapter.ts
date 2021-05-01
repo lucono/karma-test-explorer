@@ -95,22 +95,30 @@ export class Adapter implements TestAdapter {
       this.logger.debug(`New test load request ignored - Another test operation is still running`);
       return;
     }
+    this.logger.debug(`Test load started`);
     return this.refresh(true);
   }
 
-  private async refresh(isHardRefresh: boolean = false): Promise<void> {
-    if (isHardRefresh) {
-      this.logger.debug(`Hard refresh requested`);
+  private async reload(): Promise<void> {
+    this.logger.debug(`Test reload started`);
+
+    if (this.isTestProcessRunning) {
+      this.logger.debug(`Test reload - Aborting previously running test operation`);
       await this.cancel();
     }
+    return this.load();
+  }
+
+  private async refresh(isHardRefresh: boolean = false): Promise<void> {
     if (this.isTestProcessRunning) {
       this.logger.debug(
-        `Test ${isHardRefresh ? "hard" : ""} refresh request ignored - ` +
+        `Test ${isHardRefresh ? "hard " : ""}refresh request ignored - ` +
         `Another test operation is currently running`);
       return;
     }
+    this.logger.debug(`Test ${isHardRefresh ? "hard " : ""}refresh started`);
+
     this.isTestProcessRunning = true;
-    this.logger.debug(`Test ${isHardRefresh ? "hard" : ""} refresh started`);
     this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
@@ -241,7 +249,7 @@ export class Adapter implements TestAdapter {
     }
     this.logger.info(`Reloading tests with updated configuration`);
     this.loadConfig(this.configPrefix);
-    this.refresh();
+    this.reload();
   }
 
   private handleDocumentSaved = (document:vscode.TextDocument) => {
@@ -253,6 +261,16 @@ export class Adapter implements TestAdapter {
       return;
     }
 
+    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
+      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
+      : this.config.reloadWatchedFiles;
+
+    if (reloadTriggerFiles.includes(savedFilePath)) {
+      this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
+      this.reload();
+      return;
+    }
+
     if (this.pathFinder?.isSpecFile(savedFilePath)) {
       const savedSpecFileInfo = this.pathFinder.getSpecFileInfo(savedFilePath);
 
@@ -260,16 +278,7 @@ export class Adapter implements TestAdapter {
         this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
         this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       }
-      this.refresh(false);
-    }
-
-    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
-      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
-      : this.config.reloadWatchedFiles;
-
-    if (reloadTriggerFiles.includes(savedFilePath)) {
-      this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
-      this.refresh(true);
+      this.refresh();
       return;
     }
 
