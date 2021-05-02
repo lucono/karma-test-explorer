@@ -17,7 +17,7 @@ const KARMA_CONNECT_TIMEOUT = 300000;
 
 export class KarmaEventListener {
   public isTestRunning: boolean = false;
-  public lastRunTests: string = "";
+  public lastRunTest: string = "";
   public testStatus: TestResult | undefined;
   public runCompleteEvent: KarmaEvent | undefined;
   public isComponentRun: boolean = false;
@@ -78,6 +78,7 @@ export class KarmaEventListener {
         });
 
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
+          this.logger.info(`Karma Event Listener: Test run completed`);
           this.runCompleteEvent = event;
         });
 
@@ -115,17 +116,18 @@ export class KarmaEventListener {
     const { results } = event;
 
     const testName = results.fullName;
-    const isTestNamePerfectMatch = testName === this.lastRunTests;
-    const isRootComponent = this.lastRunTests === "root";
-    const isComponent = this.isComponentRun && testName.includes(this.lastRunTests);
+    const isTestNamePerfectMatch = testName === this.lastRunTest;
+    const isRootComponent = this.lastRunTest === "root";
+    const isComponent = this.isComponentRun && testName.includes(this.lastRunTest);
 
     if (isTestNamePerfectMatch || isRootComponent || isComponent) {
+      // FIXME: why emit running event followed almost immediately by result event
       this.eventEmitter.emitTestStateEvent(results.id, TestState.Running);
       this.savedSpecs.push(results);
 
       this.eventEmitter.emitTestResultEvent(results.id, event);
 
-      if (this.lastRunTests !== "") {
+      if (this.lastRunTest !== "") {
         this.testStatus = results.status;
       }
     }

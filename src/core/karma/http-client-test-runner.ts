@@ -4,8 +4,17 @@ import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { PathFinder } from "../helpers/path-finder";
 import { TestRunner } from "./test-runner";
+import { request as httpRequest } from "http";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
+
+interface KarmaRunConfig {
+  port: number,
+  refresh: boolean,
+  urlRoot: string,
+  hostname: string,
+  clientArgs: string[]
+};
 
 export class HttpClientTestRunner implements TestRunner {
   public constructor(
@@ -15,45 +24,50 @@ export class HttpClientTestRunner implements TestRunner {
 
   public async loadTests(pathFinder: PathFinder, karmaPort: number): Promise<TestSuiteInfo> {
     // FIXME: Should create new listener for each test load which can also then used to run the tests
-    
-    const karmaRunParameters = this.createKarmaRunCallConfiguration(SKIP_ALL_TESTS_PATTERN, karmaPort);
-    this.karmaEventListener.lastRunTests = "root";
 
-    await this.callKarmaRunWithConfig(karmaRunParameters.config);
+    const karmaRunConfig = this.createKarmaRunConfig(SKIP_ALL_TESTS_PATTERN, karmaPort);
+    this.karmaEventListener.lastRunTest = "root";
+
+    await this.callKarma(karmaRunConfig);
     return this.karmaEventListener.getLoadedTests(pathFinder);
   }
 
   public async runTests(tests: string[], isComponentRun: boolean, karmaPort: number): Promise<void> {
-    this.log(tests);
-    const karmaRunParameters = this.createKarmaRunCallConfiguration(tests, karmaPort);
+    tests.forEach(async (testName) => await this.runTest(testName, isComponentRun, karmaPort));
+  }
+
+  private async runTest(testName: string = "root", isComponentRun: boolean, karmaPort: number): Promise<void> {
+    this.logger.info(
+      `Running test: ${testName}`,
+      { divider: "Karma Logs" }  // FIXME: what's this?
+    );
+
+    // FIXME: Define shared constant for string name 'root' used as name of all tests root node
+    if (testName === "root") {
+      testName = "";
+    }
+    const testPattern = `/^${this.escapeForRegExp(testName)}/`;
+    const karmaRunConfig = this.createKarmaRunConfig(testPattern, karmaPort);
 
     this.karmaEventListener.isTestRunning = true;
-    this.karmaEventListener.lastRunTests = tests[0];
+    this.karmaEventListener.lastRunTest = testName;
     this.karmaEventListener.isComponentRun = isComponentRun;
-    await this.callKarmaRunWithConfig(karmaRunParameters.config);
+    await this.callKarma(karmaRunConfig);
     this.karmaEventListener.isTestRunning = false;
   }
 
-  private createKarmaRunCallConfiguration(tests: any, karmaPort: number) {
-    // if testName is undefined, reset jasmine.getEnv().specFilter function
-    // otherwise, last specified specFilter will be used
-    if (tests[0] === "root" || tests[0] === undefined) {
-      tests = "";
-    }
-    const urlRoot = "/run";
-    const config = {
+  private createKarmaRunConfig(testPattern: string, karmaPort: number): KarmaRunConfig {
+    return {
       port: karmaPort,
       refresh: true,
-      urlRoot,
+      urlRoot: "/run",
       hostname: "localhost",
-      clientArgs: [] as string[],
+      clientArgs: [`--grep=${testPattern}`],
     };
-    config.clientArgs = [`--grep=${tests}`];
-    return { config, tests };
   }
 
-  private callKarmaRunWithConfig(config: any): Promise<void> {
-    return new Promise<void>(resolve => {
+  private async callKarma(config: KarmaRunConfig): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       const options = {
         hostname: config.hostname,
         path: config.urlRoot,
@@ -64,39 +78,32 @@ export class HttpClientTestRunner implements TestRunner {
         },
       };
 
-      const http = require("http");
+      const karmaRequestData = {
+        args: config.clientArgs,
+        refresh: config.refresh
+        // removedFiles: config.removedFiles,
+        // changedFiles: config.changedFiles,
+        // addedFiles: config.addedFiles,
+      };
 
-      const request = http.request(options);
+      const request = httpRequest(options);
 
-      request.on("error", (e: any) => {
-        if (e.code === "ECONNREFUSED") {
-          global.console.error("There is no server listening on port %d", options.port);
+      request.on("error", (err) => {
+        if ((err as any).code === "ECONNREFUSED") {
+          reject(`Test runner: No karma server listening on port ${options.port}`);
         }
       });
+      request.on("close", () => resolve());
 
-      request.end(
-        JSON.stringify({
-          args: config.clientArgs,
-          removedFiles: config.removedFiles,
-          changedFiles: config.changedFiles,
-          addedFiles: config.addedFiles,
-          refresh: config.refresh,
-        })
-      );
-
-      request.on("close", () => {
-        resolve();
-      });
+      const karmaRequestContent = JSON.stringify(karmaRequestData);
+      this.logger.info(`Sending karma request: ${karmaRequestContent}`);
+      request.end(karmaRequestContent);
     });
   }
 
-  private log(tests: string[]): void {
-    // TODO: What's going on here?
-    const [suite, ...description] = tests[0].split(" ");
-    this.logger.info(
-      `Running [ suite: ${suite}${description.length > 0 ? ", test: " + description.join(" ") : ""} ]`,
-      { divider: "Karma Logs" }
-    );
+  private escapeForRegExp(stringValue: string = "") {
+    // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+    return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /*

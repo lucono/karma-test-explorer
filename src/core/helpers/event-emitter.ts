@@ -20,16 +20,21 @@ export class EventEmitter {
     private readonly testLoadedEmitterInterface: vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>
   ) {}
 
-  public emitTestStateEvent(testName: string, testState: TestState) {
-    const testEvent = { type: "test", test: testName, state: testState } as TestEvent;
+  public emitTestStateEvent(testId: string, testState: TestState) {
+    const testEvent = { type: "test", test: testId, state: testState } as TestEvent;
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public emitTestResultEvent(testName: string, karmaEvent: KarmaEvent) {
+  public emitTestResultEvent(testId: string, karmaEvent: KarmaEvent) {
     const testResultMapper = new TestResultToTestStateMapper();
     const testState = testResultMapper.Map(karmaEvent.results.status);
 
-    const testEvent = { type: "test", test: testName, state: testState } as TestEvent;
+    const testEvent: TestEvent = {
+      type: "test",
+      test: testId,
+      state: testState,
+      description: `${karmaEvent.results.timeSpentInMilliseconds} ms`
+    };
 
     if (karmaEvent.results.failureMessages.length > 0) {
       testEvent.decorations = this.createDecorations(karmaEvent.results);

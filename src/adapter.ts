@@ -273,12 +273,12 @@ export class Adapter implements TestAdapter {
 
     if (this.pathFinder?.isSpecFile(savedFilePath)) {
       const savedSpecFileInfo = this.pathFinder.getSpecFileInfo(savedFilePath);
+      this.refresh();
 
       if (savedSpecFileInfo) {
         this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
         this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       }
-      this.refresh();
       return;
     }
 

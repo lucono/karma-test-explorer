@@ -19,7 +19,7 @@ export class KarmaTestExplorer {
   public async restart(config: TestExplorerConfiguration): Promise<void> {
     try {
       this.stopCurrentRun();
-      
+
       const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
       const minKarmerListenerSocketPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
 

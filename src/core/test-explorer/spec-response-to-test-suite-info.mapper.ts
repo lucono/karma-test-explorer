@@ -70,14 +70,24 @@ export class SpecResponseToTestSuiteInfoMapper {
     suiteNames: string[],
     specLocation?: SpecLocation) {
 
-    suiteNode.children.push({
+    const testFullName = [...suiteNames, specComplete.description].join(" ");
+    const failureMessages = specComplete.failureMessages?.length > 0
+      ? specComplete.failureMessages.join("\n")
+      : undefined;
+
+    const testInfo: TestInfo = {
       type: "test",
       id: specComplete.id,
-      fullName: [...suiteNames, specComplete.description].join(" "),
+      fullName: testFullName,
       label: specComplete.description,
+      // description: `${specComplete.timeSpentInMilliseconds} ms,
+      tooltip: testFullName,
+      message: failureMessages,
       file: specLocation?.file,
       line: specLocation?.line,
-    } as TestInfo);
+    };
+
+    suiteNode.children.push(testInfo);
   }
 
   private createSuite(suiteNames: string[]): TestSuiteInfo {
