@@ -6,13 +6,13 @@ export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly pathFinder: PathFinder) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
-    const rootSuiteNode = {
+    const rootSuiteNode: TestSuiteInfo = {
       type: "suite",
       id: "root",
       label: "Karma tests",
       fullName: "root",
       children: [],
-    } as TestSuiteInfo;
+    };
 
     for (const spec of specs) {
       const suiteNames = this.filterSuiteNames(spec.suite);

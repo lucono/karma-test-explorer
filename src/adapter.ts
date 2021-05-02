@@ -131,27 +131,19 @@ export class Adapter implements TestAdapter {
       }
       loadedTests = await this.testExplorer.loadTests(this.pathFinder);
     } catch (error) {
-      loadError = (error?.message ?? error) || 'Failed to load tests';
+      loadError = `Failed to load tests - ${error?.message ?? error}`;;
+    }
+
+    const testLoadFinishedEvent: TestLoadFinishedEvent = { type: "finished" };
+
+    if (loadError) {
+      testLoadFinishedEvent.errorMessage = loadError;
+    } else if (loadedTests?.children?.length > 0) {
+      testLoadFinishedEvent.suite = loadedTests;
     }
 
     this.loadedTests = loadedTests;
-
-    if (loadError) {
-      this.testsEmitter.fire({
-        type: "finished",
-        errorMessage: loadError
-      });
-    } else if (loadedTests?.children?.length === 0) {
-      this.testsEmitter.fire({
-        type: "finished"
-      });
-    } else {
-      this.testsEmitter.fire({
-        type: "finished",
-        suite: this.loadedTests
-      });
-    }
-
+    this.testsEmitter.fire(testLoadFinishedEvent);
     this.retireEmitter.fire({});
 
     this.isTestProcessRunning = false;

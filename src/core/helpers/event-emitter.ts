@@ -1,5 +1,3 @@
-import { KarmaEvent } from "./../../model/karma-event";
-import { TestState } from "../../model/enums/test-state.enum";
 import {
   TestEvent,
   TestRunStartedEvent,
@@ -10,9 +8,11 @@ import {
   TestLoadFinishedEvent,
   TestSuiteInfo,
 } from "vscode-test-adapter-api";
+import { KarmaEvent } from "./../../model/karma-event";
+import { TestState } from "../../model/enums/test-state.enum";
 import { TestResultToTestStateMapper } from "../test-explorer/test-result-to-test-state.mapper";
-import * as vscode from "vscode";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
+import * as vscode from "vscode";
 
 export class EventEmitter {
   public constructor(
@@ -28,12 +28,18 @@ export class EventEmitter {
   public emitTestResultEvent(testId: string, karmaEvent: KarmaEvent) {
     const testResultMapper = new TestResultToTestStateMapper();
     const testState = testResultMapper.Map(karmaEvent.results.status);
+    const testTime = `${karmaEvent.results.timeSpentInMilliseconds} ms`;
+
+    const resultDescription = testState === TestState.Passed ? `Passed in ${testTime}`
+      : testState === TestState.Failed ? `Failed in ${testTime}`
+      : `${testTime}`;
 
     const testEvent: TestEvent = {
       type: "test",
       test: testId,
       state: testState,
-      description: `${karmaEvent.results.timeSpentInMilliseconds} ms`
+      description: testTime,
+      tooltip: `${karmaEvent.results.fullName}  (${resultDescription})`
     };
 
     if (karmaEvent.results.failureMessages.length > 0) {
@@ -44,6 +50,7 @@ export class EventEmitter {
     this.eventEmitterInterface.fire(testEvent);
   }
 
+  // FIXME: This is not currently used
   public emitTestsLoadedEvent(loadedTests: TestSuiteInfo) {
     this.testLoadedEmitterInterface.fire({ type: "started" } as TestLoadStartedEvent);
     this.testLoadedEmitterInterface.fire({ type: "finished", suite: loadedTests } as TestLoadFinishedEvent);

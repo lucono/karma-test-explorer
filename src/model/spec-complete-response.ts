@@ -1,15 +1,15 @@
 import { TestResult } from "./enums/test-status.enum";
 
 export class SpecCompleteResponse {
-  public id: string;
-  public failureMessages: string[];
-  public suite: string[];
-  public description: string;
-  public fullName: string;
-  public status: TestResult;
-  public timeSpentInMilliseconds: string;
-  public filePath?: string;
-  public line?: number;
+  public readonly id: string;
+  public readonly failureMessages: string[];
+  public readonly suite: string[];
+  public readonly description: string;
+  public readonly fullName: string;
+  public readonly status: TestResult;
+  public readonly timeSpentInMilliseconds: string;
+  public readonly filePath?: string;
+  public readonly line?: number;
 
   public constructor(
     _id: string,
