@@ -4,7 +4,7 @@ import { KarmaEvent } from "../../model/karma-event";
 import { KarmaEventName } from "../../model/enums/karma-event-name.enum";
 import { TestState } from "../../model/enums/test-state.enum";
 import { Logger } from "../helpers/logger";
-import { EventEmitter } from "../helpers/event-emitter";
+import { TestRunEventEmitter } from "../test-explorer/test-run-event-emitter";
 import { TestResult } from "../../model/enums/test-status.enum";
 import { PathFinder } from "../helpers/path-finder";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
@@ -26,7 +26,7 @@ export class KarmaEventListener {
   private readonly sockets: Set<Socket> = new Set();
 
   public constructor(
-    private readonly eventEmitter: EventEmitter, 
+    private readonly eventEmitter: TestRunEventEmitter, 
     private readonly logger: Logger
   ) {}
 

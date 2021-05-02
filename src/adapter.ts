@@ -16,7 +16,7 @@ import { KarmaTestExplorer } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
-import { EventEmitter } from "./core/helpers/event-emitter";
+import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
@@ -30,8 +30,8 @@ export class Adapter implements TestAdapter {
   private config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
   private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
-  private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
-  private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
+  private readonly testLoadEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
+  private readonly testRunEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
   private readonly testExplorer: KarmaTestExplorer;
   private pathFinder?: PathFinder;
@@ -40,11 +40,11 @@ export class Adapter implements TestAdapter {
   public loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
-    return this.testsEmitter.event;
+    return this.testLoadEmitter.event;
   }
 
   get testStates(): vscode.Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
-    return this.testStatesEmitter.event;
+    return this.testRunEmitter.event;
   }
 
   get retire(): vscode.Event<RetireEvent> {
@@ -59,16 +59,16 @@ export class Adapter implements TestAdapter {
     this.logger = new Logger(log);
     this.logger.info("Initializing adapter");
 
-    this.disposables.push(this.testsEmitter);
-    this.disposables.push(this.testStatesEmitter);
+    this.disposables.push(this.testLoadEmitter);
+    this.disposables.push(this.testRunEmitter);
     this.disposables.push(this.autorunEmitter);
     this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange));
 
     this.loadConfig(configPrefix);
 
-    const karmaEventEmitter = new EventEmitter(this.testStatesEmitter, this.testsEmitter);
-    const karmaEventListener = new KarmaEventListener(karmaEventEmitter, this.logger);
+    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
+    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
@@ -119,7 +119,7 @@ export class Adapter implements TestAdapter {
     this.logger.debug(`Test ${isHardRefresh ? "hard " : ""}refresh started`);
 
     this.isTestProcessRunning = true;
-    this.testsEmitter.fire({ type: "started" } as TestLoadStartedEvent);
+    this.testLoadEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
     let loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
@@ -143,8 +143,8 @@ export class Adapter implements TestAdapter {
     }
 
     this.loadedTests = loadedTests;
-    this.testsEmitter.fire(testLoadFinishedEvent);
-    this.retireEmitter.fire({});
+    this.testLoadEmitter.fire(testLoadFinishedEvent);
+    this.retireEmitter.fire();
 
     this.isTestProcessRunning = false;
     this.logger.debug(`Test loading finished`);
@@ -159,14 +159,14 @@ export class Adapter implements TestAdapter {
     this.isTestProcessRunning = true;
     this.logger.info(`Running tests ${JSON.stringify(tests)}`);
 
-    this.testStatesEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
+    this.testRunEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
     const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
     const isComponent = testSpec?.type === "suite";
     const testList = [testSpec?.fullName ?? ""];
 
     await this.testExplorer.runTests(this.config, testList, isComponent);
 
-    this.testStatesEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
+    this.testRunEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
     this.isTestProcessRunning = false;
     this.logger.debug(`Test run finished`);
   }

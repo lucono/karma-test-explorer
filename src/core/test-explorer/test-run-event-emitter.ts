@@ -1,23 +1,13 @@
-import {
-  TestEvent,
-  TestRunStartedEvent,
-  TestRunFinishedEvent,
-  TestSuiteEvent,
-  TestDecoration,
-  TestLoadStartedEvent,
-  TestLoadFinishedEvent,
-  TestSuiteInfo,
-} from "vscode-test-adapter-api";
-import { KarmaEvent } from "./../../model/karma-event";
+import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration } from "vscode-test-adapter-api";
+import { KarmaEvent } from "../../model/karma-event";
 import { TestState } from "../../model/enums/test-state.enum";
-import { TestResultToTestStateMapper } from "../test-explorer/test-result-to-test-state.mapper";
+import { TestResultToTestStateMapper } from "./test-result-to-test-state.mapper";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import * as vscode from "vscode";
 
-export class EventEmitter {
+export class TestRunEventEmitter {
   public constructor(
-    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>,
-    private readonly testLoadedEmitterInterface: vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>
+    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>
   ) {}
 
   public emitTestStateEvent(testId: string, testState: TestState) {
@@ -48,12 +38,6 @@ export class EventEmitter {
     }
 
     this.eventEmitterInterface.fire(testEvent);
-  }
-
-  // FIXME: This is not currently used
-  public emitTestsLoadedEvent(loadedTests: TestSuiteInfo) {
-    this.testLoadedEmitterInterface.fire({ type: "started" } as TestLoadStartedEvent);
-    this.testLoadedEmitterInterface.fire({ type: "finished", suite: loadedTests } as TestLoadFinishedEvent);
   }
 
   private createErrorMessage(results: SpecCompleteResponse): string {

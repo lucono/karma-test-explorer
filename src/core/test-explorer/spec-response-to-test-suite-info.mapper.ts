@@ -95,15 +95,16 @@ export class SpecResponseToTestSuiteInfoMapper {
     const suiteFullName = suiteNames.join(" ");
     const suiteLocation = this.pathFinder.getSpecLocation(suiteNames);
 
-    const suiteNode = {
+    const suiteNode: TestSuiteInfo = {
       type: "suite",
       id: suiteFullName,
       fullName: suiteFullName,
       label: suiteName,
+      tooltip: suiteFullName,
       file: suiteLocation?.file,
       line: suiteLocation?.line,
       children: [],
-    } as TestSuiteInfo;
+    };
 
     return suiteNode;
   }
