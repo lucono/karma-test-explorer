@@ -6,27 +6,30 @@ export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly pathFinder: PathFinder) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
+    const suiteNodes: Set<TestSuiteInfo> = new Set();
+    const rootSuiteId = this.generateSuiteName(suiteNodes.size);
+
     const rootSuiteNode: TestSuiteInfo = {
       type: TestType.Suite,
-      id: "root",
+      id: rootSuiteId, // "root",
       label: "Karma tests",
-      fullName: "root",
+      fullName: "", // "root",
       children: [],
     };
-
-    const suiteNodes: Set<TestSuiteInfo> = new Set();
 
     for (const spec of specs) {
       const suiteNames = this.filterSuiteNames(spec.suite);
       const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);
-
-      const newSuiteId = `suite${suiteNodes.size}`;
+      const newSuiteId = this.generateSuiteName(suiteNodes.size);
       const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, suiteNames, newSuiteId);
       suiteNodes.add(suiteNode);
-
       this.createTest(spec, suiteNode, suiteNames, specLocation);
     }
     return rootSuiteNode;
+  }
+
+  private generateSuiteName(suiteNumber: number) {
+    return `suite${suiteNumber}`;
   }
 
   private getOrCreateLowerSuiteNode(node: TestSuiteInfo, suiteNames: string[], newSuiteId: string): TestSuiteInfo {
