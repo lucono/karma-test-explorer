@@ -1,13 +1,14 @@
 // import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
-import { TestInfo, TestSuiteInfo, TestType } from "vscode-test-adapter-api";
+import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { PathFinder } from "../helpers/path-finder";
 import { TestRunner } from "./test-runner";
 import { request as httpRequest } from "http";
 import { Execution, PromiseExecutor } from "../helpers/execution";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info.mapper";
+import { TestType } from "../../model/enums/test-type.enum";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 
@@ -99,7 +100,7 @@ export class HttpClientTestRunner implements TestRunner {
   
       const testPatterns: string[] = resolvedTestSet.filter(test => !!test.fullName).map(test => {
         let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-        if (test.type === "test") {
+        if (test.type === TestType.Test) {
           testPattern = `${testPattern}$`;
         }
         return testPattern;
@@ -132,7 +133,7 @@ export class HttpClientTestRunner implements TestRunner {
   //       return "";
   //     }
   //     let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-  //     if (test.type === "test") {
+  //     if (test.type === TestType.Test) {
   //       testPattern = `${testPattern}$`;
   //     }
   //     return testPattern;

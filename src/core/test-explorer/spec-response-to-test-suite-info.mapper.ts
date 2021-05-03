@@ -1,6 +1,7 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { PathFinder, SpecLocation } from "../helpers/path-finder";
-import { TestSuiteInfo, TestInfo, TestType } from "vscode-test-adapter-api";
+import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
+import { TestType } from "../../model/enums/test-type.enum";
 
 export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly pathFinder: PathFinder) {}
@@ -50,7 +51,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   }
 
   private findNodeByKey(node: TestInfo | TestSuiteInfo, suiteLookup: string): TestSuiteInfo | undefined {
-    if (node.type === "test") {
+    if (node.type === TestType.Test) {
       return undefined;
     }
 
@@ -85,7 +86,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       : undefined;
 
     const testInfo: TestInfo = {
-      type: "test",
+      type: TestType.Test,
       id: specComplete.id,
       fullName: testFullName,
       label: specComplete.description,

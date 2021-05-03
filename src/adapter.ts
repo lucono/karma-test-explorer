@@ -9,10 +9,10 @@ import {
   TestEvent,
   TestInfo,
   TestSuiteInfo,
-  RetireEvent,
-  TestType
+  RetireEvent
 } from "vscode-test-adapter-api";
 import { Log } from "vscode-test-adapter-util";
+import { TestType } from "./model/enums/test-type.enum";
 import { KarmaTestExplorer } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import * as vscode from "vscode";
@@ -157,15 +157,17 @@ export class Adapter implements TestAdapter {
       return;
     }
     this.isTestProcessRunning = true;
+
     this.logger.debug(`Test run started`);
     this.logger.info(`Test run is for test ids: ${JSON.stringify(testIds)}`);
 
-    this.testRunEmitter.fire({ type: "started", tests: testIds } as TestRunStartedEvent);
-
     const tests: Array<TestInfo | TestSuiteInfo> = testIds.map(testId => this.loadedTestsById[testId]);
-    await this.testExplorer.runTests(tests);
+    const testRunId: string = Math.random().toString(36).slice(2);
 
-    this.testRunEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
+    this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId } as TestRunStartedEvent);
+    await this.testExplorer.runTests(tests);
+    this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
+
     this.isTestProcessRunning = false;
     this.logger.debug(`Test run finished`);
   }

@@ -20,7 +20,7 @@ export class CommandlineProcessHandler {
     private readonly processLogger: (data: string) => void = logger.info,
     private readonly processErrorLogger: (data: string) => void = logger.error)
   {
-    this.uid = Math.random().toString(36).slice(2);
+    this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
     this.hasExited = false;
 
     this.futureProcessExit = new Promise(async resolve => {

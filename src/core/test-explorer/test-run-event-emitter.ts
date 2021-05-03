@@ -4,6 +4,7 @@ import { TestState } from "../../model/enums/test-state.enum";
 import { TestResultToTestStateMapper } from "./test-result-to-test-state.mapper";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import * as vscode from "vscode";
+import { TestType } from "../../model/enums/test-type.enum";
 
 export class TestRunEventEmitter {
   public constructor(
@@ -11,7 +12,7 @@ export class TestRunEventEmitter {
   ) {}
 
   public emitTestStateEvent(testId: string, testState: TestState) {
-    const testEvent = { type: "test", test: testId, state: testState } as TestEvent;
+    const testEvent = { type: TestType.Test, test: testId, state: testState } as TestEvent;
     this.eventEmitterInterface.fire(testEvent);
   }
 
@@ -25,7 +26,7 @@ export class TestRunEventEmitter {
       : `${testTime}`;
 
     const testEvent: TestEvent = {
-      type: "test",
+      type: TestType.Test,
       test: testId,
       state: testState,
       description: testTime,
