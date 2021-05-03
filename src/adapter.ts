@@ -9,7 +9,8 @@ import {
   TestEvent,
   TestInfo,
   TestSuiteInfo,
-  RetireEvent
+  RetireEvent,
+  TestType
 } from "vscode-test-adapter-api";
 import { Log } from "vscode-test-adapter-util";
 import { KarmaTestExplorer } from "./core/karma-test-explorer";
@@ -37,7 +38,8 @@ export class Adapter implements TestAdapter {
   private pathFinder?: PathFinder;
   private readonly debugger: Debugger;
   private isTestProcessRunning: boolean = false;
-  public loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
+  // private loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
+  private loadedTestsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
     return this.testLoadEmitter.event;
@@ -74,9 +76,8 @@ export class Adapter implements TestAdapter {
 
     const karmaServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
-      const { isTestRunning } = karmaEventListener;
 
-      if (isTestRunning) {
+      if (this.testExplorer.isTestRunning()) {
         let log = data.toString().replace(regex, "");
         if (log.startsWith("e ")) {
           log = `HeadlessChrom${log}`;
@@ -142,29 +143,27 @@ export class Adapter implements TestAdapter {
       testLoadFinishedEvent.suite = loadedTests;
     }
 
-    this.loadedTests = loadedTests;
+    this.storeLoadedTests(loadedTests);
     this.testLoadEmitter.fire(testLoadFinishedEvent);
-    this.retireEmitter.fire();
+    this.retireEmitter.fire({} as RetireEvent);
 
     this.isTestProcessRunning = false;
     this.logger.debug(`Test loading finished`);
   }
 
-  public async run(tests: string[]): Promise<void> {
+  public async run(testIds: string[]): Promise<void> {
     if (this.isTestProcessRunning) {
       this.logger.debug(`New test run request ignored - Another test operation is still running`);
       return;
     }
-    this.logger.debug(`Test run started`);
     this.isTestProcessRunning = true;
-    this.logger.info(`Running tests ${JSON.stringify(tests)}`);
+    this.logger.debug(`Test run started`);
+    this.logger.info(`Test run is for test ids: ${JSON.stringify(testIds)}`);
 
-    this.testRunEmitter.fire({ type: "started", tests } as TestRunStartedEvent);
-    const testSpec = this.findTestNode(this.loadedTests, tests[0], "id");
-    const isComponent = testSpec?.type === "suite";
-    const testList = [testSpec?.fullName ?? ""];
+    this.testRunEmitter.fire({ type: "started", tests: testIds } as TestRunStartedEvent);
 
-    await this.testExplorer.runTests(this.config, testList, isComponent);
+    const tests: Array<TestInfo | TestSuiteInfo> = testIds.map(testId => this.loadedTestsById[testId]);
+    await this.testExplorer.runTests(tests);
 
     this.testRunEmitter.fire({ type: "finished" } as TestRunFinishedEvent);
     this.isTestProcessRunning = false;
@@ -191,6 +190,20 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
+  private storeLoadedTests(rootSuite: TestSuiteInfo) {
+    const testsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
+
+    const processTestTree = (test: TestInfo | TestSuiteInfo): void => {
+      testsById[test.id] = test;
+      if (test.type === TestType.Suite && test?.children?.length > 0) {
+        test.children.forEach((childTest => processTestTree(childTest)));
+      }
+    };
+    processTestTree(rootSuite);
+    // this.loadedTests = rootSuite;
+    this.loadedTestsById = testsById;
+  }
+
   private loadConfig(configPrefix: string) {
     const config = vscode.workspace.getConfiguration(configPrefix, this.workspace.uri);
     this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
@@ -204,27 +217,6 @@ export class Adapter implements TestAdapter {
       cwd: this.config.projectRootPath
     } as PathFinderOptions;
     return new PathFinder(testFiles, pathFinderOptions);
-  }
-
-  private findTestNode(
-    testNode: TestSuiteInfo | TestInfo, 
-    suiteLookup: string, 
-    propertyLookup: keyof (TestSuiteInfo | TestInfo)
-  ): TestSuiteInfo | TestInfo | null {
-
-    if (testNode[propertyLookup] === suiteLookup) {
-      return testNode;
-    }
-    
-    if ((testNode as TestSuiteInfo).children !== undefined) {
-      for (const child of (testNode as TestSuiteInfo).children) {
-        const result = this.findTestNode(child, suiteLookup, propertyLookup);
-        if (result) {
-          return result;
-        }
-      }
-    }
-    return null;
   }
 
   private handleConfigurationChange = (configChangeEvent: vscode.ConfigurationChangeEvent) => {

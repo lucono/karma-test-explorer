@@ -1,29 +1,35 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { PathFinder, SpecLocation } from "../helpers/path-finder";
-import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
+import { TestSuiteInfo, TestInfo, TestType } from "vscode-test-adapter-api";
 
 export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly pathFinder: PathFinder) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     const rootSuiteNode: TestSuiteInfo = {
-      type: "suite",
+      type: TestType.Suite,
       id: "root",
       label: "Karma tests",
       fullName: "root",
       children: [],
     };
 
+    const suiteNodes: Set<TestSuiteInfo> = new Set();
+
     for (const spec of specs) {
       const suiteNames = this.filterSuiteNames(spec.suite);
       const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);
-      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, suiteNames);
+
+      const newSuiteId = `suite${suiteNodes.size}`;
+      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, suiteNames, newSuiteId);
+      suiteNodes.add(suiteNode);
+
       this.createTest(spec, suiteNode, suiteNames, specLocation);
     }
     return rootSuiteNode;
   }
 
-  private getOrCreateLowerSuiteNode(node: TestSuiteInfo, suiteNames: string[]): TestSuiteInfo {
+  private getOrCreateLowerSuiteNode(node: TestSuiteInfo, suiteNames: string[], newSuiteId: string): TestSuiteInfo {
 
     const currentSuiteNames = [] as string[];
 
@@ -32,7 +38,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       let nextNode = this.findNodeByKey(node, suiteName);
 
       if (!nextNode) {
-        nextNode = this.createSuite(currentSuiteNames);
+        nextNode = this.createSuite(currentSuiteNames, newSuiteId);
         node.children.push(nextNode);
       }
       node = nextNode;
@@ -49,7 +55,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       return node;
     } else {
       for (const child of node.children) {
-        if (child.type === "suite" && child.label === suiteLookup) {
+        if (child.type === TestType.Suite && child.label === suiteLookup) {
           return child as TestSuiteInfo;
         }
       }
@@ -90,14 +96,14 @@ export class SpecResponseToTestSuiteInfoMapper {
     suiteNode.children.push(testInfo);
   }
 
-  private createSuite(suiteNames: string[]): TestSuiteInfo {
+  private createSuite(suiteNames: string[], newSuiteId: string): TestSuiteInfo {
     const suiteName = suiteNames[suiteNames.length - 1];
     const suiteFullName = suiteNames.join(" ");
     const suiteLocation = this.pathFinder.getSpecLocation(suiteNames);
 
     const suiteNode: TestSuiteInfo = {
-      type: "suite",
-      id: suiteFullName,
+      type: TestType.Suite,
+      id: newSuiteId,
       fullName: suiteFullName,
       label: suiteName,
       tooltip: suiteFullName,

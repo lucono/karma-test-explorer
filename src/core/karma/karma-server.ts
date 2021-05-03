@@ -6,10 +6,11 @@ import { readFile } from "fs";
 import {stopper as karmaStopper } from "karma";
 import { parse as parseEnvironmentFile } from "dotenv";
 import * as dotenvExpand from "dotenv-expand";
+import { Execution } from "../helpers/execution";
 
-export interface KarmaServerExecution {
-  futureExit: Promise<void>
-}
+// export interface KarmaServerExecution {
+//   futureExit: Promise<void>
+// }
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -23,12 +24,12 @@ export class KarmaServer {
   public async start(
     config: TestExplorerConfiguration, 
     karmaPort: number, 
-    extraEnv: {[key: string]: string} = {}): Promise<KarmaServerExecution>
+    extraEnv: {[key: string]: string} = {}): Promise<Execution>
   {
-    return new Promise<KarmaServerExecution>(async (resolve) => {
+    return new Promise<Execution>(async (resolve) => {
       if (this.isRunning()) {
         this.logger.info(`Request to start karma server - server is already or still running`);
-        resolve({ futureExit: this.futureServerExit() });
+        resolve({ onStop: this.futureServerExit() });
       }
       this.logger.info(`Starting karma server`);
   
@@ -96,7 +97,7 @@ export class KarmaServer {
   
       this.setServerInfo(karmaServerProcess, karmaPort);
       karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
-      resolve({ futureExit: karmaServerProcess.futureExit() });
+      resolve({ onStop: karmaServerProcess.futureExit() });
     });
   }
 

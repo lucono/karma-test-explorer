@@ -1,14 +1,17 @@
 import { TestRunner } from "./karma/test-runner";
 import { KarmaEventListener } from "./integration/karma-event-listener";
 import { Logger } from "./helpers/logger";
-import { TestSuiteInfo } from "vscode-test-adapter-api";
+import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
-import { KarmaServer, KarmaServerExecution } from "./karma/karma-server";
+import { KarmaServer } from "./karma/karma-server";
 import { PathFinder } from './helpers/path-finder';
-import { TestResult } from "../model/enums/test-status.enum";
+// import { TestResult } from "../model/enums/test-status.enum";
 import { getPort as getAvailablePort, getPortPromise as getAvailablePortPromise } from "portfinder";
+import { Execution } from "./helpers/execution";
 
 export class KarmaTestExplorer {
+  private testRunning: boolean = false;
+
   public constructor(
     private readonly karmaServer: KarmaServer,
     private readonly testRunner: TestRunner,
@@ -32,20 +35,20 @@ export class KarmaTestExplorer {
       this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
-      const karmaServerExecution: KarmaServerExecution = await this.karmaServer.start(config, serverKarmaPort, {
+      const karmaServerExecution: Execution = await this.karmaServer.start(config, serverKarmaPort, {
         karmaSocketPort: `${karmerListenerSocketPort}`
       });
 
       await new Promise<void>((resolve, reject) => {
-        this.karmaEventListener.listenForNewConnection(karmerListenerSocketPort)
+        this.karmaEventListener.connectKarmaServer(karmerListenerSocketPort)
           .then(() => resolve())
           .catch((failureReason) => reject(`${failureReason}`));
         
-          karmaServerExecution.futureExit.then(() => reject(`Karma server quit prematurely`));
+          karmaServerExecution.onStop.then(() => reject(`Karma server quit prematurely`));
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
-      this.karmaEventListener.stopListening();
+      this.karmaEventListener.disconnectKarmaServer();
       throw error;
     }
   }
@@ -70,20 +73,29 @@ export class KarmaTestExplorer {
     }
   }
 
-  public async runTests(config: TestExplorerConfiguration, tests: string[], isComponentRun: boolean): Promise<void> {
+  public async runTests(tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
     if (!this.karmaServer.isRunning()) {
       const failureMessage = `Failed to run tests - Karma server is not running`;
       this.logger.error(failureMessage);
       throw new Error(failureMessage);
     }
 
-    const karmaPort = this.karmaServer.getServerPort() as number;
-    await this.testRunner.runTests(tests, isComponentRun, karmaPort);
-    this.logger.status(this.karmaEventListener.testStatus as TestResult);
+    try {
+      this.testRunning = true;
+      const karmaPort = this.karmaServer.getServerPort() as number;
+      await this.testRunner.runTests(tests, karmaPort);
+      // this.logger.status(this.karmaEventListener.testStatus as TestResult);
+    } finally {
+      this.testRunning = false;
+    }
+  }
+
+  public isTestRunning(): boolean {
+    return this.testRunning;
   }
 
   public async stopCurrentRun(): Promise<void> {
-    this.karmaEventListener.stopListening();
+    this.karmaEventListener.disconnectKarmaServer();
 
     if (this.karmaServer.isRunning()) {
       await this.karmaServer.kill();

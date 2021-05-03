@@ -40,14 +40,20 @@ function TestExplorerCustomReporter(
     this.socket.emit(eventName, { name: eventName, results: eventResults });
   };
 
-  this.onSpecComplete = (browser: any, spec: any) => {
-    let status: TestResult = TestResult.Failed;
+  this.onSpecComplete = (browser: any, spec: { [key: string]: any }) => {
+    let status: TestResult;
+    let fullResponse: { [key: string]: any } | undefined;
 
     if (spec.skipped) {
       status = TestResult.Skipped;
       this.specSkipped(browser, spec);
+
     } else if (spec.success) {
       status = TestResult.Success;
+
+    } else {
+      status = TestResult.Failed;
+      fullResponse = spec;
     }
 
     const result = new SpecCompleteResponse(
@@ -57,15 +63,11 @@ function TestExplorerCustomReporter(
       spec.description,
       spec.fullName,
       status,
-      spec.time
+      spec.time,
+      undefined,
+      undefined,
+      fullResponse
     );
-
-    /*
-    // TODO: Figure out if this is required:
-    if (result.status === TestResult.Failed) {
-      result.fullResponse = spec;
-    }
-    */
 
     emitEvent("spec_complete", result);
   };

@@ -10,6 +10,7 @@ export class SpecCompleteResponse {
   public readonly timeSpentInMilliseconds: string;
   public readonly filePath?: string;
   public readonly line?: number;
+  public readonly fullResponse?: { [key: string]: any };
 
   public constructor(
     _id: string,
@@ -20,7 +21,8 @@ export class SpecCompleteResponse {
     _status: TestResult,
     _timeSpentInMilliseconds: string,
     _filePath?: string,
-    _line?: number
+    _line?: number,
+    _fullResponse?: { [key: string]: any }
   ) {
     this.id = _id;
     this.failureMessages = _failureMessages;
@@ -31,5 +33,6 @@ export class SpecCompleteResponse {
     this.timeSpentInMilliseconds = _timeSpentInMilliseconds;
     this.filePath = _filePath;
     this.line = _line;
+    this.fullResponse = _fullResponse;
   }
 }
