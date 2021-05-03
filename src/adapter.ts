@@ -18,7 +18,7 @@ import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
 import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter";
-import { KarmaEventListener } from "./core/integration/karma-event-listener";
+import { KarmaEventListener, TestRetriever } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
 // import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
@@ -69,8 +69,12 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
+    const testRetriever: TestRetriever = (testId: string) => {
+      const test = this.loadedTestsById[testId];
+      return test.type === TestType.Test ? test : undefined;
+    }
     const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
+    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, testRetriever, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 

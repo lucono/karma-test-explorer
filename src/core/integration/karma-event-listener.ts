@@ -10,9 +10,12 @@ import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import * as express from "express"
 import { Execution } from "../helpers/execution";
+import { TestInfo } from "vscode-test-adapter-api";
 
 const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 300000;
+
+export declare type TestRetriever = (testId: string) => TestInfo | undefined;
 
 export class KarmaEventListener {
   // public lastRunTest: string = "";
@@ -28,7 +31,8 @@ export class KarmaEventListener {
   private readonly sockets: Set<Socket> = new Set();
 
   public constructor(
-    private readonly eventEmitter: TestRunEventEmitter, 
+    private readonly eventEmitter: TestRunEventEmitter,
+    private readonly testRetriever: TestRetriever,
     private readonly logger: Logger
   ) {}
 
@@ -177,12 +181,21 @@ export class KarmaEventListener {
     if (!this.isListening) {
       return;
     }
-    const { results } = event;
+    const results = { ...event.results };
+    const patchedEvent = { name: event.name, results };
+    const testId = results.id;
     const isIncludedSpec = this.isIncludedSpec(results);
+    const test: TestInfo | undefined = this.testRetriever(testId);
+
+    if (test && !results.filePath) {
+      results.filePath = test.file;
+      results.line = test.line;
+    }
 
     if (isIncludedSpec) {
-      this.eventEmitter.emitTestStateEvent(results.id, TestState.Running); // FIXME: why emit running event immediately followed by result event
-      this.eventEmitter.emitTestResultEvent(results.id, event);
+      const testOrId: TestInfo | string = test ?? testId;
+      this.eventEmitter.emitTestStateEvent(testOrId, TestState.Running); // FIXME: why emit consecutive running and result event
+      this.eventEmitter.emitTestResultEvent(testOrId, patchedEvent);
       this.capturedSpecs.push(results);
 
       const testStatus = results.status;

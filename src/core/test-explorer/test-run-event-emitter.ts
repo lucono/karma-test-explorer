@@ -1,4 +1,4 @@
-import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration } from "vscode-test-adapter-api";
+import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
 import { KarmaEvent } from "../../model/karma-event";
 import { TestState } from "../../model/enums/test-state.enum";
 import { TestResultToTestStateMapper } from "./test-result-to-test-state.mapper";
@@ -11,15 +11,20 @@ export class TestRunEventEmitter {
     private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>
   ) {}
 
-  public emitTestStateEvent(testId: string, testState: TestState) {
-    const testEvent = { type: TestType.Test, test: testId, state: testState } as TestEvent;
+  public emitTestStateEvent(test: TestInfo | string, testState: TestState) {
+    const testEvent: TestEvent = {
+      type: TestType.Test,
+      test,
+      state: testState
+    };
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public emitTestResultEvent(testId: string, karmaEvent: KarmaEvent) {
+  public emitTestResultEvent(test: TestInfo | string, karmaEvent: KarmaEvent) {
+    const { results } = karmaEvent;
     const testResultMapper = new TestResultToTestStateMapper();
-    const testState = testResultMapper.Map(karmaEvent.results.status);
-    const testTime = `${karmaEvent.results.timeSpentInMilliseconds} ms`;
+    const testState = testResultMapper.map(results.status);
+    const testTime = `${results.timeSpentInMilliseconds} ms`;
 
     const resultDescription = testState === TestState.Passed ? `Passed in ${testTime}`
       : testState === TestState.Failed ? `Failed in ${testTime}`
@@ -27,15 +32,18 @@ export class TestRunEventEmitter {
 
     const testEvent: TestEvent = {
       type: TestType.Test,
-      test: testId,
+      test,
       state: testState,
       description: testTime,
-      tooltip: `${karmaEvent.results.fullName}  (${resultDescription})`
+      tooltip: `${results.fullName}  (${resultDescription})`
     };
 
-    if (karmaEvent.results.failureMessages.length > 0) {
-      testEvent.decorations = this.createDecorations(karmaEvent.results);
-      testEvent.message = this.createErrorMessage(karmaEvent.results);
+    if (results.failureMessages.length > 0) {
+      const decorations = this.createDecorations(results);
+      const message = this.createErrorMessage(results);
+      
+      testEvent.decorations = decorations;
+      testEvent.message = message;
     }
 
     this.eventEmitterInterface.fire(testEvent);

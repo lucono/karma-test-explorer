@@ -23,6 +23,7 @@ interface KarmaRunConfig {
 export class HttpClientTestRunner implements TestRunner {
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
+    // private readonly testRetriever: KarmaTestRetriever,
     private readonly logger: Logger
   ) {}
 
@@ -82,23 +83,24 @@ export class HttpClientTestRunner implements TestRunner {
   }
 
   public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
-    let testNames: string[] = tests.map(test => test.fullName);
-    this.logger.info(`Requested tests to run: ${JSON.stringify(testNames)}`, { divider: "Karma Logs" });  // FIXME: what's divider?
+    this.logger.info(
+      `Requested tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
+      { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;
+    let resolvedTestList: Array<TestInfo | TestSuiteInfo>;
     let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
-      testNames = [];
+      resolvedTestList = [];
       aggregateTestPattern = "";
       this.logger.debug(`Received empty test list - Will run all tests`);
 
     } else {
-      const resolvedTestSet = this.resolveTests(tests);
-      testNames = resolvedTestSet.map(test => test.fullName);
-      this.logger.debug(`Resolved tests to run: ${JSON.stringify(testNames)}`);
+      resolvedTestList = this.resolveTests(tests);
+      this.logger.debug(`Resolved tests to run: ${JSON.stringify(resolvedTestList.map(test => test.fullName))}`);
   
-      const testPatterns: string[] = resolvedTestSet.filter(test => !!test.fullName).map(test => {
+      const testPatterns: string[] = resolvedTestList.filter(test => !!test.fullName).map(test => {
         let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
         if (test.type === TestType.Test) {
           testPattern = `${testPattern}$`;
@@ -116,7 +118,8 @@ export class HttpClientTestRunner implements TestRunner {
       onStop: new Promise((resolve, reject) => testRunExecution.stop = { resolve, reject })
     };
 
-    this.karmaEventListener.listenForSpecs(testNames, testRun);
+    const resolvedTestListNames = resolvedTestList.map(test => test.fullName);
+    this.karmaEventListener.listenForSpecs(resolvedTestListNames, testRun);
 
     testRunExecution.start.resolve();
     await this.callKarmaRun(karmaRunConfig);
