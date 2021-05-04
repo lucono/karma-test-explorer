@@ -58,7 +58,7 @@ export class Adapter implements TestAdapter {
   }
 
   constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly configPrefix: string, log: Log) {
-    const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLogging;
+    const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
     this.logger = new Logger(log, debugModeResolver);
 
     this.logger.info("Initializing adapter");

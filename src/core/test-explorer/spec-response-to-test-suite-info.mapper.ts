@@ -115,7 +115,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       });
     }
     testSuite.testCount = totalTestCount;
-    testSuite.description = `${totalTestCount} tests`;
+    testSuite.description = `${totalTestCount} ${totalTestCount === 1 ? 'test' : 'tests'}`;
     return totalTestCount;
   }
 

@@ -9,7 +9,7 @@ export enum ConfigSetting {
   ReloadOnKarmaConfigurationFileChange = "reloadOnKarmaConfigurationFileChange",
   DefaultSocketConnectionPort = "defaultSocketConnectionPort",
   DebuggerConfig = "debuggerConfig",
-  DebugLevelLogging = "debugLevelLogging",
+  DebugLevelLoggingEnabled = "debugLevelLoggingEnabled",
   Env = "env",
   EnvFile = "envFile",
   LogPanel = "logpanel",

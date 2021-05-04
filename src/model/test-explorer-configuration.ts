@@ -16,7 +16,7 @@ export class TestExplorerConfiguration {
   public readonly env: { [key: string]: string };
   public readonly envFile: string | undefined;
   public readonly debuggerConfig: any;
-  public readonly debugLevelLogging: boolean;
+  public readonly debugLevelLoggingEnabled: boolean;
 
   public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string)
   {
@@ -32,7 +32,7 @@ export class TestExplorerConfiguration {
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
-    this.debugLevelLogging = config.get(ConfigSetting.DebugLevelLogging) as boolean;
+    this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
     this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile) ? undefined :

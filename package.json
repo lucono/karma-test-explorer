@@ -156,7 +156,7 @@
 					"scope": "resource",
 					"default": true
 				},
-				"karmaTestExplorer.debugLevelLogging": {
+				"karmaTestExplorer.debugLevelLoggingEnabled": {
 					"description": "Enables detailed logging in the output channel that is helpful for troubleshooting issues with running Karma or the extension",
 					"type": "boolean",
 					"scope": "resource",
