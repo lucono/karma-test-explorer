@@ -18,6 +18,8 @@ export class SpecResponseToTestSuiteInfoMapper {
       children: [],
     };
 
+    suiteNodes.add(rootSuiteNode);
+
     for (const spec of specs) {
       const suiteNames = this.filterSuiteNames(spec.suite);
       const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);

@@ -41,7 +41,13 @@ export class TestRunEventEmitter {
 
       if (decorations.length === 0 && testInfo?.line) {
         const { file, line } = testInfo;
-        decorations = [{ message, line, file }];
+
+        decorations = [{
+          line,
+          file,
+          message: `Failed in ${testTime}`,
+          hover: `/* Failed: ${results.fullName} */`
+        }];
       }
     }
 

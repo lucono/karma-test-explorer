@@ -38,7 +38,7 @@ export class Adapter implements TestAdapter {
   private pathFinder?: PathFinder;
   private readonly debugger: Debugger;
   private isTestProcessRunning: boolean = false;
-  // private loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
+  private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -163,13 +163,23 @@ export class Adapter implements TestAdapter {
     this.isTestProcessRunning = true;
 
     this.logger.debug(`Test run started`);
-    this.logger.info(`Test run is for test ids: ${JSON.stringify(testIds)}`);
+    this.logger.info(`Test run is requested for ${testIds.length} test ids: ${JSON.stringify(testIds)}`);
 
-    const tests: Array<TestInfo | TestSuiteInfo> = testIds.map(testId => this.loadedTestsById[testId]);
+    const tests: Array<TestInfo | TestSuiteInfo> = testIds
+      .map(testId => this.loadedTestsById[testId])
+      .filter(test => test !== undefined);
+    
+    const runAllTests = this.containsOnlyRootSuite(tests);
     const testRunId: string = Math.random().toString(36).slice(2);
 
+    this.logger.debug(
+      `Requested ${testIds.length} test Ids resolved to ${tests.length} actual tests:` +
+      `${JSON.stringify(tests.map(test => test.id))}`);
+
+    this.logger.info(`Starting test run Id: ${testRunId}`);
+
     this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId } as TestRunStartedEvent);
-    await this.testExplorer.runTests(tests);
+    await this.testExplorer.runTests(runAllTests ? [] : tests);
     this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
 
     this.isTestProcessRunning = false;
@@ -196,6 +206,10 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
+  private containsOnlyRootSuite(tests: Array<TestInfo | TestSuiteInfo>): boolean {
+    return tests.length === 1 && tests[0] === this.loadedRootSuite;
+  }
+
   private storeLoadedTests(rootSuite: TestSuiteInfo) {
     const testsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
 
@@ -206,8 +220,10 @@ export class Adapter implements TestAdapter {
       }
     };
     processTestTree(rootSuite);
-    // this.loadedTests = rootSuite;
+    this.loadedRootSuite = rootSuite;
     this.loadedTestsById = testsById;
+
+    this.logger.info(`Loaded ${Object.keys(this.loadedTestsById).length} total tests`);
   }
 
   private loadConfig(configPrefix: string) {

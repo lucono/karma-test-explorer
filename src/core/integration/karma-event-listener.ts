@@ -75,7 +75,7 @@ export class KarmaEventListener {
         });
 
         socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
-          this.logger.info(`Karma Event Listener: Got browser error: ${event.results}`);
+          this.logger.info(`Karma Event Listener: Got browser error: ${JSON.stringify(event.results)}`);
         });
 
         socket.on(KarmaEventName.BrowserStart, () => {
@@ -84,12 +84,12 @@ export class KarmaEventListener {
         });
 
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
-          this.logger.info(`Karma Event Listener: Test run completed: ${event}`);
+          this.logger.info(`Karma Event Listener: Test run completed: ${JSON.stringify(event)}`);
           // this.runCompleteEvent = event;
         });
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
-          this.logger.debug(`Karma Event Listener: Test completed: ${event}`);
+          this.logger.debug(`Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
           this.onSpecComplete(event);
         });
 
