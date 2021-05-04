@@ -98,11 +98,14 @@ export class KarmaTestExplorer {
     this.karmaEventListener.closeKarmaConnection();
 
     if (this.karmaServer.isRunning()) {
+      // FIXME: Should this use stop() instead of kill()?
+      // Which one best guarantees termination of both karma
+      // and its launched browser/s without leaving any orphans?
       await this.karmaServer.kill();
     }
   }
 
   public dispose(): void {
-    this.karmaServer.stop();
+    this.karmaServer.kill();
   }
 }

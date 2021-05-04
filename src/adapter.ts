@@ -201,10 +201,7 @@ export class Adapter implements TestAdapter {
 
   public async dispose(): Promise<void> {
     this.testExplorer.dispose();
-
-    for (const disposable of this.disposables) {
-      disposable.dispose();
-    }
+    this.disposables.forEach(disposable => disposable.dispose());
     this.disposables = [];
   }
 

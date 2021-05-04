@@ -39,7 +39,5 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-  for (const testExplorerAdapter of testExplorerAdapters) {
-    testExplorerAdapter.dispose();
-  }
+  testExplorerAdapters.forEach(adapter => adapter.dispose());
 }
