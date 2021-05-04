@@ -54,7 +54,7 @@ export class HttpClientTestRunner implements TestRunner {
     testLoadExecution.stop.resolve();
 
     const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder);
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder, this.logger);
     return specToTestSuiteMapper.map(capturedSpecs);
   }
 

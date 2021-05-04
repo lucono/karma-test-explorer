@@ -2,54 +2,121 @@ import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { PathFinder, SpecLocation } from "../helpers/path-finder";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import { TestType } from "../../model/enums/test-type.enum";
+import { Logger } from "../helpers/logger";
 
 export class SpecResponseToTestSuiteInfoMapper {
-  public constructor(private readonly pathFinder: PathFinder) {}
+  public constructor(private readonly pathFinder: PathFinder, private readonly logger: Logger) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
-    const suiteNodes: Set<TestSuiteInfo> = new Set();
-    const rootSuiteId = this.generateSuiteName(suiteNodes.size);
+    const allTestSuites: Set<TestSuiteInfo> = new Set();
 
-    const rootSuiteNode: TestSuiteInfo = {
-      type: TestType.Suite,
-      id: rootSuiteId, // "root",
-      label: "Karma tests",
-      fullName: "", // "root",
-      children: [],
+    const rootSuiteId = this.generateSuiteId(allTestSuites.size);
+    const rootTestSuite: TestSuiteInfo = this.createRootSuite(rootSuiteId);
+    allTestSuites.add(rootTestSuite);
+
+    specs.forEach(spec => {
+      const specSuitePath = this.filterSuiteNoise(spec.suite);
+      const specLocation = this.pathFinder.getSpecLocation(specSuitePath, spec.description);
+      const nextAvailableSuiteId = this.generateSuiteId(allTestSuites.size);
+
+      const test = this.createTest(spec, specLocation);
+      const testSuite = this.getNewOrExistingDescendantSuite(rootTestSuite, specSuitePath, nextAvailableSuiteId);
+      testSuite.children.push(test);
+      allTestSuites.add(testSuite);
+    });
+    
+    const totalTestCount = this.addTestCountsAndGetTotal(rootTestSuite);
+    this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
+    return rootTestSuite;
+  }
+
+  private createTest(
+    specInfo: SpecCompleteResponse, 
+    // testSuite: TestSuiteInfo, 
+    // suiteNames: string[],
+    specLocation?: SpecLocation): TestInfo {
+
+    // const testFullName = [...suiteNames, specInfo.description].join(" ");
+    const failureMessages = specInfo.failureMessages?.length > 0
+      ? specInfo.failureMessages.join("\n")
+      : undefined;
+
+    const testInfo: TestInfo = {
+      type: TestType.Test,
+      id: specInfo.id,
+      fullName: specInfo.fullName, // testFullName,
+      label: specInfo.description,
+      // description: `${specComplete.timeSpentInMilliseconds} ms,
+      tooltip: specInfo.fullName, // testFullName,
+      message: failureMessages,
+      file: specLocation?.file,
+      line: specLocation?.line,
     };
 
-    suiteNodes.add(rootSuiteNode);
-
-    for (const spec of specs) {
-      const suiteNames = this.filterSuiteNames(spec.suite);
-      const specLocation = this.pathFinder.getSpecLocation(suiteNames, spec.description);
-      const newSuiteId = this.generateSuiteName(suiteNodes.size);
-      const suiteNode = this.getOrCreateLowerSuiteNode(rootSuiteNode, suiteNames, newSuiteId);
-      suiteNodes.add(suiteNode);
-      this.createTest(spec, suiteNode, suiteNames, specLocation);
-    }
-    return rootSuiteNode;
+    // testSuite.children.push(testInfo);
+    return testInfo;
   }
 
-  private generateSuiteName(suiteNumber: number) {
-    return `suite${suiteNumber}`;
+  private createRootSuite(rootSuiteId: string): TestSuiteInfo {
+    return {
+      type: TestType.Suite,
+      id: rootSuiteId,
+      label: "Karma tests",
+      fullName: "",
+      children: [],
+      testCount: 0
+    };
   }
 
-  private getOrCreateLowerSuiteNode(node: TestSuiteInfo, suiteNames: string[], newSuiteId: string): TestSuiteInfo {
+  private createSuite(suiteNames: string[], newSuiteId: string): TestSuiteInfo {
+    const suiteName = suiteNames[suiteNames.length - 1];
+    const suiteFullName = suiteNames.join(" ");
+    const suiteLocation = this.pathFinder.getSpecLocation(suiteNames);
 
-    const currentSuiteNames = [] as string[];
+    const suiteNode: TestSuiteInfo = {
+      type: TestType.Suite,
+      id: newSuiteId,
+      fullName: suiteFullName,
+      label: suiteName,
+      tooltip: suiteFullName,
+      file: suiteLocation?.file,
+      line: suiteLocation?.line,
+      children: [],
+      testCount: 0
+    };
 
-    for (const suiteName of suiteNames) {
-      currentSuiteNames.push(suiteName);
-      let nextNode = this.findNodeByKey(node, suiteName);
+    return suiteNode;
+  }
+
+  private getNewOrExistingDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], nextSuiteId: string): TestSuiteInfo {
+    const currentSuitePath = [] as string[];
+    let currentNode = baseNode;
+
+    for (const suiteName of suitePath) {
+      currentSuitePath.push(suiteName);
+      let nextNode = this.findNodeByKey(currentNode, suiteName);
 
       if (!nextNode) {
-        nextNode = this.createSuite(currentSuiteNames, newSuiteId);
-        node.children.push(nextNode);
+        nextNode = this.createSuite(currentSuitePath, nextSuiteId);
+        currentNode.children.push(nextNode);
       }
-      node = nextNode;
+      currentNode = nextNode;
     }
-    return node;
+    return currentNode;
+  }
+
+  private addTestCountsAndGetTotal(testSuite: TestSuiteInfo): number {
+    let totalTestCount = 0;
+
+    if (testSuite.children) {
+      testSuite.children.forEach(testOrSuite => {
+        totalTestCount += testOrSuite.type === TestType.Test ? 1 
+          : this.addTestCountsAndGetTotal(testOrSuite);
+      });
+    }
+    testSuite.testCount = totalTestCount;
+    testSuite.description = `${totalTestCount} tests`;
+    return totalTestCount;
   }
 
   private findNodeByKey(node: TestInfo | TestSuiteInfo, suiteLookup: string): TestSuiteInfo | undefined {
@@ -69,55 +136,14 @@ export class SpecResponseToTestSuiteInfoMapper {
     return undefined;
   }
 
-  private filterSuiteNames(suiteNames: string[]) {
-    if (suiteNames.length > 0 && "Jasmine__TopLevel__Suite" === suiteNames[0]) {
-      suiteNames = suiteNames.slice(1);
+  private filterSuiteNoise(suitePath: string[]) {
+    if (suitePath.length > 0 && "Jasmine__TopLevel__Suite" === suitePath[0]) {
+      suitePath = suitePath.slice(1);
     }
-    return suiteNames;
+    return suitePath;
   }
 
-  private createTest(
-    specComplete: SpecCompleteResponse, 
-    suiteNode: TestSuiteInfo, 
-    suiteNames: string[],
-    specLocation?: SpecLocation) {
-
-    const testFullName = [...suiteNames, specComplete.description].join(" ");
-    const failureMessages = specComplete.failureMessages?.length > 0
-      ? specComplete.failureMessages.join("\n")
-      : undefined;
-
-    const testInfo: TestInfo = {
-      type: TestType.Test,
-      id: specComplete.id,
-      fullName: testFullName,
-      label: specComplete.description,
-      // description: `${specComplete.timeSpentInMilliseconds} ms,
-      tooltip: testFullName,
-      message: failureMessages,
-      file: specLocation?.file,
-      line: specLocation?.line,
-    };
-
-    suiteNode.children.push(testInfo);
-  }
-
-  private createSuite(suiteNames: string[], newSuiteId: string): TestSuiteInfo {
-    const suiteName = suiteNames[suiteNames.length - 1];
-    const suiteFullName = suiteNames.join(" ");
-    const suiteLocation = this.pathFinder.getSpecLocation(suiteNames);
-
-    const suiteNode: TestSuiteInfo = {
-      type: TestType.Suite,
-      id: newSuiteId,
-      fullName: suiteFullName,
-      label: suiteName,
-      tooltip: suiteFullName,
-      file: suiteLocation?.file,
-      line: suiteLocation?.line,
-      children: [],
-    };
-
-    return suiteNode;
+  private generateSuiteId(suiteNumber: number) {
+    return `suite_${suiteNumber}`;
   }
 }
