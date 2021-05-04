@@ -11,6 +11,7 @@ import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-respons
 import { TestType } from "../../model/enums/test-type.enum";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
+const RUN_ALL_TESTS_PATTERN = "";
 
 interface KarmaRunConfig {
   port: number,
@@ -45,7 +46,7 @@ export class HttpClientTestRunner implements TestRunner {
       onStop: new Promise((resolve, reject) => testLoadExecution.stop = { resolve, reject })
     };
 
-    const futureLoadedSpecs = this.karmaEventListener.listenForAllSpecs(testLoad);
+    const futureLoadedSpecs = this.karmaEventListener.listenForTests(testLoad);
     const karmaRunConfig = this.createKarmaRunConfig(SKIP_ALL_TESTS_PATTERN, karmaPort);
 
     testLoadExecution.start.resolve();
@@ -58,30 +59,35 @@ export class HttpClientTestRunner implements TestRunner {
   }
 
   public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
+
     this.logger.info(
       `Requested tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
       { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;
-    let resolvedTestList: Array<TestInfo | TestSuiteInfo>;
+    let testList: Array<TestInfo | TestSuiteInfo>;
+    // let testNames: string[];
     let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
-      resolvedTestList = [];
-      aggregateTestPattern = "";
+      testList = [];
+      aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
+
       this.logger.debug(`Received empty test list - Will run all tests`);
 
     } else {
-      resolvedTestList = this.resolveTests(tests);
-      this.logger.debug(`Resolved tests to run: ${JSON.stringify(resolvedTestList.map(test => test.fullName))}`);
+      testList = this.removeTestOverlaps(tests);
+      this.logger.debug(`Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
   
-      const testPatterns: string[] = resolvedTestList.filter(test => !!test.fullName).map(test => {
-        let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-        if (test.type === TestType.Test) {
-          testPattern = `${testPattern}$`;
-        }
-        return testPattern;
-      });
+      const testPatterns: string[] = testList
+        .filter(test => !!test.fullName)
+        .map(test => {
+          let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
+          if (test.type === TestType.Test) {
+            testPattern = `${testPattern}$`;
+          }
+          return testPattern;
+        });
       aggregateTestPattern = `/(${testPatterns.join("|")})/`;
     }
 
@@ -93,8 +99,8 @@ export class HttpClientTestRunner implements TestRunner {
       onStop: new Promise((resolve, reject) => testRunExecution.stop = { resolve, reject })
     };
 
-    const resolvedTestListNames = resolvedTestList.map(test => test.fullName);
-    this.karmaEventListener.listenForSpecs(resolvedTestListNames, testRun);
+    const testNames = testList.map(test => test.fullName);
+    this.karmaEventListener.listenForTests(testRun, testNames);
 
     testRunExecution.start.resolve();
     await this.callKarmaRun(karmaRunConfig);
@@ -151,7 +157,7 @@ export class HttpClientTestRunner implements TestRunner {
   //   await this.callKarma(karmaRunConfig);
   // }
 
-  private resolveTests(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
+  private removeTestOverlaps(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
     // FIXME: Implement
     // - Reduce test collection to non-overlapping set before processing
     // - A collection which includes the root suite should return empty test[] array

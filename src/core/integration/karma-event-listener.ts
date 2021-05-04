@@ -114,21 +114,24 @@ export class KarmaEventListener {
     });
   }
 
-  public async listenForAllSpecs(testExecution: Execution): Promise<SpecCompleteResponse[]> {
-    // this.currentRunId = testRunId;
-    this.acceptAllSpecs = true;
-    this.currentSpecs = [];
-    return this.listen(testExecution);
-  }
+  // private async listenForAllSpecs(testExecution: Execution): Promise<SpecCompleteResponse[]> {
+  //   // this.currentRunId = testRunId;
+  //   this.acceptAllSpecs = true;
+  //   this.currentSpecs = [];
+  //   return this.listen(testExecution);
+  // }
 
-  public async listenForSpecs(specs: string[], testExecution: Execution): Promise<SpecCompleteResponse[]> {
+  public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<SpecCompleteResponse[]> {
     // this.currentRunId = testRunId;
-    this.acceptAllSpecs = false;
-    this.currentSpecs = specs;
-    return this.listen(testExecution);
-  }
+    if (specs.length === 0) {
+      this.acceptAllSpecs = true;
+      this.currentSpecs = [];
 
-  private async listen(testExecution: Execution): Promise<SpecCompleteResponse[]> {
+    } else {
+      this.acceptAllSpecs = false;
+      this.currentSpecs = specs;
+    }
+
     this.isListening = true;
 
     return new Promise((resolve, reject) => {
@@ -140,13 +143,33 @@ export class KarmaEventListener {
         })
         .finally(() => {
           this.isListening = false;
-          this.capturedSpecs = [];
           // this.currentRunId = undefined;
+          this.capturedSpecs = [];
           this.currentSpecs = [];
           this.acceptAllSpecs = false;
         });
     });
   }
+
+  // private async listen(testExecution: Execution): Promise<SpecCompleteResponse[]> {
+  //   this.isListening = true;
+
+  //   return new Promise((resolve, reject) => {
+  //     testExecution.onStop
+  //       .then(() => resolve(this.capturedSpecs))
+  //       .catch((reason: any) => {
+  //         this.logger.error(`Could not listen for Karma events - Test execution failed: ${reason}`);
+  //         reject(reason);
+  //       })
+  //       .finally(() => {
+  //         this.isListening = false;
+  //         this.capturedSpecs = [];
+  //         // this.currentRunId = undefined;
+  //         this.currentSpecs = [];
+  //         this.acceptAllSpecs = false;
+  //       });
+  //   });
+  // }
 
   // public async listenForTestRun(testExecution: Execution<any, Array<TestInfo | TestSuiteInfo>>): Promise<SpecCompleteResponse[]> {
   //   this.runningTests = testExecution.executionData;
