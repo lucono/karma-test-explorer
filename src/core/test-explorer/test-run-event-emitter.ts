@@ -21,6 +21,8 @@ export class TestRunEventEmitter {
   }
 
   public emitTestResultEvent(test: TestInfo | string, karmaEvent: KarmaEvent) {
+    // const testId: string = typeof test === 'string' ? test : test.id;
+    const testInfo: TestInfo | undefined = typeof test === 'string' ? undefined : test;
     const { results } = karmaEvent;
     const testResultMapper = new TestResultToTestStateMapper();
     const testState = testResultMapper.map(results.status);
@@ -30,21 +32,29 @@ export class TestRunEventEmitter {
       : testState === TestState.Failed ? `Failed in ${testTime}`
       : `${testTime}`;
 
+    let message: string | undefined;
+    let decorations: TestDecoration[] | undefined;
+    
+    if (results.failureMessages.length > 0) {
+      message = this.createErrorMessage(results);
+      decorations = this.createDecorations(results) ?? [];
+
+      if (decorations.length === 0 && testInfo?.line) {
+        const { file, line } = testInfo;
+        decorations = [{ message, line, file }];
+      }
+    }
+
     const testEvent: TestEvent = {
       type: TestType.Test,
       test,
       state: testState,
       description: testTime,
-      tooltip: `${results.fullName}  (${resultDescription})`
+      tooltip: `${results.fullName}  (${resultDescription})`,
+      message,
+      decorations,
+      // testRunId
     };
-
-    if (results.failureMessages.length > 0) {
-      const decorations = this.createDecorations(results);
-      const message = this.createErrorMessage(results);
-      
-      testEvent.decorations = decorations;
-      testEvent.message = message;
-    }
 
     this.eventEmitterInterface.fire(testEvent);
   }

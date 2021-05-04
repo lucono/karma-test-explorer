@@ -69,9 +69,9 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
-    const testRetriever: TestRetriever = (testId: string) => {
+    const testRetriever: TestRetriever = testId => {
       const test = this.loadedTestsById[testId];
-      return test.type === TestType.Test ? test : undefined;
+      return test?.type === TestType.Test ? test : undefined;
     }
     const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, testRetriever, this.logger);

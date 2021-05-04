@@ -4,13 +4,12 @@ import { KarmaEventName } from "../../model/enums/karma-event-name.enum";
 import { TestState } from "../../model/enums/test-state.enum";
 import { Logger } from "../helpers/logger";
 import { TestRunEventEmitter } from "../test-explorer/test-run-event-emitter";
-import { TestResult } from "../../model/enums/test-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
-import * as express from "express"
 import { Execution } from "../helpers/execution";
 import { TestInfo } from "vscode-test-adapter-api";
+import * as express from "express"
 
 const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 300000;
@@ -84,11 +83,12 @@ export class KarmaEventListener {
         });
 
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
-          this.logger.info(`Karma Event Listener: Test run completed with details: ${event}`);
+          this.logger.info(`Karma Event Listener: Test run completed: ${event}`);
           // this.runCompleteEvent = event;
         });
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
+          this.logger.debug(`Karma Event Listener: Test completed: ${event}`);
           this.onSpecComplete(event);
         });
 
@@ -181,27 +181,45 @@ export class KarmaEventListener {
     if (!this.isListening) {
       return;
     }
-    const results = { ...event.results };
-    const patchedEvent = { name: event.name, results };
+    const { results } = event;
     const testId = results.id;
     const isIncludedSpec = this.isIncludedSpec(results);
     const test: TestInfo | undefined = this.testRetriever(testId);
 
-    if (test && !results.filePath) {
-      results.filePath = test.file;
-      results.line = test.line;
-    }
-
     if (isIncludedSpec) {
       const testOrId: TestInfo | string = test ?? testId;
       this.eventEmitter.emitTestStateEvent(testOrId, TestState.Running); // FIXME: why emit consecutive running and result event
-      this.eventEmitter.emitTestResultEvent(testOrId, patchedEvent);
+      this.eventEmitter.emitTestResultEvent(testOrId, event);
       this.capturedSpecs.push(results);
-
-      const testStatus = results.status;
-      this.logger.status(testStatus as TestResult);
+      this.logger.status(results.status);
     }
   }
+
+  // private onSpecComplete(event: KarmaEvent) {
+  //   if (!this.isListening) {
+  //     return;
+  //   }
+  //   const results = { ...event.results };
+  //   const patchedEvent = { name: event.name, results };
+  //   const testId = results.id;
+  //   const isIncludedSpec = this.isIncludedSpec(results);
+  //   const test: TestInfo | undefined = this.testRetriever(testId);
+
+  //   if (test && !results.filePath) {
+  //     results.filePath = test.file;
+  //     results.line = test.line;
+  //   }
+
+  //   if (isIncludedSpec) {
+  //     const testOrId: TestInfo | string = test ?? testId;
+  //     this.eventEmitter.emitTestStateEvent(testOrId, TestState.Running); // FIXME: why emit consecutive running and result event
+  //     this.eventEmitter.emitTestResultEvent(testOrId, patchedEvent);
+  //     this.capturedSpecs.push(results);
+
+  //     const testStatus = results.status;
+  //     this.logger.status(testStatus as TestResult);
+  //   }
+  // }
 
   public disconnectKarmaServer(): void {
     try {
