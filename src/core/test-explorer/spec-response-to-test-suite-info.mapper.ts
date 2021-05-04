@@ -8,21 +8,23 @@ export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly pathFinder: PathFinder, private readonly logger: Logger) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
-    const allTestSuites: Set<TestSuiteInfo> = new Set();
+    let suiteIdCounter = 0
 
-    const rootSuiteId = this.generateSuiteId(allTestSuites.size);
+    const suiteIdProvider = () => {
+      const newSuiteId = `suite_${suiteIdCounter}`;
+      suiteIdCounter += 1
+      return newSuiteId;
+    };
+
+    const rootSuiteId = suiteIdProvider();
     const rootTestSuite: TestSuiteInfo = this.createRootSuite(rootSuiteId);
-    allTestSuites.add(rootTestSuite);
 
     specs.forEach(spec => {
       const specSuitePath = this.filterSuiteNoise(spec.suite);
       const specLocation = this.pathFinder.getSpecLocation(specSuitePath, spec.description);
-      const nextAvailableSuiteId = this.generateSuiteId(allTestSuites.size);
-
       const test = this.createTest(spec, specLocation);
-      const testSuite = this.getNewOrExistingDescendantSuite(rootTestSuite, specSuitePath, nextAvailableSuiteId);
+      const testSuite = this.getNewOrExistingDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
       testSuite.children.push(test);
-      allTestSuites.add(testSuite);
     });
     
     const totalTestCount = this.addTestCountsAndGetTotal(rootTestSuite);
@@ -30,52 +32,44 @@ export class SpecResponseToTestSuiteInfoMapper {
     return rootTestSuite;
   }
 
-  private createTest(
-    specInfo: SpecCompleteResponse, 
-    // testSuite: TestSuiteInfo, 
-    // suiteNames: string[],
-    specLocation?: SpecLocation): TestInfo {
-
-    // const testFullName = [...suiteNames, specInfo.description].join(" ");
+  private createTest(specInfo: SpecCompleteResponse, specLocation?: SpecLocation): TestInfo {
     const failureMessages = specInfo.failureMessages?.length > 0
       ? specInfo.failureMessages.join("\n")
       : undefined;
 
-    const testInfo: TestInfo = {
+    const test: TestInfo = {
       type: TestType.Test,
       id: specInfo.id,
-      fullName: specInfo.fullName, // testFullName,
+      fullName: specInfo.fullName,
       label: specInfo.description,
-      // description: `${specComplete.timeSpentInMilliseconds} ms,
-      tooltip: specInfo.fullName, // testFullName,
+      tooltip: specInfo.fullName,
       message: failureMessages,
       file: specLocation?.file,
       line: specLocation?.line,
     };
-
-    // testSuite.children.push(testInfo);
-    return testInfo;
+    return test;
   }
 
-  private createRootSuite(rootSuiteId: string): TestSuiteInfo {
-    return {
+  private createRootSuite(suiteId: string): TestSuiteInfo {
+    const rootSuite: TestSuiteInfo = {
       type: TestType.Suite,
-      id: rootSuiteId,
+      id: suiteId,
       label: "Karma tests",
       fullName: "",
       children: [],
       testCount: 0
     };
+    return rootSuite;
   }
 
-  private createSuite(suiteNames: string[], newSuiteId: string): TestSuiteInfo {
-    const suiteName = suiteNames[suiteNames.length - 1];
-    const suiteFullName = suiteNames.join(" ");
-    const suiteLocation = this.pathFinder.getSpecLocation(suiteNames);
+  private createSuite(suitePath: string[], suiteId: string): TestSuiteInfo {
+    const suiteName = suitePath[suitePath.length - 1];
+    const suiteFullName = suitePath.join(" ");
+    const suiteLocation = this.pathFinder.getSpecLocation(suitePath);
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
-      id: newSuiteId,
+      id: suiteId,
       fullName: suiteFullName,
       label: suiteName,
       tooltip: suiteFullName,
@@ -84,11 +78,10 @@ export class SpecResponseToTestSuiteInfoMapper {
       children: [],
       testCount: 0
     };
-
     return suiteNode;
   }
 
-  private getNewOrExistingDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], nextSuiteId: string): TestSuiteInfo {
+  private getNewOrExistingDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], suiteIdGenerator: () => string): TestSuiteInfo {
     const currentSuitePath = [] as string[];
     let currentNode = baseNode;
 
@@ -97,6 +90,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       let nextNode = this.findNodeByKey(currentNode, suiteName);
 
       if (!nextNode) {
+        const nextSuiteId = suiteIdGenerator();
         nextNode = this.createSuite(currentSuitePath, nextSuiteId);
         currentNode.children.push(nextNode);
       }
@@ -141,9 +135,5 @@ export class SpecResponseToTestSuiteInfoMapper {
       suitePath = suitePath.slice(1);
     }
     return suitePath;
-  }
-
-  private generateSuiteId(suiteNumber: number) {
-    return `suite_${suiteNumber}`;
   }
 }
