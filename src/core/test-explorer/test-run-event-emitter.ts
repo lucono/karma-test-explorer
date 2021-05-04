@@ -45,7 +45,7 @@ export class TestRunEventEmitter {
         decorations = [{
           line,
           file,
-          message: `Failed  (${testTime})`,
+          message: `Failed`,
           hover: `/* Failed: ${results.fullName} */`
         }];
       }
