@@ -11,7 +11,7 @@ export class TestRunEventEmitter {
     private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>
   ) {}
 
-  public emitTestStateEvent(test: TestInfo | string, testState: TestState) {
+  public emitTestStateEvent(test: TestInfo | string, testState: TestState, testRunId?: string) {
     const testEvent: TestEvent = {
       type: TestType.Test,
       test,
@@ -53,7 +53,7 @@ export class TestRunEventEmitter {
       tooltip: `${results.fullName}  (${resultDescription})`,
       message,
       decorations,
-      // testRunId
+      // testRunId  // FIXME: testRunId currently not passed
     };
 
     this.eventEmitterInterface.fire(testEvent);

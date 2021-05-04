@@ -57,31 +57,6 @@ export class HttpClientTestRunner implements TestRunner {
     return specToTestSuiteMapper.map(capturedSpecs);
   }
 
-  private resolveTests(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
-    // FIXME: Implement
-    // - Reduce test collection to non-overlapping set before processing
-    // - A collection which includes the root suite should return empty test[] array
-
-    const resolvedTests = new Set(tests);
-
-    const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
-      if (resolvedTests.has(test)) {
-        resolvedTests.delete(test);
-      }
-      if (test.type === TestType.Suite) {
-        test.children.forEach(childTest => removeDuplicates(childTest));
-      }
-    }
-
-    tests.forEach(test => {
-      if (resolvedTests.has(test) && test.type === TestType.Suite) {
-        test.children.forEach(childTest => removeDuplicates(childTest))
-      };
-    });
-
-    return [ ...resolvedTests ];
-  }
-
   public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
     this.logger.info(
       `Requested tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
@@ -175,6 +150,31 @@ export class HttpClientTestRunner implements TestRunner {
   //   const karmaRunConfig = this.createKarmaRunConfig(testPattern, karmaPort);
   //   await this.callKarma(karmaRunConfig);
   // }
+
+  private resolveTests(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
+    // FIXME: Implement
+    // - Reduce test collection to non-overlapping set before processing
+    // - A collection which includes the root suite should return empty test[] array
+
+    const resolvedTests = new Set(tests);
+
+    const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
+      if (resolvedTests.has(test)) {
+        resolvedTests.delete(test);
+      }
+      if (test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest));
+      }
+    }
+
+    tests.forEach(test => {
+      if (resolvedTests.has(test) && test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest))
+      };
+    });
+
+    return [ ...resolvedTests ];
+  }
 
   private createKarmaRunConfig(testPattern: string, karmaPort: number): KarmaRunConfig {
     return {

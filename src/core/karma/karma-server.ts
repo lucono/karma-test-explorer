@@ -8,10 +8,6 @@ import { parse as parseEnvironmentFile } from "dotenv";
 import * as dotenvExpand from "dotenv-expand";
 import { Execution } from "../helpers/execution";
 
-// export interface KarmaServerExecution {
-//   futureExit: Promise<void>
-// }
-
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
   private serverPort?: number;

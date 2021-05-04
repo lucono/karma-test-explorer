@@ -4,7 +4,8 @@
 //   executionEnded: Promise<U>
 // }
 
-export interface Execution<T = void, U = void> {
+export interface Execution<S = void, T = void, U = void> {
+  executionData?: S,  // FIXME: Currently not used
   onStart?: Promise<T>,
   onStop: Promise<U>
 }

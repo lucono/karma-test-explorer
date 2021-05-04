@@ -8,3 +8,9 @@ export interface TestRunner {
   runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void>;
 
 }
+
+// FIXME: Not currently used
+export interface TestRunInfo {
+  testRunId: string,
+  tests: Array<TestInfo | TestSuiteInfo>
+}

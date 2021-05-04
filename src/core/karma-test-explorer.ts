@@ -40,7 +40,7 @@ export class KarmaTestExplorer {
       });
 
       await new Promise<void>((resolve, reject) => {
-        this.karmaEventListener.connectKarmaServer(karmerListenerSocketPort)
+        this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)
           .then(() => resolve())
           .catch((failureReason) => reject(`${failureReason}`));
         
@@ -48,7 +48,7 @@ export class KarmaTestExplorer {
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
-      this.karmaEventListener.disconnectKarmaServer();
+      this.karmaEventListener.closeKarmaConnection();
       throw error;
     }
   }
@@ -95,7 +95,7 @@ export class KarmaTestExplorer {
   }
 
   public async stopCurrentRun(): Promise<void> {
-    this.karmaEventListener.disconnectKarmaServer();
+    this.karmaEventListener.closeKarmaConnection();
 
     if (this.karmaServer.isRunning()) {
       await this.karmaServer.kill();

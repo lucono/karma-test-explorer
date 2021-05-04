@@ -24,6 +24,7 @@ export class KarmaEventListener {
 
   private isListening: boolean = false;
   private acceptAllSpecs: boolean = false;
+  // private currentRunId?: string;
   private currentSpecs: string[] = []; // Array<TestInfo | TestSuiteInfo> = [];
   private capturedSpecs: SpecCompleteResponse[] = [];
   private server: HttpServer | undefined;
@@ -35,8 +36,8 @@ export class KarmaEventListener {
     private readonly logger: Logger
   ) {}
 
-  public connectKarmaServer(socketPort?: number): Promise<void> {
-    this.disconnectKarmaServer();
+  public acceptKarmaConnection(socketPort?: number): Promise<void> {
+    this.closeKarmaConnection();
 
     return new Promise<void>((resolve, reject) => {
       this.logger.info(`Karma Event Listener: Listen for new connection requested with port '${socketPort}'`);
@@ -114,13 +115,14 @@ export class KarmaEventListener {
   }
 
   public async listenForAllSpecs(testExecution: Execution): Promise<SpecCompleteResponse[]> {
+    // this.currentRunId = testRunId;
     this.acceptAllSpecs = true;
     this.currentSpecs = [];
     return this.listen(testExecution);
   }
 
-  // public async listenForSpecs(specs: Array<TestInfo | TestSuiteInfo>, testExecution: Execution): Promise<SpecCompleteResponse[]> {
   public async listenForSpecs(specs: string[], testExecution: Execution): Promise<SpecCompleteResponse[]> {
+    // this.currentRunId = testRunId;
     this.acceptAllSpecs = false;
     this.currentSpecs = specs;
     return this.listen(testExecution);
@@ -139,6 +141,7 @@ export class KarmaEventListener {
         .finally(() => {
           this.isListening = false;
           this.capturedSpecs = [];
+          // this.currentRunId = undefined;
           this.currentSpecs = [];
           this.acceptAllSpecs = false;
         });
@@ -221,7 +224,7 @@ export class KarmaEventListener {
   //   }
   // }
 
-  public disconnectKarmaServer(): void {
+  public closeKarmaConnection(): void {
     try {
       this.sockets.forEach(socket => {
         socket.removeAllListeners();
