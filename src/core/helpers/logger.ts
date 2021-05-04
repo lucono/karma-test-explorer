@@ -3,18 +3,35 @@ import { TestResult } from "../../model/enums/test-status.enum";
 import { LogLevel } from "../../model/enums/log-level.enum";
 
 
-type LogAction = (...msg: any[]) => void;
+declare type LogAction = (...msg: any[]) => void;
+
+export type DebugLoggingResolver = () => boolean;
 
 export class Logger {
 
-  constructor(private readonly logger: Log) {}
+  private readonly isDebugLoggingEnabled: DebugLoggingResolver;
 
-  public debug(msg: string, ...params: any[]) {
+  constructor(private readonly logger: Log, debugLoggingResolver?: DebugLoggingResolver) {
+    this.isDebugLoggingEnabled = debugLoggingResolver ?? (() => false);
+  }
+
+  public debug(msgProvider: () => string, ...params: any[]) {
+    if (!this.isDebugLoggingEnabled()) {
+      return;
+    }
+    const msg = msgProvider();
     const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);
     this.logger.debug(formattedMsg);
     this.logParams(this.logger.debug, params);
     global.console.log(formattedMsg);
-  }
+  };
+
+  // public debug(msg: string, ...params: any[]) {
+  //   const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);
+  //   this.logger.debug(formattedMsg);
+  //   this.logParams(this.logger.debug, params);
+  //   global.console.log(formattedMsg);
+  // }
 
   public warn(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.WARN);

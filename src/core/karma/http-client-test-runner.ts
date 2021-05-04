@@ -73,11 +73,11 @@ export class HttpClientTestRunner implements TestRunner {
       testList = [];
       aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
 
-      this.logger.debug(`Received empty test list - Will run all tests`);
+      this.logger.debug(() => `Received empty test list - Will run all tests`);
 
     } else {
       testList = this.removeTestOverlaps(tests);
-      this.logger.debug(`Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
+      this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
   
       const testPatterns: string[] = testList
         .filter(test => !!test.fullName)

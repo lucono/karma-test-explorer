@@ -24,7 +24,7 @@ export class CommandlineProcessHandler {
     this.hasExited = false;
 
     this.futureProcessExit = new Promise(async resolve => {
-      this.logger.debug(
+      this.logger.debug(() =>
         `Process ${this.uid}:
         Executing command: '${command}'
         with args: ${JSON.stringify(processArguments)}`
@@ -34,7 +34,7 @@ export class CommandlineProcessHandler {
       const process = spawn(command, processArguments, runOptions);
       const processPid = process.pid;
 
-      this.logger.debug(
+      this.logger.debug(() =>
         `Process ${this.uid}:
         PID is ${processPid} for command: '${command}'
         with args: ${JSON.stringify(processArguments)}`
@@ -46,7 +46,7 @@ export class CommandlineProcessHandler {
       process.on(
         "exit", (code, signal) => {
         const processCommand = `${command} ${processArguments.join(" ")}`;
-        this.logger.debug(
+        this.logger.debug(() =>
           `Process ${this.uid}:
           PID ${processPid} exited
           with code '${code}' and signal '${signal}'
@@ -93,7 +93,7 @@ export class CommandlineProcessHandler {
           reject(error);
         } else {
           childProcesses.forEach(childProcess => process.kill(Number(childProcess.PID), 'SIGKILL'));
-          this.logger.info(`Process ${this.uid}: Successfully killed process tree for PID '${processPid}'`);
+          this.logger.info(`Process ${this.uid}: Successfully killed process tree for PID: ${processPid}`);
           resolve();
         }
       });

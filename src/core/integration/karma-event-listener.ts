@@ -59,7 +59,7 @@ export class KarmaEventListener {
         this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${port}' instead`);
       }
       
-      this.logger.info(`Waiting to connect to Karma...`);
+      this.logger.info(`Waiting on port ${port} for Karma to connect...`);
       let connectTimeoutId: ReturnType<typeof setTimeout>;
 
       io.on("connection", (socket) => {
@@ -89,7 +89,7 @@ export class KarmaEventListener {
         });
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
-          this.logger.debug(`Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
+          this.logger.debug(() => `Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
           this.onSpecComplete(event);
         });
 

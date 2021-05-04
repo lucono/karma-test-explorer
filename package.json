@@ -156,6 +156,12 @@
 					"scope": "resource",
 					"default": true
 				},
+				"karmaTestExplorer.debugLevelLogging": {
+					"description": "Enables detailed logging in the output channel that is helpful for troubleshooting issues with running Karma or the extension",
+					"type": "boolean",
+					"scope": "resource",
+					"default": false
+				},
 				"karmaTestExplorer.defaultSocketConnectionPort": {
 					"description": "This is the port that will be used to connect Karma with the test explorer",
 					"type": "number",

@@ -1,4 +1,4 @@
-import { Logger } from "./core/helpers/logger";
+import { DebugLoggingResolver, Logger } from "./core/helpers/logger";
 import {
   TestAdapter,
   TestLoadStartedEvent,
@@ -28,7 +28,7 @@ import { ConfigSetting } from "./model/enums/config-setting"
 export class Adapter implements TestAdapter {
 
   private logger: Logger;
-  private config: TestExplorerConfiguration = {} as TestExplorerConfiguration;
+  private config = {} as TestExplorerConfiguration;
   private disposables: Array<{ dispose(): void }> = [];
   private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
@@ -58,7 +58,9 @@ export class Adapter implements TestAdapter {
   }
 
   constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly configPrefix: string, log: Log) {
-    this.logger = new Logger(log);
+    const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLogging;
+    this.logger = new Logger(log, debugModeResolver);
+
     this.logger.info("Initializing adapter");
 
     this.disposables.push(this.testLoadEmitter);
@@ -97,18 +99,18 @@ export class Adapter implements TestAdapter {
 
   public async load(): Promise<void> {
     if (this.isTestProcessRunning) {
-      this.logger.debug(`New test load request ignored - Another test operation is still running`);
+      this.logger.debug(() => `New test load request ignored - Another test operation is still running`);
       return;
     }
-    this.logger.debug(`Test load started`);
+    this.logger.debug(() => `Test load started`);
     return this.refresh(true);
   }
 
   private async reload(): Promise<void> {
-    this.logger.debug(`Test reload started`);
+    this.logger.debug(() => `Test reload started`);
 
     if (this.isTestProcessRunning) {
-      this.logger.debug(`Test reload - Aborting previously running test operation`);
+      this.logger.debug(() => `Test reload - Aborting previously running test operation`);
       await this.cancel();
     }
     return this.load();
@@ -116,18 +118,18 @@ export class Adapter implements TestAdapter {
 
   private async refresh(isHardRefresh: boolean = false): Promise<void> {
     if (this.isTestProcessRunning) {
-      this.logger.debug(
+      this.logger.debug(() => 
         `Test ${isHardRefresh ? "hard " : ""}refresh request ignored - ` +
         `Another test operation is currently running`);
       return;
     }
-    this.logger.debug(`Test ${isHardRefresh ? "hard " : ""}refresh started`);
+    this.logger.debug(() => `Test ${isHardRefresh ? "hard " : ""}refresh started`);
 
     this.isTestProcessRunning = true;
     this.testLoadEmitter.fire({ type: "started" } as TestLoadStartedEvent);
     this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
-    let loadedTests: TestSuiteInfo = {} as TestSuiteInfo;
+    let loadedTests: TestSuiteInfo | undefined;
     let loadError: string | undefined;
     
     try {
@@ -143,7 +145,7 @@ export class Adapter implements TestAdapter {
 
     if (loadError) {
       testLoadFinishedEvent.errorMessage = loadError;
-    } else if (loadedTests?.children?.length > 0) {
+    } else if (loadedTests?.children?.length) {
       testLoadFinishedEvent.suite = loadedTests;
     }
 
@@ -152,17 +154,17 @@ export class Adapter implements TestAdapter {
     this.retireEmitter.fire({} as RetireEvent);
 
     this.isTestProcessRunning = false;
-    this.logger.debug(`Test loading finished`);
+    this.logger.debug(() => `Test loading finished`);
   }
 
   public async run(testIds: string[]): Promise<void> {
     if (this.isTestProcessRunning) {
-      this.logger.debug(`New test run request ignored - Another test operation is still running`);
+      this.logger.debug(() => `New test run request ignored - Another test operation is still running`);
       return;
     }
     this.isTestProcessRunning = true;
 
-    this.logger.debug(`Test run started`);
+    this.logger.debug(() => `Test run started`);
     this.logger.info(`Test run is requested for ${testIds.length} test ids: ${JSON.stringify(testIds)}`);
 
     const tests: Array<TestInfo | TestSuiteInfo> = testIds
@@ -172,7 +174,7 @@ export class Adapter implements TestAdapter {
     const runAllTests = this.containsOnlyRootSuite(tests);
     const testRunId: string = Math.random().toString(36).slice(2);
 
-    this.logger.debug(
+    this.logger.debug(() => 
       `Requested ${testIds.length} test Ids resolved to ${tests.length} actual tests:` +
       `${JSON.stringify(tests.map(test => test.id))}`);
 
@@ -183,7 +185,7 @@ export class Adapter implements TestAdapter {
     this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
 
     this.isTestProcessRunning = false;
-    this.logger.debug(`Test run finished`);
+    this.logger.debug(() => `Test run finished`);
   }
 
   public async debug(tests: string[]): Promise<void> {
@@ -192,7 +194,7 @@ export class Adapter implements TestAdapter {
   }
 
   public async cancel(): Promise<void> {
-    this.logger.debug(`Aborting any currently running test operation`);
+    this.logger.debug(() => `Aborting any currently running test operation`);
     await this.testExplorer.stopCurrentRun();
     this.isTestProcessRunning = false;
   }
@@ -207,10 +209,12 @@ export class Adapter implements TestAdapter {
   }
 
   private containsOnlyRootSuite(tests: Array<TestInfo | TestSuiteInfo>): boolean {
-    return tests.length === 1 && tests[0] === this.loadedRootSuite;
+    return this.loadedRootSuite !== undefined
+      ? tests.length === 1 && tests[0] === this.loadedRootSuite
+      : false;
   }
 
-  private storeLoadedTests(rootSuite: TestSuiteInfo) {
+  private storeLoadedTests(rootSuite?: TestSuiteInfo) {
     const testsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
 
     const processTestTree = (test: TestInfo | TestSuiteInfo): void => {
@@ -219,7 +223,10 @@ export class Adapter implements TestAdapter {
         test.children.forEach((childTest => processTestTree(childTest)));
       }
     };
-    processTestTree(rootSuite);
+
+    if (rootSuite) {
+      processTestTree(rootSuite);
+    }
     this.loadedRootSuite = rootSuite;
     this.loadedTestsById = testsById;
 
