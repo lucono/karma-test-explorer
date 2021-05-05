@@ -134,6 +134,8 @@ export class KarmaTestExplorer {
   }
 
   public dispose(): void {
-    this.karmaServer.kill();
+    if (this.karmaServer.isRunning()) {
+      this.karmaServer.kill();
+    }
   }
 }
