@@ -21,7 +21,7 @@ export class KarmaTestExplorer {
 
   public async restart(config: TestExplorerConfiguration): Promise<void> {
     try {
-      this.stopCurrentRun();
+      await this.stopCurrentRun();
 
       const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
       const minKarmerListenerSocketPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
@@ -48,7 +48,7 @@ export class KarmaTestExplorer {
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
-      this.stopCurrentRun();
+      await this.stopCurrentRun();
       throw error;
     }
   }
@@ -107,7 +107,7 @@ export class KarmaTestExplorer {
 
   public async stopCurrentRun(): Promise<void> {
     if (this.karmaEventListener.isRunning()) {
-      this.karmaEventListener.stop();
+      await this.karmaEventListener.stop();
     }
 
     if (this.karmaServer.isRunning()) {

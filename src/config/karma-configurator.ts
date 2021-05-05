@@ -15,7 +15,7 @@ export class KarmaConfigurator {
     // remove 'logLevel' changing
     // https://github.com/karma-runner/karma/issues/614 is ready
 
-    config.port = process.env.karmaPort as number | undefined;
+    config.port = process.env.karmaPort as number | undefined; // FIXME Use shared constants for all environment variable exchange
     config.logLevel = config.LOG_INFO;
     config.autoWatch = false;
     config.autoWatchBatchDelay = 0;

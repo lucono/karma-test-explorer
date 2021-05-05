@@ -124,7 +124,7 @@ export class KarmaServer {
     this.serverRestartTimerId = setTimeout(() => this.start(config, karmaPort, extraEnv), startDelayMillis);
   }
 
-  public async stop(): Promise<void> {
+  public async stop(): Promise<void> {  // FIXME Not currently used
     if (!this.isRunning()) {
       this.logger.info(`Request to stop karma server - server is not running`);
       return;
