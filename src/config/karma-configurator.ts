@@ -19,6 +19,7 @@ export class KarmaConfigurator {
     config.logLevel = config.LOG_INFO;
     config.autoWatch = false;
     config.autoWatchBatchDelay = 0;
+    (config.client ??= {}).clearContext = true;
     config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
     config.browserNoActivityTimeout = undefined;
     config.singleRun = false;

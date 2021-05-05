@@ -250,14 +250,14 @@ export class Adapter implements TestAdapter {
   private loadTestInfo(testFiles: string[], excludeFiles?: string[]): PathFinder {
     this.logger.info(`Loading test info from test files`);
 
-    const pathFinderOptions = {
+    const pathFinderOptions: PathFinderOptions = {
       ignore: excludeFiles,
       cwd: this.config.projectRootPath
-    } as PathFinderOptions;
+    };
     return new PathFinder(testFiles, pathFinderOptions);
   }
 
-  private handleConfigurationChange = (configChangeEvent: vscode.ConfigurationChangeEvent) => {
+  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> {
     this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
@@ -271,10 +271,10 @@ export class Adapter implements TestAdapter {
     }
     this.logger.info(`Reloading tests with updated configuration`);
     this.loadConfig(this.configPrefix);
-    this.reload();
+    await this.reload();
   }
 
-  private handleDocumentSaved = (document:vscode.TextDocument) => {
+  private async handleDocumentSaved(document:vscode.TextDocument): Promise<void> {
     const isConfigLoadCompleted = !!this.config;
     const savedFilePath = document.uri.fsPath;
 
@@ -288,13 +288,13 @@ export class Adapter implements TestAdapter {
 
     if (reloadTriggerFiles.includes(savedFilePath)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
-      this.reload();
+      await this.reload();
       return;
     }
 
     if (this.pathFinder?.isSpecFile(savedFilePath)) {
       const savedSpecFileInfo = this.pathFinder.getSpecFileInfo(savedFilePath);
-      this.refresh();
+      await this.refresh();
 
       if (savedSpecFileInfo) {
         this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
@@ -302,6 +302,5 @@ export class Adapter implements TestAdapter {
       }
       return;
     }
-
   }
 }
