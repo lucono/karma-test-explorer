@@ -138,12 +138,13 @@ export class Adapter implements TestAdapter {
       }
       loadedTests = await this.testExplorer.loadTests(this.pathFinder);
     } catch (error) {
-      loadError = `Failed to load tests - ${error?.message ?? error}`;;
+      loadError = `Failed to load tests - ${error?.message ?? error}`;
     }
 
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: "finished" };
 
     if (loadError) {
+      this.logger.error(loadError);
       testLoadFinishedEvent.errorMessage = loadError;
     } else if (loadedTests?.children?.length) {
       testLoadFinishedEvent.suite = loadedTests;
@@ -181,8 +182,20 @@ export class Adapter implements TestAdapter {
     this.logger.info(`Starting test run Id: ${testRunId}`);
 
     this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId } as TestRunStartedEvent);
-    await this.testExplorer.runTests(runAllTests ? [] : tests);
+    let runError: string | undefined;
+
+    try {
+      await this.testExplorer.runTests(runAllTests ? [] : tests);
+    } catch (error) {
+      runError = `Failed to run tests - ${error?.message ?? error}`;;
+    }
+
     this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
+
+    if (runError) {
+      this.logger.error(runError);
+      this.retireEmitter.fire({ tests: testIds } as RetireEvent);
+    }
 
     this.isTestProcessRunning = false;
     this.logger.debug(() => `Test run finished`);
