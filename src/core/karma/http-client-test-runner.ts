@@ -42,8 +42,8 @@ export class HttpClientTestRunner implements TestRunner {
     const testLoadExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
 
     const testLoad: Execution = {
-      onStart: new Promise((resolve, reject) => testLoadExecution.start = { resolve, reject }),
-      onStop: new Promise((resolve, reject) => testLoadExecution.stop = { resolve, reject })
+      started: new Promise((resolve, reject) => testLoadExecution.start = { resolve, reject }),
+      stopped: new Promise((resolve, reject) => testLoadExecution.stop = { resolve, reject })
     };
 
     const futureLoadedSpecs = this.karmaEventListener.listenForTests(testLoad);
@@ -65,7 +65,6 @@ export class HttpClientTestRunner implements TestRunner {
 
     const runAllTests = tests.length === 0;
     let testList: Array<TestInfo | TestSuiteInfo>;
-    // let testNames: string[];
     let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
@@ -94,8 +93,8 @@ export class HttpClientTestRunner implements TestRunner {
     const testRunExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
 
     const testRun: Execution = {
-      onStart: new Promise((resolve, reject) => testRunExecution.start = { resolve, reject }),
-      onStop: new Promise((resolve, reject) => testRunExecution.stop = { resolve, reject })
+      started: new Promise((resolve, reject) => testRunExecution.start = { resolve, reject }),
+      stopped: new Promise((resolve, reject) => testRunExecution.stop = { resolve, reject })
     };
 
     const testNames = testList.map(test => test.fullName);
@@ -106,61 +105,7 @@ export class HttpClientTestRunner implements TestRunner {
     testRunExecution.stop.resolve();
   }
 
-  // public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
-  //   // FIXME: Reduce test collection to non-overlapping set before processing
-
-  //   this.karmaEventListener.listenForTests(tests);
-
-  //   const testPatterns = tests.map(test => {
-  //     if (!test.fullName) {
-  //       return "";
-  //     }
-  //     let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-  //     if (test.type === TestType.Test) {
-  //       testPattern = `${testPattern}$`;
-  //     }
-  //     return testPattern;
-  //   });
-
-  //   const aggregateTestPattern = `/(${testPatterns.join("|")})/`;
-  //   const karmaRunConfig = this.createKarmaRunConfig(aggregateTestPattern, karmaPort);
-  //   const testNames = tests.filter(test => !!test.fullName).map(test => test.fullName) as string[];
-
-  //   this.logger.info(`Running tests: ${JSON.stringify(testNames)}`, { divider: "Karma Logs" });  // FIXME: what's divider?
-  //   await this.callKarma(karmaRunConfig);
-  //   this.karmaEventListener.isTestRunning = false;
-  // }
-
-  // public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
-  //   this.karmaEventListener.isTestRunning = true;
-  //   tests.forEach(async (test) => await this.runTest(test, karmaPort));
-  //   this.karmaEventListener.isTestRunning = false;
-
-  //   this.karmaEventListener.lastRunTest = testFullName;
-  //   this.karmaEventListener.isComponentRun = isComponentRun;
-  //   const isComponentRun = test.type === TestType.Suite;
-  // }
-
-  // private async runTest(test: TestInfo | TestSuiteInfo, karmaPort: number): Promise<void> {
-  //   if (!test.fullName) {
-  //     return;
-  //   }
-  //   let testFullName = test.fullName;
-  //   this.logger.info(`Running test: ${testFullName}`, { divider: "Karma Logs" });  // FIXME: what's divider?
-    
-  //   if (testFullName === "root") {  // FIXME: Define shared constant for string name 'root' used as name of all tests root node
-  //     testFullName = "";
-  //   }
-  //   const testPattern = `/^${this.escapeForRegExp(testFullName)}/`;
-  //   const karmaRunConfig = this.createKarmaRunConfig(testPattern, karmaPort);
-  //   await this.callKarma(karmaRunConfig);
-  // }
-
   private removeTestOverlaps(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
-    // FIXME: Implement
-    // - Reduce test collection to non-overlapping set before processing
-    // - A collection which includes the root suite should return empty test[] array
-
     const resolvedTests = new Set(tests);
 
     const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
@@ -230,19 +175,4 @@ export class HttpClientTestRunner implements TestRunner {
     // Taken from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
     return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-
-  /*
-  public isTestsRunning(): boolean {
-    return this.karmaEventListener.isTestRunning;
-  }
-
-  public async stopRun() {
-    return new Promise<void>(resolve => {
-      const stopper = require("karma").stopper;
-      stopper.stop({ port: this.karmaPort }, (exitCode: any) => {
-        resolve();
-      });
-    });
-  }
-  */
 }

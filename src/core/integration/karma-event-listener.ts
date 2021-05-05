@@ -17,15 +17,9 @@ const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 export declare type TestRetriever = (testId: string) => TestInfo | undefined;
 
 export class KarmaEventListener {
-  // public lastRunTest: string = "";
-  // public testStatus: TestResult | undefined;
-  // public runCompleteEvent: KarmaEvent | undefined;
-  // public isComponentRun: boolean = false;
-
   private isListening: boolean = false;
   private acceptAllSpecs: boolean = false;
-  // private currentRunId?: string;
-  private currentSpecs: string[] = []; // Array<TestInfo | TestSuiteInfo> = [];
+  private currentSpecs: string[] = [];
   private capturedSpecs: SpecCompleteResponse[] = [];
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
@@ -52,7 +46,6 @@ export class KarmaEventListener {
       this.server = server;
   
       const socketServerOptions = {
-        // forceNew: true,
         pingInterval: 24 * 60 * 60 * 1000,
         pingTimeout: 24 * 60 * 60 * 1000
       } as ServerOptions;
@@ -123,13 +116,6 @@ export class KarmaEventListener {
     });
   }
 
-  // private async listenForAllSpecs(testExecution: Execution): Promise<SpecCompleteResponse[]> {
-  //   // this.currentRunId = testRunId;
-  //   this.acceptAllSpecs = true;
-  //   this.currentSpecs = [];
-  //   return this.listen(testExecution);
-  // }
-
   public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<SpecCompleteResponse[]> {
     // this.currentRunId = testRunId;
     if (specs.length === 0) {
@@ -144,7 +130,7 @@ export class KarmaEventListener {
     this.isListening = true;
 
     return new Promise((resolve, reject) => {
-      testExecution.onStop
+      testExecution.stopped
         .then(() => resolve(this.capturedSpecs))
         .catch((reason: any) => {
           this.logger.error(`Could not listen for Karma events - Test execution failed: ${reason}`);
@@ -160,53 +146,7 @@ export class KarmaEventListener {
     });
   }
 
-  // private async listen(testExecution: Execution): Promise<SpecCompleteResponse[]> {
-  //   this.isListening = true;
-
-  //   return new Promise((resolve, reject) => {
-  //     testExecution.onStop
-  //       .then(() => resolve(this.capturedSpecs))
-  //       .catch((reason: any) => {
-  //         this.logger.error(`Could not listen for Karma events - Test execution failed: ${reason}`);
-  //         reject(reason);
-  //       })
-  //       .finally(() => {
-  //         this.isListening = false;
-  //         this.capturedSpecs = [];
-  //         // this.currentRunId = undefined;
-  //         this.currentSpecs = [];
-  //         this.acceptAllSpecs = false;
-  //       });
-  //   });
-  // }
-
-  // public async listenForTestRun(testExecution: Execution<any, Array<TestInfo | TestSuiteInfo>>): Promise<SpecCompleteResponse[]> {
-  //   this.runningTests = testExecution.executionData;
-
-  //   return new Promise((resolve, reject) => {
-  //     testExecution.futureCompletion
-  //       .then(() => resolve(this.capturedSpecs))
-  //       .catch(reason => {
-  //         this.logger.error(`Could not listen for Karma events - Test execution failed: ${reason}`);
-  //         reject(reason);
-  //       })
-  //       .finally(() => {
-  //         this.capturedSpecs = [];
-  //         this.runningTests = undefined;
-  //       });
-  //   });
-  // }
-
-  // private getLoadedTests(pathFinder: PathFinder): TestSuiteInfo {
-  //   const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder);
-  //   return specToTestSuiteMapper.map(this.capturedSpecs);
-  // }
-
   private isIncludedSpec(specResult: SpecCompleteResponse): boolean {
-    // return this.acceptAllSpecs || this.currentSpecs.some(includedSpec => {
-    //   return specResult.fullName === includedSpec.fullName || specResult.fullName.startsWith(includedSpec.fullName);
-    // });
-
     return this.acceptAllSpecs || this.currentSpecs.some(includedSpecName => {
       return specResult.fullName === includedSpecName || specResult.fullName.startsWith(includedSpecName);
     });
@@ -229,32 +169,6 @@ export class KarmaEventListener {
       this.logger.status(results.status);
     }
   }
-
-  // private onSpecComplete(event: KarmaEvent) {
-  //   if (!this.isListening) {
-  //     return;
-  //   }
-  //   const results = { ...event.results };
-  //   const patchedEvent = { name: event.name, results };
-  //   const testId = results.id;
-  //   const isIncludedSpec = this.isIncludedSpec(results);
-  //   const test: TestInfo | undefined = this.testRetriever(testId);
-
-  //   if (test && !results.filePath) {
-  //     results.filePath = test.file;
-  //     results.line = test.line;
-  //   }
-
-  //   if (isIncludedSpec) {
-  //     const testOrId: TestInfo | string = test ?? testId;
-  //     this.eventEmitter.emitTestStateEvent(testOrId, TestState.Running); // FIXME: why emit consecutive running and result event
-  //     this.eventEmitter.emitTestResultEvent(testOrId, patchedEvent);
-  //     this.capturedSpecs.push(results);
-
-  //     const testStatus = results.status;
-  //     this.logger.status(testStatus as TestResult);
-  //   }
-  // }
 
   public async stop(): Promise<void> {
     if (!this.isRunning()) {
@@ -297,19 +211,4 @@ export class KarmaEventListener {
   public isRunning(): boolean {
     return this.server !== undefined;
   }
-
-  // private setServerInfo(server: HttpServer) {
-  //   this.server = server;
-  //   // this.serverDisconnectRequested = false;
-  // }
-
-  // private clearServerInfo(server: HttpServer) {
-  //   if (this.server && this.server === server) {
-  //     this.server = undefined;
-  //   }
-  // }
-
-  // public isConnected(): boolean {
-  //   return this.server !== undefined;
-  // }
 }

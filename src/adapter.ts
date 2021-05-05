@@ -21,7 +21,6 @@ import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter
 import { KarmaEventListener, TestRetriever } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
-// import { CommandlineProcessHandler } from "./core/integration/commandline-process-handler";
 import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
 import { ConfigSetting } from "./model/enums/config-setting"
 
@@ -278,7 +277,6 @@ export class Adapter implements TestAdapter {
   private handleDocumentSaved = (document:vscode.TextDocument) => {
     const isConfigLoadCompleted = !!this.config;
     const savedFilePath = document.uri.fsPath;
-    // const isFileInWorkspace = savedFilePath.startsWith(this.workspace.uri.fsPath);
 
     if (!isConfigLoadCompleted) {
       return;

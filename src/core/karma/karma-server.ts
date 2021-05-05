@@ -34,7 +34,7 @@ export class KarmaServer {
     
     if (this.isRunning()) {
       this.logger.info(`Request to start karma server - server is already running`);
-      return { onStop: this.futureServerExit() };
+      return { stopped: this.futureServerExit() };
     }
 
     if (this.serverRestartTimerId) {
@@ -100,7 +100,7 @@ export class KarmaServer {
         }
       });
 
-      resolve({ onStop: karmaServerProcess.futureExit() });
+      resolve({ stopped: karmaServerProcess.futureExit() });
     });
   }
 

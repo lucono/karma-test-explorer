@@ -44,7 +44,7 @@ export class KarmaTestExplorer {
           .then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-          karmaServerExecution.onStop.then(() => reject(`Karma server quit prematurely`));
+          karmaServerExecution.stopped.then(() => reject(`Karma server quit prematurely`));
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
@@ -85,12 +85,6 @@ export class KarmaTestExplorer {
   }
 
   public async runTests(config: TestExplorerConfiguration, tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
-    // if (!this.karmaServer.isRunning()) {
-    //   const failureMessage = `Cannot run tests - Karma server is not running`;
-    //   this.logger.error(failureMessage);
-    //   throw new Error(failureMessage);
-    // }
-
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +
@@ -106,7 +100,6 @@ export class KarmaTestExplorer {
       this.testRunning = true;
       const karmaPort = this.karmaServer.getServerPort() as number;
       await this.testRunner.runTests(tests, karmaPort);
-      // this.logger.status(this.karmaEventListener.testStatus as TestResult);
     } finally {
       this.testRunning = false;
     }

@@ -21,7 +21,6 @@ export class TestRunEventEmitter {
   }
 
   public emitTestResultEvent(test: TestInfo | string, karmaEvent: KarmaEvent) {
-    // const testId: string = typeof test === 'string' ? test : test.id;
     const testInfo: TestInfo | undefined = typeof test === 'string' ? undefined : test;
     const { results } = karmaEvent;
     const testResultMapper = new TestResultToTestStateMapper();

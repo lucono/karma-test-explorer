@@ -5,8 +5,8 @@
 // }
 
 export interface Execution<S = void, T = void, U = void> {
-  onStop: Promise<S>,
-  onStart?: Promise<T>,
+  stopped: Promise<S>,
+  started?: Promise<T>,
   executionData?: U  // FIXME: Currently not used
 }
 

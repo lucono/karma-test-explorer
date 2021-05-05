@@ -26,13 +26,6 @@ export class Logger {
     global.console.log(formattedMsg);
   };
 
-  // public debug(msg: string, ...params: any[]) {
-  //   const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);
-  //   this.logger.debug(formattedMsg);
-  //   this.logParams(this.logger.debug, params);
-  //   global.console.log(formattedMsg);
-  // }
-
   public warn(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.WARN);
     this.logger.warn(formattedMsg);

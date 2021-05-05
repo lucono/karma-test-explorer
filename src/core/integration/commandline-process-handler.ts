@@ -12,7 +12,6 @@ export class CommandlineProcessHandler {
   private hasExited: boolean;
 
   public constructor(
-    // private readonly karmaEventListener: KarmaEventListener,
     private readonly logger: Logger,
     command: string,
     processArguments: string[],
@@ -96,16 +95,6 @@ export class CommandlineProcessHandler {
           resolve();
         }
       });
-
-      // treeKill(processPid, `SIGKILL`, (error) => {
-      //   if (error) {
-      //     this.logger.error(`Failed to kill process PID '${processPid}': ${error}`);
-      //     reject(error);
-      //   } else {
-      //     this.logger.info(`Successfully killed process PID '${processPid}'`);
-      //     resolve();
-      //   }
-      // });
     });
   }
 
@@ -122,28 +111,4 @@ export class CommandlineProcessHandler {
       this.kill();
     });
   }
-
-  /*
-  public killAsync(): Promise<void> {
-    return new Promise<void>(resolve => {
-      const treeKill = require("tree-kill");
-      treeKill(this.process.pid, "SIGTERM", () => {
-        this.updateProcessEnded();
-        this.logger.info(`Karma exited succesfully`);
-        resolve();
-      });
-    });
-  }
-
-  public kill(): void {
-    if (!this.isProcessRunning()) {
-      this.logger.info(`Request to kill process - Process is not running`);
-      return;
-    }
-    this.logger.info(`Killing process PID: ${process.pid}`);
-
-    treeKill(process.pid as number, `SIGKILL`);
-    this.updateProcessEnded();
-  }
-  */
 }
