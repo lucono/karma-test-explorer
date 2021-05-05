@@ -75,7 +75,7 @@ export class KarmaTestExplorer {
 
   public async runTests(tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
     if (!this.karmaServer.isRunning()) {
-      const failureMessage = `Failed to run tests - Karma server is not running`;
+      const failureMessage = `Cannot run tests - Karma server is not running`;
       this.logger.error(failureMessage);
       throw new Error(failureMessage);
     }

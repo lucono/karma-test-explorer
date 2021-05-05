@@ -138,7 +138,7 @@ export class Adapter implements TestAdapter {
       }
       loadedTests = await this.testExplorer.loadTests(this.pathFinder);
     } catch (error) {
-      loadError = `Failed to load tests - ${error?.message ?? error}`;
+      loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
 
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: "finished" };
@@ -187,7 +187,7 @@ export class Adapter implements TestAdapter {
     try {
       await this.testExplorer.runTests(runAllTests ? [] : tests);
     } catch (error) {
-      runError = `Failed to run tests - ${error?.message ?? error}`;;
+      runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
 
     this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
