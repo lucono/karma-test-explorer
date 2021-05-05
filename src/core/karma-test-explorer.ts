@@ -42,19 +42,30 @@ export class KarmaTestExplorer {
       await new Promise<void>((resolve, reject) => {
         this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)
           .then(() => resolve())
-          .catch((failureReason) => reject(`${failureReason}`));
+          .catch(failureReason => reject(`${failureReason}`));
         
           karmaServerExecution.onStop.then(() => reject(`Karma server quit prematurely`));
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
-      this.karmaEventListener.closeKarmaConnection();
+      this.stopCurrentRun();
       throw error;
     }
   }
 
-  public async loadTests(pathFinder: PathFinder): Promise<TestSuiteInfo> {
+  public async loadTests(config: TestExplorerConfiguration, pathFinder: PathFinder): Promise<TestSuiteInfo> {
     try {
+      if (!this.isSystemsRunning()) {
+        this.logger.info(`Request to load tests - ` +
+        `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+        `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+        `Restarting both`);
+
+        await this.restart(config);
+      }
+      
+      this.logger.info("Proceeding to load tests");
+
       const karmaPort = this.karmaServer.getServerPort() as number;
       const testSuiteInfo = await this.testRunner.loadTests(pathFinder, karmaPort);
 
@@ -73,14 +84,25 @@ export class KarmaTestExplorer {
     }
   }
 
-  public async runTests(tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
-    if (!this.karmaServer.isRunning()) {
-      const failureMessage = `Cannot run tests - Karma server is not running`;
-      this.logger.error(failureMessage);
-      throw new Error(failureMessage);
-    }
+  public async runTests(config: TestExplorerConfiguration, tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
+    // if (!this.karmaServer.isRunning()) {
+    //   const failureMessage = `Cannot run tests - Karma server is not running`;
+    //   this.logger.error(failureMessage);
+    //   throw new Error(failureMessage);
+    // }
 
     try {
+      if (!this.isSystemsRunning()) {
+        this.logger.info(`Request to run tests - ` +
+        `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+        `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+        `Restarting both`);
+
+        await this.restart(config);
+      }
+      
+      this.logger.info("Proceeding to run tests");
+
       this.testRunning = true;
       const karmaPort = this.karmaServer.getServerPort() as number;
       await this.testRunner.runTests(tests, karmaPort);
@@ -90,12 +112,10 @@ export class KarmaTestExplorer {
     }
   }
 
-  public isTestRunning(): boolean {
-    return this.testRunning;
-  }
-
   public async stopCurrentRun(): Promise<void> {
-    this.karmaEventListener.closeKarmaConnection();
+    if (this.karmaEventListener.isRunning()) {
+      this.karmaEventListener.stop();
+    }
 
     if (this.karmaServer.isRunning()) {
       // FIXME: Should this use stop() instead of kill()?
@@ -103,6 +123,14 @@ export class KarmaTestExplorer {
       // and its launched browser/s without leaving any orphans?
       await this.karmaServer.kill();
     }
+  }
+
+  public isTestRunning(): boolean {
+    return this.testRunning;
+  }
+
+  private isSystemsRunning(): boolean {
+    return this.karmaServer.isRunning() && this.karmaEventListener.isRunning();
   }
 
   public dispose(): void {

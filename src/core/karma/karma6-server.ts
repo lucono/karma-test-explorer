@@ -70,7 +70,7 @@ export class Karma6Server {
     } else {
       this.logger.info(`Karma Server is not running`);
     }
-    this.karmaEventListener.closeKarmaConnection();
+    this.karmaEventListener.stop();
   }
 
   private setCurrentServer(karmaServer: Server, karmaConfig: KarmaConfig) {

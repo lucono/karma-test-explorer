@@ -36,12 +36,17 @@ export class KarmaEventListener {
     private readonly logger: Logger
   ) {}
 
-  public acceptKarmaConnection(socketPort?: number): Promise<void> {
-    this.closeKarmaConnection();
+  public async acceptKarmaConnection(socketPort?: number): Promise<void> {
+    if (this.isRunning()) {
+      this.logger.info(
+        `Request to open new karma listener connection on port ${socketPort} - ` +
+        `Stopping currently running listener`);
+      
+      await this.stop();
+    }
+    this.logger.info(`Attempting to listen on port ${socketPort}`);
 
     return new Promise<void>((resolve, reject) => {
-      this.logger.info(`Karma Event Listener: Listen for new connection requested with port '${socketPort}'`);
-  
       const app = express();
       const server = createServer(app);
       this.server = server;
@@ -95,6 +100,8 @@ export class KarmaEventListener {
 
         socket.on("disconnect", (reason: string) => {
           this.logger.info(`Karma Event Listener: Karma disconnected from socket with reason: ${reason}`);
+          socket.removeAllListeners();
+          this.sockets.delete(socket);
         });
       });
 
@@ -105,6 +112,8 @@ export class KarmaEventListener {
       server!.on("close", () => {
         this.logger.info(`Karma Event Listener: Connection closed on ${port}`);
         clearTimeout(connectTimeoutId);
+        this.server = undefined;
+        this.cleanupConnections();
       });
 
       connectTimeoutId = setTimeout(() => {
@@ -247,8 +256,30 @@ export class KarmaEventListener {
   //   }
   // }
 
-  public closeKarmaConnection(): void {
+  public async stop(): Promise<void> {
+    if (!this.isRunning()) {
+      this.logger.info(`Request to stop karma listener - Listener not currently up`);
+      return;
+    }
+    const server = this.server!;
+
     this.logger.info(`Karma Event Listener: Closing connection with karma`);
+
+    return new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          this.logger.error(`Failed closing karma listener connection: ${error.message}`);
+          reject();
+          return;
+        }
+        this.logger.info(`Done closing karma listener connection`);
+        resolve();
+      });
+    });
+  }
+
+  private cleanupConnections() {
+    this.logger.info(`Karma Event Listener: Cleaning up connections`);
     try {
       this.sockets.forEach(socket => {
         socket.removeAllListeners();
@@ -256,13 +287,15 @@ export class KarmaEventListener {
       });
       
       this.sockets.clear();
-      this.server?.close();
-      this.server = undefined;
       this.capturedSpecs = [];
 
     } catch (error) {
       this.logger.error(`Failure closing connection with karma: ${error}`);
     }
+  }
+
+  public isRunning(): boolean {
+    return this.server !== undefined;
   }
 
   // private setServerInfo(server: HttpServer) {
