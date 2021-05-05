@@ -168,6 +168,12 @@
 					"scope": "resource",
 					"default": 9999
 				},
+				"karmaTestExplorer.serverCrashRestartDelaySecs": {
+					"description": "If Karma server should quit unexpectedly, this is the time in seconds after which a restart will be attempted. A negative value means a restart will not be attempted.",
+					"type": "number",
+					"scope": "resource",
+					"default": -1
+				},
 				"karmaTestExplorer.debuggerConfig": {
 					"description": "Specify the debugger configuration for vscode chrome debugger as you would do in vscode with a json object",
 					"type": "object",

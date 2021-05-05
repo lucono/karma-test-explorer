@@ -48,7 +48,7 @@ export class Karma6Server {
       }
       await this.server.start();
 
-      const futureBrowserConnect = this.karmaEventListener.connect(testExplorerConfig.defaultSocketConnectionPort);
+      const futureBrowserConnect = this.karmaEventListener.acceptKarmaConnection(testExplorerConfig.defaultSocketConnectionPort);
       const futureBrowserConnectOrServerExit = Promise.race([futureBrowserConnect, futureServerExit]);
       await futureBrowserConnectOrServerExit;
       
@@ -70,7 +70,7 @@ export class Karma6Server {
     } else {
       this.logger.info(`Karma Server is not running`);
     }
-    this.karmaEventListener.disconnect();
+    this.karmaEventListener.closeKarmaConnection();
   }
 
   private setCurrentServer(karmaServer: Server, karmaConfig: KarmaConfig) {

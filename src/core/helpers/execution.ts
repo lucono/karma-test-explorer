@@ -5,9 +5,9 @@
 // }
 
 export interface Execution<S = void, T = void, U = void> {
-  executionData?: S,  // FIXME: Currently not used
+  onStop: Promise<S>,
   onStart?: Promise<T>,
-  onStop: Promise<U>
+  executionData?: U  // FIXME: Currently not used
 }
 
 export interface PromiseExecutor<T> {

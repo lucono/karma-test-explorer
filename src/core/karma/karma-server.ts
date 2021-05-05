@@ -11,6 +11,8 @@ import { Execution } from "../helpers/execution";
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
   private serverPort?: number;
+  private serverCurrentlyTerminating: Promise<void> | undefined;
+  private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
     private readonly logger: Logger,
@@ -22,11 +24,24 @@ export class KarmaServer {
     karmaPort: number, 
     extraEnv: {[key: string]: string} = {}): Promise<Execution>
   {
+    if (this.serverCurrentlyTerminating) {
+      this.logger.info(
+        `Request to start karma server - server is still shutting down. ` +
+        `Waiting for termination to complete before commencing startup`);
+
+      await this.serverCurrentlyTerminating;
+    }
+    
+    if (this.isRunning()) {
+      this.logger.info(`Request to start karma server - server is already running`);
+      return { onStop: this.futureServerExit() };
+    }
+
+    if (this.serverRestartTimerId) {
+      this.cancelScheduledRestart(this.serverRestartTimerId);
+    }
+    
     return new Promise<Execution>(async (resolve) => {
-      if (this.isRunning()) {
-        this.logger.info(`Request to start karma server - server is already or still running`);
-        resolve({ onStop: this.futureServerExit() });
-      }
       this.logger.info(`Starting karma server`);
 
       const envFileEnvironment: { [key: string]: string} = await this.getEnvironmentFromFile(config.envFile);
@@ -70,9 +85,43 @@ export class KarmaServer {
         (data) => this.serverProcessErrorLogger(data, karmaPort));
   
       this.setServerInfo(karmaServerProcess, karmaPort);
-      karmaServerProcess.futureExit().then(() => this.clearServerInfo(karmaServerProcess));
+
+      karmaServerProcess.futureExit().then(() => {
+        this.clearServerInfo(karmaServerProcess);
+    
+        if (this.serverCurrentlyTerminating === undefined) {
+          const restartDelay = config.serverCrashRestartDelaySecs;
+          if (restartDelay >= 0) {
+            this.logger.warn(
+              `Karma server terminated unexpectedly - ` +
+              `Will attempt restart in ${restartDelay} sec(s)`);
+            this.scheduleFutureStartup(restartDelay, config, karmaPort, extraEnv);
+          }
+        }
+      });
+
       resolve({ onStop: karmaServerProcess.futureExit() });
     });
+  }
+
+  private cancelScheduledRestart(serverRestartTimerId: NodeJS.Timeout) {
+    if (this.serverRestartTimerId !== undefined && this.serverRestartTimerId === serverRestartTimerId) {
+      clearTimeout(this.serverRestartTimerId);
+      this.serverRestartTimerId = undefined;
+    }
+  }
+
+  private scheduleFutureStartup(
+    startDelaySecs: number,
+    config: TestExplorerConfiguration, 
+    karmaPort: number, 
+    extraEnv: {[key: string]: string} = {})
+  {
+    if (this.serverRestartTimerId !== undefined) {
+      this.cancelScheduledRestart(this.serverRestartTimerId);
+    }
+    const startDelayMillis = startDelaySecs * 1000;
+    this.serverRestartTimerId = setTimeout(() => this.start(config, karmaPort, extraEnv), startDelayMillis);
   }
 
   public async stop(): Promise<void> {
@@ -86,13 +135,15 @@ export class KarmaServer {
     this.logger.info(`Stopping Karma server on port ${serverPort}`);
     this.clearServerInfo(serverProcess);
 
-    return new Promise<void>((resolve) => {
+    const serverCurrentlyTerminating = new Promise<void>((resolve) => {
       karmaStopper.stop({ port: serverPort }, async (exitCode) => {
         await serverProcess.futureExit();
+        this.serverCurrentlyTerminating = undefined;
         this.logger.info(`Karma server on port ${serverPort} stopped with exit code: ${exitCode ?? 'unknown'}`);
         resolve();
       });
     });
+    this.serverCurrentlyTerminating = serverCurrentlyTerminating;
   }
 
   public async kill(): Promise<void> {
@@ -106,12 +157,14 @@ export class KarmaServer {
     this.logger.info(`Killing Karma server on port ${serverPort}`);
     this.clearServerInfo(serverProcess);
 
-    return new Promise<void>(async (resolve) => {
+    const serverCurrentlyTerminating = new Promise<void>(async (resolve) => {
       await serverProcess.kill();
       await serverProcess.futureExit();
+      this.serverCurrentlyTerminating = undefined;
       this.logger.info(`Karma server on port ${serverPort} killed`);
       resolve();
     });
+    this.serverCurrentlyTerminating = serverCurrentlyTerminating;
   }
 
   public getServerPort(): number | undefined {

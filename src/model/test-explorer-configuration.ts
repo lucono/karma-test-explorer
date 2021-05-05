@@ -17,6 +17,7 @@ export class TestExplorerConfiguration {
   public readonly envFile: string | undefined;
   public readonly debuggerConfig: any;
   public readonly debugLevelLoggingEnabled: boolean;
+  public readonly serverCrashRestartDelaySecs: number;
 
   public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string)
   {
@@ -34,6 +35,7 @@ export class TestExplorerConfiguration {
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
     this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
     this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
+    this.serverCrashRestartDelaySecs = config.get(ConfigSetting.ServerCrashRestartDelaySecs) as number;
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile) ? undefined :
       path.resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);
