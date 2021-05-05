@@ -43,8 +43,7 @@ export class CommandlineProcessHandler {
       this.process = process;
       this.setupProcessOutputs(process);
 
-      process.on(
-        "exit", (code, signal) => {
+      process.on("exit", (code, signal) => {
         const processCommand = `${command} ${processArguments.join(" ")}`;
         this.logger.debug(() =>
           `Process ${this.uid}:

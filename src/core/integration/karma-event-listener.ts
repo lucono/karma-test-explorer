@@ -12,7 +12,7 @@ import { TestInfo } from "vscode-test-adapter-api";
 import * as express from "express"
 
 const DEFAULT_SOCKET_PORT = 9999;
-const KARMA_CONNECT_TIMEOUT = 300000;
+const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
 export declare type TestRetriever = (testId: string) => TestInfo | undefined;
 
@@ -248,6 +248,7 @@ export class KarmaEventListener {
   // }
 
   public closeKarmaConnection(): void {
+    this.logger.info(`Karma Event Listener: Closing connection with karma`);
     try {
       this.sockets.forEach(socket => {
         socket.removeAllListeners();
@@ -260,7 +261,7 @@ export class KarmaEventListener {
       this.capturedSpecs = [];
 
     } catch (error) {
-      this.logger.error(`${error}`);
+      this.logger.error(`Failure closing connection with karma: ${error}`);
     }
   }
 
