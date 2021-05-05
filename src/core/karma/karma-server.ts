@@ -28,32 +28,10 @@ export class KarmaServer {
         resolve({ onStop: this.futureServerExit() });
       }
       this.logger.info(`Starting karma server`);
+
+      const envFileEnvironment: { [key: string]: string} = await this.getEnvironmentFromFile(config.envFile);
   
-      let envFileEnvironment = {} as { [key: string]: string};
-  
-      if (config.envFile) {
-        this.logger.info(`Reading environment from file: ${config.envFile}`);
-  
-        const envFileContent = await new Promise<Buffer>((resolve, reject) => {
-          readFile(config.envFile!, (err, data) => {
-            if (err) {
-              this.logger.error(`Failed to read configured environment file: ${err}`);
-              reject(err);
-              return;
-            }
-            resolve(data);
-          });
-        });
-  
-        if (envFileContent) {
-          envFileEnvironment = parseEnvironmentFile(envFileContent);
-          dotenvExpand({ parsed: envFileEnvironment });
-          const entryCount = Object.keys(envFileEnvironment).length;
-          this.logger.info(`Processed ${entryCount} entries from environment file: ${config.envFile}`);
-        }
-      }
-  
-      const testExplorerEnvironment = {
+      const testExplorerEnvironment: { [key: string]: string} = {
         ...envFileEnvironment,
         ...config.env,
         ...process.env,
@@ -159,4 +137,38 @@ export class KarmaServer {
   private async futureServerExit(): Promise<void> {
     return this.serverProcess?.futureExit();
   }
+
+  private async getEnvironmentFromFile(envFile: string | undefined): Promise<{ [key: string]: string }> {
+    if (!envFile) {
+      return {};
+    }
+    this.logger.info(`Reading environment from file: ${envFile}`);
+
+    let envFileEnvironment: { [key: string]: string} = {};
+
+    try {
+      const envFileContent: Buffer = await new Promise<Buffer>((resolve, reject) => {
+        readFile(envFile!, (err, data) => {
+          if (err) {
+            this.logger.error(`Failed to read configured environment file '${envFile}': ${err}`);
+            reject(err);
+            return;
+          }
+          resolve(data);
+        });
+      });
+      
+      if (envFileContent) {
+        envFileEnvironment = parseEnvironmentFile(envFileContent);
+        dotenvExpand({ parsed: envFileEnvironment });
+        const entryCount = Object.keys(envFileEnvironment).length;
+        this.logger.info(`Fetched ${entryCount} entries from environment file: ${envFile}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to get environment from file '${envFile}': ${error.message ?? error}`);
+    }
+
+    return envFileEnvironment;
+  }
 }
+
