@@ -59,9 +59,8 @@ export class HttpClientTestRunner implements TestRunner {
   }
 
   public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
-
     this.logger.info(
-      `Requested tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
+      `Requested ${tests.length} tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
       { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;
@@ -70,10 +69,10 @@ export class HttpClientTestRunner implements TestRunner {
     let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
+      this.logger.debug(() => `Received empty test list - Will run all tests`);
+
       testList = [];
       aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
-
-      this.logger.debug(() => `Received empty test list - Will run all tests`);
 
     } else {
       testList = this.removeTestOverlaps(tests);

@@ -39,7 +39,7 @@ export class Adapter implements TestAdapter {
   private readonly debugger: Debugger;
   private isTestProcessRunning: boolean = false;
   private loadedRootSuite?: TestSuiteInfo;
-  private loadedTestsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
+  private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
     return this.testLoadEmitter.event;
@@ -72,7 +72,7 @@ export class Adapter implements TestAdapter {
     this.loadConfig(configPrefix);
 
     const testRetriever: TestRetriever = testId => {
-      const test = this.loadedTestsById[testId];
+      const test = this.loadedTestsById.get(testId);
       return test?.type === TestType.Test ? test : undefined;
     }
     const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
@@ -167,16 +167,16 @@ export class Adapter implements TestAdapter {
     this.logger.debug(() => `Test run started`);
     this.logger.info(`Test run is requested for ${testIds.length} test ids: ${JSON.stringify(testIds)}`);
 
-    const tests: Array<TestInfo | TestSuiteInfo> = testIds
-      .map(testId => this.loadedTestsById[testId])
-      .filter(test => test !== undefined);
+    const tests = testIds
+      .map(testId => this.loadedTestsById.get(testId))
+      .filter(test => test !== undefined) as Array<TestInfo | TestSuiteInfo>;
     
     const runAllTests = this.containsOnlyRootSuite(tests);
     const testRunId: string = Math.random().toString(36).slice(2);
 
     this.logger.debug(() => 
       `Requested ${testIds.length} test Ids resolved to ${tests.length} actual tests:` +
-      `${JSON.stringify(tests.map(test => test.id))}`);
+      `${JSON.stringify(tests)}`);
 
     this.logger.info(`Starting test run Id: ${testRunId}`);
 
@@ -212,12 +212,12 @@ export class Adapter implements TestAdapter {
   }
 
   private storeLoadedTests(rootSuite?: TestSuiteInfo) {
-    const testsById: { [key: string]: TestInfo | TestSuiteInfo } = {};
+    const testsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
 
     const processTestTree = (test: TestInfo | TestSuiteInfo): void => {
-      testsById[test.id] = test;
-      if (test.type === TestType.Suite && test?.children?.length > 0) {
-        test.children.forEach((childTest => processTestTree(childTest)));
+      testsById.set(test.id, test);
+      if (test.type === TestType.Suite && test.children?.length) {
+        test.children.forEach(childTest => processTestTree(childTest));
       }
     };
 

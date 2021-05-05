@@ -27,10 +27,12 @@ export class TestRunEventEmitter {
     const testResultMapper = new TestResultToTestStateMapper();
     const testState = testResultMapper.map(results.status);
     const testTime = `${results.timeSpentInMilliseconds} ms`;
+    const testTimeDescription = testState === TestState.Skipped ? `Skipped` : testTime;
 
     const resultDescription = testState === TestState.Passed ? `Passed in ${testTime}`
       : testState === TestState.Failed ? `Failed in ${testTime}`
-      : `${testTime}`;
+      : testState === TestState.Skipped ? `Skipped`
+      : ``;
 
     let message: string | undefined;
     let decorations: TestDecoration[] | undefined;
@@ -55,7 +57,7 @@ export class TestRunEventEmitter {
       type: TestType.Test,
       test,
       state: testState,
-      description: testTime,
+      description: `(${testTimeDescription})`,
       tooltip: `${results.fullName}  (${resultDescription})`,
       message,
       decorations,
