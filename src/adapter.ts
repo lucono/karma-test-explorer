@@ -136,7 +136,7 @@ export class Adapter implements TestAdapter {
       if (isHardRefresh) {
         await this.testExplorer.restart(this.config);
       }
-      loadedTests = await this.testExplorer.loadTests(this.pathFinder);
+      loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
     } catch (error) {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
@@ -185,7 +185,7 @@ export class Adapter implements TestAdapter {
     let runError: string | undefined;
 
     try {
-      await this.testExplorer.runTests(runAllTests ? [] : tests);
+      await this.testExplorer.runTests(this.config, runAllTests ? [] : tests);
     } catch (error) {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
