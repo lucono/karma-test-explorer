@@ -2,7 +2,7 @@
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { PathFinder } from "../helpers/path-finder";
+import { SpecLocator } from "../helpers/spec-locator";
 import { TestRunner } from "./test-runner";
 import { request as httpRequest } from "http";
 import { Execution, PromiseExecutor } from "../helpers/execution";
@@ -38,7 +38,7 @@ export class HttpClientTestRunner implements TestRunner {
   //   return this.karmaEventListener.getLoadedTests(pathFinder);
   // }
 
-  public async loadTests(pathFinder: PathFinder, karmaPort: number): Promise<TestSuiteInfo> {
+  public async loadTests(specLocator: SpecLocator, karmaPort: number): Promise<TestSuiteInfo> {
     const testLoadExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
 
     const testLoad: Execution = {
@@ -54,7 +54,7 @@ export class HttpClientTestRunner implements TestRunner {
     testLoadExecution.stop.resolve();
 
     const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(pathFinder, this.logger);
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocator, this.logger);
     return specToTestSuiteMapper.map(capturedSpecs);
   }
 

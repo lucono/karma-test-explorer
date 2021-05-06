@@ -21,13 +21,13 @@ import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter
 import { KarmaEventListener, TestRetriever } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
-import { PathFinder, PathFinderOptions } from './core/helpers/path-finder';
+import { SpecLocator, SpecLocatorOptions } from './core/helpers/spec-locator';
 import { ConfigSetting } from "./model/enums/config-setting"
 
 export class Adapter implements TestAdapter {
 
   private config = {} as TestExplorerConfiguration;
-  private pathFinder?: PathFinder;
+  private specLocator?: SpecLocator;
   private isTestProcessRunning: boolean = false;
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
@@ -126,7 +126,7 @@ export class Adapter implements TestAdapter {
 
     this.isTestProcessRunning = true;
     this.testLoadEmitter.fire({ type: "started" } as TestLoadStartedEvent);
-    this.pathFinder = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
+    this.specLocator = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
     let loadedTests: TestSuiteInfo | undefined;
     let loadError: string | undefined;
@@ -135,7 +135,7 @@ export class Adapter implements TestAdapter {
       if (isHardRefresh) {
         await this.testExplorer.restart(this.config);
       }
-      loadedTests = await this.testExplorer.loadTests(this.config, this.pathFinder);
+      loadedTests = await this.testExplorer.loadTests(this.config, this.specLocator);
     } catch (error) {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
@@ -247,14 +247,14 @@ export class Adapter implements TestAdapter {
     this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
   }
 
-  private loadTestInfo(testFiles: string[], excludeFiles?: string[]): PathFinder {
+  private loadTestInfo(testFiles: string[], excludeFiles?: string[]): SpecLocator {
     this.logger.info(`Loading test info from test files`);
 
-    const pathFinderOptions: PathFinderOptions = {
+    const specLocatorOptions: SpecLocatorOptions = {
       ignore: excludeFiles,
       cwd: this.config.projectRootPath
     };
-    return new PathFinder(testFiles, pathFinderOptions);
+    return new SpecLocator(testFiles, specLocatorOptions);
   }
 
   private handleConfigurationChange = async (configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> => {
@@ -292,8 +292,8 @@ export class Adapter implements TestAdapter {
       return;
     }
 
-    if (this.pathFinder?.isSpecFile(savedFilePath)) {
-      const savedSpecFileInfo = this.pathFinder.getSpecFileInfo(savedFilePath);
+    if (this.specLocator?.isSpecFile(savedFilePath)) {
+      const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFilePath);
       await this.refresh();
 
       if (savedSpecFileInfo) {

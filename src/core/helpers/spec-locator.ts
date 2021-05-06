@@ -22,7 +22,7 @@ export interface SpecFileInfo {
   specCount: number
 }
 
-export interface PathFinderOptions {
+export interface SpecLocatorOptions {
   cwd?: string,
   ignore?: string[]
 }
@@ -34,12 +34,12 @@ export interface PathFinderOptions {
 const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5/gis;
 const DEFAULT_FILE_ENCODING = "utf-8";
 
-export class PathFinder {
+export class SpecLocator {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
   private readonly suiteFilesCache: Map<string, string> = new Map();
   private readonly cwd: string;
 
-  public constructor(filePatterns: string[], options?: PathFinderOptions, fileEncoding?: string) {
+  public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
     this.cwd = options?.cwd ?? process.cwd();
 
     filePatterns

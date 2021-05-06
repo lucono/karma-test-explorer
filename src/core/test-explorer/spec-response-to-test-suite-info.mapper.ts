@@ -1,11 +1,11 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { PathFinder, SpecLocation } from "../helpers/path-finder";
+import { SpecLocator, SpecLocation } from "../helpers/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import { TestType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 
 export class SpecResponseToTestSuiteInfoMapper {
-  public constructor(private readonly pathFinder: PathFinder, private readonly logger: Logger) {}
+  public constructor(private readonly specLocator: SpecLocator, private readonly logger: Logger) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     let suiteIdCounter = 0
@@ -21,7 +21,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     specs.forEach(spec => {
       const specSuitePath = this.filterSuiteNoise(spec.suite);
-      const specLocation = this.pathFinder.getSpecLocation(specSuitePath, spec.description);
+      const specLocation = this.specLocator.getSpecLocation(specSuitePath, spec.description);
       const test = this.createTest(spec, specLocation);
       const testSuite = this.getNewOrExistingDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
       testSuite.children.push(test);
@@ -65,7 +65,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   private createSuite(suitePath: string[], suiteId: string): TestSuiteInfo {
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
-    const suiteLocation = this.pathFinder.getSpecLocation(suitePath);
+    const suiteLocation = this.specLocator.getSpecLocation(suitePath);
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
