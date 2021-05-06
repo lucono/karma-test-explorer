@@ -62,7 +62,7 @@ export class PathFinder {
       }
     }
 
-    for (specFile of Object.keys(this.fileInfoMap)) {
+    for (specFile of this.fileInfoMap.keys()) {
       const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
 
       if (specLineNumber !== undefined) {

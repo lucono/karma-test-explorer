@@ -271,7 +271,7 @@ export class Adapter implements TestAdapter {
     }
     this.logger.info(`Reloading tests with updated configuration`);
     this.loadConfig(this.configPrefix);
-    return this.reload();
+    await this.reload();
   }
 
   private handleDocumentSaved = async (document:vscode.TextDocument): Promise<void> => {
