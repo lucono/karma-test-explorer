@@ -5,8 +5,7 @@ import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
 import { KarmaServer } from "./karma/karma-server";
 import { SpecLocator } from './helpers/spec-locator';
-// import { TestResult } from "../model/enums/test-status.enum";
-import { getPort as getAvailablePort, getPortPromise as getAvailablePortPromise } from "portfinder";
+import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "./helpers/execution";
 
 export class KarmaTestExplorer {
@@ -24,13 +23,19 @@ export class KarmaTestExplorer {
       await this.stopCurrentRun();
 
       const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
-      const minKarmerListenerSocketPort = Math.max(config.defaultSocketConnectionPort, serverKarmaPort + 1);
 
-      const karmerListenerSocketPort = await new Promise<number>(resolve => {
-        getAvailablePort(
-          { port: minKarmerListenerSocketPort }, 
-          (err: Error, port: number) => resolve(port));
+      const candidateKarmerListenerPorts: number[] = await new Promise((resolve, reject) => {
+        getAvailablePorts(2, { port: config.defaultSocketConnectionPort }, (error: Error, ports: number[]) => {
+            if (!error) {
+              resolve(ports);
+              return;
+            }
+            reject(`Failed to get available ports for karma listener socket: ${error.message ?? error}`)
+          });
       });
+      const karmerListenerSocketPort = candidateKarmerListenerPorts[0] !== serverKarmaPort
+        ? candidateKarmerListenerPorts[0]
+        : candidateKarmerListenerPorts[1];
 
       this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
