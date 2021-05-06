@@ -118,14 +118,14 @@ export class Adapter implements TestAdapter {
   private async refresh(isHardRefresh: boolean = false): Promise<void> {
     if (this.isTestProcessRunning) {
       this.logger.debug(() => 
-        `Test ${isHardRefresh ? "hard " : ""}refresh request ignored - ` +
+        `Test ${isHardRefresh ? 'hard ' : ''}refresh request ignored - ` +
         `Another test operation is currently running`);
       return;
     }
-    this.logger.debug(() => `Test ${isHardRefresh ? "hard " : ""}refresh started`);
+    this.logger.debug(() => `Test ${isHardRefresh ? 'hard ' : ''}refresh started`);
 
     this.isTestProcessRunning = true;
-    this.testLoadEmitter.fire({ type: "started" } as TestLoadStartedEvent);
+    this.testLoadEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
     this.specLocator = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
 
     let loadedTests: TestSuiteInfo | undefined;
@@ -140,7 +140,7 @@ export class Adapter implements TestAdapter {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
 
-    const testLoadFinishedEvent: TestLoadFinishedEvent = { type: "finished" };
+    const testLoadFinishedEvent: TestLoadFinishedEvent = { type: 'finished' };
 
     if (loadError) {
       this.logger.error(loadError);
@@ -277,10 +277,10 @@ export class Adapter implements TestAdapter {
   private handleDocumentSaved = async (document:vscode.TextDocument): Promise<void> => {
     const savedFile = document.uri.fsPath;
 
-    this.logger.debug(() => `Handling document saved: ${savedFile}`);
+    this.logger.debug(() => `Document saved: ${savedFile}`);
 
     if (!this.config) {
-      this.logger.debug(() => `Document saved handler - config not present. Skipping.`);
+      this.logger.debug(() => `Document saved handler - config not present. Aborting.`);
       return;
     }
 
