@@ -75,7 +75,7 @@ export class SpecLocator {
 
   public isSpecFile(filePath: string): boolean {
     const fileAbsolutePath = path.resolve(this.cwd, filePath);
-    return this.fileInfoMap.hasOwnProperty(fileAbsolutePath);
+    return this.fileInfoMap.has(fileAbsolutePath);
   }
 
   public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {

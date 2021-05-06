@@ -60,13 +60,7 @@ export class Adapter implements TestAdapter {
     const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
     this.logger = new Logger(log, debugModeResolver);
 
-    this.logger.info("Initializing adapter");
-
-    this.disposables.push(this.testLoadEmitter);
-    this.disposables.push(this.testRunEmitter);
-    this.disposables.push(this.autorunEmitter);
-    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+    this.logger.info(`Initializing adapter`);
 
     this.loadConfig(configPrefix);
 
@@ -94,6 +88,12 @@ export class Adapter implements TestAdapter {
     const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
     this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
     this.debugger = new Debugger(this.logger);
+
+    this.disposables.push(this.testLoadEmitter);
+    this.disposables.push(this.testRunEmitter);
+    this.disposables.push(this.autorunEmitter);
+    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
   }
 
   public async load(): Promise<void> {
@@ -258,7 +258,7 @@ export class Adapter implements TestAdapter {
   }
 
   private handleConfigurationChange = async (configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> => {
-    this.logger.info("Configuration changed");
+    this.logger.info(`Configuration changed`);
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
       (result, setting) => result || configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri),
@@ -275,10 +275,12 @@ export class Adapter implements TestAdapter {
   }
 
   private handleDocumentSaved = async (document:vscode.TextDocument): Promise<void> => {
-    const isConfigLoadCompleted = !!this.config;
-    const savedFilePath = document.uri.fsPath;
+    const savedFile = document.uri.fsPath;
 
-    if (!isConfigLoadCompleted) {
+    this.logger.debug(() => `Handling document saved: ${savedFile}`);
+
+    if (!this.config) {
+      this.logger.debug(() => `Document saved handler - config not present. Skipping.`);
       return;
     }
 
@@ -286,18 +288,19 @@ export class Adapter implements TestAdapter {
       ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
       : this.config.reloadWatchedFiles;
 
-    if (reloadTriggerFiles.includes(savedFilePath)) {
-      this.logger.info(`Reloading - monitored file changed: ${savedFilePath}`);
+    if (reloadTriggerFiles.includes(savedFile)) {
+      this.logger.info(`Reloading - monitored file changed: ${savedFile}`);
       await this.reload();
       return;
     }
 
-    if (this.specLocator?.isSpecFile(savedFilePath)) {
-      const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFilePath);
+    if (this.specLocator?.isSpecFile(savedFile)) {
+      this.logger.info(`Reloading - spec file changed: ${savedFile}`);
+      const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
       await this.refresh();
 
       if (savedSpecFileInfo) {
-        this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFilePath}`);
+        this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
         this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       }
       return;
