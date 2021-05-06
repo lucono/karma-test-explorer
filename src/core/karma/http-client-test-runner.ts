@@ -58,13 +58,13 @@ export class HttpClientTestRunner implements TestRunner {
     return specToTestSuiteMapper.map(capturedSpecs);
   }
 
-  public async runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void> {
+  public async runTests(tests: (TestInfo | TestSuiteInfo)[], karmaPort: number): Promise<void> {
     this.logger.info(
       `Requested ${tests.length} tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
       { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;
-    let testList: Array<TestInfo | TestSuiteInfo>;
+    let testList: (TestInfo | TestSuiteInfo)[];
     let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
@@ -105,7 +105,7 @@ export class HttpClientTestRunner implements TestRunner {
     testRunExecution.stop.resolve();
   }
 
-  private removeTestOverlaps(tests: Array<TestInfo | TestSuiteInfo>): Array<TestInfo | TestSuiteInfo> {
+  private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
     const resolvedTests = new Set(tests);
 
     const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {

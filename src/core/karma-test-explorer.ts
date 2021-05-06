@@ -84,7 +84,7 @@ export class KarmaTestExplorer {
     }
   }
 
-  public async runTests(config: TestExplorerConfiguration, tests: Array<TestInfo | TestSuiteInfo>): Promise<void> {
+  public async runTests(config: TestExplorerConfiguration, tests: (TestInfo | TestSuiteInfo)[]): Promise<void> {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +

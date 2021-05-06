@@ -11,6 +11,6 @@ export interface Execution<S = void, T = void, U = void> {
 }
 
 export interface PromiseExecutor<T> {
-  resolve: (value: T) => void,
-  reject: (reason?: any) => void
+  resolve(value: T): void,
+  reject(reason?: any): void
 }

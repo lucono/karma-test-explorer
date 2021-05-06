@@ -28,7 +28,7 @@ export class Adapter implements TestAdapter {
 
   private logger: Logger;
   private config = {} as TestExplorerConfiguration;
-  private disposables: Array<{ dispose(): void }> = [];
+  private disposables: { dispose(): void }[] = [];
   private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
   private readonly testRunEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
@@ -169,7 +169,7 @@ export class Adapter implements TestAdapter {
 
     const tests = testIds
       .map(testId => this.loadedTestsById.get(testId))
-      .filter(test => test !== undefined) as Array<TestInfo | TestSuiteInfo>;
+      .filter(test => test !== undefined) as (TestInfo | TestSuiteInfo)[];
     
     const runAllTests = this.containsOnlyRootSuite(tests);
     const testRunId: string = Math.random().toString(36).slice(2);
@@ -217,7 +217,7 @@ export class Adapter implements TestAdapter {
     this.disposables = [];
   }
 
-  private containsOnlyRootSuite(tests: Array<TestInfo | TestSuiteInfo>): boolean {
+  private containsOnlyRootSuite(tests: (TestInfo | TestSuiteInfo)[]): boolean {
     return this.loadedRootSuite !== undefined
       ? tests.length === 1 && tests[0] === this.loadedRootSuite
       : false;
@@ -239,7 +239,7 @@ export class Adapter implements TestAdapter {
     this.loadedRootSuite = rootSuite;
     this.loadedTestsById = testsById;
 
-    this.logger.info(`Loaded ${Object.keys(this.loadedTestsById).length} total tests`);
+    this.logger.info(`Loaded ${this.loadedTestsById.size} total tests`);
   }
 
   private loadConfig(configPrefix: string) {

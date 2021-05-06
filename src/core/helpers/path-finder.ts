@@ -9,11 +9,7 @@ enum TestNodeType {
 
 interface TestSuiteFileInfo {
   descriptions: { [key in TestNodeType]: string[] },
-  lineNumbers: { [key in TestNodeType]: Array<number|undefined> }
-}
-
-interface TestSuiteFileInfoMap {
-  [key: string]: TestSuiteFileInfo
+  lineNumbers: { [key in TestNodeType]: (number | undefined)[] }
 }
 
 export interface SpecLocation {
@@ -39,13 +35,11 @@ const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|
 const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class PathFinder {
-  private readonly fileInfoMap: TestSuiteFileInfoMap;
-  private readonly suiteFilesCache: { [key: string]: string };
+  private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
+  private readonly suiteFilesCache: Map<string, string> = new Map();
   private readonly cwd: string;
 
   public constructor(filePatterns: string[], options?: PathFinderOptions, fileEncoding?: string) {
-    this.fileInfoMap = {};
-    this.suiteFilesCache = {};
     this.cwd = options?.cwd ?? process.cwd();
 
     filePatterns
@@ -54,7 +48,7 @@ export class PathFinder {
       .forEach(filePath => {
         const fileAbsolutePath = path.resolve(this.cwd, filePath);
         const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
-        this.fileInfoMap[fileAbsolutePath] = fileTestInfo;
+        this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
       });
   }
 
@@ -62,14 +56,14 @@ export class PathFinder {
     let specFile = this.getSuiteFromCache(specSuite);
 
     if (specFile) {
-      const specLine = this.getSpecLineNumber(this.fileInfoMap[specFile], specSuite, specDescription);
+      const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
       if (specLine !== undefined) {
         return { file: specFile, line: specLine };
       }
     }
 
     for (specFile of Object.keys(this.fileInfoMap)) {
-      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap[specFile], specSuite, specDescription);
+      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
 
       if (specLineNumber !== undefined) {
         this.addSuiteToCache(specSuite, specFile);
@@ -86,7 +80,7 @@ export class PathFinder {
 
   public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {
     const fileAbsolutePath = path.resolve(this.cwd, filePath);
-    const fileInfo = this.fileInfoMap[fileAbsolutePath];
+    const fileInfo = this.fileInfoMap.get(fileAbsolutePath);
 
     const specFileInfo = !fileInfo ? undefined : {
         suiteName: fileInfo.descriptions.describe[0],
@@ -101,7 +95,7 @@ export class PathFinder {
 
     for (const suiteAncestor of suite) {
       suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
-      const suiteFile = this.suiteFilesCache[suiteKey];
+      const suiteFile = this.suiteFilesCache.get(suiteKey);
       if (suiteFile !== undefined) {
         return suiteFile;
       }
@@ -114,8 +108,8 @@ export class PathFinder {
 
     for (const suiteAncestor of suite) {
       suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
-      if (this.suiteFilesCache[suiteKey] === undefined) {
-        this.suiteFilesCache[suiteKey] = filePath;
+      if (!this.suiteFilesCache.has(suiteKey)) {
+        this.suiteFilesCache.set(suiteKey, filePath);
       }
     }
   }

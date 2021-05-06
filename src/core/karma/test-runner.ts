@@ -5,12 +5,12 @@ export interface TestRunner {
 
   loadTests(pathFinder: PathFinder, karmaPort: number): Promise<TestSuiteInfo>;
 
-  runTests(tests: Array<TestInfo | TestSuiteInfo>, karmaPort: number): Promise<void>;
+  runTests(tests: (TestInfo | TestSuiteInfo)[], karmaPort: number): Promise<void>;
 
 }
 
 // FIXME: Not currently used
 export interface TestRunInfo {
   testRunId: string,
-  tests: Array<TestInfo | TestSuiteInfo>
+  tests: (TestInfo | TestSuiteInfo)[]
 }
