@@ -26,19 +26,19 @@ import { ConfigSetting } from "./model/enums/config-setting"
 
 export class Adapter implements TestAdapter {
 
-  private logger: Logger;
   private config = {} as TestExplorerConfiguration;
+  private pathFinder?: PathFinder;
+  private isTestProcessRunning: boolean = false;
+  private loadedRootSuite?: TestSuiteInfo;
+  private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
   private disposables: { dispose(): void }[] = [];
   private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
   private readonly testRunEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
   private readonly testExplorer: KarmaTestExplorer;
-  private pathFinder?: PathFinder;
   private readonly debugger: Debugger;
-  private isTestProcessRunning: boolean = false;
-  private loadedRootSuite?: TestSuiteInfo;
-  private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
+  private readonly logger: Logger;
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
     return this.testLoadEmitter.event;
@@ -65,8 +65,8 @@ export class Adapter implements TestAdapter {
     this.disposables.push(this.testLoadEmitter);
     this.disposables.push(this.testRunEmitter);
     this.disposables.push(this.autorunEmitter);
-    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange));
+    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
 
     this.loadConfig(configPrefix);
 
@@ -257,7 +257,7 @@ export class Adapter implements TestAdapter {
     return new PathFinder(testFiles, pathFinderOptions);
   }
 
-  private async handleConfigurationChange(configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> {
+  private handleConfigurationChange = async (configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> => {
     this.logger.info("Configuration changed");
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).reduce(
@@ -271,10 +271,10 @@ export class Adapter implements TestAdapter {
     }
     this.logger.info(`Reloading tests with updated configuration`);
     this.loadConfig(this.configPrefix);
-    await this.reload();
+    return this.reload();
   }
 
-  private async handleDocumentSaved(document:vscode.TextDocument): Promise<void> {
+  private handleDocumentSaved = async (document:vscode.TextDocument): Promise<void> => {
     const isConfigLoadCompleted = !!this.config;
     const savedFilePath = document.uri.fsPath;
 

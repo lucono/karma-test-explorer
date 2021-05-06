@@ -127,8 +127,6 @@ export class KarmaTestExplorer {
   }
 
   public dispose(): void {
-    if (this.karmaServer.isRunning()) {
-      this.karmaServer.kill();
-    }
+    this.stopCurrentRun();
   }
 }
