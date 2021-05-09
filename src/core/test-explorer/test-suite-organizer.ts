@@ -1,7 +1,7 @@
 import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 import { TestInfo, TestSuiteInfo, TestSuiteFolderInfo } from "vscode-test-adapter-api";
-import { sep as pathSeparator, dirname, basename, normalize, join } from "path";
+import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
 
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
@@ -13,14 +13,20 @@ export class TestSuiteOrganizer {
       if (test.type === TestType.Test) {
         throw new Error(`Got unexpected test instead of test suite: ${JSON.stringify(test)}`);
       }
-      const specFolder: string = dirname(test.file ?? "") || rootPath;
+      const specFolder: string = relative(rootPath, dirname(test.file ?? "") || rootPath);
       const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolder);
       specFolderSuite.children.push(test);
     });
     
     const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite as unknown as TestSuiteInfo);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
-    return rootFolderSuite;
+
+    const findFirstNonSingleChildSuite = (suite: TestSuiteFolderInfo): TestSuiteFolderInfo => {
+      return suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder
+        ? findFirstNonSingleChildSuite(suite.children[0])
+        : suite;
+    };
+    return findFirstNonSingleChildSuite(rootFolderSuite);
   }
 
   private createFolderSuite(path: string): TestSuiteFolderInfo {
