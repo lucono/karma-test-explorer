@@ -21,8 +21,10 @@ import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter
 import { KarmaEventListener, TestRetriever } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
-import { SpecLocator, SpecLocatorOptions } from './core/helpers/spec-locator';
+import { SpecLocation, SpecLocator, SpecLocatorOptions } from './core/helpers/spec-locator';
 import { ConfigSetting } from "./model/enums/config-setting"
+import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./core/test-explorer/spec-response-to-test-suite-info-mapper";
+import { TestSuiteOrganizer } from "./core/test-explorer/test-suite-organizer";
 
 export class Adapter implements TestAdapter {
 
@@ -68,9 +70,14 @@ export class Adapter implements TestAdapter {
       const test = this.loadedTestsById.get(testId);
       return test?.type === TestType.Test ? test : undefined;
     }
+    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation | undefined => {
+      return this.specLocator?.getSpecLocation(suite, description);
+    };
     const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, testRetriever, this.logger);
-    const testRunnerFactory = new TestRunnerFactory(karmaEventListener, this.logger);
+    const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
+    const testRunnerFactory = new TestRunnerFactory(karmaEventListener, specToTestSuiteMapper, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
     const karmaServerProcessLogger = (data: string, serverPort: number) => {
@@ -86,7 +93,7 @@ export class Adapter implements TestAdapter {
     };
 
     const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
-    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, this.logger);
+    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, testSuiteOrganizer, this.logger);
     this.debugger = new Debugger(this.logger);
 
     this.disposables.push(this.testLoadEmitter);
@@ -135,7 +142,7 @@ export class Adapter implements TestAdapter {
       if (isHardRefresh) {
         await this.testExplorer.restart(this.config);
       }
-      loadedTests = await this.testExplorer.loadTests(this.config, this.specLocator);
+      loadedTests = await this.testExplorer.loadTests(this.config);
     } catch (error) {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }

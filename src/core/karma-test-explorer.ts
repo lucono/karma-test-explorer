@@ -4,9 +4,10 @@ import { Logger } from "./helpers/logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
 import { KarmaServer } from "./karma/karma-server";
-import { SpecLocator } from './helpers/spec-locator';
 import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "./helpers/execution";
+import { TestSuiteOrganizer } from "./test-explorer/test-suite-organizer";
+import { TestGrouping } from "../model/enums/test-type.enum";
 
 export class KarmaTestExplorer {
   private testRunning: boolean = false;
@@ -15,6 +16,7 @@ export class KarmaTestExplorer {
     private readonly karmaServer: KarmaServer,
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
+    private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly logger: Logger
   ) { }
 
@@ -58,7 +60,7 @@ export class KarmaTestExplorer {
     }
   }
 
-  public async loadTests(config: TestExplorerConfiguration, specLocator: SpecLocator): Promise<TestSuiteInfo> {
+  public async loadTests(config: TestExplorerConfiguration): Promise<TestSuiteInfo> {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to load tests - ` +
@@ -72,7 +74,11 @@ export class KarmaTestExplorer {
       this.logger.info("Proceeding to load tests");
 
       const karmaPort = this.karmaServer.getServerPort() as number;
-      const testSuiteInfo = await this.testRunner.loadTests(specLocator, karmaPort);
+      let testSuiteInfo = await this.testRunner.loadTests(karmaPort);
+
+      if (config.testGrouping === TestGrouping.Folder) {
+        testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo.children, config.projectRootPath) as unknown as TestSuiteInfo;
+      }
 
       if (testSuiteInfo.children.length === 0) {
         this.logger.info("Test loading - No tests found");

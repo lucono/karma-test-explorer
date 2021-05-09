@@ -14,5 +14,6 @@ export enum ConfigSetting {
   Env = "env",
   EnvFile = "envFile",
   LogPanel = "logpanel",
-  LogFile = "logfile"
+  LogFile = "logfile",
+  TestGrouping = "testGrouping"
 }

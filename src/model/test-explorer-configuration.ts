@@ -1,6 +1,7 @@
 import path = require("path");
 import { WorkspaceConfiguration } from "vscode";
 import { ConfigSetting } from "./enums/config-setting"
+import { TestGrouping } from "./enums/test-type.enum";
 
 export class TestExplorerConfiguration {
   public readonly projectRootPath: string;
@@ -18,6 +19,7 @@ export class TestExplorerConfiguration {
   public readonly debuggerConfig: any;
   public readonly debugLevelLoggingEnabled: boolean;
   public readonly serverCrashRestartDelaySecs: number;
+  public readonly testGrouping: TestGrouping;
 
   public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string)
   {
@@ -36,6 +38,7 @@ export class TestExplorerConfiguration {
     this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
     this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
     this.serverCrashRestartDelaySecs = config.get(ConfigSetting.ServerCrashRestartDelaySecs) as number;
+    this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile) ? undefined :
       path.resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);

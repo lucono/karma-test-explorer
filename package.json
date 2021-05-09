@@ -27,7 +27,6 @@
 	],
 	"main": "out/main.js",
 	"scripts": {
-		"postinstall": "node ./node_modules/vscode/bin/install",
 		"clean": "rimraf out *.vsix",
 		"build": "tsc",
 		"watch": "tsc -w",
@@ -106,6 +105,13 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "karma.conf.js"
+				},
+				"karmaTestExplorer.testGrouping": {
+					"description": "How grouping used for displaying tests in the test explorer pane",
+					"type": "string",
+					"scope": "resource",
+					"default": "folder",
+					"enum": ["suite", "folder"]
 				},
 				"karmaTestExplorer.karmaProcessExecutable": {
 					"description": "The path to a custom Karma executable or command for launching Karma",

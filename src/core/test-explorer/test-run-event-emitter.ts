@@ -1,7 +1,7 @@
 import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
 import { KarmaEvent } from "../../model/karma-event";
 import { TestState } from "../../model/enums/test-state.enum";
-import { TestResultToTestStateMapper } from "./test-result-to-test-state.mapper";
+import { TestResultToTestStateMapper } from "./test-result-to-test-state-mapper";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import * as vscode from "vscode";
 import { TestType } from "../../model/enums/test-type.enum";

@@ -2,28 +2,29 @@
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { SpecLocator } from "../helpers/spec-locator";
 import { TestRunner } from "./test-runner";
 import { request as httpRequest } from "http";
 import { Execution, PromiseExecutor } from "../helpers/execution";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info.mapper";
+import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info-mapper";
 import { TestType } from "../../model/enums/test-type.enum";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 const RUN_ALL_TESTS_PATTERN = "";
 
 interface KarmaRunConfig {
-  port: number,
-  refresh: boolean,
-  urlRoot: string,
-  hostname: string,
-  clientArgs: string[]
+  port: number;
+  refresh: boolean;
+  urlRoot: string;
+  hostname: string;
+  clientArgs: string[];
 };
 
 export class HttpClientTestRunner implements TestRunner {
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
+    // private readonly specLocator: SpecLocator,
+    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     // private readonly testRetriever: KarmaTestRetriever,
     private readonly logger: Logger
   ) {}
@@ -38,7 +39,7 @@ export class HttpClientTestRunner implements TestRunner {
   //   return this.karmaEventListener.getLoadedTests(pathFinder);
   // }
 
-  public async loadTests(specLocator: SpecLocator, karmaPort: number): Promise<TestSuiteInfo> {
+  public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
     const testLoadExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
 
     const testLoad: Execution = {
@@ -54,8 +55,8 @@ export class HttpClientTestRunner implements TestRunner {
     testLoadExecution.stop.resolve();
 
     const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocator, this.logger);
-    return specToTestSuiteMapper.map(capturedSpecs);
+    // const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(this.specLocator, this.logger);
+    return this.specToTestSuiteMapper.map(capturedSpecs);
   }
 
   public async runTests(tests: (TestInfo | TestSuiteInfo)[], karmaPort: number): Promise<void> {

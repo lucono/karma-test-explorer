@@ -1,11 +1,13 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import { SpecLocator, SpecLocation } from "../helpers/spec-locator";
+import { SpecLocation } from "../helpers/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
-import { TestType } from "../../model/enums/test-type.enum";
+import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 
+export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation | undefined;
+
 export class SpecResponseToTestSuiteInfoMapper {
-  public constructor(private readonly specLocator: SpecLocator, private readonly logger: Logger) {}
+  public constructor(private readonly specLocationResolver: SpecLocationResolver, private readonly logger: Logger) {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     let suiteIdCounter = 0
@@ -21,9 +23,9 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     specs.forEach(spec => {
       const specSuitePath = this.filterSuiteNoise(spec.suite);
-      const specLocation = this.specLocator.getSpecLocation(specSuitePath, spec.description);
+      const specLocation = this.specLocationResolver(specSuitePath, spec.description);
       const test = this.createTest(spec, specLocation);
-      const testSuite = this.getNewOrExistingDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
+      const testSuite = this.getDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
       testSuite.children.push(test);
     });
     
@@ -50,25 +52,14 @@ export class SpecResponseToTestSuiteInfoMapper {
     return test;
   }
 
-  private createRootSuite(suiteId: string): TestSuiteInfo {
-    const rootSuite: TestSuiteInfo = {
-      type: TestType.Suite,
-      id: suiteId,
-      label: "Karma tests",
-      fullName: "",
-      children: [],
-      testCount: 0
-    };
-    return rootSuite;
-  }
-
   private createSuite(suitePath: string[], suiteId: string): TestSuiteInfo {
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
-    const suiteLocation = this.specLocator.getSpecLocation(suitePath);
+    const suiteLocation = this.specLocationResolver(suitePath);
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
+      suiteType: TestSuiteType.Suite,
       id: suiteId,
       fullName: suiteFullName,
       label: suiteName,
@@ -81,13 +72,29 @@ export class SpecResponseToTestSuiteInfoMapper {
     return suiteNode;
   }
 
-  private getNewOrExistingDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], suiteIdGenerator: () => string): TestSuiteInfo {
+  private createRootSuite(suiteId: string): TestSuiteInfo {
+    const rootSuite: TestSuiteInfo = {
+      type: TestType.Suite,
+      suiteType: TestSuiteType.Suite,
+      id: suiteId,
+      label: "Karma tests",
+      fullName: "",
+      children: [],
+      testCount: 0
+    };
+    return rootSuite;
+  }
+
+  private getDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], suiteIdGenerator: () => string): TestSuiteInfo {
     const currentSuitePath = [] as string[];
-    let currentNode = baseNode;
+    let currentNode: TestSuiteInfo = baseNode;
 
     for (const suiteName of suitePath) {
       currentSuitePath.push(suiteName);
-      let nextNode = this.findNodeByKey(currentNode, suiteName);
+
+      let nextNode = currentNode.label === suiteName
+        ? currentNode
+        : currentNode.children.find(child => child.type === TestType.Suite && child.label === suiteName) as TestSuiteInfo | undefined;
 
       if (!nextNode) {
         const nextSuiteId = suiteIdGenerator();
@@ -111,23 +118,6 @@ export class SpecResponseToTestSuiteInfoMapper {
     testSuite.testCount = totalTestCount;
     testSuite.description = `(${totalTestCount} ${totalTestCount === 1 ? 'test' : 'tests'})`;
     return totalTestCount;
-  }
-
-  private findNodeByKey(node: TestInfo | TestSuiteInfo, suiteLookup: string): TestSuiteInfo | undefined {
-    if (node.type === TestType.Test) {
-      return undefined;
-    }
-
-    if (node.label === suiteLookup) {
-      return node;
-    } else {
-      for (const child of node.children) {
-        if (child.type === TestType.Suite && child.label === suiteLookup) {
-          return child as TestSuiteInfo;
-        }
-      }
-    }
-    return undefined;
   }
 
   private filterSuiteNoise(suitePath: string[]) {
