@@ -180,7 +180,7 @@ export class KarmaEventListener {
     this.logger.info(`Karma Event Listener: Closing connection with karma`);
 
     return new Promise<void>((resolve, reject) => {
-      server.close((error) => {
+      server.close((error) => { // FIXME: Seems to be getting stuck here sometimes
         if (error) {
           this.logger.error(`Failed closing karma listener connection: ${error.message}`);
           reject();

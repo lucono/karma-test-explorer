@@ -8,7 +8,6 @@ export class TestSuiteOrganizer {
 
   public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestSuiteInfo {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
-    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
 
     const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
     const convertedTestFileSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
@@ -78,6 +77,9 @@ export class TestSuiteOrganizer {
       }
     });
 
+    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
+    rootFolderSuite.label = '.';
+    
     convertedTestFileSuitesByFile.forEach(testFileSuite => {
       const specFolderRelativePath: string = relative(rootPath, dirname(testFileSuite.file));
       const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolderRelativePath);
@@ -110,11 +112,10 @@ export class TestSuiteOrganizer {
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
     const collapseSingleChildSuites = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
-      suite.children.forEach(childSuite => {
-        if (childSuite.suiteType === TestSuiteType.Folder) {
-          collapseSingleChildSuites(childSuite);
-        }
-      });
+      suite.children = suite.children.map(childSuite => childSuite.suiteType === TestSuiteType.Folder
+        ? collapseSingleChildSuites(childSuite)
+        : childSuite);
+
       let replacementSuite: TestFolderSuiteInfo = suite;
       
       if (suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder) {
