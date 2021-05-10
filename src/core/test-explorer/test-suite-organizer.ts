@@ -6,7 +6,7 @@ import { sep as pathSeparator, dirname, basename, normalize, relative, join } fr
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
 
-  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestFolderSuiteInfo {
+  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestSuiteInfo {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
 
@@ -109,12 +109,24 @@ export class TestSuiteOrganizer {
     const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
-    const findFirstNonSingleChildSuite = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
-      return suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder
-        ? findFirstNonSingleChildSuite(suite.children[0])
-        : suite;
+    const collapseSingleChildSuites = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
+      suite.children.forEach(childSuite => {
+        if (childSuite.suiteType === TestSuiteType.Folder) {
+          collapseSingleChildSuites(childSuite);
+        }
+      });
+      let replacementSuite: TestFolderSuiteInfo = suite;
+      
+      if (suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder) {
+        const singleChildFolderSuite: TestFolderSuiteInfo = suite.children[0];
+        singleChildFolderSuite.label = join(suite.label, singleChildFolderSuite.label);
+        replacementSuite = singleChildFolderSuite;
+      }
+      return replacementSuite;
     };
-    return findFirstNonSingleChildSuite(rootFolderSuite);
+    const collapsedFolderSuiteTree: TestFolderSuiteInfo = collapseSingleChildSuites(rootFolderSuite);
+    const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
+    return folderGroupedRootSuite;
   }
 
   // public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestFolderSuiteInfo {
