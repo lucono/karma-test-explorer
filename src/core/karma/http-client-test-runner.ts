@@ -82,9 +82,10 @@ export class HttpClientTestRunner implements TestRunner {
         .filter(test => !!test.fullName)
         .map(test => {
           let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-          if (test.type === TestType.Test) {
-            testPattern = `${testPattern}$`;
-          }
+          testPattern += test.type === TestType.Suite ? ' ' : '$';
+          // if (test.type === TestType.Test) {
+          //   testPattern = `${testPattern}$`;
+          // }
           return testPattern;
         });
       aggregateTestPattern = `/(${testPatterns.join("|")})/`;

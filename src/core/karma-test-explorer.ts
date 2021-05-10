@@ -63,17 +63,18 @@ export class KarmaTestExplorer {
   public async loadTests(config: TestExplorerConfiguration): Promise<TestSuiteInfo> {
     try {
       if (!this.isSystemsRunning()) {
-        this.logger.info(`Request to load tests - ` +
-        `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
-        `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
-        `Restarting both`);
+        this.logger.info(
+          `Request to load tests - ` +
+          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `Restarting both`);
 
         await this.restart(config);
       }
       
       this.logger.info("Proceeding to load tests");
 
-      const karmaPort = this.karmaServer.getServerPort() as number;
+      const karmaPort = this.karmaServer.getServerPort()!;
       let testSuiteInfo = await this.testRunner.loadTests(karmaPort);
 
       if (config.testGrouping === TestGrouping.Folder) {
