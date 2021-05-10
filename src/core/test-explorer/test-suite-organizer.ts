@@ -10,7 +10,7 @@ export class TestSuiteOrganizer {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
 
-    const originalTestSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
+    const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
     const convertedTestFileSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
     const fileLessSpecsSuite: TestSuiteInfo[] = [];
     // const unknownTopSuiteTests: TestInfo[] = [];
@@ -40,6 +40,7 @@ export class TestSuiteOrganizer {
           file: test.file
         };
         convertedTestFileSuitesByFile.set(test.file, convertedTestFileSuite);
+        originalTestSuitesByFile.set(test.file, test);
 
       } else {
         if (previousFileSuite.id === test.file) {
@@ -47,6 +48,7 @@ export class TestSuiteOrganizer {
         } else {
           const specFileName = basename(test.file);
           const indexOfFileExtension = specFileName.indexOf('.');
+          const specFileRelativePath: string = relative(rootPath, test.file);
 
           const fileNameWithoutExtension = indexOfFileExtension > 0
             ? specFileName.substring(0, indexOfFileExtension)
@@ -62,7 +64,7 @@ export class TestSuiteOrganizer {
             label: fileNameWithoutExtension,
             testCount: 0,
             debuggable: test.debuggable,
-            tooltip: test.file,
+            tooltip: specFileRelativePath,
             children: []
             // description: undefined,
             // errored: false,
@@ -77,8 +79,8 @@ export class TestSuiteOrganizer {
     });
 
     convertedTestFileSuitesByFile.forEach(testFileSuite => {
-      const specFolderPath: string = relative(rootPath, dirname(testFileSuite.file));
-      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolderPath);
+      const specFolderRelativePath: string = relative(rootPath, dirname(testFileSuite.file));
+      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolderRelativePath);
       specFolderSuite.children.push(testFileSuite);
     });
 
@@ -104,7 +106,7 @@ export class TestSuiteOrganizer {
       rootFolderSuite.children.push(fileLessTestFileSuite);
     });
     
-    const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite as unknown as TestSuiteInfo);
+    const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
     const findFirstNonSingleChildSuite = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
