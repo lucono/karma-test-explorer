@@ -4,7 +4,7 @@ export enum TestType {
 }
 
 export enum TestSuiteType {
-  Suite = 'suite',
+  File = 'file',
   Folder = 'folder'
 }
 

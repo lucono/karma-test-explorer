@@ -1,27 +1,113 @@
 import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
-import { TestInfo, TestSuiteInfo, TestSuiteFolderInfo } from "vscode-test-adapter-api";
+import { TestInfo, TestSuiteInfo, TestFolderSuiteInfo, TestFileSuiteInfo } from "vscode-test-adapter-api";
 import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
 
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
 
-  public groupByFolder(tests: (TestInfo | TestSuiteInfo)[], rootPath: string): TestSuiteFolderInfo {
-    const rootFolderSuite: TestSuiteFolderInfo = this.createFolderSuite(rootPath);
+  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestFolderSuiteInfo {
+    const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
+    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
+
+    const originalTestSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
+    const convertedTestFileSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
+    const fileLessSpecsSuite: TestSuiteInfo[] = [];
+    // const unknownTopSuiteTests: TestInfo[] = [];
 
     tests.forEach(test => {
-      if (test.type === TestType.Test) {
-        throw new Error(`Got unexpected test instead of test suite: ${JSON.stringify(test)}`);
+
+      if (test.type === TestType.Test) {  // FIXME: Should never be true. Use type system to eliminate need for check
+        this.logger.warn(
+          `Got test with unknown top-level test suite: ${JSON.stringify(test)} - ` +
+          `Test will be ignored`);
+        // unknownTopSuiteTests.push(test);
+        return;
       }
-      const specFolder: string = relative(rootPath, dirname(test.file ?? "") || rootPath);
-      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolder);
-      specFolderSuite.children.push(test);
+      
+      if (!test.file) {
+        this.logger.warn(`Got test with unknown file: ${JSON.stringify(test)}`);
+        fileLessSpecsSuite.push(test);
+        return;
+      }
+      
+      const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(test.file);
+
+      if (!previousFileSuite) {
+        const convertedTestFileSuite: TestFileSuiteInfo = {
+          ...test,
+          suiteType: TestSuiteType.File,
+          file: test.file
+        };
+        convertedTestFileSuitesByFile.set(test.file, convertedTestFileSuite);
+
+      } else {
+        if (previousFileSuite.id === test.file) {
+          previousFileSuite.children.push(test);
+        } else {
+          const specFileName = basename(test.file);
+          const indexOfFileExtension = specFileName.indexOf('.');
+
+          const fileNameWithoutExtension = indexOfFileExtension > 0
+            ? specFileName.substring(0, indexOfFileExtension)
+            : specFileName;  
+
+          const multiTopLevelFileSuite: TestFileSuiteInfo = {
+            type: TestType.Suite,
+            suiteType: TestSuiteType.File,
+            file: test.file,
+            line: 0,
+            id: test.file,
+            fullName: test.file,
+            label: fileNameWithoutExtension,
+            testCount: 0,
+            debuggable: test.debuggable,
+            tooltip: test.file,
+            children: []
+            // description: undefined,
+            // errored: false,
+            // message: undefined
+          };
+          const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(test.file)!;
+          multiTopLevelFileSuite.children.push(originalTestSuite);
+          multiTopLevelFileSuite.children.push(test);
+          convertedTestFileSuitesByFile.set(test.file, multiTopLevelFileSuite);
+        }
+      }
+    });
+
+    convertedTestFileSuitesByFile.forEach(testFileSuite => {
+      const specFolderPath: string = relative(rootPath, dirname(testFileSuite.file));
+      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolderPath);
+      specFolderSuite.children.push(testFileSuite);
+    });
+
+    fileLessSpecsSuite.forEach(fileLessTestSuite => {
+      const fileLessTestFileSuite: TestFileSuiteInfo = {
+        ...fileLessTestSuite,
+        type: TestType.Suite,
+        suiteType: TestSuiteType.File,
+        file: '',
+        line: undefined,
+        testCount: 0,
+        message: `Could not determine the file for this test suite`,
+        // id: fileLessTestSuite.id,
+        // label: fileLessTestSuite.label,
+        // children: fileLessTestSuite.children,
+        // fullName: fileLessTestSuite.fullName,
+        // -----
+        // debuggable: fileLessTestSuite.debuggable,
+        // tooltip: fileLessTestSuite.tooltip,
+        // description: undefined,
+        // errored: false
+      };
+      rootFolderSuite.children.push(fileLessTestFileSuite);
     });
     
     const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite as unknown as TestSuiteInfo);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
-    const findFirstNonSingleChildSuite = (suite: TestSuiteFolderInfo): TestSuiteFolderInfo => {
+    const findFirstNonSingleChildSuite = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
       return suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder
         ? findFirstNonSingleChildSuite(suite.children[0])
         : suite;
@@ -29,7 +115,35 @@ export class TestSuiteOrganizer {
     return findFirstNonSingleChildSuite(rootFolderSuite);
   }
 
-  private createFolderSuite(path: string): TestSuiteFolderInfo {
+  // public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestFolderSuiteInfo {
+  //   const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
+  //   const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
+
+  //   tests.forEach(test => {
+  //     if (test.type === TestType.Test) {
+  //       throw new Error(`Got unexpected test instead of test suite: ${JSON.stringify(test)}`);
+  //     }
+  //     const specFolder: string = relative(rootPath, dirname(test.file ?? "") || rootPath);
+  //     const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolder);
+      
+  //     specFolderSuite.children.push({
+  //       ...test,
+  //       suiteType: TestSuiteType.File
+  //     });
+  //   });
+    
+  //   const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite as unknown as TestSuiteInfo);
+  //   this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
+
+  //   const findFirstNonSingleChildSuite = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
+  //     return suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder
+  //       ? findFirstNonSingleChildSuite(suite.children[0])
+  //       : suite;
+  //   };
+  //   return findFirstNonSingleChildSuite(rootFolderSuite);
+  // }
+
+  private createFolderSuite(path: string): TestFolderSuiteInfo {
     const folderPath = normalize(path);
     const folderName = basename(folderPath);
 
@@ -46,10 +160,10 @@ export class TestSuiteOrganizer {
     };
   }
 
-  private getDescendantFolderSuite(baseFolderNode: TestSuiteFolderInfo, folderPath: string): TestSuiteFolderInfo {
+  private getDescendantFolderSuite(baseFolderNode: TestFolderSuiteInfo, folderPath: string): TestFolderSuiteInfo {
     const pathSegments = folderPath.split(pathSeparator);
     const currentFolderPathSegments = [] as string[];
-    let currentFolderNode: TestSuiteFolderInfo = baseFolderNode;
+    let currentFolderNode: TestFolderSuiteInfo = baseFolderNode;
 
     for (const folderName of pathSegments) {
       currentFolderPathSegments.push(folderName);
@@ -59,7 +173,7 @@ export class TestSuiteOrganizer {
         ? currentFolderNode
         : currentFolderNode.children.find(child => {
             return child.suiteType === TestSuiteType.Folder && child.path === currentFolderPath;
-        }) as TestSuiteFolderInfo | undefined;
+        }) as TestFolderSuiteInfo | undefined;
 
       if (!nextFolderNode) {
         nextFolderNode = this.createFolderSuite(currentFolderPath);

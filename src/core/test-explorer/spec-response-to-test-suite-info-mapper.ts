@@ -1,7 +1,7 @@
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecLocation } from "../helpers/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
-import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
+import { TestType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 
 export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation | undefined;
@@ -59,7 +59,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
-      suiteType: TestSuiteType.Suite,
+      // suiteType: TestSuiteType.Suite,
       id: suiteId,
       fullName: suiteFullName,
       label: suiteName,
@@ -75,7 +75,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   private createRootSuite(suiteId: string): TestSuiteInfo {
     const rootSuite: TestSuiteInfo = {
       type: TestType.Suite,
-      suiteType: TestSuiteType.Suite,
+      // suiteType: TestSuiteType.Suite,
       id: suiteId,
       label: "Karma tests",
       fullName: "",
@@ -86,7 +86,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   }
 
   private getDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], suiteIdGenerator: () => string): TestSuiteInfo {
-    const currentSuitePath = [] as string[];
+    const currentSuitePath: string[] = [];
     let currentNode: TestSuiteInfo = baseNode;
 
     for (const suiteName of suitePath) {

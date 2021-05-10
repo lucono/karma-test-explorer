@@ -78,7 +78,7 @@ export class KarmaTestExplorer {
       let testSuiteInfo = await this.testRunner.loadTests(karmaPort);
 
       if (config.testGrouping === TestGrouping.Folder) {
-        testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo.children, config.projectRootPath) as unknown as TestSuiteInfo;
+        testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, config.projectRootPath);
       }
 
       if (testSuiteInfo.children.length === 0) {
