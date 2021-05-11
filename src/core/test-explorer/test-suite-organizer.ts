@@ -111,52 +111,46 @@ export class TestSuiteOrganizer {
     const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
-    const collapseSingleChildSuites = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
-      suite.children = suite.children.map(childSuite => childSuite.suiteType === TestSuiteType.Folder
-        ? collapseSingleChildSuites(childSuite)
-        : childSuite);
-
-      let replacementSuite: TestFolderSuiteInfo = suite;
-      
-      if (suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder) {
-        const singleChildFolderSuite: TestFolderSuiteInfo = suite.children[0];
-        singleChildFolderSuite.label = join(suite.label, singleChildFolderSuite.label);
-        replacementSuite = singleChildFolderSuite;
-      }
-      return replacementSuite;
-    };
-    const collapsedFolderSuiteTree: TestFolderSuiteInfo = collapseSingleChildSuites(rootFolderSuite);
+    const collapsedFolderSuiteTree: TestFolderSuiteInfo = this.collapseSingleChildSuites(rootFolderSuite);
     const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
     return folderGroupedRootSuite;
   }
 
-  // public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestFolderSuiteInfo {
-  //   const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
-  //   const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
+  private collapseSingleChildSuites(suite: TestFolderSuiteInfo): TestFolderSuiteInfo {
+    suite.children.sort(this.compareTestSuites);
 
-  //   tests.forEach(test => {
-  //     if (test.type === TestType.Test) {
-  //       throw new Error(`Got unexpected test instead of test suite: ${JSON.stringify(test)}`);
-  //     }
-  //     const specFolder: string = relative(rootPath, dirname(test.file ?? "") || rootPath);
-  //     const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolder);
-      
-  //     specFolderSuite.children.push({
-  //       ...test,
-  //       suiteType: TestSuiteType.File
-  //     });
-  //   });
+    suite.children = suite.children.map(childSuite => childSuite.suiteType === TestSuiteType.Folder
+      ? this.collapseSingleChildSuites(childSuite)
+      : childSuite);
+
+    let replacementSuite: TestFolderSuiteInfo = suite;
     
-  //   const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite as unknown as TestSuiteInfo);
-  //   this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
+    if (suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder) {
+      const singleChildFolderSuite: TestFolderSuiteInfo = suite.children[0];
+      singleChildFolderSuite.label = join(suite.label, singleChildFolderSuite.label);
+      replacementSuite = singleChildFolderSuite;
+    }
+    return replacementSuite;
+  }
 
-  //   const findFirstNonSingleChildSuite = (suite: TestFolderSuiteInfo): TestFolderSuiteInfo => {
-  //     return suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder
-  //       ? findFirstNonSingleChildSuite(suite.children[0])
-  //       : suite;
-  //   };
-  //   return findFirstNonSingleChildSuite(rootFolderSuite);
-  // }
+  private compareTestSuites(
+    suite1: TestFileSuiteInfo | TestFolderSuiteInfo,
+    suite2: TestFileSuiteInfo | TestFolderSuiteInfo): number
+  {
+    const computeSuiteRank = (suite: TestFileSuiteInfo | TestFolderSuiteInfo): number =>
+      suite.suiteType === TestSuiteType.Folder ? 8
+        : suite.suiteType === TestSuiteType.File && suite.children.length > 1 ? 4
+        : suite.type === TestType.Suite ? 2
+        : 1;
+
+    const suite1Rank = computeSuiteRank(suite1);
+    const suite2Rank = computeSuiteRank(suite2);
+
+    return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
+      : suite1.label < suite2.label ? -1
+      : suite1.label > suite2.label ? 1
+      : 0;
+  }
 
   private createFolderSuite(path: string): TestFolderSuiteInfo {
     const folderPath = normalize(path);

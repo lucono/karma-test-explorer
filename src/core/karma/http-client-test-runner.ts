@@ -83,6 +83,9 @@ export class HttpClientTestRunner implements TestRunner {
         .filter(test => !!test.fullName)  // FIXME: These will be files and folders - expand to suites and add to tests
         .map(test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`);
 
+      if (testPatterns.length === 0) {
+        throw new Error(`No tests to run`);
+      }
       aggregateTestPattern = `/(${testPatterns.join("|")})/`;
     }
 

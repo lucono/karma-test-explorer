@@ -106,7 +106,6 @@ export class KarmaEventListener {
         this.logger.info(`Karma Event Listener: Connection closed on ${port}`);
         clearTimeout(connectTimeoutId);
         this.server = undefined;
-        this.cleanupConnections();
       });
 
       connectTimeoutId = setTimeout(() => {
@@ -189,6 +188,7 @@ export class KarmaEventListener {
         this.logger.info(`Done closing karma listener connection`);
         resolve();
       });
+      this.cleanupConnections();
     });
   }
 
