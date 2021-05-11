@@ -36,7 +36,7 @@ const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class SpecLocator {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
-  private readonly suiteFilesByTopLevelSuiteName: Map<string, string[]> = new Map();
+  private readonly specFilesByTopLevelSuite: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
   public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
@@ -93,14 +93,14 @@ export class SpecLocator {
   }
 
   private lookupFileBySuiteName(topSuiteName: string): string[] {
-    return this.suiteFilesByTopLevelSuiteName.get(topSuiteName) ?? [];
+    return this.specFilesByTopLevelSuite.get(topSuiteName) ?? [];
   }
 
   private registerFileBySuiteName(topSuiteName: string, fileAbsolutePath: string): void {
-    if (this.suiteFilesByTopLevelSuiteName.has(topSuiteName)) {
-      this.suiteFilesByTopLevelSuiteName.get(topSuiteName)!.push(fileAbsolutePath);
+    if (this.specFilesByTopLevelSuite.has(topSuiteName)) {
+      this.specFilesByTopLevelSuite.get(topSuiteName)!.push(fileAbsolutePath);
     } else {
-      this.suiteFilesByTopLevelSuiteName.set(topSuiteName, [ fileAbsolutePath ]);
+      this.specFilesByTopLevelSuite.set(topSuiteName, [ fileAbsolutePath ]);
     }
   }
 
