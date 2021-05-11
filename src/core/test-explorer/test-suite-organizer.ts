@@ -59,7 +59,7 @@ export class TestSuiteOrganizer {
             file: test.file,
             line: 0,
             id: test.file,
-            fullName: test.file,
+            fullName: '', // To prevent being runnable with grep pattern of fullName
             label: fileNameWithoutExtension,
             testCount: 0,
             debuggable: test.debuggable,
@@ -167,7 +167,7 @@ export class TestSuiteOrganizer {
       suiteType: TestSuiteType.Folder,
       path: folderPath,
       id: folderPath,
-      fullName: folderPath,
+      fullName: '', // To prevent being runnable with grep pattern of fullName
       label: folderName,
       tooltip: folderPath,
       children: [],

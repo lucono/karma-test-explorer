@@ -1,13 +1,13 @@
 // import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
-import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { TestFileSuiteInfo, TestFolderSuiteInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "./test-runner";
 import { request as httpRequest } from "http";
 import { Execution, PromiseExecutor } from "../helpers/execution";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info-mapper";
-import { TestType } from "../../model/enums/test-type.enum";
+import { TestSuiteType, TestType } from "../../model/enums/test-type.enum";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 const RUN_ALL_TESTS_PATTERN = "";
@@ -75,19 +75,14 @@ export class HttpClientTestRunner implements TestRunner {
       aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
 
     } else {
-      testList = this.removeTestOverlaps(tests);
+      const derivedRunnableTests: (TestInfo | TestSuiteInfo)[] = this.toRunnableTests(tests);
+      testList = this.removeTestOverlaps(derivedRunnableTests);
       this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
   
       const testPatterns: string[] = testList
-        .filter(test => !!test.fullName)
-        .map(test => {
-          let testPattern: string = `^${this.escapeForRegExp(test.fullName)}`;
-          testPattern += test.type === TestType.Suite ? ' ' : '$';
-          // if (test.type === TestType.Test) {
-          //   testPattern = `${testPattern}$`;
-          // }
-          return testPattern;
-        });
+        .filter(test => !!test.fullName)  // FIXME: These will be files and folders - expand to suites and add to tests
+        .map(test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`);
+
       aggregateTestPattern = `/(${testPatterns.join("|")})/`;
     }
 
@@ -105,6 +100,56 @@ export class HttpClientTestRunner implements TestRunner {
     testRunExecution.start.resolve();
     await this.callKarmaRun(karmaRunConfig);
     testRunExecution.stop.resolve();
+  }
+
+  // private toRunnableTests(test: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): (TestInfo | TestSuiteInfo)[] {
+  //   if (test.fullName) {
+  //     return [ test ];
+  //   }
+  //   if (test.type === TestType.Suite) {
+  //     const testWalker = (test: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): (TestInfo | TestSuiteInfo)[] => {
+  //       if (test.fullName) {
+  //         return [ test ];
+  //       }
+  //       if (test.type !== TestType.Suite || !('suiteType' in test)) {
+  //         return [];
+  //       }
+  //       if (test.suiteType === TestSuiteType.File) {
+  //         return test.children;
+  //       }
+  //       if (test.suiteType === TestSuiteType.Folder) {
+  //         const derivedRunnableTests: (TestInfo | TestSuiteInfo)[] = [];
+  //         test.children.forEach(childTest => derivedRunnableTests.push(...testWalker(childTest)));
+  //         return derivedRunnableTests;
+  //       }
+  //       return [];
+  //     };
+  //     const derivedTests: (TestInfo | TestSuiteInfo)[] = testWalker(test);
+  //     return derivedTests;
+  //   }
+  // }
+
+  private toRunnableTests(tests: (TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
+    const runnableTests: (TestInfo | TestSuiteInfo)[] = [];
+
+    tests.forEach(test => {
+      if (test.fullName) {
+        runnableTests.push(test);
+        return;
+      }
+      if (test.type !== TestType.Suite || !('suiteType' in test)) {
+        return;
+      }
+      if (test.suiteType === TestSuiteType.File) {
+        runnableTests.push(...test.children);
+        return;
+      }
+      if (test.suiteType === TestSuiteType.Folder) {
+        runnableTests.push(...this.toRunnableTests(test.children));
+        return;
+      }
+    });
+    return runnableTests;
   }
 
   private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
