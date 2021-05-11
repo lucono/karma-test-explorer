@@ -148,11 +148,10 @@ export class TestSuiteOrganizer {
     test2: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number
   {
     const computeSuiteRank = (test: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number =>
-      test.type === TestType.Test ? 0
-        : 'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 4
-        : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 3
+      'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 0
+        : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 1
         : test.type === TestType.Suite ? 2
-        : 1;
+        : 3;
 
     const suite1Rank = computeSuiteRank(test1);
     const suite2Rank = computeSuiteRank(test2);
