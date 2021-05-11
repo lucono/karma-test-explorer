@@ -70,8 +70,8 @@ export class Adapter implements TestAdapter {
       const test = this.loadedTestsById.get(testId);
       return test?.type === TestType.Test ? test : undefined;
     }
-    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation | undefined => {
-      return this.specLocator?.getSpecLocation(suite, description);
+    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
+      return this.specLocator?.getSpecLocation(suite, description) ?? [];
     };
     const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, testRetriever, this.logger);
@@ -158,7 +158,7 @@ export class Adapter implements TestAdapter {
 
     this.storeLoadedTests(loadedTests);
     this.testLoadEmitter.fire(testLoadFinishedEvent);
-    this.retireEmitter.fire({} as RetireEvent);
+    this.retireEmitter.fire({});
 
     this.isTestProcessRunning = false;
     this.logger.debug(() => `Test loading finished`);
@@ -187,7 +187,7 @@ export class Adapter implements TestAdapter {
 
     this.logger.info(`Starting test run Id: ${testRunId}`);
 
-    this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId } as TestRunStartedEvent);
+    this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId });
     let runError: string | undefined;
 
     try {
@@ -196,11 +196,11 @@ export class Adapter implements TestAdapter {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
 
-    this.testRunEmitter.fire({ type: "finished", testRunId } as TestRunFinishedEvent);
+    this.testRunEmitter.fire({ type: "finished", testRunId });
 
     if (runError) {
       this.logger.error(runError);
-      this.retireEmitter.fire({ tests: testIds } as RetireEvent);
+      this.retireEmitter.fire({ tests: testIds });
     }
 
     this.isTestProcessRunning = false;

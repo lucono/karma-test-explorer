@@ -4,7 +4,7 @@ import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import { TestType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 
-export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation | undefined;
+export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
 
 export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly specLocationResolver: SpecLocationResolver, private readonly logger: Logger) {}
@@ -23,8 +23,8 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     specs.forEach(spec => {
       const specSuitePath = this.filterSuiteNoise(spec.suite);
-      const specLocation = this.specLocationResolver(specSuitePath, spec.description);
-      const test = this.createTest(spec, specLocation);
+      const specLocations = this.specLocationResolver(specSuitePath, spec.description);
+      const test = this.createTest(spec, specLocations);
       const testSuite = this.getDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
       testSuite.children.push(test);
     });
@@ -34,8 +34,17 @@ export class SpecResponseToTestSuiteInfoMapper {
     return rootTestSuite;
   }
 
-  private createTest(specInfo: SpecCompleteResponse, specLocation?: SpecLocation): TestInfo {
-    const failureMessages = specInfo.failureMessages?.length > 0
+  private createTest(specInfo: SpecCompleteResponse, specLocations: SpecLocation[]): TestInfo {
+    const file = specLocations.length === 1 ? specLocations[0].file : undefined;
+    const line = specLocations.length === 1 ? specLocations[0].line : undefined;
+    const errored = specLocations.length > 1;
+    const filesListing = specLocations.map(location => `${location.file}:${location.line}`).join('\n');
+
+    const loadFailureMessage = specLocations.length > 1
+      ? `⚠ This test has exact duplicates which could lead to conflicting results in a test run: \n${filesListing}`
+      : undefined;
+
+    const runFailureMessage = specInfo.failureMessages?.length > 0
       ? specInfo.failureMessages.join("\n")
       : undefined;
 
@@ -45,9 +54,10 @@ export class SpecResponseToTestSuiteInfoMapper {
       fullName: specInfo.fullName,
       label: specInfo.description,
       tooltip: specInfo.fullName,
-      message: failureMessages,
-      file: specLocation?.file,
-      line: specLocation?.line,
+      message: runFailureMessage ?? loadFailureMessage,
+      file,
+      line,
+      errored
     };
     return test;
   }
@@ -55,19 +65,27 @@ export class SpecResponseToTestSuiteInfoMapper {
   private createSuite(suitePath: string[], suiteId: string): TestSuiteInfo {
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
-    const suiteLocation = this.specLocationResolver(suitePath);
+    const suiteLocations = this.specLocationResolver(suitePath);
+
+    const file = suiteLocations.length === 1 ? suiteLocations[0].file : undefined;
+    const line = suiteLocations.length === 1 ? suiteLocations[0].line : undefined;
+    const filesListing = suiteLocations.map(location => `${location.file}:${location.line}`).join('\n');
+
+    const message = suiteLocations.length > 1
+      ? `⚠ This test suite has exact duplicates which will all be run when this suite is run: \n${filesListing}`
+      : undefined;
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
-      // suiteType: TestSuiteType.Suite,
       id: suiteId,
       fullName: suiteFullName,
       label: suiteName,
       tooltip: suiteFullName,
-      file: suiteLocation?.file,
-      line: suiteLocation?.line,
       children: [],
-      testCount: 0
+      testCount: 0,
+      file,
+      line,
+      message
     };
     return suiteNode;
   }

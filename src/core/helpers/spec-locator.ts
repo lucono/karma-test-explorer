@@ -37,6 +37,7 @@ const DEFAULT_FILE_ENCODING = "utf-8";
 export class SpecLocator {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
   private readonly suiteFilesCache: Map<string, string> = new Map();
+  private readonly duplicateTopSuiteFilesBySuiteName: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
   public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
@@ -45,32 +46,34 @@ export class SpecLocator {
     filePatterns
       .map(patternString => glob.sync(patternString, options))
       .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
-      .forEach(filePath => {
-        const fileAbsolutePath = path.resolve(this.cwd, filePath);
-        const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
-        this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
-      });
+      .forEach(filePath => this.processFile(filePath, fileEncoding));
   }
 
-  public getSpecLocation(specSuite: string[], specDescription?: string): SpecLocation | undefined {
-    let specFile = this.getSuiteFromCache(specSuite);
+  private processFile(filePath: string, fileEncoding?: string) {
+    const fileAbsolutePath = path.resolve(this.cwd, filePath);
+    const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
+    this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
 
-    if (specFile) {
-      const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
-      if (specLine !== undefined) {
-        return { file: specFile, line: specLine };
-      }
+    if (fileTestInfo.descriptions.describe.length === 0) {
+      return;
     }
+    const fileTopSuite = fileTestInfo.descriptions.describe[0];
+    this.registerFileBySuiteName(fileTopSuite, fileAbsolutePath);
+  }
 
-    for (specFile of this.fileInfoMap.keys()) {
-      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
-
-      if (specLineNumber !== undefined) {
-        this.addSuiteToCache(specSuite, specFile);
-        return { file: specFile, line: specLineNumber };
-      }
+  public getSpecLocation(specSuite: string[], specDescription?: string): SpecLocation[] {
+    if (specSuite.length === 0) {
+      return [];
     }
-    return undefined;
+    const topSuiteName: string = specSuite[0];
+    const specFiles: string[] = this.lookupFileBySuiteName(topSuiteName);
+    
+    const specLocations: SpecLocation[] = specFiles.map((specFile: string): SpecLocation | undefined => {
+        const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
+        return specLine ? { file: specFile, line: specLine } : undefined;
+    }).filter(specLocation => specLocation !== undefined) as SpecLocation[];
+
+    return specLocations;
   }
 
   public isSpecFile(filePath: string): boolean {
@@ -90,28 +93,24 @@ export class SpecLocator {
     return specFileInfo;
   }
 
-  private getSuiteFromCache(suite: string[]): string | undefined {
-    let suiteKey = "";
-
-    for (const suiteAncestor of suite) {
-      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
-      const suiteFile = this.suiteFilesCache.get(suiteKey);
-      if (suiteFile !== undefined) {
-        return suiteFile;
-      }
-    }
-    return undefined;
+  private lookupFileBySuiteName(topSuiteName: string): string[] {
+    return this.duplicateTopSuiteFilesBySuiteName.has(topSuiteName) ? this.duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!
+      : this.suiteFilesCache.has(topSuiteName) ? [ this.suiteFilesCache.get(topSuiteName)! ]
+      : [];
   }
 
-  private addSuiteToCache(suite: string[], filePath: string) {
-    let suiteKey = "";
-
-    for (const suiteAncestor of suite) {
-      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
-      if (!this.suiteFilesCache.has(suiteKey)) {
-        this.suiteFilesCache.set(suiteKey, filePath);
-      }
+  private registerFileBySuiteName(topSuiteName: string, fileAbsolutePath: string): void {
+    if (this.duplicateTopSuiteFilesBySuiteName.has(topSuiteName)) {  // FIXME: Lookup duplicates in new duplicates map
+      this.duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!.push(fileAbsolutePath);
+      return;
     }
+    if (this.suiteFilesCache.has(topSuiteName)) {
+      const existingSuiteFile: string = this.suiteFilesCache.get(topSuiteName)!;
+      this.suiteFilesCache.delete(topSuiteName);
+      this.duplicateTopSuiteFilesBySuiteName.set(topSuiteName, [ existingSuiteFile, fileAbsolutePath ]);
+      return;
+    }
+    this.suiteFilesCache.set(topSuiteName, fileAbsolutePath);
   }
 
   private getSpecLineNumber(
