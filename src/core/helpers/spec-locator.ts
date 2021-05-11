@@ -36,8 +36,7 @@ const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class SpecLocator {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
-  private readonly suiteFilesCache: Map<string, string> = new Map();
-  private readonly duplicateTopSuiteFilesBySuiteName: Map<string, string[]> = new Map();
+  private readonly suiteFilesByTopLevelSuiteName: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
   public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
@@ -94,23 +93,15 @@ export class SpecLocator {
   }
 
   private lookupFileBySuiteName(topSuiteName: string): string[] {
-    return this.duplicateTopSuiteFilesBySuiteName.has(topSuiteName) ? this.duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!
-      : this.suiteFilesCache.has(topSuiteName) ? [ this.suiteFilesCache.get(topSuiteName)! ]
-      : [];
+    return this.suiteFilesByTopLevelSuiteName.get(topSuiteName) ?? [];
   }
 
   private registerFileBySuiteName(topSuiteName: string, fileAbsolutePath: string): void {
-    if (this.duplicateTopSuiteFilesBySuiteName.has(topSuiteName)) {  // FIXME: Lookup duplicates in new duplicates map
-      this.duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!.push(fileAbsolutePath);
-      return;
+    if (this.suiteFilesByTopLevelSuiteName.has(topSuiteName)) {
+      this.suiteFilesByTopLevelSuiteName.get(topSuiteName)!.push(fileAbsolutePath);
+    } else {
+      this.suiteFilesByTopLevelSuiteName.set(topSuiteName, [ fileAbsolutePath ]);
     }
-    if (this.suiteFilesCache.has(topSuiteName)) {
-      const existingSuiteFile: string = this.suiteFilesCache.get(topSuiteName)!;
-      this.suiteFilesCache.delete(topSuiteName);
-      this.duplicateTopSuiteFilesBySuiteName.set(topSuiteName, [ existingSuiteFile, fileAbsolutePath ]);
-      return;
-    }
-    this.suiteFilesCache.set(topSuiteName, fileAbsolutePath);
   }
 
   private getSpecLineNumber(

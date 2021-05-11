@@ -41,7 +41,7 @@ export class SpecResponseToTestSuiteInfoMapper {
     const filesListing = specLocations.map(location => `${location.file}:${location.line}`).join('\n');
 
     const loadFailureMessage = specLocations.length > 1
-      ? `⚠ This test has exact duplicates which could lead to conflicting results in a test run: \n${filesListing}`
+      ? `This test has exact duplicates which could lead to conflicting results in a test run: \n\n${filesListing}`
       : undefined;
 
     const runFailureMessage = specInfo.failureMessages?.length > 0
@@ -72,7 +72,7 @@ export class SpecResponseToTestSuiteInfoMapper {
     const filesListing = suiteLocations.map(location => `${location.file}:${location.line}`).join('\n');
 
     const message = suiteLocations.length > 1
-      ? `⚠ This test suite has exact duplicates which will all be run when this suite is run: \n${filesListing}`
+      ? `This test suite has exact duplicates which will all be run when this suite is run: \n\n${filesListing}`
       : undefined;
 
     const suiteNode: TestSuiteInfo = {
