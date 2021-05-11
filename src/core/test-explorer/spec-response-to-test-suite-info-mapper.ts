@@ -5,6 +5,7 @@ import { TestType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
 
 export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
+type DedupingSpecLocationResolver = (specSuite: string[], specDescription?: string, specFile?: string) => SpecLocation | undefined;
 
 export class SpecResponseToTestSuiteInfoMapper {
   public constructor(private readonly specLocationResolver: SpecLocationResolver, private readonly logger: Logger) {}
@@ -18,14 +19,15 @@ export class SpecResponseToTestSuiteInfoMapper {
       return newSuiteId;
     };
 
+    const dedupingSpecLocationResolver: DedupingSpecLocationResolver = this.createDeduplicatingSpecLocationResolver(this.specLocationResolver);
+
     const rootSuiteId = suiteIdProvider();
     const rootTestSuite: TestSuiteInfo = this.createRootSuite(rootSuiteId);
 
     specs.forEach(spec => {
       const specSuitePath = this.filterSuiteNoise(spec.suite);
-      const specLocations = this.specLocationResolver(specSuitePath, spec.description);
-      const test = this.createTest(spec, specLocations);
-      const testSuite = this.getDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider);
+      const testSuite = this.getDescendantSuite(rootTestSuite, specSuitePath, suiteIdProvider, dedupingSpecLocationResolver);
+      const test = this.createTest(spec, dedupingSpecLocationResolver, testSuite.file);
       testSuite.children.push(test);
     });
     
@@ -34,14 +36,21 @@ export class SpecResponseToTestSuiteInfoMapper {
     return rootTestSuite;
   }
 
-  private createTest(specInfo: SpecCompleteResponse, specLocations: SpecLocation[]): TestInfo {
-    const file = specLocations.length === 1 ? specLocations[0].file : undefined;
-    const line = specLocations.length === 1 ? specLocations[0].line : undefined;
-    const errored = specLocations.length > 1;
-    const filesListing = specLocations.map(location => `${location.file}:${location.line}`).join('\n');
+  private createTest(
+    specInfo: SpecCompleteResponse,
+    dedupingSpecLocationResolver: DedupingSpecLocationResolver,
+    specFile?: string): TestInfo
+  {
+    const specLocation = dedupingSpecLocationResolver(specInfo.suite, specInfo.description, specFile);
+    const allSpecLocations = this.specLocationResolver(specInfo.suite);
 
-    const loadFailureMessage = specLocations.length > 1
-      ? `⚠ This test has exact duplicates which could lead to conflicting results in a test run: \n${filesListing}`
+    // const file = allSpecLocations.length === 1 ? allSpecLocations[0].file : undefined;
+    // const line = allSpecLocations.length === 1 ? allSpecLocations[0].line : undefined;
+    const errored = allSpecLocations.length > 1;
+    const filesListing = allSpecLocations.map(location => `${location.file}:${location.line}`).join('\n');
+
+    const loadFailureMessage = allSpecLocations.length > 1
+      ? `This test has exact duplicates which could lead to conflicting results in a test run: \n\n${filesListing}`
       : undefined;
 
     const runFailureMessage = specInfo.failureMessages?.length > 0
@@ -55,24 +64,25 @@ export class SpecResponseToTestSuiteInfoMapper {
       label: specInfo.description,
       tooltip: specInfo.fullName,
       message: runFailureMessage ?? loadFailureMessage,
-      file,
-      line,
+      file: specLocation?.file,
+      line: specLocation?.line,
       errored
     };
     return test;
   }
 
-  private createSuite(suitePath: string[], suiteId: string): TestSuiteInfo {
+  private createSuite(
+    suitePath: string[], 
+    suiteId: string,
+    allSuiteLocations: SpecLocation[], 
+    suiteLocation?: SpecLocation): TestSuiteInfo
+  {
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
-    const suiteLocations = this.specLocationResolver(suitePath);
+    const filesListing = allSuiteLocations.map(location => `${location.file}:${location.line}`).join('\n');
 
-    const file = suiteLocations.length === 1 ? suiteLocations[0].file : undefined;
-    const line = suiteLocations.length === 1 ? suiteLocations[0].line : undefined;
-    const filesListing = suiteLocations.map(location => `${location.file}:${location.line}`).join('\n');
-
-    const message = suiteLocations.length > 1
-      ? `⚠ This test suite has exact duplicates which will all be run when this suite is run: \n${filesListing}`
+    const message = allSuiteLocations.length > 1
+      ? `This test suite has exact duplicates which will all be run when this suite is run: \n\n${filesListing}`
       : undefined;
 
     const suiteNode: TestSuiteInfo = {
@@ -83,8 +93,8 @@ export class SpecResponseToTestSuiteInfoMapper {
       tooltip: suiteFullName,
       children: [],
       testCount: 0,
-      file,
-      line,
+      file: suiteLocation?.file,
+      line: suiteLocation?.line,
       message
     };
     return suiteNode;
@@ -103,7 +113,12 @@ export class SpecResponseToTestSuiteInfoMapper {
     return rootSuite;
   }
 
-  private getDescendantSuite(baseNode: TestSuiteInfo, suitePath: string[], suiteIdGenerator: () => string): TestSuiteInfo {
+  private getDescendantSuite(
+    baseNode: TestSuiteInfo, 
+    suitePath: string[], 
+    suiteIdGenerator: () => string, 
+    dedupingSpecLocationResolver: DedupingSpecLocationResolver): TestSuiteInfo
+  {
     const currentSuitePath: string[] = [];
     let currentNode: TestSuiteInfo = baseNode;
 
@@ -116,7 +131,9 @@ export class SpecResponseToTestSuiteInfoMapper {
 
       if (!nextNode) {
         const nextSuiteId = suiteIdGenerator();
-        nextNode = this.createSuite(currentSuitePath, nextSuiteId);
+        const suiteLocation = dedupingSpecLocationResolver(currentSuitePath, undefined, currentNode.file);
+        const allSuiteLocations = this.specLocationResolver(currentSuitePath);
+        nextNode = this.createSuite(currentSuitePath, nextSuiteId, allSuiteLocations, suiteLocation);
         currentNode.children.push(nextNode);
       }
       currentNode = nextNode;
@@ -143,5 +160,39 @@ export class SpecResponseToTestSuiteInfoMapper {
       suitePath = suitePath.slice(1);
     }
     return suitePath;
+  }
+
+  private createDeduplicatingSpecLocationResolver(specLocationResolver: SpecLocationResolver): DedupingSpecLocationResolver {
+    const duplicateTopSuiteFilesBySuiteName: Map<string, string[]> = new Map();
+
+    return (specSuite: string[], specDescription?: string, specFile?: string | undefined): SpecLocation | undefined => {
+
+      const suiteLocations = specLocationResolver(specSuite, specDescription);
+      let suiteLocation: SpecLocation | undefined;
+      
+      if (suiteLocations.length === 1) {
+        suiteLocation = suiteLocations[0];
+
+      } else if (suiteLocations.length > 1) {
+        if (specSuite.length === 1) {
+          const topSuiteName = specSuite[0];
+          if (!duplicateTopSuiteFilesBySuiteName.has(topSuiteName)) {
+            duplicateTopSuiteFilesBySuiteName.set(topSuiteName, suiteLocations.map(loc => loc.file));
+          }
+          const unreferencedSpecFiles = duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!;
+          if (unreferencedSpecFiles.length > 0) {
+            const dedupedSpecFile = unreferencedSpecFiles.pop()!;
+            suiteLocation = suiteLocations.find(loc => loc.file === dedupedSpecFile);
+
+            if (!suiteLocation) {
+              unreferencedSpecFiles.push(dedupedSpecFile);
+            }
+          }
+        } else if (specFile) {
+          suiteLocation = suiteLocations.find(loc => loc.file === specFile);
+        }
+      }
+      return suiteLocation;
+    };
   }
 }
