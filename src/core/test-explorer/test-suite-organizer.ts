@@ -111,14 +111,14 @@ export class TestSuiteOrganizer {
     const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
     this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
 
+    this.sortTestTree(rootFolderSuite);
+
     const collapsedFolderSuiteTree: TestFolderSuiteInfo = this.collapseSingleChildSuites(rootFolderSuite);
     const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
     return folderGroupedRootSuite;
   }
 
   private collapseSingleChildSuites(suite: TestFolderSuiteInfo): TestFolderSuiteInfo {
-    suite.children.sort(this.compareTestSuites);
-
     suite.children = suite.children.map(childSuite => childSuite.suiteType === TestSuiteType.Folder
       ? this.collapseSingleChildSuites(childSuite)
       : childSuite);
@@ -133,22 +133,33 @@ export class TestSuiteOrganizer {
     return replacementSuite;
   }
 
-  private compareTestSuites(
-    suite1: TestFileSuiteInfo | TestFolderSuiteInfo,
-    suite2: TestFileSuiteInfo | TestFolderSuiteInfo): number
+  private sortTestTree(test: TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo) {
+    test.children.sort(this.compareTests);
+    
+    test.children.forEach(childTest => {
+      if (childTest.type === TestType.Suite) {
+        this.sortTestTree(childTest);
+      }
+    });
+  }
+
+  private compareTests(
+    test1: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo,
+    test2: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number
   {
-    const computeSuiteRank = (suite: TestFileSuiteInfo | TestFolderSuiteInfo): number =>
-      suite.suiteType === TestSuiteType.Folder ? 8
-        : suite.suiteType === TestSuiteType.File && suite.children.length > 1 ? 4
-        : suite.type === TestType.Suite ? 2
+    const computeSuiteRank = (test: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number =>
+      test.type === TestType.Test ? 0
+        : 'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 4
+        : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 3
+        : test.type === TestType.Suite ? 2
         : 1;
 
-    const suite1Rank = computeSuiteRank(suite1);
-    const suite2Rank = computeSuiteRank(suite2);
+    const suite1Rank = computeSuiteRank(test1);
+    const suite2Rank = computeSuiteRank(test2);
 
     return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
-      : suite1.label < suite2.label ? -1
-      : suite1.label > suite2.label ? 1
+      : test1.label < test2.label ? -1
+      : test1.label > test2.label ? 1
       : 0;
   }
 
