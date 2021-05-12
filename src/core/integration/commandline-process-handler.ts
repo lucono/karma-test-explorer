@@ -16,8 +16,8 @@ export class CommandlineProcessHandler {
     command: string,
     processArguments: string[],
     runOptions?: SpawnOptions,
-    private readonly processLogger: (data: string) => void = logger.info,
-    private readonly processErrorLogger: (data: string) => void = logger.error)
+    private readonly processLogger: (data: string) => void = logger.info.bind(logger),
+    private readonly processErrorLogger: (data: string) => void = logger.error.bind(logger))
   {
     this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
     this.hasExited = false;

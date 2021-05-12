@@ -267,9 +267,13 @@ export class Adapter implements TestAdapter {
   private handleConfigurationChange = async (configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> => {
     this.logger.info(`Configuration changed`);
 
-    const hasRelevantSettingsChange = Object.values(ConfigSetting)
-      .map(setting => configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri))
-      .some(settingHasRelevantChange => settingHasRelevantChange);
+    const hasRelevantSettingsChange = Object.values(ConfigSetting).some(setting => {
+      const settingChanged = configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri);
+      if (settingChanged) {
+        this.logger.debug(() => `Relevant changed config setting: ${setting}`);
+      }
+      return settingChanged;
+    });
 
     if (!hasRelevantSettingsChange) {
       this.logger.info(`No relevant configuration change`);
