@@ -42,7 +42,7 @@ export class KarmaTestExplorer {
       this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
-      const karmaServerExecution: Execution = await this.karmaServer.start(config, serverKarmaPort, {
+      const karmaServerExecution: Execution = await this.karmaServer.start(serverKarmaPort, config, {
         karmaSocketPort: `${karmerListenerSocketPort}`
       });
 
@@ -75,7 +75,7 @@ export class KarmaTestExplorer {
       this.logger.info("Proceeding to load tests");
 
       const karmaPort = this.karmaServer.getServerPort()!;
-      let testSuiteInfo = await this.testRunner.loadTests(karmaPort);
+      let testSuiteInfo = await this.testRunner.loadTests(karmaPort, config);
 
       if (config.testGrouping === TestGrouping.Folder) {
         testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, config.projectRootPath);
@@ -111,7 +111,7 @@ export class KarmaTestExplorer {
 
       this.testRunning = true;
       const karmaPort = this.karmaServer.getServerPort() as number;
-      await this.testRunner.runTests(tests, karmaPort);
+      await this.testRunner.runTests(tests, karmaPort, config);
     } finally {
       this.testRunning = false;
     }

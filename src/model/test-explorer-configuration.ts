@@ -1,7 +1,11 @@
-import path = require("path");
 import { WorkspaceConfiguration } from "vscode";
+import { Logger } from "../core/helpers/logger";
 import { ConfigSetting } from "./enums/config-setting"
 import { TestGrouping } from "./enums/test-type.enum";
+import { readFileSync } from "fs";
+import { parse as parseEnvironmentFile } from "dotenv";
+import { join, resolve } from "path";
+import * as dotenvExpand from "dotenv-expand";
 
 export class TestExplorerConfiguration {
   public readonly projectRootPath: string;
@@ -9,6 +13,7 @@ export class TestExplorerConfiguration {
   public readonly karmaPort: number;
   public readonly baseKarmaConfFilePath: string;
   public readonly karmaProcessExecutable: string;
+  public readonly testGrouping: TestGrouping;
   public readonly testFiles: string[];
   public readonly excludeFiles: string[];
   public readonly reloadWatchedFiles: string[];
@@ -16,17 +21,20 @@ export class TestExplorerConfiguration {
   public readonly defaultSocketConnectionPort: number;
   public readonly env: { [key: string]: string };
   public readonly envFile: string | undefined;
+  public readonly envFileEnvironment: { [key: string]: string };
   public readonly debuggerConfig: any;
   public readonly debugLevelLoggingEnabled: boolean;
   public readonly serverCrashRestartDelaySecs: number;
-  public readonly testGrouping: TestGrouping;
 
-  public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string)
+  public constructor(
+    config: WorkspaceConfiguration, 
+    workspaceVSCODEPath: string, 
+    private readonly logger: Logger)
   {
     const workspacePath = workspaceVSCODEPath.replace(/^\/([A-Za-z]):\//, "$1:/");
 
-    this.projectRootPath = path.join(workspacePath, config.get(ConfigSetting.ProjectRootPath) as string);
-    this.userKarmaConfFilePath = path.resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath) as string);
+    this.projectRootPath = join(workspacePath, config.get(ConfigSetting.ProjectRootPath) as string);
+    this.userKarmaConfFilePath = resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath) as string);
     this.karmaPort = config.get(ConfigSetting.KarmaPort) as number;
     this.karmaProcessExecutable = config.get(ConfigSetting.KarmaProcessExecutable) as string;
     this.testFiles = config.get(ConfigSetting.TestFiles) as string[];
@@ -34,17 +42,43 @@ export class TestExplorerConfiguration {
     this.reloadOnKarmaConfigurationFileChange = config.get(ConfigSetting.ReloadOnKarmaConfigurationFileChange) as boolean;
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
-    this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
     this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
-    this.baseKarmaConfFilePath = path.join(__dirname, "..", "config", "test-explorer-karma.conf.js");
+    this.baseKarmaConfFilePath = join(__dirname, "..", "config", "test-explorer-karma.conf.js");
     this.serverCrashRestartDelaySecs = config.get(ConfigSetting.ServerCrashRestartDelaySecs) as number;
     this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
+    this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile) ? undefined :
-      path.resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);
+      resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);
+
+    this.envFileEnvironment = this.getEnvironmentFromFile(this.envFile);
 
     this.reloadWatchedFiles = (config.get(ConfigSetting.ReloadWatchedFiles) as string[])
-      .map(filePath => path.resolve(this.projectRootPath, filePath));
+      .map(filePath => resolve(this.projectRootPath, filePath));
+  }
+
+  private getEnvironmentFromFile(envFile: string | undefined): { [key: string]: string } {
+    if (!envFile) {
+      return {};
+    }
+    this.logger.info(`Reading environment from file: ${envFile}`);
+
+    let envFileEnvironment: { [key: string]: string} = {};
+
+    try {
+      const envFileContent: Buffer = readFileSync(envFile!);
+      
+      if (!envFileContent) {
+        throw new Error(`Failed to read configured environment file: ${envFile}`);
+      }
+      envFileEnvironment = parseEnvironmentFile(envFileContent);
+      dotenvExpand({ parsed: envFileEnvironment });
+      const entryCount = Object.keys(envFileEnvironment).length;
+      this.logger.info(`Fetched ${entryCount} entries from environment file: ${envFile}`);
+    } catch (error) {
+      this.logger.error(`Failed to get environment from file '${envFile}': ${error.message ?? error}`);
+    }
+    return envFileEnvironment;
   }
 
   private stringSettingExists(config: WorkspaceConfiguration, setting: ConfigSetting): boolean {

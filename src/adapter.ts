@@ -78,7 +78,7 @@ export class Adapter implements TestAdapter {
     const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, specToTestSuiteMapper, this.logger);
-    const karmaRunner = testRunnerFactory.createTestRunner();
+    const karmaRunner = testRunnerFactory.createTestRunner(this.config);
 
     const karmaServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
@@ -251,7 +251,7 @@ export class Adapter implements TestAdapter {
 
   private loadConfig(configPrefix: string) {
     const config = vscode.workspace.getConfiguration(configPrefix, this.workspace.uri);
-    this.config = new TestExplorerConfiguration(config, this.workspace.uri.path);
+    this.config = new TestExplorerConfiguration(config, this.workspace.uri.path, this.logger);
   }
 
   private loadTestInfo(testFiles: string[], excludeFiles?: string[]): SpecLocator {
@@ -290,10 +290,14 @@ export class Adapter implements TestAdapter {
       return;
     }
 
-    const reloadTriggerFiles = this.config.reloadOnKarmaConfigurationFileChange
-      ? [this.config.userKarmaConfFilePath, ...this.config.reloadWatchedFiles]
-      : this.config.reloadWatchedFiles;
-
+    const reloadTriggerFiles = [ ...this.config.reloadWatchedFiles ];
+    
+    if (this.config.reloadOnKarmaConfigurationFileChange) {
+      reloadTriggerFiles.push(this.config.userKarmaConfFilePath);
+    }
+    if (this.config.envFile) {
+      reloadTriggerFiles.push(this.config.envFile);
+    }
     if (reloadTriggerFiles.includes(savedFile)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFile}`);
       await this.reload();

@@ -1,10 +1,10 @@
 import { KarmaConfigurator } from "./karma-configurator";
-import { Config } from "karma";
+import { Config as KarmaConfig } from "karma";
 
 const originalConfigPath = process.env.userKarmaConfigPath as string;
 const karmaConfigurator = new KarmaConfigurator();
 
-module.exports = (config: Config) => {
+module.exports = (config: KarmaConfig) => {
   karmaConfigurator.loadOriginalUserConfiguration(config, originalConfigPath);
   karmaConfigurator.setMandatoryOptions(config);
   karmaConfigurator.cleanUpReporters(config);

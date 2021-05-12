@@ -3,12 +3,13 @@ import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestFileSuiteInfo, TestFolderSuiteInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "./test-runner";
-import { request as httpRequest } from "http";
 import { Execution, PromiseExecutor } from "../helpers/execution";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info-mapper";
 import { TestSuiteType, TestType } from "../../model/enums/test-type.enum";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
+import { SpawnOptions } from "child_process";
+import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 const RUN_ALL_TESTS_PATTERN = "";
@@ -21,7 +22,7 @@ interface KarmaRunConfig {
   clientArgs: string[];
 };
 
-export class HttpClientTestRunner implements TestRunner {
+export class CommandLineTestRunner implements TestRunner {
   public constructor(
     private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
     private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
@@ -43,7 +44,7 @@ export class HttpClientTestRunner implements TestRunner {
     const karmaRunConfig = this.createKarmaRunConfig(SKIP_ALL_TESTS_PATTERN, karmaPort);
 
     testLoadExecution.start.resolve();
-    await this.callKarmaRun(karmaRunConfig);
+    await this.callKarmaRun(karmaRunConfig, testExplorerConfig);
     testLoadExecution.stop.resolve();
 
     const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
@@ -96,7 +97,7 @@ export class HttpClientTestRunner implements TestRunner {
     this.karmaEventListener.listenForTests(testRun, testNames);
 
     testRunExecution.start.resolve();
-    await this.callKarmaRun(karmaRunConfig);
+    await this.callKarmaRun(karmaRunConfig, testExplorerConfig);
     testRunExecution.stop.resolve();
   }
 
@@ -154,39 +155,58 @@ export class HttpClientTestRunner implements TestRunner {
     };
   }
 
-  private async callKarmaRun(karmaRunConfig: KarmaRunConfig): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const options = {
-        hostname: karmaRunConfig.hostname,
-        path: karmaRunConfig.urlRoot,
-        port: karmaRunConfig.port,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      };
+  private async callKarmaRun(karmaRunConfig: KarmaRunConfig, explorerConfig: TestExplorerConfiguration): Promise<void> {
+    // const isRootComponent = tests[0] === SKIP_ALL_TESTS_PATTERN;
+    // const isAllTestRun = tests[0] === "root" || tests[0] === undefined;
 
-      const karmaRequestData = {
-        args: karmaRunConfig.clientArgs,
-        refresh: karmaRunConfig.refresh
-        // removedFiles: config.removedFiles,
-        // changedFiles: config.changedFiles,
-        // addedFiles: config.addedFiles,
-      };
+    // if (isAllTestRun) {
+    //   tests = [""];
+    // }
+    const baseKarmaConfigFilePath = require.resolve(explorerConfig.baseKarmaConfFilePath);
 
-      const request = httpRequest(options);
+    const environment = {
+      ...process.env,
+      ...explorerConfig.envFileEnvironment,
+      ...explorerConfig.env,
+      karmaSocketPort: `${explorerConfig.defaultSocketConnectionPort}`,
+      userKarmaConfigPath: explorerConfig.userKarmaConfFilePath,
+      karmaPort: `${karmaRunConfig.port}`
+    };
 
-      request.on("error", (err) => {
-        if ((err as any).code === "ECONNREFUSED") {
-          reject(`Test runner: No karma server listening on port ${options.port}`);
-        }
-      });
-      request.on("close", () => resolve());
+    const spawnOptions: SpawnOptions = {
+      cwd: explorerConfig.projectRootPath,
+      shell: true,
+      env: environment
+    };
 
-      const karmaRequestContent = JSON.stringify(karmaRequestData);
-      this.logger.info(`Sending karma request: ${karmaRequestContent}`);
-      request.end(karmaRequestContent);
-    });
+    let command = "npx";
+    let processArguments = [ "karma" ];
+
+    if (explorerConfig.karmaProcessExecutable) {
+      command = explorerConfig.karmaProcessExecutable;
+      processArguments = [];
+    }
+
+    // const testsString = tests[0];
+    // const testsArg = testsString.replace(/[\W ]/g, "\\$&");
+
+    const clientArgs = karmaRunConfig.clientArgs.map(arg => arg.replace(/[\W ]/g, "\\$&"));
+
+    processArguments = [
+      ...processArguments,
+      "run",
+      baseKarmaConfigFilePath,
+      `--port=${karmaRunConfig.port}`,
+      "--",
+      ...clientArgs
+    ];
+
+    // this.karmaEventListener.isTestRunning = true;
+    // this.karmaEventListener.lastRunTests = isRootComponent ? "root" : testsString;
+    // this.karmaEventListener.isComponentRun = isComponentRun;
+
+    const runTestsProcessHandler = new CommandlineProcessHandler(this.logger, command, processArguments, spawnOptions);
+    return runTestsProcessHandler.futureExit();
   }
 
   private escapeForRegExp(stringValue: string) {

@@ -2,10 +2,7 @@ import { CommandlineProcessHandler } from "../integration/commandline-process-ha
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { SpawnOptions } from "child_process";
-import { readFile } from "fs";
 import {stopper as karmaStopper } from "karma";
-import { parse as parseEnvironmentFile } from "dotenv";
-import * as dotenvExpand from "dotenv-expand";
 import { Execution } from "../helpers/execution";
 
 export class KarmaServer {
@@ -19,9 +16,9 @@ export class KarmaServer {
     private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
     private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }
 
-  public async start(
-    config: TestExplorerConfiguration, 
+  public async start( 
     karmaPort: number, 
+    config: TestExplorerConfiguration,
     extraEnv: {[key: string]: string} = {}): Promise<Execution>
   {
     if (this.serverCurrentlyTerminating) {
@@ -44,22 +41,20 @@ export class KarmaServer {
     return new Promise<Execution>(async (resolve) => {
       this.logger.info(`Starting karma server`);
 
-      const envFileEnvironment: { [key: string]: string} = await this.getEnvironmentFromFile(config.envFile);
-  
       const testExplorerEnvironment: { [key: string]: string} = {
-        ...envFileEnvironment,
-        ...config.env,
         ...process.env,
+        ...config.envFileEnvironment,
+        ...config.env,
         ...extraEnv,
         userKarmaConfigPath: config.userKarmaConfFilePath,
         karmaPort: `${karmaPort}`
       };
   
-      const options = {
+      const spawnOptions: SpawnOptions = {
         cwd: config.projectRootPath,
         shell: true,
         env: testExplorerEnvironment,
-      } as SpawnOptions;
+      };
   
       let command = "npx";
       let processArguments = [ "karma" ];
@@ -80,7 +75,7 @@ export class KarmaServer {
         this.logger, 
         command, 
         processArguments, 
-        options,
+        spawnOptions,
         (data) => this.serverProcessLogger(data, karmaPort),
         (data) => this.serverProcessErrorLogger(data, karmaPort));
   
@@ -121,7 +116,7 @@ export class KarmaServer {
       this.cancelScheduledRestart(this.serverRestartTimerId);
     }
     const startDelayMillis = startDelaySecs * 1000;
-    this.serverRestartTimerId = setTimeout(() => this.start(config, karmaPort, extraEnv), startDelayMillis);
+    this.serverRestartTimerId = setTimeout(() => this.start(karmaPort, config, extraEnv), startDelayMillis);
   }
 
   public async stop(): Promise<void> {  // FIXME Not currently used
@@ -189,39 +184,6 @@ export class KarmaServer {
 
   private async futureServerExit(): Promise<void> {
     return this.serverProcess?.futureExit();
-  }
-
-  private async getEnvironmentFromFile(envFile: string | undefined): Promise<{ [key: string]: string }> {
-    if (!envFile) {
-      return {};
-    }
-    this.logger.info(`Reading environment from file: ${envFile}`);
-
-    let envFileEnvironment: { [key: string]: string} = {};
-
-    try {
-      const envFileContent: Buffer = await new Promise<Buffer>((resolve, reject) => {
-        readFile(envFile!, (err, data) => {
-          if (err) {
-            this.logger.error(`Failed to read configured environment file '${envFile}': ${err}`);
-            reject(err);
-            return;
-          }
-          resolve(data);
-        });
-      });
-      
-      if (envFileContent) {
-        envFileEnvironment = parseEnvironmentFile(envFileContent);
-        dotenvExpand({ parsed: envFileEnvironment });
-        const entryCount = Object.keys(envFileEnvironment).length;
-        this.logger.info(`Fetched ${entryCount} entries from environment file: ${envFile}`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to get environment from file '${envFile}': ${error.message ?? error}`);
-    }
-
-    return envFileEnvironment;
   }
 }
 

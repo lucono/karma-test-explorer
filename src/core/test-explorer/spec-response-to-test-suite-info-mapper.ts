@@ -29,16 +29,21 @@ export class SpecResponseToTestSuiteInfoMapper {
     specs.forEach(rawSpec => {
       const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
       const matchingSpecLocations = this.specLocationResolver(spec.suite, spec.description);
-      let specFile: string | undefined;
+      let specFile: string | undefined = spec.filePath; // FIXME: Convert to absolute path
 
       if (matchingSpecLocations.length === 1) {
-        specFile = matchingSpecLocations[0].file;
+        specFile = specFile ?? matchingSpecLocations[0].file;
 
       } else if (matchingSpecLocations.length > 1) {
         if (!unreferencedDuplicateSpecFilesBySpec.has(spec.fullName)) {
           unreferencedDuplicateSpecFilesBySpec.set(spec.fullName, matchingSpecLocations.map(loc => loc.file));
         }
-        specFile = unreferencedDuplicateSpecFilesBySpec.get(spec.fullName)!.pop();
+        const unreferenceMatchingSpecFiles = unreferencedDuplicateSpecFilesBySpec.get(spec.fullName)!;
+        specFile = specFile ?? unreferenceMatchingSpecFiles[0];
+
+        if (unreferenceMatchingSpecFiles.includes(specFile)) {
+          unreferenceMatchingSpecFiles.splice(unreferenceMatchingSpecFiles.indexOf(specFile), 1);
+        }
       }
 
       if (!specFile) {
@@ -175,8 +180,8 @@ export class SpecResponseToTestSuiteInfoMapper {
       label: spec.description,
       tooltip: spec.fullName,
       message: runFailureMessage ?? loadFailureMessage,
-      file: specLocation?.file,
-      line: specLocation?.line,
+      file: spec.filePath ?? specLocation?.file,  // FIXME: Ensure spec.filePath is converted to absolute path
+      line: spec.line ?? specLocation?.line,
       errored
     };
     return test;

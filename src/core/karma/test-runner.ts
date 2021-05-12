@@ -1,15 +1,18 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 
 export interface TestRunner {
 
-  loadTests(karmaPort: number): Promise<TestSuiteInfo>;
+  loadTests(
+    karmaPort: number,
+    testExplorerConfig: TestExplorerConfiguration
+  ): Promise<TestSuiteInfo>;
 
-  runTests(tests: (TestInfo | TestSuiteInfo)[], karmaPort: number): Promise<void>;
+  
+  runTests(
+    tests: (TestInfo | TestSuiteInfo)[], 
+    karmaPort: number, 
+    testExplorerConfig: TestExplorerConfiguration
+  ): Promise<void>;
 
-}
-
-// FIXME: Not currently used
-export interface TestRunInfo {
-  testRunId: string,
-  tests: (TestInfo | TestSuiteInfo)[]
 }

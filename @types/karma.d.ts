@@ -10,12 +10,12 @@ declare module "karma" {
     reporters: string[];
   }
 
-  interface Reporter {
-    name: string;
-    instance: any;
-  }
-
   interface CustomLauncher {
     debug: boolean;
   }
+
+  // interface Reporter {
+  //   name: string;
+  //   instance: any;
+  // }
 }

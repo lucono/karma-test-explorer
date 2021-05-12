@@ -3,7 +3,7 @@ import { RunStatus } from "../../model/enums/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
-import { ConfigOptions, TestResults as KarmaTestResults } from "karma";
+import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
 
 
 const HEARTBEAT_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -12,7 +12,7 @@ const HEARTBEAT_INTERVAL = 24 * 60 * 60 * 1000;
 function TestExplorerCustomReporter(
   this: any, 
   baseReporterDecorator: any, 
-  config: ConfigOptions, 
+  config: KarmaConfigOptions, 
   logger: any, 
   emitter: any, 
   injector: any

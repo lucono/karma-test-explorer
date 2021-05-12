@@ -1,5 +1,5 @@
-import { Config, ConfigOptions } from "karma";
-import * as path from "path";
+import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
+import { dirname, resolve } from "path";
 import * as TestExplorerCustomReporter from "../core/integration/test-explorer-custom-karma-reporter";
 import { UtilityHelper } from "../core/helpers/utility-helper";
 
@@ -11,11 +11,11 @@ export class KarmaConfigurator {
     this.testExplorerHelper = new UtilityHelper();
   }
 
-  public setMandatoryOptions(config: Config) {
+  public setMandatoryOptions(config:  KarmaConfig) {
     // remove 'logLevel' changing
     // https://github.com/karma-runner/karma/issues/614 is ready
 
-    config.port = process.env.karmaPort as number | undefined; // FIXME Use shared constants for all environment variable exchange
+    config.port = parseInt(process.env.karmaPort!, 10); // FIXME Use shared constants for all environment variable exchange
     config.logLevel = config.LOG_INFO;
     config.autoWatch = false;
     config.autoWatchBatchDelay = 0;
@@ -34,27 +34,27 @@ export class KarmaConfigurator {
     };
   }
 
-  public dontLoadOriginalConfigurationFileIntoBrowser(config: Config, originalConfigPath: string) {
+  public dontLoadOriginalConfigurationFileIntoBrowser(config:  KarmaConfig, originalConfigPath: string) {
     // https://github.com/karma-runner/karma-intellij/issues/9
     config.exclude = config.exclude || [];
     config.exclude.push(originalConfigPath);
   }
 
-  public setBasePath(config: Config, originalConfigPath: string) {
+  public setBasePath(config:  KarmaConfig, originalConfigPath: string) {
     if (!config.basePath) {
       // We need to set the base path, so karma won't use this file to base everything of
       if (originalConfigPath) {
-        config.basePath = path.resolve(path.dirname(originalConfigPath));
+        config.basePath = resolve(dirname(originalConfigPath));
       } else {
         config.basePath = process.cwd();
       }
     }
   }
 
-  public disableSingleRunPermanently(config: Config) {
+  public disableSingleRunPermanently(config:  KarmaConfig) {
     const prevSet = config.set;
     if (typeof prevSet === "function") {
-      config.set = (newConfig: ConfigOptions) => {
+      config.set = (newConfig:  KarmaConfigOptions) => {
         if (newConfig != null) {
           if (newConfig.singleRun === true) {
             newConfig.singleRun = false;
@@ -65,12 +65,12 @@ export class KarmaConfigurator {
     }
   }
 
-  public cleanUpReporters(config: Config) {
+  public cleanUpReporters(config:  KarmaConfig) {
     const filteredReporters = this.testExplorerHelper.removeElementsFromArrayWithoutModifyingIt(config.reporters, ["dots", "kjhtml"]);
     config.reporters = filteredReporters;
   }
 
-  public loadOriginalUserConfiguration(config: Config, originalConfigPath: string) {
+  public loadOriginalUserConfiguration(config:  KarmaConfig, originalConfigPath: string) {
     let originalConfigModule = require(originalConfigPath);
     // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
     if (typeof originalConfigModule === "object" && typeof originalConfigModule.default !== "undefined") {
@@ -80,7 +80,7 @@ export class KarmaConfigurator {
     originalConfigModule(config);
   }
 
-  public configureTestExplorerCustomReporter(config: Config) {
+  public configureTestExplorerCustomReporter(config:  KarmaConfig) {
     this.addPlugin(config, { [`reporter:${TestExplorerCustomReporter.name}`]: ["type", TestExplorerCustomReporter.instance] });
     if (!config.reporters) {
       config.reporters = [];
@@ -88,7 +88,7 @@ export class KarmaConfigurator {
     config.reporters.push(TestExplorerCustomReporter.name);
   }
 
-  private addPlugin(karmaConfig: ConfigOptions, karmaPlugin: any) {
+  private addPlugin(karmaConfig:  KarmaConfigOptions, karmaPlugin: any) {
     karmaConfig.plugins = karmaConfig.plugins || ["karma-*"];
     karmaConfig.plugins.push(karmaPlugin);
   }
