@@ -3,9 +3,10 @@ import { TestExplorerConfiguration } from "../../model/test-explorer-configurati
 import { KarmaRunConfig, TestRunExecutor } from "./test-run-executor";
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
 import { SpawnOptions } from "child_process";
+import { accessSync, constants } from "fs";
 
 export class KarmaCommandLineTestExecutor implements TestRunExecutor {
-    
+
   public constructor(private readonly logger: Logger) {}
 
   public async executeTestRun(karmaRunConfig: KarmaRunConfig, explorerConfig: TestExplorerConfiguration): Promise<void> {
@@ -26,11 +27,20 @@ export class KarmaCommandLineTestExecutor implements TestRunExecutor {
 
     const baseKarmaConfigFilePath = require.resolve(explorerConfig.baseKarmaConfFilePath);
     const clientArgs = karmaRunConfig.clientArgs.map(arg => arg.replace(/[\W ]/g, "\\$&"));
+    const karmaProcessExecutable = explorerConfig.karmaProcessExecutable;
+
     let command = "npx";
     let processArguments = [ "karma" ];
 
-    if (explorerConfig.karmaProcessExecutable) {
-      command = explorerConfig.karmaProcessExecutable;
+    if (karmaProcessExecutable) {
+      try {
+        accessSync(karmaProcessExecutable, constants.X_OK);
+      } catch (error) {
+        throw new Error(
+          `Not able to execute specified Karma process executable '${karmaProcessExecutable}': ` +
+          `${error.message ?? error}`);
+      }
+      command = karmaProcessExecutable;
       processArguments = [];
     }
 

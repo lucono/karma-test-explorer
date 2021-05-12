@@ -10,5 +10,5 @@ export interface KarmaRunConfig {
   
 export interface TestRunExecutor {
 
-  executeTestRun(karmaRunConfig: KarmaRunConfig, explorerConfig: TestExplorerConfiguration): Promise<void>;
+  executeTestRun(karmaRunConfig: KarmaRunConfig, testExplorerConfig: TestExplorerConfiguration): Promise<void>;
 }

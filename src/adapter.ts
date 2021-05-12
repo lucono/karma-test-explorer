@@ -78,7 +78,7 @@ export class Adapter implements TestAdapter {
     const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, specToTestSuiteMapper, this.logger);
-    const karmaRunner = testRunnerFactory.createTestRunner(this.config);
+    const karmaRunner = testRunnerFactory.createTestRunner();
 
     const karmaServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
