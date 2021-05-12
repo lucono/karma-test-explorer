@@ -15,11 +15,12 @@ export class TestRunnerFactory {
     ) {}
 
     public createTestRunner(testExplorerConfig: TestExplorerConfiguration): TestRunner {
-        const karmaProcessExecutable = testExplorerConfig.karmaProcessExecutable;
+        const karmaProcessExecutable: string = testExplorerConfig.karmaProcessExecutable;
         let useCliTestRunner = false;
         
         try {
-            if (karmaProcessExecutable && accessSync(karmaProcessExecutable, constants.X_OK)) {
+            if (karmaProcessExecutable) {
+                accessSync(karmaProcessExecutable, constants.X_OK);
                 useCliTestRunner = true;
             }
         } catch (error) {
