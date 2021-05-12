@@ -3,16 +3,8 @@ import { TestExplorerConfiguration } from "../../model/test-explorer-configurati
 
 export interface TestRunner {
 
-  loadTests(
-    karmaPort: number,
-    testExplorerConfig: TestExplorerConfiguration
-  ): Promise<TestSuiteInfo>;
+  loadTests(karmaPort: number, testExplorerConfig: TestExplorerConfiguration): Promise<TestSuiteInfo>;
 
-  
-  runTests(
-    tests: (TestInfo | TestSuiteInfo)[], 
-    karmaPort: number, 
-    testExplorerConfig: TestExplorerConfiguration
-  ): Promise<void>;
+  runTests(tests: (TestInfo | TestSuiteInfo)[], karmaPort: number, testExplorerConfig: TestExplorerConfiguration): Promise<void>;
 
 }
