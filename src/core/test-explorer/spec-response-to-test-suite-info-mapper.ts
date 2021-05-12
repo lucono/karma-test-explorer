@@ -28,8 +28,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     specs.forEach(rawSpec => {
       const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
-      const specSuitePath = this.filterSuiteNoise(spec.suite);
-      const matchingSpecLocations = this.specLocationResolver(specSuitePath, spec.description);
+      const matchingSpecLocations = this.specLocationResolver(spec.suite, spec.description);
       let specFile: string | undefined;
 
       if (matchingSpecLocations.length === 1) {
@@ -45,7 +44,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       if (!specFile) {
         return;
       }
-      const testSuite = this.getDescendantSuite(rootTestSuite, specSuitePath, specFile, suiteIdGenerator);
+      const testSuite = this.getDescendantSuite(rootTestSuite, spec.suite, specFile, suiteIdGenerator);
       const test = this.createTest(spec, specFile);
       testSuite.children.push(test);
     });
@@ -58,7 +57,6 @@ export class SpecResponseToTestSuiteInfoMapper {
   private createRootSuite(suiteId: string): TestSuiteInfo {
     const rootSuite: TestSuiteInfo = {
       type: TestType.Suite,
-      // suiteType: TestSuiteType.Suite,
       id: suiteId,
       label: "Karma tests",
       fullName: "",
@@ -105,11 +103,24 @@ export class SpecResponseToTestSuiteInfoMapper {
     const suiteLocation = allMatchingSuiteLocations.find(loc => loc.file === suiteFile);
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
-    const filesListing = allMatchingSuiteLocations.map(loc => `${loc.file}:${loc.line}`).join('\n');
 
-    const message = allMatchingSuiteLocations.length > 1
-      ? `This test suite has exact duplicates which will all be run when this suite is run: \n\n${filesListing}`
-      : undefined;
+    const duplicateSuiteFiles = allMatchingSuiteLocations
+      .filter(loc => loc.file !== suiteFile)
+      .map(location => `${location.file}:${location.line}`)
+      .join('\n');
+
+    let message: string | undefined;
+
+    if (allMatchingSuiteLocations.length > 1 && suiteLocation) {
+      message = 
+        `This test suite has duplicate definitions which could lead to conflicting test results. \n\n` +
+        `"${suiteFullName}" \n\n` +
+        `---------- \n\n` +
+        `Defined in: \n\n` +
+        `${suiteLocation.file}:${suiteLocation.line} \n\n` +
+        `Duplicate definitions: \n\n` +
+        `${duplicateSuiteFiles}`;
+    }
 
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
@@ -149,13 +160,12 @@ export class SpecResponseToTestSuiteInfoMapper {
     if (allMatchingSpecLocations.length > 1 && specLocation) {
       loadFailureMessage = 
         `This test has duplicate definitions which could lead to conflicting test results. \n\n` +
+        `"${spec.fullName}" \n\n` +
         `---------- \n\n` +
-        `Test: \n\n` +
-        `${spec.fullName} \n\n` +
         `Defined in: \n\n` +
         `${specLocation.file}:${specLocation.line} \n\n` +
         `Duplicate definitions: \n\n` +
-        `${duplicateSpecFiles}`
+        `${duplicateSpecFiles}`;
     }
 
     const test: TestInfo = {
@@ -192,38 +202,4 @@ export class SpecResponseToTestSuiteInfoMapper {
     }
     return suitePath;
   }
-
-  // private createDeduplicatingSpecLocationResolver(specLocationResolver: SpecLocationResolver): DedupingSpecLocationResolver {
-  //   const duplicateTopSuiteFilesBySuiteName: Map<string, string[]> = new Map();
-
-  //   return (specSuite: string[], specDescription?: string, specFile?: string | undefined): SpecLocation | undefined => {
-
-  //     const suiteLocations = specLocationResolver(specSuite, specDescription);
-  //     let suiteLocation: SpecLocation | undefined;
-      
-  //     if (suiteLocations.length === 1) {
-  //       suiteLocation = suiteLocations[0];
-
-  //     } else if (suiteLocations.length > 1) {
-  //       if (specSuite.length === 1) {
-  //         const topSuiteName = specSuite[0];
-  //         if (!duplicateTopSuiteFilesBySuiteName.has(topSuiteName)) {
-  //           duplicateTopSuiteFilesBySuiteName.set(topSuiteName, suiteLocations.map(loc => loc.file));
-  //         }
-  //         const unreferencedSpecFiles = duplicateTopSuiteFilesBySuiteName.get(topSuiteName)!;
-  //         if (unreferencedSpecFiles.length > 0) {
-  //           const dedupedSpecFile = unreferencedSpecFiles.pop()!;
-  //           suiteLocation = suiteLocations.find(loc => loc.file === dedupedSpecFile);
-
-  //           if (!suiteLocation) {
-  //             unreferencedSpecFiles.push(dedupedSpecFile);
-  //           }
-  //         }
-  //       } else if (specFile) {
-  //         suiteLocation = suiteLocations.find(loc => loc.file === specFile);
-  //       }
-  //     }
-  //     return suiteLocation;
-  //   };
-  // }
 }
