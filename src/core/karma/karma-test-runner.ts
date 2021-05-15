@@ -2,12 +2,13 @@ import { Logger } from "../helpers/logger";
 import { KarmaEventListener } from "../integration/karma-event-listener";
 import { TestFileSuiteInfo, TestFolderSuiteInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "./test-runner";
-import { Execution, PromiseExecutor } from "../helpers/execution";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info-mapper";
 import { TestSuiteType, TestType } from "../../model/enums/test-type.enum";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { KarmaRunConfig, TestRunExecutor } from "./test-run-executor";
+import { DeferredPromise } from "../helpers/deferred-promise";
+import { Execution } from "../helpers/execution";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 const RUN_ALL_TESTS_PATTERN = "";
@@ -24,22 +25,25 @@ export class KarmaTestRunner implements TestRunner {
     karmaPort: number,
     testExplorerConfig: TestExplorerConfiguration): Promise<TestSuiteInfo>
   {
-    const testLoadExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
-
-    const testLoad: Execution = {
-      started: new Promise((resolve, reject) => testLoadExecution.start = { resolve, reject }),
-      stopped: new Promise((resolve, reject) => testLoadExecution.stop = { resolve, reject })
-    };
-
-    const futureLoadedSpecs = this.karmaEventListener.listenForTests(testLoad);
     const karmaRunConfig = this.createKarmaRunConfig(SKIP_ALL_TESTS_PATTERN, karmaPort);
 
-    testLoadExecution.start.resolve();
+    const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
+    const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
+
+    const testLoadOperation: Execution = {
+      started: testLoadStartedDeferred.promise(),
+      stopped: testLoadEndedDeferred.promise()
+    };
+    const futureLoadedSpecs = this.karmaEventListener.listenForTests(testLoadOperation);
+
+    testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
-    testLoadExecution.stop.resolve();
+    testLoadEndedDeferred.resolve();
 
     const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
-    return this.specToTestSuiteMapper.map(capturedSpecs);
+    const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs);
+
+    return loadedTests;
   }
 
   public async runTests(
@@ -77,19 +81,21 @@ export class KarmaTestRunner implements TestRunner {
     }
 
     const karmaRunConfig = this.createKarmaRunConfig(aggregateTestPattern, karmaPort);
-    const testRunExecution = {} as { start: PromiseExecutor<void>, stop: PromiseExecutor<void> };
 
-    const testRun: Execution = {
-      started: new Promise((resolve, reject) => testRunExecution.start = { resolve, reject }),
-      stopped: new Promise((resolve, reject) => testRunExecution.stop = { resolve, reject })
+    const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
+    const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
+
+    const testRunOperation: Execution = {
+      started: testRunStartedDeferred.promise(),
+      stopped: testRunEndedDeferred.promise()
     };
 
     const testNames = testList.map(test => test.fullName);
-    this.karmaEventListener.listenForTests(testRun, testNames);
+    this.karmaEventListener.listenForTests(testRunOperation, testNames);
 
-    testRunExecution.start.resolve();
+    testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
-    testRunExecution.stop.resolve();
+    testRunEndedDeferred.resolve();
   }
 
   private createKarmaRunConfig(testPattern: string, karmaPort: number): KarmaRunConfig {

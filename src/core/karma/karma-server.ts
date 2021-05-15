@@ -4,6 +4,7 @@ import { TestExplorerConfiguration } from "../../model/test-explorer-configurati
 import { SpawnOptions } from "child_process";
 import {stopper as karmaStopper } from "karma";
 import { Execution } from "../helpers/execution";
+import { DeferredPromise } from "../helpers/deferred-promise";
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -16,7 +17,7 @@ export class KarmaServer {
     private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
     private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }
 
-  public async start( 
+  public async start(
     karmaPort: number, 
     config: TestExplorerConfiguration,
     extraEnv: {[key: string]: string} = {}): Promise<Execution>
@@ -31,72 +32,85 @@ export class KarmaServer {
     
     if (this.isRunning()) {
       this.logger.info(`Request to start karma server - server is already running`);
-      return { stopped: this.futureServerExit() };
+      return {
+        started: Promise.resolve(),
+        stopped: this.futureServerExit()
+      };
     }
 
     if (this.serverRestartTimerId) {
       this.cancelScheduledRestart(this.serverRestartTimerId);
     }
-    
-    return new Promise<Execution>(async (resolve) => {
-      this.logger.info(`Starting karma server`);
+  
+    this.logger.info(`Starting karma server`);
 
-      const testExplorerEnvironment: { [key: string]: string} = {
-        ...process.env,
-        ...config.envFileEnvironment,
-        ...config.env,
-        ...extraEnv,
-        userKarmaConfigPath: config.userKarmaConfFilePath,
-        karmaPort: `${karmaPort}`
-      };
+    const testExplorerEnvironment: { [key: string]: string} = {
+      ...process.env,
+      ...config.envFileEnvironment,
+      ...config.env,
+      ...extraEnv,
+      userKarmaConfigPath: config.userKarmaConfFilePath,
+      karmaPort: `${karmaPort}`
+    };
+
+    const spawnOptions: SpawnOptions = {
+      cwd: config.projectRootPath,
+      shell: true,
+      env: testExplorerEnvironment,
+    };
+
+    let command = "npx";
+    let processArguments = [ "karma" ];
+
+    if (config.karmaProcessExecutable) {
+      command = config.karmaProcessExecutable;
+      processArguments = [];
+    }
+
+    processArguments = [
+      ...processArguments,
+      "start",
+      config.baseKarmaConfFilePath,
+      `--port=${karmaPort}`
+    ];
+
+    const karmaServerProcess = new CommandlineProcessHandler(
+      this.logger, 
+      command, 
+      processArguments, 
+      spawnOptions,
+      (data) => this.serverProcessLogger(data, karmaPort),
+      (data) => this.serverProcessErrorLogger(data, karmaPort));
+
+    this.setServerInfo(karmaServerProcess, karmaPort);
+
+    karmaServerProcess.futureExit().then(() => {
+      this.clearServerInfo(karmaServerProcess);
+
+      const serverWasTerminating = this.serverCurrentlyTerminating;
+      const wasUnexpectedServerTermination = !serverWasTerminating;
   
-      const spawnOptions: SpawnOptions = {
-        cwd: config.projectRootPath,
-        shell: true,
-        env: testExplorerEnvironment,
-      };
-  
-      let command = "npx";
-      let processArguments = [ "karma" ];
-  
-      if (config.karmaProcessExecutable) {
-        command = config.karmaProcessExecutable;
-        processArguments = [];
+      if (serverWasTerminating) {
+        this.serverCurrentlyTerminating = undefined;
       }
-  
-      processArguments = [
-        ...processArguments,
-        "start",
-        config.baseKarmaConfFilePath,
-        `--port=${karmaPort}`
-      ];
-  
-      const karmaServerProcess = new CommandlineProcessHandler(
-        this.logger, 
-        command, 
-        processArguments, 
-        spawnOptions,
-        (data) => this.serverProcessLogger(data, karmaPort),
-        (data) => this.serverProcessErrorLogger(data, karmaPort));
-  
-      this.setServerInfo(karmaServerProcess, karmaPort);
 
-      karmaServerProcess.futureExit().then(() => {
-        this.clearServerInfo(karmaServerProcess);
-    
-        if (this.serverCurrentlyTerminating === undefined) {
-          const restartDelay = config.serverCrashRestartDelaySecs;
-          if (restartDelay >= 0) {
-            this.logger.warn(
-              `Karma server terminated unexpectedly - ` +
-              `Will attempt restart in ${restartDelay} sec(s)`);
-            this.scheduleFutureStartup(restartDelay, config, karmaPort, extraEnv);
-          }
+      if (wasUnexpectedServerTermination) {
+        const restartDelay = config.serverCrashRestartDelaySecs;
+        if (restartDelay >= 0) {
+          this.logger.warn(
+            `Karma server terminated unexpectedly - ` +
+            `Will attempt restart in ${restartDelay} sec(s)`);
+          this.scheduleFutureStartup(restartDelay, config, karmaPort, extraEnv);
         }
-      });
-
-      resolve({ stopped: karmaServerProcess.futureExit() });
+      }
     });
+
+    const karmaServerExecution: Execution = {
+      started: Promise.resolve(),
+      stopped: karmaServerProcess.futureExit()
+    };
+
+    return karmaServerExecution;
   }
 
   private cancelScheduledRestart(serverRestartTimerId: NodeJS.Timeout) {
@@ -152,14 +166,15 @@ export class KarmaServer {
     this.logger.info(`Killing Karma server on port ${serverPort}`);
     this.clearServerInfo(serverProcess);
 
-    const serverCurrentlyTerminating = new Promise<void>(async (resolve) => {
-      await serverProcess.kill();
-      await serverProcess.futureExit();
-      this.serverCurrentlyTerminating = undefined;
-      this.logger.info(`Karma server on port ${serverPort} killed`);
-      resolve();
-    });
-    this.serverCurrentlyTerminating = serverCurrentlyTerminating;
+    const serverIsTerminatingDeferred: DeferredPromise = new DeferredPromise<void>();
+    const serverIsTerminatingPromise: Promise<void> = serverIsTerminatingDeferred.promise();
+    this.serverCurrentlyTerminating = serverIsTerminatingPromise;
+
+    await serverProcess.kill();
+    await serverProcess.futureExit();
+    // this.serverCurrentlyTerminating = undefined;
+    this.logger.info(`Karma server on port ${serverPort} killed`);
+    serverIsTerminatingDeferred.resolve();
   }
 
   public getServerPort(): number | undefined {

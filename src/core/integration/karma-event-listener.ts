@@ -116,33 +116,31 @@ export class KarmaEventListener {
   }
 
   public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<SpecCompleteResponse[]> {
-    // this.currentRunId = testRunId;
     if (specs.length === 0) {
       this.acceptAllSpecs = true;
       this.currentSpecs = [];
-
     } else {
       this.acceptAllSpecs = false;
       this.currentSpecs = specs;
     }
 
-    this.isListening = true;
+    try {
+      this.isListening = true;
+      // this.currentRunId = testRunId;
+      await testExecution.stopped;
+      return this.capturedSpecs;
 
-    return new Promise((resolve, reject) => {
-      testExecution.stopped
-        .then(() => resolve(this.capturedSpecs))
-        .catch((reason: any) => {
-          this.logger.error(`Could not listen for Karma events - Test execution failed: ${reason}`);
-          reject(reason);
-        })
-        .finally(() => {
-          this.isListening = false;
-          // this.currentRunId = undefined;
-          this.capturedSpecs = [];
-          this.currentSpecs = [];
-          this.acceptAllSpecs = false;
-        });
-    });
+    } catch (error) {
+      this.logger.error(`Could not listen for Karma events - Test execution failed: ${error.message ?? error}`);
+      throw new Error(error.message ?? error);
+
+    } finally {
+      this.isListening = false;
+      // this.currentRunId = undefined;
+      this.capturedSpecs = [];
+      this.currentSpecs = [];
+      this.acceptAllSpecs = false;
+    }
   }
 
   private isIncludedSpec(specResult: SpecCompleteResponse): boolean {

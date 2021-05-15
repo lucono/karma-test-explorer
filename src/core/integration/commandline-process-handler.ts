@@ -22,26 +22,26 @@ export class CommandlineProcessHandler {
     this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
     this.hasExited = false;
 
+    this.logger.debug(() =>
+      `Process ${this.uid}:
+      Executing command: '${command}'
+      with args: ${JSON.stringify(processArguments)}`
+      // and options: ${JSON.stringify(runOptions)}`
+    );
+
+    const process = spawn(command, processArguments, runOptions);
+    const processPid = process.pid;
+
+    this.logger.debug(() =>
+      `Process ${this.uid}:
+      PID is ${processPid} for command: '${command}'
+      with args: ${JSON.stringify(processArguments)}`
+    );
+
+    this.process = process;
+    this.setupProcessOutputs(process);
+
     this.futureProcessExit = new Promise(async resolve => {
-      this.logger.debug(() =>
-        `Process ${this.uid}:
-        Executing command: '${command}'
-        with args: ${JSON.stringify(processArguments)}`
-        // and options: ${JSON.stringify(runOptions)}`
-      );
-
-      const process = spawn(command, processArguments, runOptions);
-      const processPid = process.pid;
-
-      this.logger.debug(() =>
-        `Process ${this.uid}:
-        PID is ${processPid} for command: '${command}'
-        with args: ${JSON.stringify(processArguments)}`
-      );
-
-      this.process = process;
-      this.setupProcessOutputs(process);
-
       process.on("exit", (code, signal) => {
         const processCommand = `${command} ${processArguments.join(" ")}`;
         this.logger.debug(() =>
@@ -108,7 +108,9 @@ export class CommandlineProcessHandler {
     // When VSCODE is terminated, karma server's standard input is closed automatically.
     process.stdin?.on(`close`, async () => {
       // terminating orphan process
-      this.kill();
+      if (this.isProcessRunning()) {
+        this.kill();
+      }
     });
   }
 }

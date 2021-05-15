@@ -4,13 +4,8 @@
 //   executionEnded: Promise<U>
 // }
 
-export interface Execution<S = void, T = void, U = void> {
-  stopped: Promise<S>,
-  started?: Promise<T>,
-  executionData?: U  // FIXME: Currently not used
-}
-
-export interface PromiseExecutor<T> {
-  resolve(value: T): void,
-  reject(reason?: any): void
+export interface Execution<S = void, T = void> {
+  started: Promise<T>;
+  stopped: Promise<S>;
+  // executionData?: U  // FIXME: Currently not used
 }
