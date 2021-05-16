@@ -64,13 +64,27 @@ export class SpecLocator {
     if (specSuite.length === 0) {
       return [];
     }
-    const specFiles: string[] = this.getSuiteFilesFromCache(specSuite);
-    
-    const specLocations: SpecLocation[] = specFiles.map((specFile: string): SpecLocation | undefined => {
-        const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
-        return specLine ? { file: specFile, line: specLine } : undefined;
-    }).filter(specLocation => specLocation !== undefined) as SpecLocation[];
+    const specFiles = this.getSuiteFilesFromCache(specSuite);
 
+    if (specFiles) {
+      const specLocations: SpecLocation[] = specFiles.map((specFile: string): SpecLocation | undefined => {
+          const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
+          return specLine ? { file: specFile, line: specLine } : undefined;
+      }).filter(specLocation => specLocation !== undefined) as SpecLocation[];
+
+      return specLocations;
+    }
+
+    const specLocations: SpecLocation[] = [];
+    
+    for (const specFile of this.fileInfoMap.keys()) {
+      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
+
+      if (specLineNumber !== undefined) {
+        this.addSuiteFileToCache(specSuite, specFile);
+        specLocations.push({ file: specFile, line: specLineNumber });
+      }
+    }
     return specLocations;
   }
 
@@ -119,7 +133,7 @@ export class SpecLocator {
     }
   }
 
-  private getSuiteFilesFromCache(suite: string[]): string[] {
+  private getSuiteFilesFromCache(suite: string[]): string[] | undefined {
     let suiteKey = "";
 
     for (const suiteAncestor of suite) {
@@ -130,7 +144,7 @@ export class SpecLocator {
         return suiteFiles;
       }
     }
-    return [];
+    return undefined;
   }
 
   private getSpecLineNumber(
