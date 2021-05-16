@@ -1,5 +1,4 @@
 import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
-import { KarmaEvent } from "../../model/karma-event";
 import { TestState } from "../../model/enums/test-state.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { TestType } from "../../model/enums/test-type.enum";
@@ -25,12 +24,11 @@ export class TestRunEventEmitter {
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public emitTestResultEvent(testId: string, karmaEvent: KarmaEvent) {
+  public emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     const test: TestInfo | undefined = this.testRetriever(testId);
     
-    const { results } = karmaEvent;
-    const testState = this.mapTestResultToTestState(results.status);
-    const testTime = `${results.timeSpentInMilliseconds} ms`;
+    const testState = this.mapTestResultToTestState(testResult.status);
+    const testTime = `${testResult.timeSpentInMilliseconds} ms`;
     const testTimeDescription = testState === TestState.Skipped ? `Skipped` : testTime;
 
     const resultDescription = testState === TestState.Passed ? `Passed in ${testTime}`
@@ -41,9 +39,9 @@ export class TestRunEventEmitter {
     let message: string | undefined;
     let decorations: TestDecoration[] | undefined;
     
-    if (results.failureMessages.length > 0) {
-      message = this.createErrorMessage(results);
-      decorations = this.createDecorations(results) ?? [];
+    if (testResult.failureMessages.length > 0) {
+      message = this.createErrorMessage(testResult);
+      decorations = this.createDecorations(testResult) ?? [];
 
       if (decorations.length === 0 && test?.line !== undefined) {
         const { file, line } = test;
@@ -52,7 +50,7 @@ export class TestRunEventEmitter {
           line,
           file,
           message: `Failed`,
-          hover: `/* Failed: ${results.fullName} */`
+          hover: `/* Failed: ${testResult.fullName} */`
         }];
       }
     }
@@ -62,7 +60,7 @@ export class TestRunEventEmitter {
       test: test ?? testId,
       state: testState,
       description: `(${testTimeDescription})`,
-      tooltip: `${results.fullName}  (${resultDescription})`,
+      tooltip: `${testResult.fullName}  (${resultDescription})`,
       message,
       decorations
     };

@@ -111,9 +111,9 @@ export class KarmaTestExplorer {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +
-        `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
-        `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
-        `Restarting both`);
+          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `Restarting both`);
 
         await this.restart(config);
       }
@@ -125,67 +125,84 @@ export class KarmaTestExplorer {
       const uniqueTests = this.removeTestOverlaps(tests);
 
       const testResults: TestResults = await this.testRunner.runTests(uniqueTests, karmaPort, config);
+      this.handleTestSuiteResults(testResults, config.testGrouping, config.projectRootPath);
 
-      if (config.testGrouping === TestGrouping.Folder) {
-        Object.values(TestResult).forEach(testResult => {
-          testResults[testResult] = this.testSuiteOrganizer.groupByFolder(testResults[testResult], config.projectRootPath, false);
-        });
-      }
-
-      const testCountsBySuiteId: Map<string, { [key in TestResult]?: number }> = new Map();
-
-      const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testResult: TestResult) => {
-        const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
-        testCounts[testResult] = testCount;
-        testCountsBySuiteId.set(testSuite.id, testCounts);
-      };
-
-      const totalTestCounts: { [key in TestResult]?: number } = {};
-
-      Object.values(TestResult).forEach(testResult => {
-        totalTestCounts[testResult] = this.processTestCounts(testResults[testResult], (testSuite, testCount) => {
-          testCountProcessor(testSuite, testCount, testResult);
-        });
-      });
-
-      this.logger.info(
-        `Test run - ` +
-        `${totalTestCounts[TestResult.Failed] ?? 0} total tests failed, ` +
-        `${totalTestCounts[TestResult.Success] ?? 0} total tests passed, ` +
-        `${totalTestCounts[TestResult.Skipped] ?? 0} total tests skipped`);
-      
-      for (const testSuiteId of testCountsBySuiteId.keys()) {
-        const test: TestInfo | TestSuiteInfo | undefined = this.testResolver(testSuiteId);
-        const testSuite: TestSuiteInfo | undefined = test?.type === TestType.Suite ? test : undefined;
-
-        const testCounts: { [key in TestResult]?: number } = testCountsBySuiteId.get(testSuiteId)!;
-        const failedTestCount = testCounts[TestResult.Failed] ?? 0;
-        const passedTestCount = testCounts[TestResult.Success] ?? 0;
-        const skippedTestCount = testCounts[TestResult.Skipped] ?? 0;
-
-        const executedSuiteTestCount = failedTestCount + passedTestCount + skippedTestCount;
-        const totalSuiteTestCount = testSuite?.testCount;
-        const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
-
-        if (suiteExecutedAllTests) {
-          const testResultDescription = (totalSuiteTestCount ? `${totalSuiteTestCount} tests, ` : ``) +
-            `${failedTestCount} failed, ` +
-            `${passedTestCount} passed` +
-            (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
-  
-          const testEvent: TestSuiteEvent = {
-            type: TestType.Suite,
-            suite: testSuiteId,
-            state: TestSuiteState.Completed,
-            description: `(${testResultDescription})`,
-            tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
-          };
-  
-          this.eventEmitterInterface.fire(testEvent);
-        }
-      }
     } finally {
       this.testRunning = false;
+    }
+  }
+
+  private handleTestSuiteResults(testResults: TestResults, testGrouping: TestGrouping, projectRootPath: string) {
+    if (testGrouping === TestGrouping.Folder) {
+      Object.values(TestResult).forEach(testResult => {
+        testResults[testResult] = this.testSuiteOrganizer.groupByFolder(testResults[testResult], projectRootPath, false);
+      });
+    }
+    const testCountsBySuiteId: Map<string, { [key in TestResult]?: number }> = new Map();
+
+    const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testResult: TestResult) => {
+      const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
+      testCounts[testResult] = testCount;
+      testCountsBySuiteId.set(testSuite.id, testCounts);
+    };
+
+    const totalTestCounts: { [key in TestResult]?: number } = {};
+
+    Object.values(TestResult).forEach(testResult => {
+      totalTestCounts[testResult] = this.processTestCounts(testResults[testResult], (testSuite, testCount) => {
+        testCountProcessor(testSuite, testCount, testResult);
+      });
+    });
+
+    this.logger.info(
+      `Test run - ` +
+      `${totalTestCounts[TestResult.Failed] ?? 0} total tests failed, ` +
+      `${totalTestCounts[TestResult.Success] ?? 0} total tests passed, ` +
+      `${totalTestCounts[TestResult.Skipped] ?? 0} total tests skipped`);
+    
+    for (const testSuiteId of testCountsBySuiteId.keys()) {
+      const test: TestInfo | TestSuiteInfo | undefined = this.testResolver(testSuiteId);
+      const testSuite: TestSuiteInfo | undefined = test?.type === TestType.Suite ? test : undefined;
+
+      if (!testSuite) {
+        continue;
+      }
+      const testCounts: { [key in TestResult]?: number } = testCountsBySuiteId.get(testSuiteId)!;
+      const failedTestCount = testCounts[TestResult.Failed] ?? 0;
+      const passedTestCount = testCounts[TestResult.Success] ?? 0;
+      const skippedTestCount = testCounts[TestResult.Skipped] ?? 0;
+
+      const totalSuiteTestCount = testSuite.testCount;
+      const executedSuiteTestCount = failedTestCount + passedTestCount + skippedTestCount;
+      const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
+
+      if (suiteExecutedAllTests) {
+        let testResultDescription = '';
+        
+        if (skippedTestCount === totalSuiteTestCount) {
+          testResultDescription = `${skippedTestCount} of ${totalSuiteTestCount} tests skipped`;
+        } else if (failedTestCount === totalSuiteTestCount || passedTestCount === 0) {
+          testResultDescription = `${failedTestCount} of ${totalSuiteTestCount} tests failed`;
+        } else if (passedTestCount === totalSuiteTestCount || failedTestCount === 0) {
+          testResultDescription = `${passedTestCount} of ${totalSuiteTestCount} tests passed`;
+        } else {
+          testResultDescription = `${totalSuiteTestCount} tests, ${failedTestCount} failed, ${passedTestCount} passed`;
+        }
+        
+        if (skippedTestCount > 0 && skippedTestCount < totalSuiteTestCount) {
+          testResultDescription = `${testResultDescription}, ${skippedTestCount} skipped`;
+        }
+        
+        const testEvent: TestSuiteEvent = {
+          type: TestType.Suite,
+          suite: testSuiteId,
+          state: TestSuiteState.Completed,
+          description: `(${testResultDescription})`,
+          tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
+        };
+
+        this.eventEmitterInterface.fire(testEvent);
+      }
     }
   }
 

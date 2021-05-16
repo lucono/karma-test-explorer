@@ -167,7 +167,7 @@ export class KarmaEventListener {
       return;
     }
     this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
-    this.eventEmitter.emitTestResultEvent(testId, event);
+    this.eventEmitter.emitTestResultEvent(testId, event.results);
 
     const testResult: TestResult = results.status;
 
