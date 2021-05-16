@@ -1,13 +1,17 @@
 import { TestRunner } from "./karma/test-runner";
 import { KarmaEventListener } from "./integration/karma-event-listener";
 import { Logger } from "./helpers/logger";
-import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { TestEvent, TestInfo, TestRunFinishedEvent, TestRunStartedEvent, TestSuiteEvent, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestExplorerConfiguration } from "../model/test-explorer-configuration";
 import { KarmaServer } from "./karma/karma-server";
 import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "./helpers/execution";
 import { TestSuiteOrganizer } from "./test-explorer/test-suite-organizer";
-import { TestGrouping } from "../model/enums/test-type.enum";
+import { TestGrouping, TestType } from "../model/enums/test-type.enum";
+import { TestResults } from "./karma/karma-test-runner";
+import { TestResult } from "../model/enums/test-status.enum";
+import { TestSuiteState } from "../model/enums/test-suite-state.enum";
+import * as vscode from "vscode";
 
 export class KarmaTestExplorer {
   private testRunning: boolean = false;
@@ -16,6 +20,7 @@ export class KarmaTestExplorer {
     private readonly karmaServer: KarmaServer,
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
+    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly logger: Logger
   ) { }
@@ -75,17 +80,20 @@ export class KarmaTestExplorer {
       this.logger.info("Proceeding to load tests");
 
       const karmaPort = this.karmaServer.getServerPort()!;
-      let testSuiteInfo = await this.testRunner.loadTests(karmaPort, config);
+      let testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort, config);
 
       if (config.testGrouping === TestGrouping.Folder) {
         testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, config.projectRootPath);
       }
 
-      if (testSuiteInfo.children.length === 0) {
-        this.logger.info("Test loading - No tests found");
-      } else {
-        this.logger.info("Test loading - Tests found");
-      }
+      const totalTestCount = this.processTestCounts(testSuiteInfo, (testSuite, testCount) => {
+        testSuite.testCount = testCount;
+        testSuite.description = `(${testCount} ${testCount === 1 ? 'test' : 'tests'})`;
+      });
+
+      this.logger.info(totalTestCount > 0
+        ? `Test loading - ${totalTestCount} total tests loaded from Karma`
+        : `Test loading - No tests found`);
 
       return testSuiteInfo;
       
@@ -110,8 +118,58 @@ export class KarmaTestExplorer {
       this.logger.info("Proceeding to run tests");
 
       this.testRunning = true;
-      const karmaPort = this.karmaServer.getServerPort() as number;
-      await this.testRunner.runTests(tests, karmaPort, config);
+      const karmaPort: number = this.karmaServer.getServerPort()!;
+      const testResults: TestResults = await this.testRunner.runTests(tests, karmaPort, config);
+
+      if (config.testGrouping === TestGrouping.Folder) {
+        Object.values(TestResult).forEach(testResult => {
+          testResults[testResult] = this.testSuiteOrganizer.groupByFolder(testResults[testResult], config.projectRootPath);
+        });
+      }
+
+      const testSuitesById: Map<string, TestSuiteInfo> = new Map();
+      const testCountsBySuiteId: Map<string, { [key in TestResult]?: number }> = new Map();
+
+      const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testResult: TestResult) => {
+        const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
+        testCounts[testResult] = testCount;
+        testCountsBySuiteId.set(testSuite.id, testCounts);
+        testSuitesById.set(testSuite.id, testSuite);
+      };
+
+      const totalTestCounts: { [key in TestResult]?: number } = {};
+
+      Object.values(TestResult).forEach(testResult => {
+        totalTestCounts[testResult] = this.processTestCounts(testResults[testResult], (testSuite, testCount) => {
+          testCountProcessor(testSuite, testCount, testResult);
+        });
+      });
+
+      this.logger.info(
+        `Test run - ` +
+        `${totalTestCounts[TestResult.Failed] ?? 0} total tests failed, ` +
+        `${totalTestCounts[TestResult.Success] ?? 0} total tests passed, ` +
+        `${totalTestCounts[TestResult.Skipped] ?? 0} total tests skipped`);
+      
+      for (const testSuiteId of testCountsBySuiteId.keys()) {
+        const testSuite = testSuitesById.get(testSuiteId);
+        const testCounts: { [key in TestResult]?: number } = testCountsBySuiteId.get(testSuiteId)!;
+        const failedTestCount = testCounts[TestResult.Failed] ?? 0;
+        const passedTestCount = testCounts[TestResult.Success] ?? 0;
+        const skippedTestCount = testCounts[TestResult.Skipped] ?? 0;
+        const totalTestCount = failedTestCount + passedTestCount + skippedTestCount;
+        const testResultDescription = `${failedTestCount} failed, ${passedTestCount} passed, of ${totalTestCount} tests`;
+
+        const testEvent: TestSuiteEvent = {
+          type: TestType.Suite,
+          suite: testSuiteId,
+          state: TestSuiteState.Completed,
+          description: `(${testResultDescription})`,
+          tooltip: `${testSuite?.fullName}  (${testResultDescription})`
+        };
+
+        this.eventEmitterInterface.fire(testEvent);
+      }
     } finally {
       this.testRunning = false;
     }
@@ -128,6 +186,22 @@ export class KarmaTestExplorer {
       // and its launched browser/s without leaving any orphans?
       await this.karmaServer.kill();
     }
+  }
+
+  private processTestCounts(
+    testSuite: TestSuiteInfo,
+    testCountProcessor: (test: TestSuiteInfo, totalTestCount: number) => void): number
+  {
+    let totalTestCount = 0;
+
+    if (testSuite.children) {
+      testSuite.children.forEach(testOrSuite => {
+        totalTestCount += testOrSuite.type === TestType.Test ? 1
+          : this.processTestCounts(testOrSuite, testCountProcessor);
+      });
+    }
+    testCountProcessor(testSuite, totalTestCount);
+    return totalTestCount;
   }
 
   public isTestRunning(): boolean {

@@ -8,25 +8,27 @@ import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../helpers/execution";
-import { TestInfo } from "vscode-test-adapter-api";
+import { TestResult } from "../../model/enums/test-status.enum";
 import * as express from "express"
 
 const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
-export declare type TestRetriever = (testId: string) => TestInfo | undefined;
+export type TestCapture = { [key in TestResult]: SpecCompleteResponse[] };
 
 export class KarmaEventListener {
   private isListening: boolean = false;
   private acceptAllSpecs: boolean = false;
-  private currentSpecs: string[] = [];
-  private capturedSpecs: SpecCompleteResponse[] = [];
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
 
+  private currentSpecs: string[] = [];
+  private failedSpecs: SpecCompleteResponse[] = [];
+  private passedSpecs: SpecCompleteResponse[] = [];
+  private skippedSpecs: SpecCompleteResponse[] = [];
+
   public constructor(
     private readonly eventEmitter: TestRunEventEmitter,
-    private readonly testRetriever: TestRetriever,
     private readonly logger: Logger
   ) {}
 
@@ -78,7 +80,7 @@ export class KarmaEventListener {
 
         socket.on(KarmaEventName.BrowserStart, () => {
           this.logger.info(`Karma Event Listener: Browser started`);
-          this.capturedSpecs = [];
+          this.resetSpecs();
         });
 
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
@@ -115,10 +117,11 @@ export class KarmaEventListener {
     });
   }
 
-  public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<SpecCompleteResponse[]> {
+  public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {
+    this.resetSpecs();
+
     if (specs.length === 0) {
       this.acceptAllSpecs = true;
-      this.currentSpecs = [];
     } else {
       this.acceptAllSpecs = false;
       this.currentSpecs = specs;
@@ -126,9 +129,15 @@ export class KarmaEventListener {
 
     try {
       this.isListening = true;
-      // this.currentRunId = testRunId;
       await testExecution.stopped;
-      return this.capturedSpecs;
+
+      const capturedTests: TestCapture = {
+        [TestResult.Failed]: this.failedSpecs,
+        [TestResult.Success]: this.passedSpecs,
+        [TestResult.Skipped]: this.skippedSpecs
+      };
+
+      return capturedTests;
 
     } catch (error) {
       this.logger.error(`Could not listen for Karma events - Test execution failed: ${error.message ?? error}`);
@@ -136,10 +145,8 @@ export class KarmaEventListener {
 
     } finally {
       this.isListening = false;
-      // this.currentRunId = undefined;
-      this.capturedSpecs = [];
-      this.currentSpecs = [];
       this.acceptAllSpecs = false;
+      this.resetSpecs();
     }
   }
 
@@ -154,17 +161,30 @@ export class KarmaEventListener {
       return;
     }
     const { results } = event;
-    const testId = results.id;
+    const testId: string = results.id;
     const isIncludedSpec = this.isIncludedSpec(results);
-    const test: TestInfo | undefined = this.testRetriever(testId);
 
-    if (isIncludedSpec) {
-      const testOrId: TestInfo | string = test ?? testId;
-      this.eventEmitter.emitTestStateEvent(testOrId, TestState.Running); // FIXME: why emit consecutive running and result event
-      this.eventEmitter.emitTestResultEvent(testOrId, event);
-      this.capturedSpecs.push(results);
-      this.logger.status(results.status);
+    if (!isIncludedSpec) {
+      this.logger.debug(() =>
+        `Karma Event Listener: Skipping spec id '${results.id}' - ` +
+        `Not part of current test run`);
+
+      return;
     }
+    this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
+    this.eventEmitter.emitTestResultEvent(testId, event);
+
+    const testResult: TestResult = results.status;
+
+    if (testResult === TestResult.Success) {
+      this.passedSpecs.push(results);
+    } else if (testResult === TestResult.Failed) {
+      this.failedSpecs.push(results);
+    } else if (testResult === TestResult.Skipped) {
+      this.skippedSpecs.push(results);
+    }
+
+    this.logger.status(results.status);
   }
 
   public async stop(): Promise<void> {
@@ -190,6 +210,13 @@ export class KarmaEventListener {
     });
   }
 
+  private resetSpecs() {
+    this.currentSpecs = [];
+    this.passedSpecs = [];
+    this.failedSpecs = [];
+    this.skippedSpecs = [];
+  }
+
   private cleanupConnections() {
     this.logger.info(`Karma Event Listener: Cleaning up connections`);
     try {
@@ -199,7 +226,7 @@ export class KarmaEventListener {
       });
       
       this.sockets.clear();
-      this.capturedSpecs = [];
+      this.resetSpecs();
 
     } catch (error) {
       this.logger.error(`Failure closing connection with karma: ${error}`);

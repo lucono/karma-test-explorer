@@ -1,30 +1,35 @@
 import { TestEvent, TestRunStartedEvent, TestRunFinishedEvent, TestSuiteEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
 import { KarmaEvent } from "../../model/karma-event";
 import { TestState } from "../../model/enums/test-state.enum";
-import { TestResultToTestStateMapper } from "./test-result-to-test-state-mapper";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import * as vscode from "vscode";
 import { TestType } from "../../model/enums/test-type.enum";
+import { TestResult } from "../../model/enums/test-status.enum";
+import * as vscode from "vscode";
+
+export type TestRetriever = (testId: string) => TestInfo | undefined;
 
 export class TestRunEventEmitter {
   public constructor(
-    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>
+    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>,
+    private readonly testRetriever: TestRetriever
   ) {}
 
-  public emitTestStateEvent(test: TestInfo | string, testState: TestState, testRunId?: string) {
+  public emitTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
+    const test: TestInfo | undefined = this.testRetriever(testId);
+
     const testEvent: TestEvent = {
       type: TestType.Test,
-      test,
+      test: test ?? testId,
       state: testState
     };
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public emitTestResultEvent(test: TestInfo | string, karmaEvent: KarmaEvent) {
-    const testInfo: TestInfo | undefined = typeof test === 'string' ? undefined : test;
+  public emitTestResultEvent(testId: string, karmaEvent: KarmaEvent) {
+    const test: TestInfo | undefined = this.testRetriever(testId);
+    
     const { results } = karmaEvent;
-    const testResultMapper = new TestResultToTestStateMapper();
-    const testState = testResultMapper.map(results.status);
+    const testState = this.mapTestResultToTestState(results.status);
     const testTime = `${results.timeSpentInMilliseconds} ms`;
     const testTimeDescription = testState === TestState.Skipped ? `Skipped` : testTime;
 
@@ -40,8 +45,8 @@ export class TestRunEventEmitter {
       message = this.createErrorMessage(results);
       decorations = this.createDecorations(results) ?? [];
 
-      if (decorations.length === 0 && testInfo?.line) {
-        const { file, line } = testInfo;
+      if (decorations.length === 0 && test?.line !== undefined) {
+        const { file, line } = test;
 
         decorations = [{
           line,
@@ -54,16 +59,23 @@ export class TestRunEventEmitter {
 
     const testEvent: TestEvent = {
       type: TestType.Test,
-      test,
+      test: test ?? testId,
       state: testState,
       description: `(${testTimeDescription})`,
       tooltip: `${results.fullName}  (${resultDescription})`,
       message,
-      decorations,
-      // testRunId  // FIXME: testRunId currently not passed
+      decorations
     };
 
     this.eventEmitterInterface.fire(testEvent);
+  }
+
+  private mapTestResultToTestState(testResult: TestResult): TestState {
+    switch (testResult) {
+      case TestResult.Success: return TestState.Passed;
+      case TestResult.Failed: return TestState.Failed;
+      case TestResult.Skipped: return TestState.Skipped;
+    }
   }
 
   private createErrorMessage(results: SpecCompleteResponse): string {

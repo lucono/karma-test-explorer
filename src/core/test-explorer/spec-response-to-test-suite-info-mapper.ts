@@ -14,17 +14,10 @@ export class SpecResponseToTestSuiteInfoMapper {
   {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
-    let suiteIdCounter = 0
-
-    const suiteIdGenerator = () => {
-      const newSuiteId = `suite_${suiteIdCounter}`;
-      suiteIdCounter += 1;
-      return newSuiteId;
-    };
-
-    const rootSuiteId = suiteIdGenerator();
-    const rootTestSuite: TestSuiteInfo = this.createRootSuite(rootSuiteId);
+    const rootTestSuite: TestSuiteInfo = this.createRootSuite();
     const unreferencedDuplicateSpecFilesBySpec: Map<string, string[]> = new Map();
+    
+    let processedSpecCount = 0;
 
     specs.forEach(rawSpec => {
       const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
@@ -47,24 +40,25 @@ export class SpecResponseToTestSuiteInfoMapper {
       }
 
       if (!specFile) {
+        this.logger.debug(() => `Skipped spec with undetermined source file: ${JSON.stringify(spec)}`);
         return;
       }
-      const testSuite = this.getDescendantSuite(rootTestSuite, spec.suite, specFile, suiteIdGenerator);
+      const testSuite = this.getDescendantSuite(rootTestSuite, spec.suite, specFile);
       const test = this.createTest(spec, specFile);
       testSuite.children.push(test);
+      processedSpecCount += 1;
     });
     
-    const totalTestCount = this.addTestCountsAndGetTotal(rootTestSuite);
-    this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
+    this.logger.debug(() => `Mapped ${processedSpecCount} total tests from specs`);
     return rootTestSuite;
   }
 
-  private createRootSuite(suiteId: string): TestSuiteInfo {
+  private createRootSuite(): TestSuiteInfo {
     const rootSuite: TestSuiteInfo = {
       type: TestType.Suite,
-      id: suiteId,
-      label: "Karma tests",
-      fullName: "",
+      id: `:`,
+      label: 'Karma tests',
+      fullName: '', // To prevent being runnable with grep pattern of fullName
       children: [],
       testCount: 0
     };
@@ -74,8 +68,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   private getDescendantSuite(
     baseNode: TestSuiteInfo, 
     suitePath: string[],
-    specFile: string,
-    suiteIdGenerator: () => string): TestSuiteInfo
+    specFile: string): TestSuiteInfo
   {
     const currentSuitePath: string[] = [];
     let currentNode: TestSuiteInfo = baseNode;
@@ -90,8 +83,7 @@ export class SpecResponseToTestSuiteInfoMapper {
         }) as TestSuiteInfo | undefined;
 
       if (!nextNode) {
-        const nextSuiteId = suiteIdGenerator();
-        nextNode = this.createSuite(currentSuitePath, specFile, nextSuiteId);
+        nextNode = this.createSuite(currentSuitePath, specFile);
         currentNode.children.push(nextNode);
       }
       currentNode = nextNode;
@@ -101,13 +93,13 @@ export class SpecResponseToTestSuiteInfoMapper {
 
   private createSuite(
     suitePath: string[], 
-    suiteFile: string,
-    suiteId: string): TestSuiteInfo
+    suiteFile: string): TestSuiteInfo
   {
     const allMatchingSuiteLocations = this.specLocationResolver(suitePath);
     const suiteLocation = allMatchingSuiteLocations.find(loc => loc.file === suiteFile);
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
+    const suiteId = `${suiteFile}:${suiteFullName}`;
 
     const hasDuplicates = allMatchingSuiteLocations.length > 1;
     let message: string | undefined;
@@ -197,20 +189,6 @@ export class SpecResponseToTestSuiteInfoMapper {
       errored
     };
     return test;
-  }
-
-  private addTestCountsAndGetTotal(testSuite: TestSuiteInfo): number {
-    let totalTestCount = 0;
-
-    if (testSuite.children) {
-      testSuite.children.forEach(testOrSuite => {
-        totalTestCount += testOrSuite.type === TestType.Test ? 1 
-          : this.addTestCountsAndGetTotal(testOrSuite);
-      });
-    }
-    testSuite.testCount = totalTestCount;
-    testSuite.description = `(${totalTestCount} ${totalTestCount === 1 ? 'test' : 'tests'})`;
-    return totalTestCount;
   }
 
   private filterSuiteNoise(suitePath: string[]) {

@@ -1,5 +1,5 @@
 import { Logger } from "../helpers/logger";
-import { KarmaEventListener } from "../integration/karma-event-listener";
+import { KarmaEventListener, TestCapture } from "../integration/karma-event-listener";
 import { TestFileSuiteInfo, TestFolderSuiteInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "./test-runner";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
@@ -9,9 +9,12 @@ import { TestExplorerConfiguration } from "../../model/test-explorer-configurati
 import { KarmaRunConfig, TestRunExecutor } from "./test-run-executor";
 import { DeferredPromise } from "../helpers/deferred-promise";
 import { Execution } from "../helpers/execution";
+import { TestResult } from "../../model/enums/test-status.enum";
 
 const SKIP_ALL_TESTS_PATTERN = "$#%#";
 const RUN_ALL_TESTS_PATTERN = "";
+
+export type TestResults = { [key in TestResult]: TestSuiteInfo };
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(
@@ -34,14 +37,15 @@ export class KarmaTestRunner implements TestRunner {
       started: testLoadStartedDeferred.promise(),
       stopped: testLoadEndedDeferred.promise()
     };
-    const futureLoadedSpecs = this.karmaEventListener.listenForTests(testLoadOperation);
+    const testCapture = this.karmaEventListener.listenForTests(testLoadOperation);
 
     testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
     testLoadEndedDeferred.resolve();
 
-    const capturedSpecs: SpecCompleteResponse[] = await futureLoadedSpecs;
-    const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs);
+    const capturedSpecs: TestCapture = await testCapture;
+    const loadedSpecs: SpecCompleteResponse[] = capturedSpecs[TestResult.Skipped];
+    const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
     return loadedTests;
   }
@@ -49,7 +53,7 @@ export class KarmaTestRunner implements TestRunner {
   public async runTests(
     tests: (TestInfo | TestSuiteInfo)[],
     karmaPort: number,
-    testExplorerConfig: TestExplorerConfiguration): Promise<void>
+    testExplorerConfig: TestExplorerConfiguration): Promise<TestResults>
   {
     this.logger.info(
       `Requested ${tests.length} tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
@@ -91,11 +95,24 @@ export class KarmaTestRunner implements TestRunner {
     };
 
     const testNames = testList.map(test => test.fullName);
-    this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    const testCapture = this.karmaEventListener.listenForTests(testRunOperation, testNames);
 
     testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
     testRunEndedDeferred.resolve();
+    
+    const capturedSpecs: TestCapture = await testCapture;
+    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestResult.Failed]);
+    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestResult.Success]);
+    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestResult.Skipped]);
+
+    const testResults: TestResults = {
+      [TestResult.Failed]: failedTests,
+      [TestResult.Success]: passedTests,
+      [TestResult.Skipped]: skippedTests
+    };
+
+    return testResults;
   }
 
   private createKarmaRunConfig(testPattern: string, karmaPort: number): KarmaRunConfig {

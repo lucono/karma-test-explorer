@@ -108,8 +108,8 @@ export class TestSuiteOrganizer {
       rootFolderSuite.children.push(fileLessTestFileSuite);
     });
     
-    const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
-    this.logger.debug(() => `Mapped ${totalTestCount} total tests from specs`);
+    // const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
+    this.logger.debug(() => `Organized ${convertedTestFileSuitesByFile.size} total test files into folders`);
 
     this.sortTestTree(rootFolderSuite);
 
@@ -201,19 +201,5 @@ export class TestSuiteOrganizer {
       currentFolderNode = nextFolderNode;
     }
     return currentFolderNode;
-  }
-
-  private addTestCountsAndGetTotal(testSuite: TestSuiteInfo): number {
-    let totalTestCount = 0;
-
-    if (testSuite.children) {
-      testSuite.children.forEach(testOrSuite => {
-        totalTestCount += testOrSuite.type === TestType.Test ? 1 
-          : this.addTestCountsAndGetTotal(testOrSuite);
-      });
-    }
-    testSuite.testCount = totalTestCount;
-    testSuite.description = `(${totalTestCount} ${totalTestCount === 1 ? 'test' : 'tests'})`;
-    return totalTestCount;
   }
 }

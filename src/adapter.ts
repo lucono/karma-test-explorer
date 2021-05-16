@@ -17,8 +17,8 @@ import { KarmaTestExplorer } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
-import { TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter";
-import { KarmaEventListener, TestRetriever } from "./core/integration/karma-event-listener";
+import { TestRetriever, TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter";
+import { KarmaEventListener } from "./core/integration/karma-event-listener";
 import { TestRunnerFactory } from "./core/karma/test-runner-factory";
 import { KarmaServer } from "./core/karma/karma-server";
 import { SpecLocation, SpecLocator, SpecLocatorOptions } from './core/helpers/spec-locator';
@@ -66,15 +66,15 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
-    const testRetriever: TestRetriever = testId => {
+    const testRetriever: TestRetriever = (testId: string) => {
       const test = this.loadedTestsById.get(testId);
       return test?.type === TestType.Test ? test : undefined;
     }
     const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
       return this.specLocator?.getSpecLocation(suite, description) ?? [];
     };
-    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, testRetriever, this.logger);
+    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter, testRetriever);
+    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
     const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
     const testRunnerFactory = new TestRunnerFactory(karmaEventListener, specToTestSuiteMapper, this.logger);
@@ -93,7 +93,14 @@ export class Adapter implements TestAdapter {
     };
 
     const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
-    this.testExplorer = new KarmaTestExplorer(karmaServer, karmaRunner, karmaEventListener, testSuiteOrganizer, this.logger);
+
+    this.testExplorer = new KarmaTestExplorer(
+      karmaServer, karmaRunner,
+      karmaEventListener,
+      this.testRunEmitter,
+      testSuiteOrganizer,
+      this.logger);
+      
     this.debugger = new Debugger(this.logger);
 
     this.disposables.push(this.testLoadEmitter);
