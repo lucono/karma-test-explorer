@@ -70,8 +70,7 @@ export class KarmaTestRunner implements TestRunner {
       aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
 
     } else {
-      const derivedRunnableTests: (TestInfo | TestSuiteInfo)[] = this.toRunnableTests(tests);
-      testList = this.removeTestOverlaps(derivedRunnableTests);
+      testList = this.toRunnableTests(tests);
       this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
   
       const testPatterns: string[] = testList
@@ -146,27 +145,6 @@ export class KarmaTestRunner implements TestRunner {
       }
     });
     return runnableTests;
-  }
-
-  private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
-    const resolvedTests = new Set(tests);
-
-    const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
-      if (resolvedTests.has(test)) {
-        resolvedTests.delete(test);
-      }
-      if (test.type === TestType.Suite) {
-        test.children.forEach(childTest => removeDuplicates(childTest));
-      }
-    }
-
-    tests.forEach(test => {
-      if (resolvedTests.has(test) && test.type === TestType.Suite) {
-        test.children.forEach(childTest => removeDuplicates(childTest))
-      };
-    });
-
-    return [ ...resolvedTests ];
   }
 
   private escapeForRegExp(stringValue: string) {

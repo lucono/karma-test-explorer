@@ -122,7 +122,9 @@ export class KarmaTestExplorer {
 
       this.testRunning = true;
       const karmaPort: number = this.karmaServer.getServerPort()!;
-      const testResults: TestResults = await this.testRunner.runTests(tests, karmaPort, config);
+      const uniqueTests = this.removeTestOverlaps(tests);
+
+      const testResults: TestResults = await this.testRunner.runTests(uniqueTests, karmaPort, config);
 
       if (config.testGrouping === TestGrouping.Folder) {
         Object.values(TestResult).forEach(testResult => {
@@ -130,14 +132,12 @@ export class KarmaTestExplorer {
         });
       }
 
-      // const testSuitesById: Map<string, TestSuiteInfo> = new Map();
       const testCountsBySuiteId: Map<string, { [key in TestResult]?: number }> = new Map();
 
       const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testResult: TestResult) => {
         const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
         testCounts[testResult] = testCount;
         testCountsBySuiteId.set(testSuite.id, testCounts);
-        // testSuitesById.set(testSuite.id, testSuite);
       };
 
       const totalTestCounts: { [key in TestResult]?: number } = {};
@@ -155,7 +155,6 @@ export class KarmaTestExplorer {
         `${totalTestCounts[TestResult.Skipped] ?? 0} total tests skipped`);
       
       for (const testSuiteId of testCountsBySuiteId.keys()) {
-        // const testSuite = testSuitesById.get(testSuiteId);
         const test: TestInfo | TestSuiteInfo | undefined = this.testResolver(testSuiteId);
         const testSuite: TestSuiteInfo | undefined = test?.type === TestType.Suite ? test : undefined;
 
@@ -164,23 +163,26 @@ export class KarmaTestExplorer {
         const passedTestCount = testCounts[TestResult.Success] ?? 0;
         const skippedTestCount = testCounts[TestResult.Skipped] ?? 0;
 
-        // const totalTestCount = failedTestCount + passedTestCount + skippedTestCount;
-        const totalTestCount = testSuite?.testCount;
+        const executedSuiteTestCount = failedTestCount + passedTestCount + skippedTestCount;
+        const totalSuiteTestCount = testSuite?.testCount;
+        const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
 
-        const testResultDescription = (totalTestCount ? `${totalTestCount} tests, ` : ``) +
-          `${failedTestCount} failed, ` +
-          `${passedTestCount} passed, ` +
-          `${skippedTestCount} skipped`;
-
-        const testEvent: TestSuiteEvent = {
-          type: TestType.Suite,
-          suite: testSuiteId,
-          state: TestSuiteState.Completed,
-          description: `(${testResultDescription})`,
-          tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
-        };
-
-        this.eventEmitterInterface.fire(testEvent);
+        if (suiteExecutedAllTests) {
+          const testResultDescription = (totalSuiteTestCount ? `${totalSuiteTestCount} tests, ` : ``) +
+            `${failedTestCount} failed, ` +
+            `${passedTestCount} passed` +
+            (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
+  
+          const testEvent: TestSuiteEvent = {
+            type: TestType.Suite,
+            suite: testSuiteId,
+            state: TestSuiteState.Completed,
+            description: `(${testResultDescription})`,
+            tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
+          };
+  
+          this.eventEmitterInterface.fire(testEvent);
+        }
       }
     } finally {
       this.testRunning = false;
@@ -214,6 +216,27 @@ export class KarmaTestExplorer {
     }
     testCountProcessor(testSuite, totalTestCount);
     return totalTestCount;
+  }
+
+  private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
+    const resolvedTests = new Set(tests);
+
+    const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
+      if (resolvedTests.has(test)) {
+        resolvedTests.delete(test);
+      }
+      if (test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest));
+      }
+    }
+
+    tests.forEach(test => {
+      if (resolvedTests.has(test) && test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest))
+      };
+    });
+
+    return [ ...resolvedTests ];
   }
 
   public isTestRunning(): boolean {
