@@ -177,21 +177,13 @@ export class KarmaTestExplorer {
       const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
 
       if (suiteExecutedAllTests) {
-        let testResultDescription = '';
-        
-        if (skippedTestCount === totalSuiteTestCount) {
-          testResultDescription = `${skippedTestCount} of ${totalSuiteTestCount} tests skipped`;
-        } else if (failedTestCount === totalSuiteTestCount || passedTestCount === 0) {
-          testResultDescription = `${failedTestCount} of ${totalSuiteTestCount} tests failed`;
-        } else if (passedTestCount === totalSuiteTestCount || failedTestCount === 0) {
-          testResultDescription = `${passedTestCount} of ${totalSuiteTestCount} tests passed`;
-        } else {
-          testResultDescription = `${totalSuiteTestCount} tests, ${failedTestCount} failed, ${passedTestCount} passed`;
-        }
-        
-        if (skippedTestCount > 0 && skippedTestCount < totalSuiteTestCount) {
-          testResultDescription = `${testResultDescription}, ${skippedTestCount} skipped`;
-        }
+        const testResultDescription = failedTestCount === totalSuiteTestCount ? `${failedTestCount} of ${totalSuiteTestCount} tests failed`
+          : passedTestCount === totalSuiteTestCount ? `${passedTestCount} of ${totalSuiteTestCount} tests passed`
+          : skippedTestCount === totalSuiteTestCount ? `${skippedTestCount} of ${totalSuiteTestCount} tests skipped`
+          : `${totalSuiteTestCount} tests` +
+            (failedTestCount > 0 ? `, ${failedTestCount} failed` : ``) +
+            (passedTestCount > 0 ? `, ${passedTestCount} passed` : ``) +
+            (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
         
         const testEvent: TestSuiteEvent = {
           type: TestType.Suite,
