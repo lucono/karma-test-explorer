@@ -177,10 +177,12 @@ export class KarmaTestExplorer {
       const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
 
       if (suiteExecutedAllTests) {
-        const testResultDescription = failedTestCount === totalSuiteTestCount ? `${failedTestCount} of ${totalSuiteTestCount} tests failed`
-          : passedTestCount === totalSuiteTestCount ? `${passedTestCount} of ${totalSuiteTestCount} tests passed`
-          : skippedTestCount === totalSuiteTestCount ? `${skippedTestCount} of ${totalSuiteTestCount} tests skipped`
-          : `${totalSuiteTestCount} tests` +
+        const totalTestCountDescription = totalSuiteTestCount === 1 ? `1 test` : `${totalSuiteTestCount} tests`;
+
+        const testResultDescription = failedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all failed`
+          : passedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all passed`
+          : skippedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all skipped`
+          : `${totalTestCountDescription}` +
             (failedTestCount > 0 ? `, ${failedTestCount} failed` : ``) +
             (passedTestCount > 0 ? `, ${passedTestCount} passed` : ``) +
             (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
