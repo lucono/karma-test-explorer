@@ -13,6 +13,8 @@ import { TestResult } from "../model/enums/test-status.enum";
 import { TestSuiteState } from "../model/enums/test-suite-state.enum";
 import * as vscode from "vscode";
 
+export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
+
 export class KarmaTestExplorer {
   private testRunning: boolean = false;
 
@@ -22,6 +24,7 @@ export class KarmaTestExplorer {
     private readonly karmaEventListener: KarmaEventListener,
     private readonly eventEmitterInterface: vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
+    private readonly testResolver: TestResolver,
     private readonly logger: Logger
   ) { }
 
@@ -123,18 +126,18 @@ export class KarmaTestExplorer {
 
       if (config.testGrouping === TestGrouping.Folder) {
         Object.values(TestResult).forEach(testResult => {
-          testResults[testResult] = this.testSuiteOrganizer.groupByFolder(testResults[testResult], config.projectRootPath);
+          testResults[testResult] = this.testSuiteOrganizer.groupByFolder(testResults[testResult], config.projectRootPath, false);
         });
       }
 
-      const testSuitesById: Map<string, TestSuiteInfo> = new Map();
+      // const testSuitesById: Map<string, TestSuiteInfo> = new Map();
       const testCountsBySuiteId: Map<string, { [key in TestResult]?: number }> = new Map();
 
       const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testResult: TestResult) => {
         const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
         testCounts[testResult] = testCount;
         testCountsBySuiteId.set(testSuite.id, testCounts);
-        testSuitesById.set(testSuite.id, testSuite);
+        // testSuitesById.set(testSuite.id, testSuite);
       };
 
       const totalTestCounts: { [key in TestResult]?: number } = {};
@@ -152,20 +155,29 @@ export class KarmaTestExplorer {
         `${totalTestCounts[TestResult.Skipped] ?? 0} total tests skipped`);
       
       for (const testSuiteId of testCountsBySuiteId.keys()) {
-        const testSuite = testSuitesById.get(testSuiteId);
+        // const testSuite = testSuitesById.get(testSuiteId);
+        const test: TestInfo | TestSuiteInfo | undefined = this.testResolver(testSuiteId);
+        const testSuite: TestSuiteInfo | undefined = test?.type === TestType.Suite ? test : undefined;
+
         const testCounts: { [key in TestResult]?: number } = testCountsBySuiteId.get(testSuiteId)!;
         const failedTestCount = testCounts[TestResult.Failed] ?? 0;
         const passedTestCount = testCounts[TestResult.Success] ?? 0;
         const skippedTestCount = testCounts[TestResult.Skipped] ?? 0;
-        const totalTestCount = failedTestCount + passedTestCount + skippedTestCount;
-        const testResultDescription = `${failedTestCount} failed, ${passedTestCount} passed, of ${totalTestCount} tests`;
+
+        // const totalTestCount = failedTestCount + passedTestCount + skippedTestCount;
+        const totalTestCount = testSuite?.testCount;
+
+        const testResultDescription = (totalTestCount ? `${totalTestCount} tests, ` : ``) +
+          `${failedTestCount} failed, ` +
+          `${passedTestCount} passed, ` +
+          `${skippedTestCount} skipped`;
 
         const testEvent: TestSuiteEvent = {
           type: TestType.Suite,
           suite: testSuiteId,
           state: TestSuiteState.Completed,
           description: `(${testResultDescription})`,
-          tooltip: `${testSuite?.fullName}  (${testResultDescription})`
+          tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
         };
 
         this.eventEmitterInterface.fire(testEvent);

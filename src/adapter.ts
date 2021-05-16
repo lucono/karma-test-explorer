@@ -13,7 +13,7 @@ import {
 } from "vscode-test-adapter-api";
 import { Log } from "vscode-test-adapter-util";
 import { TestType } from "./model/enums/test-type.enum";
-import { KarmaTestExplorer } from "./core/karma-test-explorer";
+import { KarmaTestExplorer, TestResolver } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
 import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
@@ -94,13 +94,16 @@ export class Adapter implements TestAdapter {
 
     const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
 
+    const testResolver: TestResolver = (testSuiteId: string) => this.loadedTestsById.get(testSuiteId);
+
     this.testExplorer = new KarmaTestExplorer(
       karmaServer, karmaRunner,
       karmaEventListener,
       this.testRunEmitter,
       testSuiteOrganizer,
+      testResolver,
       this.logger);
-      
+
     this.debugger = new Debugger(this.logger);
 
     this.disposables.push(this.testLoadEmitter);

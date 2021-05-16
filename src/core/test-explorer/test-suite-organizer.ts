@@ -6,7 +6,7 @@ import { sep as pathSeparator, dirname, basename, normalize, relative, join } fr
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
 
-  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string): TestSuiteInfo {
+  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string, collapseSingleFolders: boolean = true): TestSuiteInfo {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
 
     const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
@@ -113,7 +113,10 @@ export class TestSuiteOrganizer {
 
     this.sortTestTree(rootFolderSuite);
 
-    const collapsedFolderSuiteTree: TestFolderSuiteInfo = this.collapseSingleChildSuites(rootFolderSuite);
+    const collapsedFolderSuiteTree: TestFolderSuiteInfo = collapseSingleFolders
+      ? this.collapseSingleChildSuites(rootFolderSuite)
+      : rootFolderSuite;
+      
     const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
     return folderGroupedRootSuite;
   }
