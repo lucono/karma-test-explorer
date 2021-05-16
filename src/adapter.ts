@@ -312,22 +312,20 @@ export class Adapter implements TestAdapter {
     if (this.config.envFile) {
       reloadTriggerFiles.push(this.config.envFile);
     }
+
     if (reloadTriggerFiles.includes(savedFile)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFile}`);
       await this.reload();
-      return;
-    }
-
-    if (this.specLocator?.isSpecFile(savedFile)) {
+      
+    } else if (this.specLocator?.isSpecFile(savedFile)) {
       this.logger.info(`Reloading - spec file changed: ${savedFile}`);
-      const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
+      // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
       await this.refresh();
 
-      if (savedSpecFileInfo) {
-        this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
-        this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
-      }
-      return;
+      // if (savedSpecFileInfo) {
+      //   this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
+      //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
+      // }
     }
   }
 }

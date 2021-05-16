@@ -36,7 +36,7 @@ const DEFAULT_FILE_ENCODING = "utf-8";
 
 export class SpecLocator {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
-  private readonly specFilesByTopLevelSuite: Map<string, string[]> = new Map();
+  private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
   public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
@@ -56,16 +56,15 @@ export class SpecLocator {
     if (fileTestInfo.descriptions.describe.length === 0) {
       return;
     }
-    const fileTopSuite = fileTestInfo.descriptions.describe[0];
-    this.registerFileBySuiteName(fileTopSuite, fileAbsolutePath);
+    const fileTopSuite = [ fileTestInfo.descriptions.describe[0] ];
+    this.addSuiteFileToCache(fileTopSuite, fileAbsolutePath);
   }
 
   public getSpecLocation(specSuite: string[], specDescription?: string): SpecLocation[] {
     if (specSuite.length === 0) {
       return [];
     }
-    const topSuiteName: string = specSuite[0];
-    const specFiles: string[] = this.lookupFileBySuiteName(topSuiteName);
+    const specFiles: string[] = this.getSuiteFilesFromCache(specSuite);
     
     const specLocations: SpecLocation[] = specFiles.map((specFile: string): SpecLocation | undefined => {
         const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
@@ -80,28 +79,58 @@ export class SpecLocator {
     return this.fileInfoMap.has(fileAbsolutePath);
   }
 
-  public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {
-    const fileAbsolutePath = path.resolve(this.cwd, filePath);
-    const fileInfo = this.fileInfoMap.get(fileAbsolutePath);
+  // public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {
+  //   const fileAbsolutePath = path.resolve(this.cwd, filePath);
+  //   const fileInfo = this.fileInfoMap.get(fileAbsolutePath);
 
-    const specFileInfo = !fileInfo ? undefined : {
-        suiteName: fileInfo.descriptions.describe[0],
-        specCount: fileInfo.descriptions.it.length
-      };
+  //   const specFileInfo = !fileInfo ? undefined : {
+  //       suiteName: fileInfo.descriptions.describe[0],
+  //       specCount: fileInfo.descriptions.it.length
+  //     };
 
-    return specFileInfo;
-  }
+  //   return specFileInfo;
+  // }
 
-  private lookupFileBySuiteName(topSuiteName: string): string[] {
-    return this.specFilesByTopLevelSuite.get(topSuiteName) ?? [];
-  }
+  // private lookupFileBySuite(topSuiteName: string): string[] {
+  //   return this.specFilesByTopLevelSuite.get(topSuiteName) ?? [];
+  // }
 
-  private registerFileBySuiteName(topSuiteName: string, fileAbsolutePath: string): void {
-    if (this.specFilesByTopLevelSuite.has(topSuiteName)) {
-      this.specFilesByTopLevelSuite.get(topSuiteName)!.push(fileAbsolutePath);
-    } else {
-      this.specFilesByTopLevelSuite.set(topSuiteName, [ fileAbsolutePath ]);
+  // private registerFileBySuite(topSuiteName: string, fileAbsolutePath: string): void {
+  //   if (this.specFilesByTopLevelSuite.has(topSuiteName)) {
+  //     this.specFilesByTopLevelSuite.get(topSuiteName)!.push(fileAbsolutePath);
+  //   } else {
+  //     this.specFilesByTopLevelSuite.set(topSuiteName, [ fileAbsolutePath ]);
+  //   }
+  // }
+
+  private addSuiteFileToCache(suite: string[], filePath: string) {
+    let suiteKey = "";
+
+    for (const suiteAncestor of suite) {
+      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
+
+      if (!this.specFilesBySuite.has(suiteKey)) {
+        this.specFilesBySuite.set(suiteKey, []);
+      }
+      const suiteFiles = this.specFilesBySuite.get(suiteKey)!;
+      if (!suiteFiles.includes(filePath)) {
+        suiteFiles.push(filePath);
+      }
     }
+  }
+
+  private getSuiteFilesFromCache(suite: string[]): string[] {
+    let suiteKey = "";
+
+    for (const suiteAncestor of suite) {
+      suiteKey = suiteKey ? `${suiteKey} ${suiteAncestor}` : suiteAncestor;
+      const suiteFiles = this.specFilesBySuite.get(suiteKey);
+
+      if (suiteFiles) {
+        return suiteFiles;
+      }
+    }
+    return [];
   }
 
   private getSpecLineNumber(
