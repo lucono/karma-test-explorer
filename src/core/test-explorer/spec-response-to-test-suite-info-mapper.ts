@@ -109,20 +109,23 @@ export class SpecResponseToTestSuiteInfoMapper {
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
 
-    const duplicateSuiteFiles = allMatchingSuiteLocations
-      .filter(loc => loc.file !== suiteFile)
-      .map(location => `${location.file}:${location.line}`)
-      .join('\n');
-
+    const hasDuplicates = allMatchingSuiteLocations.length > 1;
     let message: string | undefined;
 
-    if (allMatchingSuiteLocations.length > 1 && suiteLocation) {
+    if (hasDuplicates) {
+      const duplicateSuiteFiles = allMatchingSuiteLocations
+        .filter(loc => loc.file !== suiteFile)
+        .map(location => `${location.file}:${location.line}`)
+        .join('\n');
+  
       message = 
         `This test suite has duplicate definitions which could lead to conflicting test results. \n\n` +
         `"${suiteFullName}" \n\n` +
         `---------- \n\n` +
-        `Defined in: \n\n` +
-        `${suiteLocation.file}:${suiteLocation.line} \n\n` +
+        (suiteLocation
+          ? `Defined in: \n\n` +
+            `${suiteLocation.file}:${suiteLocation.line} \n\n`
+          : '') +
         `Duplicate definitions: \n\n` +
         `${duplicateSuiteFiles}`;
     }
@@ -148,29 +151,38 @@ export class SpecResponseToTestSuiteInfoMapper {
   {
     const allMatchingSpecLocations = this.specLocationResolver(spec.suite, spec.description);
     const specLocation = allMatchingSpecLocations.find(loc => loc.file === specFile);
-    const errored = allMatchingSpecLocations.length > 1;
 
-    const duplicateSpecFiles = allMatchingSpecLocations
-      .filter(loc => loc.file !== specFile)
-      .map(location => `${location.file}:${location.line}`)
-      .join('\n');
+    const runFailureMessage = spec.failureMessages?.join("\n");
+    let loadFailureMessage: string | undefined;
 
-    let runFailureMessage;
-    let loadFailureMessage;
+    let file = spec.filePath;
+    let line = spec.line;
+    let errored = false;
 
-    if (spec.failureMessages?.length > 0) {
-      runFailureMessage = spec.failureMessages.join("\n");
-    }
+    if (!file || line === undefined) {
+      file = specLocation?.file;
+      line = specLocation?.line;
+      const hasDuplicates = allMatchingSpecLocations.length > 1;
 
-    if (allMatchingSpecLocations.length > 1 && specLocation) {
-      loadFailureMessage = 
-        `This test has duplicate definitions which could lead to conflicting test results. \n\n` +
-        `"${spec.fullName}" \n\n` +
-        `---------- \n\n` +
-        `Defined in: \n\n` +
-        `${specLocation.file}:${specLocation.line} \n\n` +
-        `Duplicate definitions: \n\n` +
-        `${duplicateSpecFiles}`;
+      if (hasDuplicates) {
+        errored = true;
+
+        const duplicateSpecFiles = allMatchingSpecLocations
+          .filter(loc => loc.file !== specFile)
+          .map(location => `${location.file}:${location.line}`)
+          .join('\n');
+  
+        loadFailureMessage = 
+          `This test has duplicate definitions which could lead to conflicting test results. \n\n` +
+          `"${spec.fullName}" \n\n` +
+          `---------- \n\n` +
+          (specLocation
+            ? `Defined in: \n\n` +
+              `${specLocation.file}:${specLocation.line} \n\n`
+            : '') +
+          `Duplicate definitions: \n\n` +
+          `${duplicateSpecFiles}`;
+      }
     }
 
     const test: TestInfo = {
@@ -179,9 +191,9 @@ export class SpecResponseToTestSuiteInfoMapper {
       fullName: spec.fullName,
       label: spec.description,
       tooltip: spec.fullName,
-      message: runFailureMessage ?? loadFailureMessage,
-      file: spec.filePath ?? specLocation?.file,  // FIXME: Ensure spec.filePath is converted to absolute path
-      line: spec.line ?? specLocation?.line,
+      message: runFailureMessage || loadFailureMessage,
+      file,
+      line,
       errored
     };
     return test;
