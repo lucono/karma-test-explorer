@@ -109,7 +109,7 @@ export class TestSuiteOrganizer {
     });
     
     // const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
-    this.logger.debug(() => `Organized ${convertedTestFileSuitesByFile.size} total test files into folders`);
+    this.logger.debug(() => `Rearranged ${convertedTestFileSuitesByFile.size} test files into folders`);
 
     this.sortTestTree(rootFolderSuite);
 

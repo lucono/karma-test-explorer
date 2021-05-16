@@ -49,7 +49,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       processedSpecCount += 1;
     });
     
-    this.logger.debug(() => `Mapped ${processedSpecCount} total tests from specs`);
+    this.logger.debug(() => `Mapped ${processedSpecCount} tests from specs`);
     return rootTestSuite;
   }
 

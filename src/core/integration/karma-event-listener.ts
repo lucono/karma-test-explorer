@@ -1,4 +1,3 @@
-// import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { KarmaEvent } from "../../model/karma-event";
 import { KarmaEventName } from "../../model/enums/karma-event-name.enum";
 import { TestState } from "../../model/enums/test-state.enum";
@@ -18,7 +17,6 @@ export type TestCapture = { [key in TestResult]: SpecCompleteResponse[] };
 
 export class KarmaEventListener {
   private isListening: boolean = false;
-  private acceptAllSpecs: boolean = false;
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
 
@@ -80,7 +78,7 @@ export class KarmaEventListener {
 
         socket.on(KarmaEventName.BrowserStart, () => {
           this.logger.info(`Karma Event Listener: Browser started`);
-          this.resetSpecs();
+          this.clearCapturedSpecs();
         });
 
         socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
@@ -118,17 +116,12 @@ export class KarmaEventListener {
   }
 
   public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {
-    this.resetSpecs();
-
-    if (specs.length === 0) {
-      this.acceptAllSpecs = true;
-    } else {
-      this.acceptAllSpecs = false;
-      this.currentSpecs = specs;
-    }
 
     try {
+      this.clearCapturedSpecs();
+      this.currentSpecs = specs;
       this.isListening = true;
+
       await testExecution.stopped;
 
       const capturedTests: TestCapture = {
@@ -145,13 +138,15 @@ export class KarmaEventListener {
 
     } finally {
       this.isListening = false;
-      this.acceptAllSpecs = false;
-      this.resetSpecs();
+      this.currentSpecs = [];
+      this.clearCapturedSpecs();
     }
   }
 
   private isIncludedSpec(specResult: SpecCompleteResponse): boolean {
-    return this.acceptAllSpecs || this.currentSpecs.some(includedSpecName => {
+    const acceptAllSpecs = this.currentSpecs.length === 0;
+
+    return acceptAllSpecs || this.currentSpecs.some(includedSpecName => {
       return specResult.fullName === includedSpecName || specResult.fullName.startsWith(includedSpecName);
     });
   }
@@ -197,7 +192,7 @@ export class KarmaEventListener {
     this.logger.info(`Karma Event Listener: Closing connection with karma`);
 
     return new Promise<void>((resolve, reject) => {
-      server.close((error) => { // FIXME: Seems to be getting stuck here sometimes
+      server.close((error) => {
         if (error) {
           this.logger.error(`Failed closing karma listener connection: ${error.message}`);
           reject();
@@ -210,8 +205,7 @@ export class KarmaEventListener {
     });
   }
 
-  private resetSpecs() {
-    this.currentSpecs = [];
+  private clearCapturedSpecs() {
     this.passedSpecs = [];
     this.failedSpecs = [];
     this.skippedSpecs = [];
@@ -226,7 +220,7 @@ export class KarmaEventListener {
       });
       
       this.sockets.clear();
-      this.resetSpecs();
+      this.clearCapturedSpecs();
 
     } catch (error) {
       this.logger.error(`Failure closing connection with karma: ${error}`);

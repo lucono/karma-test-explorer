@@ -37,7 +37,7 @@ export class KarmaTestRunner implements TestRunner {
       started: testLoadStartedDeferred.promise(),
       stopped: testLoadEndedDeferred.promise()
     };
-    const testCapture = this.karmaEventListener.listenForTests(testLoadOperation);
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
 
     testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
@@ -94,8 +94,8 @@ export class KarmaTestRunner implements TestRunner {
       stopped: testRunEndedDeferred.promise()
     };
 
-    const testNames = testList.map(test => test.fullName);
-    const testCapture = this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    const testNames: string[] = testList.map(test => test.fullName);
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
 
     testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaRunConfig, testExplorerConfig);
