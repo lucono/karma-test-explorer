@@ -30,7 +30,7 @@ export class TestSuiteOrganizer {
         return;
       }
       const testFileRelativePath: string = relative(rootPath, test.file);
-      const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(test.file);
+      const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(testFileRelativePath);
 
       if (!previousFileSuite) {
         let convertedTestFileSuite: TestFileSuiteInfo;
@@ -39,26 +39,26 @@ export class TestSuiteOrganizer {
           convertedTestFileSuite = {
             ...test,
             suiteType: TestSuiteType.File,
-            file: test.file
+            file: testFileRelativePath
           };
         } else {
           convertedTestFileSuite = this.createTestFileSuite(testFileRelativePath);
           convertedTestFileSuite.children.push(test);
         }
-        convertedTestFileSuitesByFile.set(test.file, convertedTestFileSuite);
-        originalTestSuitesByFile.set(test.file, test);
+        convertedTestFileSuitesByFile.set(testFileRelativePath, convertedTestFileSuite);
+        originalTestSuitesByFile.set(testFileRelativePath, test);
 
-      } else if (previousFileSuite.id === test.file) {
+      } else if (previousFileSuite.id === testFileRelativePath) {
         previousFileSuite.children.push(test);
 
       } else {
         const multiTopLevelFileSuite: TestFileSuiteInfo = this.createTestFileSuite(testFileRelativePath);
-        const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(test.file)!;
+        const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(testFileRelativePath)!;
 
         multiTopLevelFileSuite.children.push(originalTestSuite);
         multiTopLevelFileSuite.children.push(test);
 
-        convertedTestFileSuitesByFile.set(test.file, multiTopLevelFileSuite);
+        convertedTestFileSuitesByFile.set(testFileRelativePath, multiTopLevelFileSuite);
       }
     });
 
@@ -66,8 +66,7 @@ export class TestSuiteOrganizer {
     rootFolderSuite.label = '.';
     
     convertedTestFileSuitesByFile.forEach(testFileSuite => {
-      const specFolderRelativePath: string = relative(rootPath, dirname(testFileSuite.file));
-      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, specFolderRelativePath);
+      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, dirname(testFileSuite.file));
       specFolderSuite.children.push(testFileSuite);
     });
 
