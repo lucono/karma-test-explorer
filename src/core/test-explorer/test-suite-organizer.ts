@@ -9,8 +9,8 @@ export class TestSuiteOrganizer {
   public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string, collapseSingleFolders: boolean = true): TestSuiteInfo {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
 
-    const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
-    const convertedTestFileSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
+    // const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
+    const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
     const fileLessSpecsSuite: TestSuiteInfo[] = [];
 
     tests.forEach(test => {
@@ -20,53 +20,30 @@ export class TestSuiteOrganizer {
           `Got test with unknown top-level test suite: ` +
           `${JSON.stringify(test)} - ` +
           `Test will be ignored`);
-          
+
         return;
       }
-      
       if (!test.file) {
         this.logger.warn(`Got test with unknown file: ${JSON.stringify(test)}`);
         fileLessSpecsSuite.push(test);
         return;
       }
       const testFileRelativePath: string = relative(rootPath, test.file);
-      const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(testFileRelativePath);
+      let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(testFileRelativePath);
 
-      if (!previousFileSuite) {
-        let convertedTestFileSuite: TestFileSuiteInfo;
-
-        if (collapseSingleFolders) {
-          convertedTestFileSuite = {
-            ...test,
-            suiteType: TestSuiteType.File,
-            file: testFileRelativePath
-          };
-        } else {
-          convertedTestFileSuite = this.createTestFileSuite(testFileRelativePath);
-          convertedTestFileSuite.children.push(test);
-        }
-        convertedTestFileSuitesByFile.set(testFileRelativePath, convertedTestFileSuite);
-        originalTestSuitesByFile.set(testFileRelativePath, test);
-
-      } else if (previousFileSuite.id === testFileRelativePath) {
-        previousFileSuite.children.push(test);
-
-      } else {
-        const multiTopLevelFileSuite: TestFileSuiteInfo = this.createTestFileSuite(testFileRelativePath);
-        const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(testFileRelativePath)!;
-
-        multiTopLevelFileSuite.children.push(originalTestSuite);
-        multiTopLevelFileSuite.children.push(test);
-
-        convertedTestFileSuitesByFile.set(testFileRelativePath, multiTopLevelFileSuite);
+      if (!testFileSuite) {
+        testFileSuite = this.createTestFileSuite(testFileRelativePath);
+        testFileSuitesByFilePath.set(testFileRelativePath, testFileSuite);
       }
+      testFileSuite.children.push(test);
     });
 
     const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(rootPath);
     rootFolderSuite.label = '.';
     
-    convertedTestFileSuitesByFile.forEach(testFileSuite => {
-      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, dirname(testFileSuite.file));
+    testFileSuitesByFilePath.forEach(testFileSuite => {
+      const testSuiteFolder = dirname(testFileSuite.file);
+      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, testSuiteFolder);
       specFolderSuite.children.push(testFileSuite);
     });
 
@@ -83,7 +60,7 @@ export class TestSuiteOrganizer {
       rootFolderSuite.children.push(fileLessTestFileSuite);
     });
     
-    this.logger.debug(() => `Rearranged ${convertedTestFileSuitesByFile.size} test files into folders`);
+    this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
 
     this.sortTestTree(rootFolderSuite);
 
@@ -96,9 +73,21 @@ export class TestSuiteOrganizer {
   }
 
   private collapseSingleChildSuites(suite: TestFolderSuiteInfo): TestFolderSuiteInfo {
-    suite.children = suite.children.map(childSuite => childSuite.suiteType === TestSuiteType.Folder
-      ? this.collapseSingleChildSuites(childSuite)
-      : childSuite);
+    suite.children = suite.children.map(childSuite => {
+      if (childSuite.suiteType === TestSuiteType.Folder) {
+        return this.collapseSingleChildSuites(childSuite);
+
+      } else if (childSuite.suiteType === TestSuiteType.File) {
+        const singleChild = childSuite.children.length === 1 ? childSuite.children[0] : undefined;
+        
+        return !singleChild || singleChild.type !== TestType.Suite ? childSuite : {
+          ...singleChild,
+          suiteType: TestSuiteType.File,
+          file: singleChild.file!
+        };
+      }
+      return childSuite;
+    });
 
     let replacementSuite: TestFolderSuiteInfo = suite;
     
