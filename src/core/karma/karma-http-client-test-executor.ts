@@ -8,6 +8,7 @@ export class KarmaHttpClientTestExecutor implements TestRunExecutor {
   public constructor(private readonly logger: Logger) {}
 
   public async executeTestRun(karmaRunConfig: KarmaRunConfig, explorerConfig: TestExplorerConfiguration): Promise<void> {
+    // See: https://github.com/karma-runner/karma/blob/94cf15e8fa4420c8716998873b77f0c4f59b9e94/lib/runner.js#L100-L105
     const karmaRequestData = {
       args: karmaRunConfig.clientArgs,
       refresh: karmaRunConfig.refresh

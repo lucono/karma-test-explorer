@@ -97,7 +97,7 @@ export class KarmaServer {
       if (wasUnexpectedServerTermination) {
         const restartDelay = config.serverCrashRestartDelaySecs;
         if (restartDelay >= 0) {
-          this.logger.warn(
+          this.logger.warn(  // FIXME: Add `window.showWarningMessage()` including note about `config.serverCrashRestartDelaySecs` setting
             `Karma server terminated unexpectedly - ` +
             `Will attempt restart in ${restartDelay} sec(s)`);
           this.scheduleFutureStartup(restartDelay, config, karmaPort, extraEnv);

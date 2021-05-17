@@ -14,7 +14,7 @@ export class KarmaCommandLineTestExecutor implements TestRunExecutor {
       ...process.env,
       ...explorerConfig.envFileEnvironment,
       ...explorerConfig.env,
-      karmaSocketPort: `${explorerConfig.defaultSocketConnectionPort}`,
+      // karmaSocketPort: `${explorerConfig.defaultSocketConnectionPort}`, // FIXME: Should use available port found instead of original config value
       userKarmaConfigPath: explorerConfig.userKarmaConfFilePath,
       karmaPort: `${karmaRunConfig.port}`
     };
