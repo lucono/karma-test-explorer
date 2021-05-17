@@ -29,14 +29,23 @@ export class TestSuiteOrganizer {
         fileLessSpecsSuite.push(test);
         return;
       }
+      const testFileRelativePath: string = relative(rootPath, test.file);
       const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(test.file);
 
       if (!previousFileSuite) {
-        const convertedTestFileSuite: TestFileSuiteInfo = collapseSingleFolders ? this.createTestFileSuite(test.file) : {
-          ...test,
-          suiteType: TestSuiteType.File,
-          file: test.file
-        };
+        let convertedTestFileSuite: TestFileSuiteInfo;
+
+        if (!collapseSingleFolders) {
+          convertedTestFileSuite = this.createTestFileSuite(testFileRelativePath);
+          convertedTestFileSuite.children.push(test);
+
+        } else {
+          convertedTestFileSuite = {
+            ...test,
+            suiteType: TestSuiteType.File,
+            file: test.file
+          };
+        }
         convertedTestFileSuitesByFile.set(test.file, convertedTestFileSuite);
         originalTestSuitesByFile.set(test.file, test);
 
@@ -44,9 +53,9 @@ export class TestSuiteOrganizer {
         previousFileSuite.children.push(test);
 
       } else {
+        const multiTopLevelFileSuite: TestFileSuiteInfo = this.createTestFileSuite(testFileRelativePath);
         const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(test.file)!;
-        const multiTopLevelFileSuite: TestFileSuiteInfo = this.createTestFileSuite(test.file);
-
+        
         multiTopLevelFileSuite.children.push(originalTestSuite);
         multiTopLevelFileSuite.children.push(test);
 
