@@ -28,24 +28,24 @@ export class KarmaCommandHandler {
   public karmaRun(
     karmaPort: number,
     clientArgs: string[],
-    explorerConfig: TestExplorerConfiguration): CommandlineProcessHandler
+    config: TestExplorerConfiguration): CommandlineProcessHandler
   {
-    return this.execute(KarmaOperation.Start, explorerConfig, karmaPort, undefined, clientArgs);
+    return this.execute(KarmaOperation.Run, config, karmaPort, undefined, clientArgs);
   }
 
   private execute(
     karmaOperation: KarmaOperation,
-    explorerConfig: TestExplorerConfiguration,
+    config: TestExplorerConfiguration,
     karmaPort: number,
     karmaSocketPort?: number,
     clientArgs?: string[]): CommandlineProcessHandler
   {
     const environment: { [key: string]: string } = {
       ...process.env,
-      ...explorerConfig.envFileEnvironment,
-      ...explorerConfig.env,
+      ...config.envFileEnvironment,
+      ...config.env,
       karmaPort: `${karmaPort}`,
-      userKarmaConfigPath: explorerConfig.userKarmaConfFilePath
+      userKarmaConfigPath: config.userKarmaConfFilePath
     };
 
     if (karmaSocketPort) {
@@ -53,13 +53,13 @@ export class KarmaCommandHandler {
     }
 
     const spawnOptions: SpawnOptions = {
-      cwd: explorerConfig.projectRootPath,
+      cwd: config.projectRootPath,
       shell: true,
       env: environment
     };
 
-    const baseKarmaConfigFilePath = require.resolve(explorerConfig.baseKarmaConfFilePath);
-    const karmaProcessExecutable = explorerConfig.karmaProcessExecutable;
+    const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
+    const karmaProcessExecutable = config.karmaProcessExecutable;
 
     let command = "npx";
     let processArguments = [ "karma" ];
@@ -76,13 +76,17 @@ export class KarmaCommandHandler {
       processArguments = [];
     }
 
+    const escapedClientArgs: string[] = clientArgs
+      ? clientArgs.map(arg => arg.replace(/[\W ]/g, "\\$&"))
+      : [];
+
     processArguments = [
       ...processArguments,
       karmaOperation,
       baseKarmaConfigFilePath,
       `--port=${karmaPort}`,
       "--",
-      ...(clientArgs ?? [])
+      ...escapedClientArgs
     ];
 
     const karmaProcess = new CommandlineProcessHandler(
