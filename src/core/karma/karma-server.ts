@@ -1,10 +1,10 @@
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
-import { SpawnOptions } from "child_process";
 import {stopper as karmaStopper } from "karma";
 import { Execution } from "../helpers/execution";
 import { DeferredPromise } from "../helpers/deferred-promise";
+import { KarmaCommandHandler } from "./karma-command-handler";
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -13,14 +13,14 @@ export class KarmaServer {
   private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
-    private readonly logger: Logger,
-    private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info,
-    private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error) { }
+    private readonly karmaCommandHandler: KarmaCommandHandler,
+    private readonly logger: Logger)
+  { }
 
   public async start(
-    karmaPort: number, 
-    config: TestExplorerConfiguration,
-    extraEnv: {[key: string]: string} = {}): Promise<Execution>
+    karmaPort: number,
+    karmaSocketPort: number,
+    config: TestExplorerConfiguration): Promise<Execution>
   {
     if (this.serverCurrentlyTerminating) {
       this.logger.info(
@@ -44,43 +44,46 @@ export class KarmaServer {
   
     this.logger.info(`Starting karma server`);
 
-    const testExplorerEnvironment: { [key: string]: string} = {
-      ...process.env,
-      ...config.envFileEnvironment,
-      ...config.env,
-      ...extraEnv,
-      userKarmaConfigPath: config.userKarmaConfFilePath,
-      karmaPort: `${karmaPort}`
-    };
+    const karmaServerProcess = this.karmaCommandHandler.karmaStart(karmaPort, karmaSocketPort, config);
 
-    const spawnOptions: SpawnOptions = {
-      cwd: config.projectRootPath,
-      shell: true,
-      env: testExplorerEnvironment,
-    };
 
-    let command = "npx";
-    let processArguments = [ "karma" ];
+    // const testExplorerEnvironment: { [key: string]: string} = {
+    //   ...process.env,
+    //   ...config.envFileEnvironment,
+    //   ...config.env,
+    //   ...extraEnv,
+    //   userKarmaConfigPath: config.userKarmaConfFilePath,
+    //   karmaPort: `${karmaPort}`
+    // };
 
-    if (config.karmaProcessExecutable) {
-      command = config.karmaProcessExecutable;
-      processArguments = [];
-    }
+    // const spawnOptions: SpawnOptions = {
+    //   cwd: config.projectRootPath,
+    //   shell: true,
+    //   env: testExplorerEnvironment,
+    // };
 
-    processArguments = [
-      ...processArguments,
-      "start",
-      config.baseKarmaConfFilePath,
-      `--port=${karmaPort}`
-    ];
+    // let command = "npx";
+    // let processArguments = [ "karma" ];
 
-    const karmaServerProcess = new CommandlineProcessHandler(
-      this.logger, 
-      command, 
-      processArguments, 
-      spawnOptions,
-      (data) => this.serverProcessLogger(data, karmaPort),
-      (data) => this.serverProcessErrorLogger(data, karmaPort));
+    // if (config.karmaProcessExecutable) {
+    //   command = config.karmaProcessExecutable;
+    //   processArguments = [];
+    // }
+
+    // processArguments = [
+    //   ...processArguments,
+    //   "start",
+    //   config.baseKarmaConfFilePath,
+    //   `--port=${karmaPort}`
+    // ];
+
+    // const karmaServerProcess = new CommandlineProcessHandler(
+    //   this.logger, 
+    //   command, 
+    //   processArguments, 
+    //   spawnOptions,
+    //   (data) => this.serverProcessLogger(data, karmaPort),
+    //   (data) => this.serverProcessErrorLogger(data, karmaPort));
 
     this.setServerInfo(karmaServerProcess, karmaPort);
 
@@ -100,7 +103,7 @@ export class KarmaServer {
           this.logger.warn(  // FIXME: Add `window.showWarningMessage()` including note about `config.serverCrashRestartDelaySecs` setting
             `Karma server terminated unexpectedly - ` +
             `Will attempt restart in ${restartDelay} sec(s)`);
-          this.scheduleFutureStartup(restartDelay, config, karmaPort, extraEnv);
+          this.scheduleFutureStartup(restartDelay, karmaPort, karmaSocketPort, config);
         }
       }
     });
@@ -121,16 +124,16 @@ export class KarmaServer {
   }
 
   private scheduleFutureStartup(
-    startDelaySecs: number,
-    config: TestExplorerConfiguration, 
-    karmaPort: number, 
-    extraEnv: {[key: string]: string} = {})
+    startDelaySecs: number, 
+    karmaPort: number,
+    karmaSocketPort: number,
+    config: TestExplorerConfiguration)
   {
     if (this.serverRestartTimerId !== undefined) {
       this.cancelScheduledRestart(this.serverRestartTimerId);
     }
     const startDelayMillis = startDelaySecs * 1000;
-    this.serverRestartTimerId = setTimeout(() => this.start(karmaPort, config, extraEnv), startDelayMillis);
+    this.serverRestartTimerId = setTimeout(() => this.start(karmaPort, karmaSocketPort, config), startDelayMillis);
   }
 
   public async stop(): Promise<void> {  // FIXME Not currently used

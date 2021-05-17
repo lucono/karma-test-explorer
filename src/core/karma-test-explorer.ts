@@ -50,9 +50,10 @@ export class KarmaTestExplorer {
       this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
       this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
-      const karmaServerExecution: Execution = await this.karmaServer.start(serverKarmaPort, config, {
-        karmaSocketPort: `${karmerListenerSocketPort}`
-      });
+      const karmaServerExecution: Execution = await this.karmaServer.start(
+        serverKarmaPort,
+        karmerListenerSocketPort,
+        config);
 
       await new Promise<void>((resolve, reject) => {
         this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)

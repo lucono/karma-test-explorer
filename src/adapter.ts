@@ -1,4 +1,3 @@
-import { DebugLoggingResolver, Logger } from "./core/helpers/logger";
 import {
   TestAdapter,
   TestLoadStartedEvent,
@@ -11,11 +10,11 @@ import {
   TestSuiteInfo,
   RetireEvent
 } from "vscode-test-adapter-api";
+import { DebugLoggingResolver, Logger } from "./core/helpers/logger";
 import { Log } from "vscode-test-adapter-util";
 import { TestType } from "./model/enums/test-type.enum";
 import { KarmaTestExplorer, TestResolver } from "./core/karma-test-explorer";
 import { TestExplorerConfiguration } from "./model/test-explorer-configuration";
-import * as vscode from "vscode";
 import { Debugger } from "./core/test-explorer/debugger";
 import { TestRetriever, TestRunEventEmitter } from "./core/test-explorer/test-run-event-emitter";
 import { KarmaEventListener } from "./core/integration/karma-event-listener";
@@ -25,6 +24,8 @@ import { SpecLocation, SpecLocator, SpecLocatorOptions } from './core/helpers/sp
 import { ConfigSetting } from "./model/enums/config-setting"
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./core/test-explorer/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./core/test-explorer/test-suite-organizer";
+import { KarmaCommandHandler } from "./core/karma/karma-command-handler";
+import * as vscode from "vscode";
 
 export class Adapter implements TestAdapter {
 
@@ -66,20 +67,6 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
-    const testRetriever: TestRetriever = (testId: string) => {
-      const test = this.loadedTestsById.get(testId);
-      return test?.type === TestType.Test ? test : undefined;
-    }
-    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
-      return this.specLocator?.getSpecLocation(suite, description) ?? [];
-    };
-    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter, testRetriever);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
-    const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
-    const testRunnerFactory = new TestRunnerFactory(karmaEventListener, specToTestSuiteMapper, this.logger);
-    const karmaRunner = testRunnerFactory.createTestRunner();
-
     const karmaServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
 
@@ -92,8 +79,26 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    const karmaServer = new KarmaServer(this.logger, karmaServerProcessLogger, karmaServerProcessLogger);
+    const karmaCommandHandler: KarmaCommandHandler = new KarmaCommandHandler(
+      this.logger,
+      karmaServerProcessLogger,
+      karmaServerProcessLogger);
 
+    const testRetriever: TestRetriever = (testId: string) => {
+      const test = this.loadedTestsById.get(testId);
+      return test?.type === TestType.Test ? test : undefined;
+    }
+    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
+      return this.specLocator?.getSpecLocation(suite, description) ?? [];
+    };
+    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter, testRetriever);
+    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
+    const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
+    const testRunnerFactory = new TestRunnerFactory(karmaCommandHandler, karmaEventListener, specToTestSuiteMapper, this.logger);
+    const karmaRunner = testRunnerFactory.createTestRunner();
+
+    const karmaServer = new KarmaServer(karmaCommandHandler, this.logger);
     const testResolver: TestResolver = (testSuiteId: string) => this.loadedTestsById.get(testSuiteId);
 
     this.testExplorer = new KarmaTestExplorer(
@@ -316,7 +321,7 @@ export class Adapter implements TestAdapter {
     if (reloadTriggerFiles.includes(savedFile)) {
       this.logger.info(`Reloading - monitored file changed: ${savedFile}`);
       await this.reload();
-      
+
     } else if (this.specLocator?.isSpecFile(savedFile)) {
       this.logger.info(`Reloading - spec file changed: ${savedFile}`);
       // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
