@@ -12,15 +12,15 @@ export class TestSuiteOrganizer {
     const originalTestSuitesByFile: Map<string, TestSuiteInfo> = new Map();
     const convertedTestFileSuitesByFile: Map<string, TestFileSuiteInfo> = new Map();
     const fileLessSpecsSuite: TestSuiteInfo[] = [];
-    // const unknownTopSuiteTests: TestInfo[] = [];
 
     tests.forEach(test => {
 
       if (test.type === TestType.Test) {  // FIXME: Should never be true. Use type system to eliminate need for check
         this.logger.warn(
-          `Got test with unknown top-level test suite: ${JSON.stringify(test)} - ` +
+          `Got test with unknown top-level test suite: ` +
+          `${JSON.stringify(test)} - ` +
           `Test will be ignored`);
-        // unknownTopSuiteTests.push(test);
+          
         return;
       }
       
@@ -29,11 +29,10 @@ export class TestSuiteOrganizer {
         fileLessSpecsSuite.push(test);
         return;
       }
-      
       const previousFileSuite: TestFileSuiteInfo | undefined = convertedTestFileSuitesByFile.get(test.file);
 
       if (!previousFileSuite) {
-        const convertedTestFileSuite: TestFileSuiteInfo = {
+        const convertedTestFileSuite: TestFileSuiteInfo = collapseSingleFolders ? this.createTestFileSuite(test.file) : {
           ...test,
           suiteType: TestSuiteType.File,
           file: test.file
@@ -41,39 +40,17 @@ export class TestSuiteOrganizer {
         convertedTestFileSuitesByFile.set(test.file, convertedTestFileSuite);
         originalTestSuitesByFile.set(test.file, test);
 
+      } else if (previousFileSuite.id === test.file) {
+        previousFileSuite.children.push(test);
+
       } else {
-        if (previousFileSuite.id === test.file) {
-          previousFileSuite.children.push(test);
-        } else {
-          const specFileName = basename(test.file);
-          const indexOfFileExtension = specFileName.indexOf('.');
-          const specFileRelativePath: string = relative(rootPath, test.file);
+        const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(test.file)!;
+        const multiTopLevelFileSuite: TestFileSuiteInfo = this.createTestFileSuite(test.file);
 
-          const fileNameWithoutExtension = indexOfFileExtension > 0
-            ? specFileName.substring(0, indexOfFileExtension)
-            : specFileName;  
+        multiTopLevelFileSuite.children.push(originalTestSuite);
+        multiTopLevelFileSuite.children.push(test);
 
-          const multiTopLevelFileSuite: TestFileSuiteInfo = {
-            type: TestType.Suite,
-            suiteType: TestSuiteType.File,
-            file: test.file,
-            line: 0,
-            id: test.file,
-            fullName: '', // To prevent being runnable with grep pattern of fullName
-            label: fileNameWithoutExtension,
-            testCount: 0,
-            debuggable: test.debuggable,
-            tooltip: specFileRelativePath,
-            children: []
-            // description: undefined,
-            // errored: false,
-            // message: undefined
-          };
-          const originalTestSuite: TestSuiteInfo = originalTestSuitesByFile.get(test.file)!;
-          multiTopLevelFileSuite.children.push(originalTestSuite);
-          multiTopLevelFileSuite.children.push(test);
-          convertedTestFileSuitesByFile.set(test.file, multiTopLevelFileSuite);
-        }
+        convertedTestFileSuitesByFile.set(test.file, multiTopLevelFileSuite);
       }
     });
 
@@ -94,21 +71,11 @@ export class TestSuiteOrganizer {
         file: '',
         line: undefined,
         testCount: 0,
-        message: `Could not determine the file for this test suite`,
-        // id: fileLessTestSuite.id,
-        // label: fileLessTestSuite.label,
-        // children: fileLessTestSuite.children,
-        // fullName: fileLessTestSuite.fullName,
-        // -----
-        // debuggable: fileLessTestSuite.debuggable,
-        // tooltip: fileLessTestSuite.tooltip,
-        // description: undefined,
-        // errored: false
+        message: `Could not determine the file for this test suite`
       };
       rootFolderSuite.children.push(fileLessTestFileSuite);
     });
     
-    // const totalTestCount = this.addTestCountsAndGetTotal(rootFolderSuite);
     this.logger.debug(() => `Rearranged ${convertedTestFileSuitesByFile.size} test files into folders`);
 
     this.sortTestTree(rootFolderSuite);
@@ -177,6 +144,28 @@ export class TestSuiteOrganizer {
       fullName: '', // To prevent being runnable with grep pattern of fullName
       label: folderName,
       tooltip: folderPath,
+      children: [],
+      testCount: 0
+    };
+  }
+
+  private createTestFileSuite(filePath: string): TestFileSuiteInfo {
+    const specFileName = basename(filePath);
+    const indexOfFileExtension = specFileName.indexOf('.');
+
+    const fileNameWithoutExtension = indexOfFileExtension > 0
+      ? specFileName.substring(0, indexOfFileExtension)
+      : specFileName;  
+
+    return {
+      type: TestType.Suite,
+      suiteType: TestSuiteType.File,
+      file: filePath,
+      line: 0,
+      id: filePath,
+      fullName: '', // To prevent being runnable with grep pattern of fullName
+      label: fileNameWithoutExtension,
+      tooltip: filePath,
       children: [],
       testCount: 0
     };

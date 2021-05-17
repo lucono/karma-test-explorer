@@ -92,7 +92,7 @@ export class KarmaTestExplorer {
 
       const totalTestCount = this.processTestCounts(testSuiteInfo, (testSuite, testCount) => {
         testSuite.testCount = testCount;
-        testSuite.description = `(${testCount} ${testCount === 1 ? 'test' : 'tests'})`;
+        testSuite.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
       });
 
       this.logger.info(totalTestCount > 0
@@ -166,6 +166,7 @@ export class KarmaTestExplorer {
       const testSuite: TestSuiteInfo | undefined = test?.type === TestType.Suite ? test : undefined;
 
       if (!testSuite) {
+        this.logger.debug(() => `Lookup found no test suite with id: ${testSuiteId}`);
         continue;
       }
       const testCounts: { [key in TestResult]?: number } = testCountsBySuiteId.get(testSuiteId)!;
@@ -222,7 +223,8 @@ export class KarmaTestExplorer {
 
     if (testSuite.children) {
       testSuite.children.forEach(testOrSuite => {
-        totalTestCount += testOrSuite.type === TestType.Test ? 1
+        totalTestCount += testOrSuite.type === TestType.Test
+          ? 1
           : this.processTestCounts(testOrSuite, testCountProcessor);
       });
     }
