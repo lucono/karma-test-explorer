@@ -177,28 +177,26 @@ export class KarmaTestExplorer {
       const totalSuiteTestCount = testSuite.testCount;
       const executedSuiteTestCount = failedTestCount + passedTestCount + skippedTestCount;
       const suiteExecutedAllTests = executedSuiteTestCount === totalSuiteTestCount;
+      const totalTestCountDescription = totalSuiteTestCount === 1 ? `1 test` : `${totalSuiteTestCount} tests`;
 
-      if (suiteExecutedAllTests) {
-        const totalTestCountDescription = totalSuiteTestCount === 1 ? `1 test` : `${totalSuiteTestCount} tests`;
+      const testResultDescription = !suiteExecutedAllTests ? `${totalTestCountDescription}`
+        : failedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all failed`
+        : passedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all passed`
+        : skippedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all skipped`
+        : `${totalTestCountDescription}` +
+          (failedTestCount > 0 ? `, ${failedTestCount} failed` : ``) +
+          (passedTestCount > 0 ? `, ${passedTestCount} passed` : ``) +
+          (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
+      
+      const testEvent: TestSuiteEvent = {
+        type: TestType.Suite,
+        suite: testSuiteId,
+        state: TestSuiteState.Completed,
+        description: `(${testResultDescription})`,
+        tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
+      };
 
-        const testResultDescription = failedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all failed`
-          : passedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all passed`
-          : skippedTestCount === totalSuiteTestCount ? `${totalTestCountDescription}, all skipped`
-          : `${totalTestCountDescription}` +
-            (failedTestCount > 0 ? `, ${failedTestCount} failed` : ``) +
-            (passedTestCount > 0 ? `, ${passedTestCount} passed` : ``) +
-            (skippedTestCount > 0 ? `, ${skippedTestCount} skipped` : ``);
-        
-        const testEvent: TestSuiteEvent = {
-          type: TestType.Suite,
-          suite: testSuiteId,
-          state: TestSuiteState.Completed,
-          description: `(${testResultDescription})`,
-          tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
-        };
-
-        this.eventEmitterInterface.fire(testEvent);
-      }
+      this.eventEmitterInterface.fire(testEvent);
     }
   }
 

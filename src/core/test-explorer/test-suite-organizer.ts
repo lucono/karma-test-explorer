@@ -1,6 +1,6 @@
 import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
 import { Logger } from "../helpers/logger";
-import { TestInfo, TestSuiteInfo, TestFolderSuiteInfo, TestFileSuiteInfo } from "vscode-test-adapter-api";
+import { TestInfo, TestSuiteInfo, TestFolderSuiteInfo, TestFileSuiteInfo, AnyTestInfo } from "vscode-test-adapter-api";
 import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
 
 export class TestSuiteOrganizer {
@@ -110,10 +110,10 @@ export class TestSuiteOrganizer {
   }
 
   private compareTests(
-    test1: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo,
-    test2: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number
+    test1: AnyTestInfo,
+    test2: AnyTestInfo): number
   {
-    const computeSuiteRank = (test: TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo): number =>
+    const computeSuiteRank = (test: AnyTestInfo): number =>
       'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 0
         : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 1
         : test.type === TestType.Suite ? 2
@@ -123,9 +123,9 @@ export class TestSuiteOrganizer {
     const suite2Rank = computeSuiteRank(test2);
 
     return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
-      : test1.label < test2.label ? -1
-      : test1.label > test2.label ? 1
-      : 0;
+      : test1.type === TestType.Test && test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
+      : test1.label.toLocaleLowerCase() < test2.label.toLocaleLowerCase() ? -1
+      : 1;
   }
 
   private createFolderSuite(path: string): TestFolderSuiteInfo {
