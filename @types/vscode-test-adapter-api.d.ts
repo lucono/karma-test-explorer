@@ -30,4 +30,6 @@ declare module "vscode-test-adapter-api" {
     fullName: string;
     // parent: TestSuiteInfo;
   }
+
+  export type AnyTestInfo = TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo;
 }

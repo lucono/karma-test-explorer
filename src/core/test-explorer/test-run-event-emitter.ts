@@ -45,12 +45,15 @@ export class TestRunEventEmitter {
 
       if (decorations.length === 0 && test?.line !== undefined) {
         const { file, line } = test;
+        const hover = `${testResult.fullName} \n` +
+          `-------- Failure: --------\n` +
+          `${message || 'Failed'}`;
 
         decorations = [{
           line,
           file,
-          message: `Failed`,
-          hover: `/* Failed: ${testResult.fullName} */`
+          message: message || `Failed`,
+          hover: `\`${hover.replace(/`/g, '\\`')}\``
         }];
       }
     }

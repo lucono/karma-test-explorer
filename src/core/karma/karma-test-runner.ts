@@ -1,6 +1,6 @@
 import { Logger } from "../helpers/logger";
 import { KarmaEventListener, TestCapture } from "../integration/karma-event-listener";
-import { TestFileSuiteInfo, TestFolderSuiteInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { AnyTestInfo, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "./test-runner";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "../test-explorer/spec-response-to-test-suite-info-mapper";
@@ -11,7 +11,7 @@ import { DeferredPromise } from "../helpers/deferred-promise";
 import { Execution } from "../helpers/execution";
 import { TestResult } from "../../model/enums/test-status.enum";
 
-const SKIP_ALL_TESTS_PATTERN = "$#%#";
+const SKIP_ALL_TESTS_PATTERN = "$^";
 const RUN_ALL_TESTS_PATTERN = "";
 
 export type TestResults = { [key in TestResult]: TestSuiteInfo };
@@ -124,7 +124,7 @@ export class KarmaTestRunner implements TestRunner {
     };
   }
 
-  private toRunnableTests(tests: (TestInfo | TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
+  private toRunnableTests(tests: AnyTestInfo[]): (TestInfo | TestSuiteInfo)[] {
     const runnableTests: (TestInfo | TestSuiteInfo)[] = [];
 
     tests.forEach(test => {
