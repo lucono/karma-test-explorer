@@ -4,7 +4,8 @@ import { TestExplorerConfiguration } from "../../model/test-explorer-configurati
 import {stopper as karmaStopper } from "karma";
 import { Execution } from "../helpers/execution";
 import { DeferredPromise } from "../helpers/deferred-promise";
-import { KarmaCommandHandler } from "./karma-command-handler";
+import { ServerCommandHandler } from "./server-command-handler";
+// import { KarmaCommandHandler } from "./karma-command-handler";
 
 export class KarmaServer {
   private serverProcess?: CommandlineProcessHandler;
@@ -13,7 +14,7 @@ export class KarmaServer {
   private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
-    private readonly karmaCommandHandler: KarmaCommandHandler,
+    private readonly serverCommandHandler: ServerCommandHandler,
     private readonly logger: Logger)
   { }
 
@@ -44,7 +45,7 @@ export class KarmaServer {
   
     this.logger.info(`Starting karma server`);
 
-    const karmaServerProcess = this.karmaCommandHandler.karmaStart(karmaPort, karmaSocketPort, config);
+    const karmaServerProcess = this.serverCommandHandler.start(karmaPort, karmaSocketPort, config);
 
 
     // const testExplorerEnvironment: { [key: string]: string} = {

@@ -2,13 +2,13 @@ import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from '../../model/test-explorer-configuration';
 import { KarmaRunConfig, TestRunExecutor } from './test-run-executor';
 import { request as httpRequest, RequestOptions } from "http";
-import { KarmaCommandHandler } from "./karma-command-handler";
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
+import { ServerCommandHandler } from "./server-command-handler";
 
 export class KarmaTestExecutor implements TestRunExecutor {
 
   public constructor(
-    private readonly karmaCommandHandler: KarmaCommandHandler,
+    private readonly serverCommandHandler: ServerCommandHandler,
     private readonly logger: Logger
   ) {}
 
@@ -33,7 +33,7 @@ export class KarmaTestExecutor implements TestRunExecutor {
     karmaRunConfig: KarmaRunConfig,
     explorerConfig: TestExplorerConfiguration): Promise<void>
   {
-    const karmaRunProcess: CommandlineProcessHandler = this.karmaCommandHandler.karmaRun(
+    const karmaRunProcess: CommandlineProcessHandler = this.serverCommandHandler.run(
       karmaRunConfig.port,
       karmaRunConfig.clientArgs,
       explorerConfig);

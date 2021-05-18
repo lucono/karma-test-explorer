@@ -24,8 +24,10 @@ import { SpecLocation, SpecLocator, SpecLocatorOptions } from './core/helpers/sp
 import { ConfigSetting } from "./model/enums/config-setting"
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./core/test-explorer/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./core/test-explorer/test-suite-organizer";
-import { KarmaCommandHandler } from "./core/karma/karma-command-handler";
+// import { KarmaCommandHandler } from "./core/karma/karma-command-handler";
 import * as vscode from "vscode";
+import { ServerCommandHandler } from "./core/karma/server-command-handler";
+import { ServerCommandHandlerFactory } from "./core/karma/server-command-handler-factory";
 
 export class Adapter implements TestAdapter {
 
@@ -79,7 +81,8 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    const karmaCommandHandler: KarmaCommandHandler = new KarmaCommandHandler(
+    const serverCommandHandlerFactory: ServerCommandHandlerFactory = new ServerCommandHandlerFactory(
+      this.config.projectRootPath,
       this.logger,
       karmaServerProcessLogger,
       karmaServerProcessLogger);
@@ -95,10 +98,11 @@ export class Adapter implements TestAdapter {
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
     const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
-    const testRunnerFactory = new TestRunnerFactory(karmaCommandHandler, karmaEventListener, specToTestSuiteMapper, this.logger);
+    const serverCommandHandler: ServerCommandHandler = serverCommandHandlerFactory.createServerCommandHandler();
+    const testRunnerFactory = new TestRunnerFactory(serverCommandHandler, karmaEventListener, specToTestSuiteMapper, this.logger);
     const karmaRunner = testRunnerFactory.createTestRunner();
 
-    const karmaServer = new KarmaServer(karmaCommandHandler, this.logger);
+    const karmaServer = new KarmaServer(serverCommandHandler, this.logger);
     const testResolver: TestResolver = (testSuiteId: string) => this.loadedTestsById.get(testSuiteId);
 
     this.testExplorer = new KarmaTestExplorer(

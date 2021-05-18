@@ -56,18 +56,18 @@ function TestExplorerCustomReporter(
       fullResponse = spec;
     }
 
-    const result = new SpecCompleteResponse(
-      spec.id,
-      spec.log,
-      spec.suite,
-      spec.description,
-      spec.fullName,
+    const result: SpecCompleteResponse = {
+      id: spec.id,
+      failureMessages: spec.log,
+      suite: spec.suite,
+      description: spec.description,
+      fullName: spec.fullName,
       status,
-      spec.time,
-      undefined,
-      undefined,
+      timeSpentInMilliseconds: spec.time,
       fullResponse
-    );
+      // filePath,
+      // line,
+    };
 
     emitEvent("spec_complete", result);
   };

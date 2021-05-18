@@ -24,7 +24,7 @@ export class KarmaConfigurator {
     config.browserNoActivityTimeout = undefined;
     config.singleRun = false;
     config.customLaunchers = {
-      [ CHROME_CUSTOM_LAUNCHER ]: {
+      [CHROME_CUSTOM_LAUNCHER]: {
         base: "ChromeHeadless",
         debug: true,
         flags: [

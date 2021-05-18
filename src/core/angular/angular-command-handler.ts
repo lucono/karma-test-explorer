@@ -1,14 +1,16 @@
 import { SpawnOptions } from "child_process";
 import { existsSync } from "fs";
-import { join } from "path";
-import { silent } from "resolve-global";
-import { window } from "vscode";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
 import { Logger } from "../helpers/logger";
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
-import { ServerCommandHandler } from "./server-command-handler";
+import { join } from "path";
+import { silent } from "resolve-global";
+import { window } from "vscode";
+import { AngularProject } from "./angular-project";
+import { getDefaultAngularProjectConfig } from "./angular-config-loader";
+import { ServerCommandHandler } from "../karma/server-command-handler";
 
-export class KarmaCommandHandler implements ServerCommandHandler {
+export class AngularCommandHandler implements ServerCommandHandler {
   public constructor(
     private readonly logger: Logger,
     private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info.bind(logger),
@@ -20,7 +22,7 @@ export class KarmaCommandHandler implements ServerCommandHandler {
     karmaSocketPort: number,
     config: TestExplorerConfiguration): CommandlineProcessHandler
   {
-    return this.execute('start', config, karmaPort, karmaSocketPort);
+    return this.execute('test', config, karmaPort, karmaSocketPort);
   }
 
   public run(
@@ -32,7 +34,7 @@ export class KarmaCommandHandler implements ServerCommandHandler {
   }
 
   private execute(
-    karmaOperation: 'start' | 'run',
+    angularOperation: 'test' | 'run',
     config: TestExplorerConfiguration,
     karmaPort: number,
     karmaSocketPort?: number,
@@ -57,50 +59,48 @@ export class KarmaCommandHandler implements ServerCommandHandler {
     };
 
     const baseKarmaConfigFilePath = require.resolve(config.baseKarmaConfFilePath);
-    const karmaProcessExecutable = config.karmaProcessExecutable;
-
-    const localKarmaPath = join(config.projectRootPath, "node_modules", "karma", "bin", "karma");
-    const isKarmaInstalledLocally = existsSync(localKarmaPath);
-    const isKarmaInstalledGlobally = silent("karma") !== undefined;
+    const angularProcessExecutable = config.karmaProcessExecutable;
+    const localAngularPath = join(config.projectRootPath, "node_modules", "@angular", "cli", "bin", "ng");
+    const isAngularInstalledLocally = existsSync(localAngularPath);
+    const isAngularInstalledGlobally = silent("@angular/cli") !== undefined;
 
     let command: string;
     let processArguments: string[] = [];
 
-    if (karmaProcessExecutable) {
-      command = karmaProcessExecutable;
+    if (angularProcessExecutable) {
+      command = angularProcessExecutable;
 
-    } else if (isKarmaInstalledLocally) {
+    } else if (isAngularInstalledLocally) {
       command = "npx";
-      processArguments = [ "karma" ];
+      processArguments.push("ng");
 
-    } else if (isKarmaInstalledGlobally) {
-      command = "karma";
+    } else if (isAngularInstalledGlobally) {
+      command = "ng";
 
     } else {
-      const errorMessage = `Karma does not seem to be installed. Please install it and try again.`;
+      const errorMessage = `@angular/cli does not seem to be installed. Please install it and try again.`;
       window.showErrorMessage(errorMessage);
       throw new Error(errorMessage);
-    }
-
-    if (karmaProcessExecutable) {
-      command = karmaProcessExecutable;
-      processArguments = [];
     }
 
     const escapedClientArgs: string[] = clientArgs
       ? clientArgs.map(arg => arg.replace(/[\W ]/g, "\\$&"))
       : [];
 
+    const angularProject: AngularProject = getDefaultAngularProjectConfig(config.projectRootPath);
+
     processArguments = [
       ...processArguments,
-      karmaOperation,
-      baseKarmaConfigFilePath,
-      `--port=${karmaPort}`,
+      angularOperation,
+      angularProject.name,
+      `--karma-config=${baseKarmaConfigFilePath}`,
+      `--progress=false`,
+      `--no-watch`,
       "--",
       ...escapedClientArgs
     ];
 
-    const karmaProcess = new CommandlineProcessHandler(
+    const angularProcess = new CommandlineProcessHandler(
       this.logger, 
       command, 
       processArguments, 
@@ -108,6 +108,7 @@ export class KarmaCommandHandler implements ServerCommandHandler {
       (data) => this.serverProcessLogger(data, karmaPort),
       (data) => this.serverProcessErrorLogger(data, karmaPort));
 
-    return karmaProcess;
+    return angularProcess;
   }
 }
+  
