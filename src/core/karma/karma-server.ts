@@ -1,10 +1,11 @@
 import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
 import { Logger } from "../helpers/logger";
 import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
-import {stopper as karmaStopper } from "karma";
+import { stopper as karmaStopper } from "karma";
 import { Execution } from "../helpers/execution";
 import { DeferredPromise } from "../helpers/deferred-promise";
 import { ServerCommandHandler } from "./server-command-handler";
+import { ConfigSetting } from "../../model/enums/config-setting";
 // import { KarmaCommandHandler } from "./karma-command-handler";
 
 export class KarmaServer {
@@ -100,10 +101,15 @@ export class KarmaServer {
 
       if (wasUnexpectedServerTermination) {
         const restartDelay = config.serverCrashRestartDelaySecs;
+
         if (restartDelay >= 0) {
-          this.logger.warn(  // FIXME: Add `window.showWarningMessage()` including note about `config.serverCrashRestartDelaySecs` setting
-            `Karma server terminated unexpectedly - ` +
-            `Will attempt restart in ${restartDelay} sec(s)`);
+          const message = `The Karma server terminated unexpectedly. ` +
+            `Attempting restart in ` + 
+            (restartDelay === 1 ? '1 sec' : `${restartDelay} secs`) + `. ` +
+            `(The restart delay can be adjusted using the ` +
+            `${ConfigSetting.ServerCrashRestartDelaySecs} config option)`;
+
+          this.logger.warn(message);
           this.scheduleFutureStartup(restartDelay, karmaPort, karmaSocketPort, config);
         }
       }
