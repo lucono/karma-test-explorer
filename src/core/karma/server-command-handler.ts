@@ -1,16 +1,13 @@
-import { TestExplorerConfiguration } from "../../model/test-explorer-configuration";
-import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
+import { CommandlineProcessHandler } from "../../a-new-structure/util/commandline-process-handler";
 
 export interface ServerCommandHandler {
   start: (
     karmaPort: number,
-    karmaSocketPort: number,
-    config: TestExplorerConfiguration) => CommandlineProcessHandler;
+    karmaSocketPort: number) => CommandlineProcessHandler;
     
   run: (
     karmaPort: number,
-    clientArgs: string[],
-    config: TestExplorerConfiguration) => CommandlineProcessHandler;
+    clientArgs: string[]) => CommandlineProcessHandler;
 }
 
 

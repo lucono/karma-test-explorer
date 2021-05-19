@@ -1,11 +1,11 @@
-import { TestRunner } from './test-runner';
-import { KarmaTestRunner } from './karma-test-runner';
-import { Logger } from "../helpers/logger";
-import { KarmaEventListener } from "../integration/karma-event-listener";
-import { SpecResponseToTestSuiteInfoMapper } from '../test-explorer/spec-response-to-test-suite-info-mapper';
-import { TestRunExecutor } from './test-run-executor';
+import { TestRunner } from '../../a-new-structure/api/test-runner';
+import { KarmaTestRunner } from '../../a-new-structure/frameworks/karma/karma-test-runner';
+import { Logger } from "../../a-new-structure/util/logger";
+import { KarmaEventListener } from "../../a-new-structure/frameworks/karma/integration/karma-event-listener";
+import { SpecResponseToTestSuiteInfoMapper } from '../../a-new-structure/frameworks/karma/integration/spec-response-to-test-suite-info-mapper';
 import { KarmaTestExecutor } from './karma-test-executor';
 import { ServerCommandHandler } from './server-command-handler';
+import { TestRunExecutor } from '../../a-new-structure/api/test-run-executor';
 
 export class TestRunnerFactory {
 

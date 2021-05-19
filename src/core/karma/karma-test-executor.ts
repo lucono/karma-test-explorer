@@ -1,19 +1,20 @@
-import { Logger } from "../helpers/logger";
-import { TestExplorerConfiguration } from '../../model/test-explorer-configuration';
+import { Logger } from "../../a-new-structure/util/logger";
+import { ExtensionConfig } from '../../a-new-structure/core/extension-config';
 import { KarmaRunConfig, TestRunExecutor } from './test-run-executor';
 import { request as httpRequest, RequestOptions } from "http";
-import { CommandlineProcessHandler } from "../integration/commandline-process-handler";
+import { CommandlineProcessHandler } from "../../a-new-structure/util/commandline-process-handler";
 import { ServerCommandHandler } from "./server-command-handler";
 
 export class KarmaTestExecutor implements TestRunExecutor {
 
   public constructor(
     private readonly serverCommandHandler: ServerCommandHandler,
+    private readonly explorerConfig: ExtensionConfig,
     private readonly logger: Logger
   ) {}
 
-  public async executeTestRun(karmaRunConfig: KarmaRunConfig, explorerConfig: TestExplorerConfiguration): Promise<void> {
-    const karmaProcessExecutable = explorerConfig.karmaProcessExecutable;
+  public async executeTestRun(karmaRunConfig: KarmaRunConfig): Promise<void> {
+    const karmaProcessExecutable = this.explorerConfig.karmaProcessExecutable;
     let testRunCompletion: Promise<void> | undefined;
 
     if (karmaProcessExecutable) {
@@ -21,7 +22,7 @@ export class KarmaTestExecutor implements TestRunExecutor {
         `Using command line test executor '${karmaProcessExecutable}' ` +
         `for execution request: ${JSON.stringify(karmaRunConfig)}`);
 
-      testRunCompletion = this.executeCommandLineTestRun(karmaRunConfig, explorerConfig);
+      testRunCompletion = this.executeCommandLineTestRun(karmaRunConfig);
 
     } else {
       testRunCompletion = this.executeHttpClientTestRun(karmaRunConfig);
@@ -29,16 +30,13 @@ export class KarmaTestExecutor implements TestRunExecutor {
     return testRunCompletion;
   }
 
-  private async executeCommandLineTestRun(
-    karmaRunConfig: KarmaRunConfig,
-    explorerConfig: TestExplorerConfiguration): Promise<void>
+  private async executeCommandLineTestRun(karmaRunConfig: KarmaRunConfig): Promise<void>
   {
     const karmaRunProcess: CommandlineProcessHandler = this.serverCommandHandler.run(
       karmaRunConfig.port,
-      karmaRunConfig.clientArgs,
-      explorerConfig);
+      karmaRunConfig.clientArgs);
     
-    return karmaRunProcess.futureExit();
+    return karmaRunProcess.execution().stopped;
   }
 
   private async executeHttpClientTestRun(karmaRunConfig: KarmaRunConfig): Promise<void> {

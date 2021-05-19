@@ -1,9 +1,9 @@
-import { Logger } from "../helpers/logger";
+import { Logger } from "../../a-new-structure/util/logger";
 import { ServerCommandHandler } from './server-command-handler';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { AngularCommandHandler } from '../angular/angular-command-handler';
-import { KarmaCommandHandler } from './karma-command-handler';
+import { AngularTestServerExecutor } from '../../a-new-structure/frameworks/angular/angular-test-server-executor';
+import { KarmaCommandLineExecutor } from '../../a-new-structure/frameworks/karma/karma-command-line-executor';
 
 export class ServerCommandHandlerFactory {
 
@@ -21,7 +21,7 @@ export class ServerCommandHandlerFactory {
     const isAngularProject: boolean = (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
 
     return isAngularProject
-      ? new AngularCommandHandler(this.logger, this.serverProcessErrorLogger, this.serverProcessErrorLogger)
-      : new KarmaCommandHandler(this.logger, this.serverProcessLogger, this.serverProcessErrorLogger);
+      ? new AngularTestServerExecutor(this.logger, this.serverProcessErrorLogger, this.serverProcessErrorLogger)
+      : new KarmaCommandLineExecutor(this.logger, this.serverProcessLogger, this.serverProcessErrorLogger);
   }
 }
