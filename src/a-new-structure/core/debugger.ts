@@ -1,4 +1,4 @@
-import { Logger } from "../../../util/logger";
+import { Logger } from "../util/logger";
 import * as vscode from "vscode";
 
 export class Debugger {

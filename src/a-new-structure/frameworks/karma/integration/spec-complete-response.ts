@@ -1,4 +1,4 @@
-import { TestResult } from "../../../../model/enums/test-status.enum";
+import { TestResult } from "../../../api/test-result";
 
 export interface SpecCompleteResponse {
     readonly id: string;

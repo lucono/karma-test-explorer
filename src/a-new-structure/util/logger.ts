@@ -1,5 +1,5 @@
 import { Log } from "vscode-test-adapter-util";
-import { TestResult } from "../../model/enums/test-status.enum";
+import { TestResult } from "../api/test-result";
 import { LogLevel } from "../core/log-level";
 
 declare type LogAction = (...msg: any[]) => void;

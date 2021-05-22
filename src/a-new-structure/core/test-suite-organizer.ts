@@ -1,8 +1,7 @@
-import { TestType, TestSuiteType } from "../../model/enums/test-type.enum";
 import { Logger } from "../util/logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
-import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo } from "../api/test-info";
+import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
 
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}

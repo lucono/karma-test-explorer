@@ -7,7 +7,7 @@ import { SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../../../api/execution";
-import { TestResult } from "../../../../model/enums/test-status.enum";
+import { TestResult } from "../../../api/test-result";
 import * as express from "express"
 
 const DEFAULT_SOCKET_PORT = 9999;
@@ -122,7 +122,7 @@ export class KarmaEventListener {
       this.currentSpecs = specs;
       this.isListening = true;
 
-      await testExecution.stopped;
+      await testExecution.stopped();
 
       const capturedTests: TestCapture = {
         [TestResult.Failed]: this.failedSpecs,

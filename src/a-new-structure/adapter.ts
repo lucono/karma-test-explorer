@@ -12,21 +12,21 @@ import {
 } from "vscode-test-adapter-api";
 import { DebugLoggingResolver, Logger } from "./util/logger";
 import { Log } from "vscode-test-adapter-util";
-import { TestType } from "../model/enums/test-type.enum";
 import { TestExplorer, TestResolver } from "./core/test-explorer";
 import { ExtensionConfig } from "./core/extension-config";
-import { Debugger } from "./frameworks/karma/integration/debugger";
-import { TestRetriever, TestRunEventEmitter } from "./frameworks/karma/integration/test-run-event-emitter";
+import { Debugger } from "./core/debugger";
+import { TestRetriever } from "./frameworks/karma/integration/test-run-event-emitter";
 import { KarmaEventListener } from "./frameworks/karma/integration/karma-event-listener";
-import { TestRunnerFactory } from "../core/karma/test-runner-factory";
 import { SpecLocation, SpecLocator, SpecLocatorOptions } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./core/test-suite-organizer";
-import * as vscode from "vscode";
-import { ServerCommandHandler } from "../core/karma/server-command-handler";
-import { ServerCommandHandlerFactory } from "../core/karma/server-command-handler-factory";
+import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder } from "vscode";
 import { KarmaServer } from "./frameworks/karma/karma-test-server";
+import { TestType } from "./api/test-infos";
+import { KarmaFactory } from "./frameworks/karma/karma-factory";
+import { ServerProcessLogger } from "./frameworks/karma/karma-command-line-test-server-executor";
+import { TestLoadEvent, TestRunEvent } from "./api/test-events";
 
 export class Adapter implements TestAdapter {
 
@@ -36,31 +36,31 @@ export class Adapter implements TestAdapter {
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
   private disposables: { dispose(): void }[] = [];
-  private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
-  private readonly testLoadEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
-  private readonly testRunEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
-  private readonly autorunEmitter = new vscode.EventEmitter<void>();
+  private readonly retireEmitter = new EventEmitter<RetireEvent>();
+  private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
+  private readonly testRunEmitter = new EventEmitter<TestRunEvent>();
+  private readonly autorunEmitter = new EventEmitter<void>();
   private readonly testExplorer: TestExplorer;
   private readonly debugger: Debugger;
   private readonly logger: Logger;
 
-  get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
+  get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
     return this.testLoadEmitter.event;
   }
 
-  get testStates(): vscode.Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
+  get testStates(): Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
     return this.testRunEmitter.event;
   }
 
-  get retire(): vscode.Event<RetireEvent> {
+  get retire(): Event<RetireEvent> {
       return this.retireEmitter.event;
   }
 
-  get autorun(): vscode.Event<void> | undefined {
+  get autorun(): Event<void> | undefined {
     return this.autorunEmitter.event;
   }
 
-  constructor(public readonly workspace: vscode.WorkspaceFolder, private readonly configPrefix: string, log: Log) {
+  constructor(public readonly workspaceFolder: WorkspaceFolder, private readonly configPrefix: string, log: Log) {
     const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
     this.logger = new Logger(log, debugModeResolver);
 
@@ -68,7 +68,7 @@ export class Adapter implements TestAdapter {
 
     this.loadConfig(configPrefix);
 
-    const karmaServerProcessLogger = (data: string, serverPort: number) => {
+    const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
 
       if (this.testExplorer.isTestRunning()) {
@@ -80,31 +80,34 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    const serverCommandHandlerFactory: ServerCommandHandlerFactory = new ServerCommandHandlerFactory(
-      this.config.projectRootPath,
-      this.logger,
-      karmaServerProcessLogger,
-      karmaServerProcessLogger);
-
     const testRetriever: TestRetriever = (testId: string) => {
       const test = this.loadedTestsById.get(testId);
       return test?.type === TestType.Test ? test : undefined;
     }
+
+    const factory = new KarmaFactory(
+      this.config,
+      this.testRunEmitter,
+      testRetriever,
+      this.logger,
+      karmaServerProcessLogger);
+
     const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
       return this.specLocator?.getSpecLocation(suite, description) ?? [];
     };
-    const testRunEventEmitter = new TestRunEventEmitter(this.testRunEmitter, testRetriever);
+    const testRunEventEmitter = factory.createTestRunEmitter();
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
     const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
-    const serverCommandHandler: ServerCommandHandler = serverCommandHandlerFactory.createServerCommandHandler();
-    const testRunnerFactory = new TestRunnerFactory(serverCommandHandler, karmaEventListener, specToTestSuiteMapper, this.logger);
-    const karmaRunner = testRunnerFactory.createTestRunner();
-    const karmaServer = new KarmaServer(serverCommandHandler, this.logger);
+    const testServerExecutor = factory.createTestServerExecutor();
+    const testRunExecutor = factory.createTestRunExecutor();
+    const testRunner = factory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
+    const testServer = new KarmaServer(testServerExecutor, this.logger);
     const testResolver: TestResolver = (testSuiteId: string) => this.loadedTestsById.get(testSuiteId);
 
     this.testExplorer = new TestExplorer(
-      karmaServer, karmaRunner,
+      testServer,
+      testRunner,
       karmaEventListener,
       this.testRunEmitter,
       testSuiteOrganizer,
@@ -116,8 +119,8 @@ export class Adapter implements TestAdapter {
     this.disposables.push(this.testLoadEmitter);
     this.disposables.push(this.testRunEmitter);
     this.disposables.push(this.autorunEmitter);
-    this.disposables.push(vscode.workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+    this.disposables.push(workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
+    this.disposables.push(workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
   }
 
   public async load(): Promise<void> {
@@ -225,7 +228,7 @@ export class Adapter implements TestAdapter {
   }
 
   public async debug(tests: string[]): Promise<void> {
-    await this.debugger.manageVSCodeDebuggingSession(this.workspace, this.config.debuggerConfig);
+    await this.debugger.manageVSCodeDebuggingSession(this.workspaceFolder, this.config.debuggerConfig);
     await this.run(tests);
   }
 
@@ -267,8 +270,8 @@ export class Adapter implements TestAdapter {
   }
 
   private loadConfig(configPrefix: string) {
-    const config = vscode.workspace.getConfiguration(configPrefix, this.workspace.uri);
-    this.config = new ExtensionConfig(config, this.workspace.uri.path, this.logger);
+    const config = workspace.getConfiguration(configPrefix, this.workspaceFolder.uri);
+    this.config = new ExtensionConfig(config, this.workspaceFolder.uri.path, this.logger);
   }
 
   private loadTestInfo(testFiles: string[], excludeFiles?: string[]): SpecLocator {
@@ -281,11 +284,11 @@ export class Adapter implements TestAdapter {
     return new SpecLocator(testFiles, specLocatorOptions);
   }
 
-  private handleConfigurationChange = async (configChangeEvent: vscode.ConfigurationChangeEvent): Promise<void> => {
+  private handleConfigurationChange = async (configChangeEvent: ConfigurationChangeEvent): Promise<void> => {
     this.logger.info(`Configuration changed`);
 
     const hasRelevantSettingsChange = Object.values(ConfigSetting).some(setting => {
-      const settingChanged = configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspace.uri);
+      const settingChanged = configChangeEvent.affectsConfiguration(`${this.configPrefix}.${setting}`, this.workspaceFolder.uri);
       if (settingChanged) {
         this.logger.debug(() => `Relevant changed config setting: ${setting}`);
       }
@@ -301,7 +304,7 @@ export class Adapter implements TestAdapter {
     await this.reload();
   }
 
-  private handleDocumentSaved = async (document:vscode.TextDocument): Promise<void> => {
+  private handleDocumentSaved = async (document: TextDocument): Promise<void> => {
     const savedFile = document.uri.fsPath;
 
     this.logger.debug(() => `Document saved: ${savedFile}`);

@@ -1,8 +1,8 @@
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { SpecLocation } from "../../../util/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
-import { TestType } from "../../../../model/enums/test-type.enum";
 import { Logger } from "../../../util/logger";
+import { TestType } from "../../../api/test-infos";
 
 // FIXME: Move to interface in spec-locator module
 export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];

@@ -1,6 +1,6 @@
-import { TestResult } from "../../../../model/enums/test-status.enum";
-import { TestRunStatus } from "../../../core/test-run-status";
-import { SpecCompleteResponse } from "./spec-complete-response";
+import { TestResult } from "../../api/test-result";
+import { TestRunStatus } from "./test-run-status";
+import { SpecCompleteResponse } from "../karma/integration/spec-complete-response";
 import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";

@@ -1,5 +1,5 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { TestResults } from "../frameworks/karma/karma-test-runner";
+import { TestResults } from "./test-result";
 
 export interface TestRunner {
 

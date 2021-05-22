@@ -1,57 +1,60 @@
 import { SpawnOptions } from "child_process";
 import { existsSync } from "fs";
-import { ExtensionConfig } from "../../core/extension-config";
+// import { ExtensionConfig } from "../../core/extension-config";
 import { Logger } from "../../util/logger";
 import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
 import { join } from "path";
 import { silent } from "resolve-global";
 import { window } from "vscode";
 import { AngularProject } from "./angular-project";
-import { getDefaultAngularProject } from "./angular-config-loader";
-import { TestServerExecutor } from "../../api/test-server-executor";
+// import { getDefaultAngularProject } from "./angular-config-loader";
+import { ServerStopExecutor, TestServerExecutor } from "../../api/test-server-executor";
 import { Execution } from "../../api/execution";
+
+export interface AngularTestServerExecutorOptions {
+  environment: { [key: string]: string | undefined };
+  angularProcessCommand?: string;
+  serverProcessLogger?: (data: string, serverPort: number) => void;
+  serverProcessErrorLogger?: (data: string, serverPort: number) => void;
+}
 
 export class AngularTestServerExecutor implements TestServerExecutor {
   public constructor(
-    private readonly config: ExtensionConfig,
-    private readonly logger: Logger,
-    private readonly serverProcessLogger: (data: string, serverPort: number) => void = logger.info.bind(logger),
-    private readonly serverProcessErrorLogger: (data: string, serverPort: number) => void = logger.error.bind(logger))
+    private readonly angularProject: AngularProject,
+    private readonly workspaceRootPath: string,
+    private readonly baseKarmaConfFile: string,
+    private readonly options: AngularTestServerExecutorOptions,
+    private readonly logger: Logger)
   {}
 
   public executeServerStart(
     karmaPort: number,
-    karmaSocketPort?: number): Execution
+    karmaSocketPort: number): Execution<ServerStopExecutor>
   {
-    const environment: { [key: string]: string } = {
-      ...process.env,
-      ...this.config.envFileEnvironment,
-      ...this.config.env,
+    const env: { [key: string]: string } = {
+      ...this.options.environment,
+      userKarmaConfigPath: this.angularProject.karmaConfigPath,
       karmaPort: `${karmaPort}`,
-      userKarmaConfigPath: this.config.userKarmaConfFilePath
+      karmaSocketPort: `${karmaSocketPort}`
     };
-
-    if (karmaSocketPort) {
-      environment.karmaSocketPort = `${karmaSocketPort}`;
-    }
 
     const spawnOptions: SpawnOptions = {
-      cwd: this.config.projectRootPath,
+      cwd: this.angularProject.rootPath,
       shell: true,
-      env: environment
+      env
     };
 
-    const baseKarmaConfigFilePath = require.resolve(this.config.baseKarmaConfFilePath);
-    const angularProcessExecutable = this.config.karmaProcessExecutable;
-    const localAngularPath = join(this.config.projectRootPath, "node_modules", "@angular", "cli", "bin", "ng");
+    const baseKarmaConfigFilePath = require.resolve(this.baseKarmaConfFile);
+    const angularProcessCommad = this.options.angularProcessCommand;
+    const localAngularPath = join(this.workspaceRootPath, "node_modules", "@angular", "cli", "bin", "ng");
     const isAngularInstalledLocally = existsSync(localAngularPath);
     const isAngularInstalledGlobally = silent("@angular/cli") !== undefined;
 
     let command: string;
     let processArguments: string[] = [];
 
-    if (angularProcessExecutable) {
-      command = angularProcessExecutable;
+    if (angularProcessCommad) {
+      command = angularProcessCommad;
 
     } else if (isAngularInstalledLocally) {
       command = "npx";
@@ -66,12 +69,10 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       throw new Error(errorMessage);
     }
 
-    const angularProject: AngularProject = getDefaultAngularProject(this.config.projectRootPath);
-
     processArguments = [
       ...processArguments,
       `test`,
-      angularProject.name,
+      this.angularProject.name,
       `--karma-config=${baseKarmaConfigFilePath}`,
       `--progress=false`,
       `--no-watch`
@@ -82,10 +83,19 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       command, 
       processArguments, 
       spawnOptions,
-      (data) => this.serverProcessLogger(data, karmaPort),
-      (data) => this.serverProcessErrorLogger(data, karmaPort));
+      (data: string) => this.options.serverProcessLogger?.(data, karmaPort),
+      (data: string) => this.options.serverProcessErrorLogger?.(data, karmaPort));
 
-    return angularProcess.execution();
+    const serverStopper: ServerStopExecutor = {
+      executeServerStop: async () => angularProcess.stop()
+    };
+
+    const serverExecution: Execution<ServerStopExecutor> = {
+      started: () => angularProcess.execution().started().then(() => serverStopper),
+      stopped: angularProcess.execution().stopped
+    };
+
+    return serverExecution;
   }
 }
   

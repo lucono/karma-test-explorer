@@ -42,7 +42,7 @@ export class ExtensionConfig {
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
     this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
-    this.baseKarmaConfFilePath = join(__dirname, "..", "config", "test-explorer-karma.conf.js");  // FIXME: use updated path
+    this.baseKarmaConfFilePath = join(__dirname, "..", "config", "karma.conf.js");  // FIXME: use updated path
     this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
 

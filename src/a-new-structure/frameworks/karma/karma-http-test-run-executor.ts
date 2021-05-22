@@ -53,8 +53,8 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
     });
 
     const testRunExecution: Execution = {
-      started: testRunStartedPromise,
-      stopped: testRunFinishedDeferred.promise()
+      started: () => testRunStartedPromise,
+      stopped: () => testRunFinishedDeferred.promise()
     };
 
     return testRunExecution;

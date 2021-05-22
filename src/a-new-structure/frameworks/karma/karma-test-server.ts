@@ -1,19 +1,23 @@
-import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
 import { Logger } from "../../util/logger";
 import { Execution } from "../../api/execution";
 import { DeferredPromise } from "../../util/deferred-promise";
-import { ServerCommandHandler } from "../../../core/karma/server-command-handler";
 import { TestServer } from "../../api/test-server";
 import { window } from "vscode";
+import { ServerStopExecutor, TestServerExecutor } from "../../api/test-server-executor";
+
+type ServerExecutionInfo = {
+  serverExecution: Execution<ServerStopExecutor>,
+  serverStopper: ServerStopExecutor,
+  serverPort: number
+};
 
 export class KarmaServer implements TestServer {
-  private serverProcess?: CommandlineProcessHandler;
-  private serverPort?: number;
+  private serverExecutionInfo?: ServerExecutionInfo;
   private serverCurrentlyTerminating: Promise<void> | undefined;
   private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
-    private readonly serverCommandHandler: ServerCommandHandler,
+    private readonly serverExecutionHandler: TestServerExecutor,
     private readonly logger: Logger)
   { }
 
@@ -46,12 +50,19 @@ export class KarmaServer implements TestServer {
     
       this.logger.info(`Starting karma server`);
 
-      const karmaServerProcess = this.serverCommandHandler.start(karmaPort, karmaSocketPort);
+      const serverExecution = this.serverExecutionHandler.executeServerStart(karmaPort, karmaSocketPort);
+      const serverStopper: ServerStopExecutor = await serverExecution.started();
 
-      this.setServerInfo(karmaServerProcess, karmaPort);
+      const serverExecutionInfo: ServerExecutionInfo = {
+        serverExecution,
+        serverStopper,
+        serverPort: karmaPort
+      };
 
-      karmaServerProcess.execution().stopped.then(() => {
-        this.clearServerInfo(karmaServerProcess);
+      this.setServerInfo(serverExecutionInfo);
+
+      serverExecution.stopped().then(() => {
+        this.clearServerInfo(serverExecutionInfo);
 
         const serverWasTerminating = this.serverCurrentlyTerminating;
         const wasUnexpectedServerTermination = !serverWasTerminating;
@@ -80,8 +91,8 @@ export class KarmaServer implements TestServer {
     });
 
     const karmaServerExecution: Execution = {
-      started: serverStartedPromise,
-      stopped: serverStoppedDeferred.promise()
+      started: () => serverStartedPromise,
+      stopped: () => serverStoppedDeferred.promise()
     };
 
     return karmaServerExecution;
@@ -111,44 +122,45 @@ export class KarmaServer implements TestServer {
       this.logger.info(`Request to kill karma server - server is not running`);
       return;
     }
-    const serverProcess = this.serverProcess!;
-    const serverPort = this.serverPort!;
+    const serverExecutionInfo = this.serverExecutionInfo!;
+    const serverExecution = serverExecutionInfo.serverExecution;
+    const serverStopper = serverExecutionInfo.serverStopper!;
+    const serverPort = serverExecutionInfo.serverPort!;
 
     this.logger.info(`Killing Karma server on port ${serverPort}`);
-    this.clearServerInfo(serverProcess);
+    this.clearServerInfo(serverExecutionInfo);
 
     const serverIsTerminatingDeferred: DeferredPromise = new DeferredPromise<void>();
     const serverIsTerminatingPromise: Promise<void> = serverIsTerminatingDeferred.promise();
     this.serverCurrentlyTerminating = serverIsTerminatingPromise;
 
-    await serverProcess.stop();
-    await serverProcess.execution().stopped;
+    await serverStopper.executeServerStop();
+    await serverExecution.stopped();
+    
     this.logger.info(`Karma server on port ${serverPort} killed`);
     serverIsTerminatingDeferred.resolve();
   }
 
   public getServerPort(): number | undefined {
-    return this.serverPort;
+    return this.serverExecutionInfo?.serverPort;
   }
 
   public isRunning(): boolean {
-    return this.serverProcess !== undefined;
+    return this.serverExecutionInfo !== undefined;
   }
 
-  private setServerInfo(serverProcess: CommandlineProcessHandler, serverPort: number) {
-    this.serverProcess = serverProcess;
-    this.serverPort = serverPort;
+  private setServerInfo(serverExecutionInfo: ServerExecutionInfo) {
+    this.serverExecutionInfo = serverExecutionInfo;
   }
 
-  private clearServerInfo(serverProcess?: CommandlineProcessHandler) {
-    if (this.serverProcess && this.serverProcess === serverProcess) {
-      this.serverProcess = undefined;
-      this.serverPort = undefined;
+  private clearServerInfo(serverExecutionInfo: ServerExecutionInfo) {
+    if (this.serverExecutionInfo && this.serverExecutionInfo === serverExecutionInfo) {
+      this.serverExecutionInfo = undefined;
     }
   }
 
   private async futureServerExit(): Promise<void> {
-    return this.serverProcess?.execution().stopped;
+    return this.serverExecutionInfo?.serverExecution.stopped();
   }
 }
 

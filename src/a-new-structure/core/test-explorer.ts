@@ -7,12 +7,11 @@ import { KarmaServer } from "../frameworks/karma/karma-test-server";
 import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "../api/execution";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
-import { TestResults } from "../frameworks/karma/karma-test-runner";
-import { TestResult } from "../../model/enums/test-status.enum";
+import { TestResult, TestResults } from "../api/test-result";
 import { TestSuiteState } from "./test-suite-state";
 import * as vscode from "vscode";
 import { TestGrouping } from "../api/test-grouping";
-import { TestType } from "../api/test-info";
+import { TestType } from "../api/test-infos";
 
 export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
 
@@ -55,14 +54,14 @@ export class TestExplorer {
         serverKarmaPort,
         karmerListenerSocketPort);
 
-      await karmaServerExecution.started;
+      await karmaServerExecution.started();
 
       await new Promise<void>((resolve, reject) => {
         this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)
           .then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-          karmaServerExecution.stopped.then(() => reject(`Karma server quit prematurely`));
+          karmaServerExecution.stopped().then(() => reject(`Karma server quit prematurely`));
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);

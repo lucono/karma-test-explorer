@@ -1,16 +1,16 @@
 import { TestEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
 import { TestState } from "../../../core/test-state";
 import { SpecCompleteResponse } from "./spec-complete-response";
-import { TestType } from "../../../../model/enums/test-type.enum";
-import { TestResult } from "../../../../model/enums/test-status.enum";
-import * as vscode from "vscode";
-import { TestRunEvent } from "../../../api/test-event";
+import { TestResult } from "../../../api/test-result";
+import { TestRunEvent } from "../../../api/test-events";
+import { TestType } from "../../../api/test-infos";
+import { EventEmitter } from "vscode";
 
 export type TestRetriever = (testId: string) => TestInfo | undefined;
 
 export class TestRunEventEmitter {
   public constructor(
-    private readonly eventEmitterInterface: vscode.EventEmitter<TestRunEvent>,
+    private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
     private readonly testRetriever: TestRetriever
   ) {}
 

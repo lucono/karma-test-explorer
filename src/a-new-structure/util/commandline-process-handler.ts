@@ -54,9 +54,11 @@ export class CommandlineProcessHandler {
       });
     });
 
+    const processStartedPromise = Promise.resolve();
+
     const processExecution: Execution = {
-      started: Promise.resolve(),
-      stopped: futureProcessExit
+      started: () => processStartedPromise,
+      stopped: () => futureProcessExit
     };
 
     this.processExecution = processExecution;

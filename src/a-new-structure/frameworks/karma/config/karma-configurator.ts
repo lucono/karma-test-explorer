@@ -1,6 +1,6 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
 import { dirname, resolve } from "path";
-import * as TestExplorerCustomReporter from "../integration/karma-reporter";
+import * as TestExplorerCustomReporter from "../../jasmine/karma-reporter";
 
 const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
 
@@ -78,15 +78,11 @@ export class KarmaConfigurator {
 
   public configureTestExplorerCustomReporter(config:  KarmaConfig) {
     this.addPlugin(config, { [`reporter:${TestExplorerCustomReporter.name}`]: ["type", TestExplorerCustomReporter.instance] });
-    if (!config.reporters) {
-      config.reporters = [];
-    }
-    config.reporters.push(TestExplorerCustomReporter.name);
+    (config.reporters ??= []).push(TestExplorerCustomReporter.name);
   }
 
   private addPlugin(karmaConfig:  KarmaConfigOptions, karmaPlugin: any) {
-    karmaConfig.plugins = karmaConfig.plugins || ["karma-*"];
-    karmaConfig.plugins.push(karmaPlugin);
+    (karmaConfig.plugins ??= ["karma-*"]).push(karmaPlugin);
   }
 
   private removeElementsFromArrayWithoutModifyingIt(elements?: any[], elementsToRemove?: any[] | any) {
