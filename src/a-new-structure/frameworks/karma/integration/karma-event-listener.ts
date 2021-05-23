@@ -166,10 +166,16 @@ export class KarmaEventListener {
 
       return;
     }
+    const testResult: TestResult = results.status;
+
+    if (!Object.values(TestResult).includes(testResult)) {
+      this.logger.warn(`Skipping captured spec with unknown result value: ${testResult}`);
+      this.logger.debug(() => `Skipped captured spec with unknown result '${testResult}': ${results}`);
+      return;
+    }
+
     this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
     this.eventEmitter.emitTestResultEvent(testId, event.results);
-
-    const testResult: TestResult = results.status;
 
     if (testResult === TestResult.Success) {
       this.passedSpecs.push(results);

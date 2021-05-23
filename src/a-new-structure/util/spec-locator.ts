@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import * as glob from "glob";
 import * as path from 'path';
+import { Logger } from "./logger";
 
 enum TestNodeType {
   Describe = "describe",
@@ -24,7 +25,8 @@ export interface SpecFileInfo {
 
 export interface SpecLocatorOptions {
   cwd?: string,
-  ignore?: string[]
+  ignore?: string[],
+  fileEncoding?: string
 }
 
 // TODO: Use enum and a new vscode setting to allow selection of
@@ -39,13 +41,20 @@ export class SpecLocator {
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
-  public constructor(filePatterns: string[], options?: SpecLocatorOptions, fileEncoding?: string) {
-    this.cwd = options?.cwd ?? process.cwd();
+  public constructor(filePatterns: string[], private readonly logger: Logger, options: SpecLocatorOptions = {}) {
+    this.cwd = options.cwd ?? process.cwd();
+    const fileEncoding = options.fileEncoding ?? DEFAULT_FILE_ENCODING;
+    let loadedFileCount: number = 0;
 
     filePatterns
       .map(patternString => glob.sync(patternString, options))
       .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
-      .forEach(filePath => this.processFile(filePath, fileEncoding));
+      .forEach(filePath => {
+        this.processFile(filePath, fileEncoding);
+        loadedFileCount++;
+      });
+
+    this.logger.info(`Spec locator loaded ${loadedFileCount} spec files`);
   }
 
   private processFile(filePath: string, fileEncoding?: string) {

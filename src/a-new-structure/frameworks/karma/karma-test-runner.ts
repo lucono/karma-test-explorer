@@ -36,7 +36,18 @@ export class KarmaTestRunner implements TestRunner {
     testLoadEndedDeferred.resolve();
 
     const capturedSpecs: TestCapture = await testCapture;
-    const loadedSpecs: SpecCompleteResponse[] = capturedSpecs[TestResult.Skipped];
+
+    const loadedSpecs: SpecCompleteResponse[] = [
+      ...capturedSpecs[TestResult.Skipped],
+      ...capturedSpecs[TestResult.Success],
+      ...capturedSpecs[TestResult.Failed]
+    ];
+
+    this.logger.info(`Load tests captured ` +
+      `${capturedSpecs[TestResult.Skipped].length} skipped specs, ` +
+      `${capturedSpecs[TestResult.Success].length} skipped specs, ` +
+      `${capturedSpecs[TestResult.Failed].length} skipped specs`);
+
     const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
     return loadedTests;

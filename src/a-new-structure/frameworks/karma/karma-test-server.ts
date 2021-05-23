@@ -76,8 +76,8 @@ export class KarmaServer implements TestServer {
           const message = `The Karma server quit unexpectedly. Restart the server?`;
           this.logger.error(message);
 
-          window.showWarningMessage(message, 'Restart', 'Ignore').then(selection => {
-            if (selection === 'Restart') {
+          window.showWarningMessage(message, 'Restart Server', 'Ignore').then(selection => {
+            if (selection === 'Restart Server') {
               this.logger.info(`User chose to restart server`);
               this.scheduleFutureStartup(0, karmaPort, karmaSocketPort);
 

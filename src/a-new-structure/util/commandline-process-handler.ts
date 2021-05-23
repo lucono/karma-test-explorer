@@ -24,8 +24,8 @@ export class CommandlineProcessHandler {
     this.logger.debug(() =>
       `Process ${this.uid}:
       Executing command: '${command}'
-      with args: ${JSON.stringify(processArguments)}`
-      // and options: ${JSON.stringify(runOptions)}`
+      with args: ${JSON.stringify(processArguments)}
+      and options: ${JSON.stringify(runOptions)}`
     );
 
     const process = spawn(command, processArguments, runOptions);

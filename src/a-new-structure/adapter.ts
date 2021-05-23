@@ -266,7 +266,7 @@ export class Adapter implements TestAdapter {
     this.loadedRootSuite = rootSuite;
     this.loadedTestsById = testsById;
 
-    this.logger.info(`Loaded ${this.loadedTestsById.size} total tests`);
+    // this.logger.info(`Loaded ${this.loadedTestsById.size} total tests`);
   }
 
   private loadConfig(configPrefix: string) {
@@ -281,7 +281,7 @@ export class Adapter implements TestAdapter {
       ignore: excludeFiles,
       cwd: this.config.projectRootPath
     };
-    return new SpecLocator(testFiles, specLocatorOptions);
+    return new SpecLocator(testFiles, this.logger, specLocatorOptions);
   }
 
   private handleConfigurationChange = async (configChangeEvent: ConfigurationChangeEvent): Promise<void> => {
