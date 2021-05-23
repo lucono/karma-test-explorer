@@ -1,6 +1,6 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
+import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/karma-reporter";
 import { dirname, resolve } from "path";
-import * as TestExplorerCustomReporter from "../../jasmine/karma-reporter";
 
 const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
 
@@ -77,8 +77,8 @@ export class KarmaConfigurator {
   }
 
   public configureTestExplorerCustomReporter(config:  KarmaConfig) {
-    this.addPlugin(config, { [`reporter:${TestExplorerCustomReporter.name}`]: ["type", TestExplorerCustomReporter.instance] });
-    (config.reporters ??= []).push(TestExplorerCustomReporter.name);
+    this.addPlugin(config, { [`reporter:${customReporterName}`]: ["type", customReporterInstance] });
+    (config.reporters ??= []).push(customReporterName);
   }
 
   private addPlugin(karmaConfig:  KarmaConfigOptions, karmaPlugin: any) {

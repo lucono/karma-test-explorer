@@ -73,7 +73,7 @@ export class KarmaServer implements TestServer {
         serverStoppedDeferred.resolve();
 
         if (wasUnexpectedServerTermination) {
-          const message = `The Karma server terminated unexpectedly. Restart the server?`;
+          const message = `The Karma server quit unexpectedly. Restart the server?`;
           this.logger.error(message);
 
           window.showWarningMessage(message, 'Restart', 'Ignore').then(selection => {

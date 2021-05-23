@@ -10,7 +10,7 @@ const defaultRunOptions = {
   refresh: false,
   urlRoot: "/run",
   hostname: "localhost",
-  clientArgs: [`--grep=${SKIP_ALL_TESTS_PATTERN}`],
+  clientArgs: [`--grep=/${SKIP_ALL_TESTS_PATTERN}/`],
 };
 
 export class KarmaHttpTestRunExecutor implements TestRunExecutor {

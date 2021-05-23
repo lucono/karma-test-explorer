@@ -5,8 +5,8 @@ import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
 
-const HEARTBEAT_TIMEOUT = 24 * 60 * 60 * 1000;
-const HEARTBEAT_INTERVAL = 24 * 60 * 60 * 1000;
+const PING_TIMEOUT = 24 * 60 * 60 * 1000;
+const PING_INTERVAL = 24 * 60 * 60 * 1000;
 
 function TestExplorerCustomReporter(
   this: any, 
@@ -16,24 +16,30 @@ function TestExplorerCustomReporter(
   emitter: any, 
   injector: any
 ) {
+  const log = logger.create(`reporter:${name}`);
+
+  baseReporterDecorator(this);
   this.config = config;
   this.emitter = emitter;
+  // this.adapters = [];
 
   const socketPort = process.env.karmaSocketPort as string;
+  log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
+  
   const socket = io("http://localhost:" + socketPort + "/", {
     forceNew: true, 
     reconnection: true
   });
   const socketOptions = {
-    pingTimeout: HEARTBEAT_TIMEOUT,
-    pingInterval: HEARTBEAT_INTERVAL
+    pingTimeout: PING_TIMEOUT,
+    pingInterval: PING_INTERVAL
   };
+  log.debug(`Using ping timeout '${PING_TIMEOUT}' and ping interval '${PING_INTERVAL}'`);
+
   Object.assign(socket, socketOptions);
   this.socket = socket;
 
   configureTimeouts(injector);
-  baseReporterDecorator(this);
-  this.adapters = [];
 
   const emitEvent = (eventName: any, eventResults: any = null) => {
     this.socket.emit(eventName, { name: eventName, results: eventResults });
@@ -119,8 +125,8 @@ function configureTimeouts(injector: any) {
       //    'heartbeat interval' (pingInterval) = 25000 ms
 
       const socketOptions = {
-        pingTimeout: HEARTBEAT_TIMEOUT,
-        pingInterval: HEARTBEAT_INTERVAL
+        pingTimeout: PING_TIMEOUT,
+        pingInterval: PING_INTERVAL
       };
       Object.assign(socketServer, socketOptions);
     }

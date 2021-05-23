@@ -33,13 +33,10 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     const environment: { [key: string]: string } = {
       ...this.options.environment,
       karmaPort: `${karmaPort}`,
+      karmaSocketPort: `${karmaSocketPort}`,
       userKarmaConfigPath: this.userKarmaConfigFile
     };
 
-    if (karmaSocketPort) {
-      environment.karmaSocketPort = `${karmaSocketPort}`;
-    }
-  
     const spawnOptions: SpawnOptions = {
       cwd: this.projectRootPath,
       shell: true,
@@ -72,7 +69,10 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     processArguments = [
       ...processArguments,
       "start",
-      this.baseKarmaConfigFile
+      this.baseKarmaConfigFile,
+      // `--port=${karmaPort}`,
+      `--no-auto-watch`,
+      `--no-single-run`
     ];
 
     const karmaServerProcess = new CommandlineProcessHandler(

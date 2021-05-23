@@ -71,7 +71,7 @@ export class Adapter implements TestAdapter {
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
 
-      if (this.testExplorer.isTestRunning()) {
+      if (this.testExplorer.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
         let log = data.toString().replace(regex, "");
         if (log.startsWith("e ")) {
           log = `HeadlessChrom${log}`;

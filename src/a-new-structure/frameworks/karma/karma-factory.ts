@@ -47,10 +47,18 @@ export class KarmaFactory {
   public createTestRunExecutor(): TestRunExecutor {
     return this.config.karmaProcessExecutable
       ? this.createKarmaCommandLineTestRunExecutor()
-      : new KarmaHttpTestRunExecutor(this.logger);
+      : this.createKarmaHttpTestRunExecutor();
+  }
+
+  private createKarmaHttpTestRunExecutor(): KarmaHttpTestRunExecutor {
+    this.logger.info(`Creating Karma http test run executor`);
+
+    return new KarmaHttpTestRunExecutor(this.logger);
   }
 
   private createKarmaCommandLineTestRunExecutor(): KarmaCommandLineTestRunExecutor {
+    this.logger.info(`Creating Karma command line test run executor`);
+
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
@@ -65,6 +73,8 @@ export class KarmaFactory {
   }
 
   private createKarmaCommandLineTestServerExecutor(): KarmaCommandLineTestServerExecutor {
+    this.logger.info(`Creating Karma test server executor`);
+    
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
@@ -85,6 +95,8 @@ export class KarmaFactory {
   }
 
   private createAngularTestServerExecutor(): AngularTestServerExecutor {
+    this.logger.info(`Creating Angular test server executor`);
+    
     const angularProject = getDefaultAngularProject(this.config.projectRootPath);
 
     const environment: { [key: string]: string | undefined } = {
@@ -109,7 +121,10 @@ export class KarmaFactory {
   private isAngularProject(): boolean {
     const angularJsonPath = join(this.config.projectRootPath, "angular.json");
     const angularCliJsonPath = join(this.config.projectRootPath, ".angular-cli.json");
+    const isAngularProject = (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
 
-    return (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
+    this.logger.info(`Project detected to ${isAngularProject ? 'be' : 'not be'} an Angular project`);
+    
+    return isAngularProject;
   }
 }

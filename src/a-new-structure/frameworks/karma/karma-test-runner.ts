@@ -29,7 +29,7 @@ export class KarmaTestRunner implements TestRunner {
       stopped: () => testLoadEndedDeferred.promise()
     };
     const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
-    const clientArgs: string[] = [ `--grep=${SKIP_ALL_TESTS_PATTERN}` ];
+    const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
 
     testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).stopped();
