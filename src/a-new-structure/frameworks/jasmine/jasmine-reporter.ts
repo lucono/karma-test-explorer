@@ -8,7 +8,7 @@ import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } 
 const PING_TIMEOUT = 24 * 60 * 60 * 1000;
 const PING_INTERVAL = 24 * 60 * 60 * 1000;
 
-function TestExplorerCustomReporter(
+function TestExplorerJasmineReporter(
   this: any, 
   baseReporterDecorator: any, 
   config: KarmaConfigOptions, 
@@ -143,7 +143,7 @@ function collectRunState(runResult: KarmaTestResults): TestRunStatus {
   }
 }
 
-TestExplorerCustomReporter.$inject = ["baseReporterDecorator", "config", "logger", "emitter", "injector"];
+TestExplorerJasmineReporter.$inject = ["baseReporterDecorator", "config", "logger", "emitter", "injector"];
 
-export const instance = TestExplorerCustomReporter;
-export const name = "KarmaReporter";
+export const instance = TestExplorerJasmineReporter;
+export const name = "KarmaTestExplorerJasmineReporter";

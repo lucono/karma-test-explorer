@@ -44,22 +44,6 @@ export class Adapter implements TestAdapter {
   private readonly debugger: Debugger;
   private readonly logger: Logger;
 
-  get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
-    return this.testLoadEmitter.event;
-  }
-
-  get testStates(): Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
-    return this.testRunEmitter.event;
-  }
-
-  get retire(): Event<RetireEvent> {
-      return this.retireEmitter.event;
-  }
-
-  get autorun(): Event<void> | undefined {
-    return this.autorunEmitter.event;
-  }
-
   constructor(public readonly workspaceFolder: WorkspaceFolder, private readonly configPrefix: string, log: Log) {
     const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
     this.logger = new Logger(log, debugModeResolver);
@@ -121,6 +105,22 @@ export class Adapter implements TestAdapter {
     this.disposables.push(this.autorunEmitter);
     this.disposables.push(workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
     this.disposables.push(workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+  }
+
+  get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
+    return this.testLoadEmitter.event;
+  }
+
+  get testStates(): Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
+    return this.testRunEmitter.event;
+  }
+
+  get retire(): Event<RetireEvent> {
+      return this.retireEmitter.event;
+  }
+
+  get autorun(): Event<void> | undefined {
+    return this.autorunEmitter.event;
   }
 
   public async load(): Promise<void> {

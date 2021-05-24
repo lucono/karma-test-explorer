@@ -63,14 +63,14 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       throw new Error(errorMessage);
     }
 
-    const escapedClientArgs: string[] = clientArgs.map(arg => arg.replace(/[\W ]/g, "\\$&"));
+    const escapedClientArgs: string[] = clientArgs.map(arg => this.shellEscape(arg));
 
     processArguments = [
       ...processArguments,
       "run",
       this.baseKarmaConfigFile,
       // `--port=${karmaPort}`,
-      // `--no-refresh`,
+      `--no-refresh`,
       "--",
       ...escapedClientArgs
     ];
@@ -84,5 +84,9 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       (data: string) => this.options.serverProcessErrorLogger?.(data, karmaPort));
 
     return karmaServerProcess.execution();
+  }
+
+  private shellEscape(shellString: string) {
+    return shellString.replace(/[\W ]/g, "\\$&");
   }
 }

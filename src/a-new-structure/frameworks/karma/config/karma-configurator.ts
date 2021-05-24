@@ -1,5 +1,5 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
-import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/karma-reporter";
+import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/jasmine-reporter";
 import { dirname, resolve } from "path";
 
 const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
