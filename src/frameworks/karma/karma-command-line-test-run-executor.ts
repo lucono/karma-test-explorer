@@ -71,7 +71,7 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       "run",
       this.baseKarmaConfigFile,
       // `--port=${karmaPort}`,
-      `--no-refresh`,
+      // `--no-refresh`,
       "--",
       ...escapedClientArgs
     ];

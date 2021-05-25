@@ -25,10 +25,17 @@ export class AggregatingTestManager implements TestManager {
   {}
   
   public async restart(): Promise<void> {
-    await Promise.all(this.testManagers.map(manager => manager.restart()));
+    this.logger.info(`Restarting aggregate server`);
+
+    await Promise.all(this.testManagers.map(manager => manager.restart())).catch(rejectReason => {
+      throw new Error(`Failed while attempting to restart aggregate server: ${rejectReason}`);
+    });
+    this.logger.info(`Done restarting aggregate server`);
   }
 
   public async loadTests(): Promise<TestSuiteInfo> {
+    this.logger.info(`Starting aggregate server test load`);
+
     const loadedTests: TestSuiteInfo[] = await Promise.all(
       this.testManagers.map(manager => manager.loadTests())
     );
@@ -52,10 +59,14 @@ export class AggregatingTestManager implements TestManager {
       ? `Test loading - ${totalTestCount} total tests loaded from Karma`
       : `Test loading - No tests found`);
 
+    this.logger.info(`Aggregate server test load done`);
+
     return testSuiteInfo;
   }
 
   public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+    this.logger.info(`Starting aggregate server test run`);
+
     const testResultsList: TestResults[] = await Promise.all(
       this.testManagers.map(manager => manager.runTests(tests))
     );
@@ -77,6 +88,7 @@ export class AggregatingTestManager implements TestManager {
     });
 
     this.suiteTestResultEmitter.processTestResults(combinedTestResults);
+    this.logger.info(`Aggregate server test run done`);
 
     return combinedTestResults;
   }

@@ -7,7 +7,7 @@ import { TestRunExecutor } from "../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "./karma-constants";
 
 const defaultRunOptions = {
-  refresh: false,
+  refresh: true,
   urlRoot: "/run",
   hostname: "localhost",
   clientArgs: [`--grep=/${SKIP_ALL_TESTS_PATTERN}/`],

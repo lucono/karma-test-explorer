@@ -54,6 +54,7 @@ export class Adapter implements TestAdapter {
   }
 
   private preInitFinalize() {
+    this.factory.dispose();
     this.logger.dispose();
     this.debugger.dispose();
     this.config.dispose();
@@ -62,14 +63,14 @@ export class Adapter implements TestAdapter {
   }
 
   private init() {
-    // const configFactory = new ExtensionConfigFactory(this.workspaceFolder, this.configPrefix, this.log);
-
-    this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
-    this.logger.info(`Initializing adapter`);
-    this.debugger = new Debugger(this.logger);
-
+    this.factory = new TestExplorerFactory(this.workspaceFolder, this.configPrefix, this.log);
     this.config = this.factory.getExtensionConfig();
+    this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
+
+    this.logger.info(`Initializing adapter`);
+
     this.specLocator = this.factory.fetchTestInfo();
+    this.debugger = new Debugger(this.logger);
 
     const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
       return this.specLocator?.getSpecLocation(suite, description) ?? [];
@@ -90,15 +91,7 @@ export class Adapter implements TestAdapter {
     this.testManager = this.factory.createTestManager(
       this.testRunEmitter,
       specLocationResolver,
-      testResolver,
-      this.log);
-
-    this.disposables.push(
-      this.testLoadEmitter,
-      this.testRunEmitter,
-      this.autorunEmitter,
-      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
-      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+      testResolver);
   }
 
   constructor(
@@ -106,6 +99,13 @@ export class Adapter implements TestAdapter {
     private readonly configPrefix: string,
     private readonly log: Log)
   {
+    this.disposables.push(
+      this.testLoadEmitter,
+      this.testRunEmitter,
+      this.autorunEmitter,
+      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
+      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+
     this.init();
   }
 

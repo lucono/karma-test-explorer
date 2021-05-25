@@ -30,7 +30,7 @@ export class TestExplorerFactory {
     configPrefix: string,
     private readonly log: Log)
   {
-    this.config = this.createConfig(workspaceFolder, configPrefix, log);
+    this.config = this.createConfig(workspaceFolder, configPrefix);
     this.logger = new Logger(log, 'TestExplorerFactory', this.config.debugLevelLoggingEnabled);
     this.disposables.push(this.log);
   }
@@ -41,8 +41,7 @@ export class TestExplorerFactory {
 
   private createConfig(
     workspaceFolder: WorkspaceFolder,
-    configPrefix: string,
-    log: Log): ExtensionConfig
+    configPrefix: string): ExtensionConfig
   {
     const config = workspace.getConfiguration(configPrefix, workspaceFolder.uri);
     const configLogger = new Logger(this.log, 'ExtensionConfig', true);
@@ -62,8 +61,7 @@ export class TestExplorerFactory {
   public createTestManager(
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
-    testResolver: TestResolver,
-    log: Log): TestManager
+    testResolver: TestResolver): TestManager
   {
     const defaultTestManager: DefaultTestManager = this.createDefaultTestManager(
       testRunEmitter,
