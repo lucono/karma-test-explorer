@@ -68,6 +68,7 @@ export class TestExplorerFactory {
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
     const testManagers: TestManager[] = [];
+    const portManager = new PortManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
     const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
     let shardIndex = 0;
 
@@ -78,6 +79,7 @@ export class TestExplorerFactory {
         testRunEmitter,
         specLocationResolver,
         testResolver,
+        portManager,
         shardIndex,
         totalServerShards));
 
@@ -138,6 +140,7 @@ export class TestExplorerFactory {
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver,
+    portManager: PortManager,
     serverShardIndex: number = 0,
     totalServerShards: number = 1): DefaultTestManager
   {
@@ -179,7 +182,6 @@ export class TestExplorerFactory {
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
     const testServer = testFactory.createTestServer(testServerExecutor);
-    const portManager = new PortManager(makeShardLogger(`PortManager`));
 
     testManager = new DefaultTestManager(
       testServer,

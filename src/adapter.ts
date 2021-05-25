@@ -91,7 +91,8 @@ export class Adapter implements TestAdapter {
     this.testManager = this.factory.createTestManager(
       this.testRunEmitter,
       specLocationResolver,
-      testResolver);
+      testResolver,
+      2);  // FIXME: Get shard count from config
   }
 
   constructor(
