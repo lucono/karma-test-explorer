@@ -111,7 +111,10 @@
 					"type": "string",
 					"scope": "resource",
 					"default": "folder",
-					"enum": ["suite", "folder"]
+					"enum": [
+						"suite",
+						"folder"
+					]
 				},
 				"karmaTestExplorer.karmaProcessExecutable": {
 					"description": "The path to a custom Karma executable or command for launching Karma",

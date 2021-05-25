@@ -10,40 +10,71 @@ import {
   TestSuiteInfo,
   RetireEvent
 } from "vscode-test-adapter-api";
-import { DebugLoggingResolver, Logger } from "./util/logger";
+import { Logger } from "./util/logger";
 import { Log } from "vscode-test-adapter-util";
-import { DefaultTestManager } from "./core/default-test-manager";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
-import { KarmaEventListener } from "./frameworks/karma/integration/karma-event-listener";
-import { SpecLocation, SpecLocator, SpecLocatorOptions } from './util/spec-locator';
+import { SpecLocation, SpecLocator } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
-import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
 import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder } from "vscode";
-import { KarmaServer } from "./frameworks/karma/karma-test-server";
 import { TestType } from "./api/test-infos";
-import { KarmaFactory } from "./frameworks/karma/karma-factory";
-import { ServerProcessLogger } from "./frameworks/karma/karma-command-line-test-server-executor";
 import { TestLoadEvent, TestRunEvent } from "./api/test-events";
+import { TestManager } from "./api/test-manager";
+import { Disposable } from "./api/disposable";
+import { TestExplorerFactory } from "./core/test-explorer-factory";
 import { TestResolver } from "./frameworks/karma/integration/test-resolver";
+import { SpecLocationResolver } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
 
 export class Adapter implements TestAdapter {
 
-  private config = {} as ExtensionConfig;
   private specLocator?: SpecLocator;
   private isTestProcessRunning: boolean = false;
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
-  private disposables: { dispose(): void }[] = [];
+  private disposables: Disposable[] = [];
+
   private readonly retireEmitter = new EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
   private readonly testRunEmitter = new EventEmitter<TestRunEvent>();
   private readonly autorunEmitter = new EventEmitter<void>();
-  private readonly testManager: DefaultTestManager;
-  private readonly debugger: Debugger;
-  private readonly logger: Logger;
 
-  constructor(public readonly workspaceFolder: WorkspaceFolder, private readonly configPrefix: string, log: Log) {
+  private factory!: TestExplorerFactory;
+  private config!: ExtensionConfig;
+  private debugger!: Debugger;
+  private logger!: Logger;
+  private testManager!: TestManager;
+
+  // private configFactory: ExtensionConfigFactory;
+  // private testManagerFactory: TestManagerFactory;
+
+  public async dispose(): Promise<void> {
+    // this.testManager.dispose();
+    this.disposables.forEach(disposable => disposable?.dispose());
+    this.disposables = [];
+  }
+
+  private preInitFinalize() {
+    this.logger.dispose();
+    this.debugger.dispose();
+    this.config.dispose();
+    this.specLocator?.dispose();
+    this.testManager.dispose();
+  }
+
+  private init() {
+    // const configFactory = new ExtensionConfigFactory(this.workspaceFolder, this.configPrefix, this.log);
+
+    this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
+    this.logger.info(`Initializing adapter`);
+    this.debugger = new Debugger(this.logger);
+
+    this.config = this.factory.getExtensionConfig();
+    this.specLocator = this.factory.fetchTestInfo();
+
+    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
+      return this.specLocator?.getSpecLocation(suite, description) ?? [];
+    };
+
     const testResolver: TestResolver = {
       resolveTest: (testId: string): TestInfo | undefined => {
         const test = this.loadedTestsById.get(testId);
@@ -56,76 +87,26 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
-    this.logger = new Logger(log, debugModeResolver);
-
-    this.logger.info(`Initializing adapter`);
-
-    this.loadConfig(configPrefix);
-
-    const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
-      const regex = new RegExp(/\(.*?)\m/, "g");
-
-      if (this.testManager.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
-        let log = data.toString().replace(regex, "");
-        if (log.startsWith("e ")) {
-          log = `HeadlessChrom${log}`;
-        }
-        this.logger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
-      }
-    };
-
-    const factory = new KarmaFactory(
-      this.config,
+    this.testManager = this.factory.createTestManager(
       this.testRunEmitter,
+      specLocationResolver,
       testResolver,
-      this.logger,
-      karmaServerProcessLogger);
+      this.log);
 
-    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
-      return this.specLocator?.getSpecLocation(suite, description) ?? [];
-    };
-    const testRunEventEmitter = factory.createTestRunEmitter();
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
-    // const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
-    const testServerExecutor = factory.createTestServerExecutor();
-    const testRunExecutor = factory.createTestRunExecutor();
-    const testRunner = factory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
-    const testServer = new KarmaServer(testServerExecutor, this.logger);
-
-    this.testManager = new DefaultTestManager(
-      testServer,
-      testRunner,
-      karmaEventListener,
-      // this.testRunEmitter,
-      // testSuiteOrganizer,
-      // testResolver,
-      this.logger);
-
-    this.debugger = new Debugger(this.logger);
-
-    this.disposables.push(this.testLoadEmitter);
-    this.disposables.push(this.testRunEmitter);
-    this.disposables.push(this.autorunEmitter);
-    this.disposables.push(workspace.onDidSaveTextDocument(this.handleDocumentSaved, this));
-    this.disposables.push(workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+    this.disposables.push(
+      this.testLoadEmitter,
+      this.testRunEmitter,
+      this.autorunEmitter,
+      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
+      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
   }
 
-  get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
-    return this.testLoadEmitter.event;
-  }
-
-  get testStates(): Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
-    return this.testRunEmitter.event;
-  }
-
-  get retire(): Event<RetireEvent> {
-      return this.retireEmitter.event;
-  }
-
-  get autorun(): Event<void> | undefined {
-    return this.autorunEmitter.event;
+  constructor(
+    public readonly workspaceFolder: WorkspaceFolder,
+    private readonly configPrefix: string,
+    private readonly log: Log)
+  {
+    this.init();
   }
 
   public async load(): Promise<void> {
@@ -158,16 +139,16 @@ export class Adapter implements TestAdapter {
 
     this.isTestProcessRunning = true;
     this.testLoadEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
-    this.specLocator = this.loadTestInfo(this.config.testFiles, this.config.excludeFiles);
+    this.specLocator = this.factory.fetchTestInfo();
 
     let loadedTests: TestSuiteInfo | undefined;
     let loadError: string | undefined;
     
     try {
       if (isHardRefresh) {
-        await this.testManager.restart(this.config);
+        await this.testManager.restart();
       }
-      loadedTests = await this.testManager.loadTests(this.config);
+      loadedTests = await this.testManager.loadTests();
     } catch (error) {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
@@ -216,7 +197,7 @@ export class Adapter implements TestAdapter {
     let runError: string | undefined;
 
     try {
-      await this.testManager.runTests(this.config, runAllTests ? [] : tests);
+      await this.testManager.runTests(runAllTests ? [] : tests);
     } catch (error) {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
@@ -233,7 +214,7 @@ export class Adapter implements TestAdapter {
   }
 
   public async debug(tests: string[]): Promise<void> {
-    await this.debugger.manageVSCodeDebuggingSession(this.workspaceFolder, this.config.debuggerConfig);
+    await this.debugger?.manageVSCodeDebuggingSession(this.workspaceFolder, this.config.debuggerConfig);
     await this.run(tests);
   }
 
@@ -241,12 +222,6 @@ export class Adapter implements TestAdapter {
     this.logger.debug(() => `Aborting any currently running test operation`);
     await this.testManager.stopCurrentRun();
     this.isTestProcessRunning = false;
-  }
-
-  public async dispose(): Promise<void> {
-    this.testManager.dispose();
-    this.disposables.forEach(disposable => disposable.dispose());
-    this.disposables = [];
   }
 
   private containsOnlyRootSuite(tests: (TestInfo | TestSuiteInfo)[]): boolean {
@@ -274,19 +249,26 @@ export class Adapter implements TestAdapter {
     // this.logger.info(`Loaded ${this.loadedTestsById.size} total tests`);
   }
 
-  private loadConfig(configPrefix: string) {
-    const config = workspace.getConfiguration(configPrefix, this.workspaceFolder.uri);
-    this.config = new ExtensionConfig(config, this.workspaceFolder.uri.path, this.logger);
-  }
+  // private loadConfig(configPrefix: string) {
+  //   const config = workspace.getConfiguration(configPrefix, this.workspaceFolder.uri);
+  //   const configLogger = new Logger(this.log, 'ExtensionConfig', true);
+  //   this.config = new ExtensionConfig(config, this.workspaceFolder.uri.path, configLogger);
+  // }
 
-  private loadTestInfo(testFiles: string[], excludeFiles?: string[]): SpecLocator {
-    this.logger.info(`Loading test info from test files`);
+  // private loadTestInfo(testFiles: string[], excludeFiles?: string[]): SpecLocator {
+  //   this.logger.info(`Loading test info from test files`);
 
-    const specLocatorOptions: SpecLocatorOptions = {
-      ignore: excludeFiles,
-      cwd: this.config.projectRootPath
-    };
-    return new SpecLocator(testFiles, this.logger, specLocatorOptions);
+  //   const specLocatorOptions: SpecLocatorOptions = {
+  //     ignore: excludeFiles,
+  //     cwd: this.config.projectRootPath
+  //   };
+  //   return new SpecLocator(testFiles, this.logger, specLocatorOptions);
+  // }
+
+  private async reset() {
+    this.preInitFinalize();
+    this.init();
+    await this.reload();
   }
 
   private handleConfigurationChange = async (configChangeEvent: ConfigurationChangeEvent): Promise<void> => {
@@ -305,8 +287,8 @@ export class Adapter implements TestAdapter {
       return;
     }
     this.logger.info(`Reloading tests with updated configuration`);
-    this.loadConfig(this.configPrefix);
-    await this.reload();
+
+    await this.reset();
   }
 
   private handleDocumentSaved = async (document: TextDocument): Promise<void> => {
@@ -329,11 +311,11 @@ export class Adapter implements TestAdapter {
     }
 
     if (reloadTriggerFiles.includes(savedFile)) {
-      this.logger.info(`Reloading - monitored file changed: ${savedFile}`);
-      await this.reload();
+      this.logger.info(`Resetting - monitored file changed: ${savedFile}`);
+      await this.reset();
 
     } else if (this.specLocator?.isSpecFile(savedFile)) {
-      this.logger.info(`Reloading - spec file changed: ${savedFile}`);
+      this.logger.info(`Refreshing - spec file changed: ${savedFile}`);
       // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
       await this.refresh();
 
@@ -342,5 +324,21 @@ export class Adapter implements TestAdapter {
       //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
       // }
     }
+  }
+
+  get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
+    return this.testLoadEmitter.event;
+  }
+
+  get testStates(): Event<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent> {
+    return this.testRunEmitter.event;
+  }
+
+  get retire(): Event<RetireEvent> {
+      return this.retireEmitter.event;
+  }
+
+  get autorun(): Event<void> | undefined {
+    return this.autorunEmitter.event;
   }
 }

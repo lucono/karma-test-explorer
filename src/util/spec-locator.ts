@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { sync } from "glob";
 import { resolve } from 'path';
+import { Disposable } from "../api/disposable";
 import { Logger } from "./logger";
 
 enum TestNodeType {
@@ -36,7 +37,7 @@ export interface SpecLocatorOptions {
 const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp = /((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5/gis;
 const DEFAULT_FILE_ENCODING = "utf-8";
 
-export class SpecLocator {
+export class SpecLocator implements Disposable {
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly cwd: string;
@@ -265,5 +266,9 @@ export class SpecLocator {
 
   private removeComments(data: string): string {
     return data.replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
+  }
+
+  public dispose() {
+    this.logger.dispose();
   }
 }

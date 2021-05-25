@@ -6,8 +6,9 @@ import { parse as parseEnvironmentFile } from "dotenv";
 import { join, resolve } from "path";
 import * as dotenvExpand from "dotenv-expand";
 import { TestGrouping } from "../api/test-grouping";
+import { Disposable } from "../api/disposable";
 
-export class ExtensionConfig {
+export class ExtensionConfig implements Disposable {
   public readonly projectRootPath: string;
   public readonly userKarmaConfFilePath: string;
   public readonly karmaPort: number;
@@ -82,5 +83,9 @@ export class ExtensionConfig {
   private stringSettingExists(config: WorkspaceConfiguration, setting: ConfigSetting): boolean {
     const value: string | undefined = config.get(setting);
     return (value ?? '').trim().length > 0;
+  }
+
+  public dispose() {
+    this.logger.dispose();
   }
 }

@@ -1,7 +1,8 @@
 import { Logger } from "../util/logger";
 import * as vscode from "vscode";
+import { Disposable } from "../api/disposable";
 
-export class Debugger {
+export class Debugger implements Disposable {
   public constructor(private readonly logger: Logger) {}
 
   public async manageVSCodeDebuggingSession(workspace: any, debuggerConfig: any): Promise<void> {
@@ -33,5 +34,9 @@ export class Debugger {
     await new Promise((resolve) => setImmediate(resolve));
     currentSession = vscode.debug.activeDebugSession;
     return currentSession;
+  }
+
+  public dispose() {
+    this.logger.dispose();
   }
 }

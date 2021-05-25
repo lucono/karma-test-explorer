@@ -2,13 +2,12 @@ import { TestRunner } from "../api/test-runner";
 import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
 import { Logger } from "../util/logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { ExtensionConfig } from "./extension-config";
-import { KarmaServer } from "../frameworks/karma/karma-test-server";
 import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "../api/execution";
 import { TestResults } from "../api/test-status";
 import { TestType } from "../api/test-infos";
 import { TestManager } from "../api/test-manager";
+import { TestServer } from "../api/test-server";
 
 // export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
 
@@ -17,27 +16,29 @@ export class DefaultTestManager implements TestManager {
   private testRunning: boolean = false;
 
   public constructor(
-    private readonly karmaServer: KarmaServer,
+    private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
+    private readonly defaultKarmaPort: number,
+    private readonly defaultKarmaSocketConnectionPort: number,
     private readonly logger: Logger
   ) {
     // DisposablesHelper.from(karmaServer, testRunner, karmaEventListener, logger);
 
-    this.disposables.push(karmaServer);
+    this.disposables.push(testServer);
     this.disposables.push(testRunner);
     this.disposables.push(karmaEventListener);
     this.disposables.push(logger);
   }
 
-  public async restart(config: ExtensionConfig): Promise<void> {
+  public async restart(): Promise<void> {
     try {
       await this.stopCurrentRun();
 
-      const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
+      const serverKarmaPort = await getAvailablePortPromise({ port: this.defaultKarmaPort });
 
       const candidateKarmerListenerPorts: number[] = await new Promise((resolve, reject) => {
-        getAvailablePorts(2, { port: config.defaultSocketConnectionPort }, (error: Error, ports: number[]) => {
+        getAvailablePorts(2, { port: this.defaultKarmaSocketConnectionPort }, (error: Error, ports: number[]) => {
             if (!error) {
               resolve(ports);
               return;
@@ -49,10 +50,10 @@ export class DefaultTestManager implements TestManager {
         ? candidateKarmerListenerPorts[0]
         : candidateKarmerListenerPorts[1];
 
-      this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
-      this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
+      this.logger.info(`Using available karma port: ${this.defaultKarmaPort} --> ${serverKarmaPort}`);
+      this.logger.info(`Using available karma listener socket port: ${this.defaultKarmaSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
-      const karmaServerExecution: Execution = this.karmaServer.start(
+      const karmaServerExecution: Execution = this.testServer.start(
         serverKarmaPort,
         karmerListenerSocketPort);
 
@@ -63,7 +64,7 @@ export class DefaultTestManager implements TestManager {
           .then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-          karmaServerExecution.stopped().then(() => reject(`Karma server quit prematurely`));
+          karmaServerExecution.stopped().then(() => reject(`Karma server quit unexpectedly`));
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);
@@ -72,21 +73,21 @@ export class DefaultTestManager implements TestManager {
     }
   }
 
-  public async loadTests(config: ExtensionConfig): Promise<TestSuiteInfo> {
+  public async loadTests(): Promise<TestSuiteInfo> {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(
           `Request to load tests - ` +
-          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
           `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
           `Restarting both`);
 
-        await this.restart(config);
+        await this.restart();
       }
       
       this.logger.info("Proceeding to load tests");
 
-      const karmaPort = this.karmaServer.getServerPort()!;
+      const karmaPort = this.testServer.getServerPort()!;
       const testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort);
 
       return testSuiteInfo;
@@ -98,21 +99,21 @@ export class DefaultTestManager implements TestManager {
     }
   }
 
-  public async runTests(config: ExtensionConfig, tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+  public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +
-          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
           `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
           `Restarting both`);
 
-        await this.restart(config);
+        await this.restart();
       }
       
       this.logger.info("Proceeding to run tests");
 
       this.testRunning = true;
-      const karmaPort: number = this.karmaServer.getServerPort()!;
+      const karmaPort: number = this.testServer.getServerPort()!;
       const uniqueTests = this.removeTestOverlaps(tests);
       const testResults: TestResults = await this.testRunner.runTests(karmaPort, uniqueTests);
 
@@ -128,11 +129,11 @@ export class DefaultTestManager implements TestManager {
       await this.karmaEventListener.stop();
     }
 
-    if (this.karmaServer.isRunning()) {
+    if (this.testServer.isRunning()) {
       // FIXME: Should this use stop() instead of kill()?
       // Which one best guarantees termination of both karma
       // and its launched browser/s without leaving any orphans?
-      await this.karmaServer.stop();
+      await this.testServer.stop();
     }
   }
 
@@ -162,7 +163,7 @@ export class DefaultTestManager implements TestManager {
   }
 
   private isSystemsRunning(): boolean {
-    return this.karmaServer.isRunning() && this.karmaEventListener.isRunning();
+    return this.testServer.isRunning() && this.karmaEventListener.isRunning();
   }
 
   public dispose(): void {

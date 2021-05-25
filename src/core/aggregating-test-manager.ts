@@ -4,7 +4,6 @@ import { TestGrouping } from "../api/test-grouping";
 import { TestManager } from "../api/test-manager";
 import { TestStatus, TestResults } from "../api/test-status";
 import { Logger } from "../util/logger";
-import { ExtensionConfig } from "./extension-config";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 import { TestCountProcessor } from "./test-count-processor";
 import { TestSuiteMerger } from "./test-suite-merger";
@@ -20,16 +19,18 @@ export class AggregatingTestManager implements TestManager {
     private readonly testCountProcessor: TestCountProcessor,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultEmitter,
     private readonly testSuiteMerger: TestSuiteMerger,
+    private readonly testGrouping: TestGrouping,
+    private readonly projectRootPath: string,
     private readonly logger: Logger)
   {}
   
-  public async restart(config: ExtensionConfig): Promise<void> {
-    await Promise.all(this.testManagers.map(manager => manager.restart(config)));
+  public async restart(): Promise<void> {
+    await Promise.all(this.testManagers.map(manager => manager.restart()));
   }
 
-  public async loadTests(config: ExtensionConfig): Promise<TestSuiteInfo> {
+  public async loadTests(): Promise<TestSuiteInfo> {
     const loadedTests: TestSuiteInfo[] = await Promise.all(
-      this.testManagers.map(manager => manager.loadTests(config))
+      this.testManagers.map(manager => manager.loadTests())
     );
 
     let testSuiteInfo: TestSuiteInfo = this.testSuiteMerger.merge(loadedTests)!;
@@ -38,8 +39,8 @@ export class AggregatingTestManager implements TestManager {
       throw new Error(`Failed to load any tests`);
     }
 
-    if (config.testGrouping === TestGrouping.Folder) {
-      testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, config.projectRootPath);
+    if (this.testGrouping === TestGrouping.Folder) {
+      testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, this.projectRootPath);
     }
 
     const totalTestCount = this.testCountProcessor.addTestCounts(testSuiteInfo, (testSuite, testCount) => {
@@ -54,17 +55,17 @@ export class AggregatingTestManager implements TestManager {
     return testSuiteInfo;
   }
 
-  public async runTests(config: ExtensionConfig, tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+  public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
     const testResultsList: TestResults[] = await Promise.all(
-      this.testManagers.map(manager => manager.runTests(config, tests))
+      this.testManagers.map(manager => manager.runTests(tests))
     );
 
     // this.handleTestSuiteResults(testResults, config.testGrouping, config.projectRootPath);
 
-    if (config.testGrouping === TestGrouping.Folder) {
+    if (this.testGrouping === TestGrouping.Folder) {
       Object.values(TestStatus).forEach(testStatus => {
         testResultsList.forEach(testResults => {
-          testResults[testStatus] = this.testSuiteOrganizer.groupByFolder(testResults[testStatus], config.projectRootPath, false);
+          testResults[testStatus] = this.testSuiteOrganizer.groupByFolder(testResults[testStatus], this.projectRootPath, false);
         });
       });
     }

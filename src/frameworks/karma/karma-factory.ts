@@ -13,22 +13,30 @@ import { existsSync } from "fs";
 import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";
 import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "./karma-command-line-test-server-executor";
-import { TestRunEventEmitter } from "./integration/test-run-event-emitter";
-import { EventEmitter } from "vscode";
-import { TestRunEvent } from "../../api/test-events";
-import { TestResolver } from "./integration/test-resolver";
+// import { EventEmitter } from "vscode";
+// import { TestRunEvent } from "../../api/test-events";
+// import { TestResolver } from "./integration/test-resolver";
+import { TestServer } from "../../api/test-server";
+import { KarmaServer } from "./karma-test-server";
+import { TestFactory } from "../../api/test-factory";
+import { Disposable } from "../../api/disposable";
 
-export class KarmaFactory {
+export class KarmaFactory implements TestFactory {
+
+  private disposables: Disposable[] = [];
+  
   public constructor(
     private readonly config: ExtensionConfig,
-    private readonly testRunEmitter: EventEmitter<TestRunEvent>,
-    private readonly testResolver: TestResolver,
-    private readonly logger: Logger,
-    private readonly serverProcessLogger: ServerProcessLogger
-  ) {}
+    // private readonly testRunEmitter: EventEmitter<TestRunEvent>,
+    // private readonly testResolver: TestResolver,
+    private readonly serverProcessLogger: ServerProcessLogger,
+    private readonly logger: Logger)
+  {
+    this.disposables.push(config, logger);
+  }
 
-  createTestRunEmitter(): TestRunEventEmitter {
-    return new TestRunEventEmitter(this.testRunEmitter, this.testResolver)
+  public createTestServer(testServerExecutor: TestServerExecutor): TestServer {
+    return new KarmaServer(testServerExecutor, this.logger);
   }
 
   public createTestRunner(
@@ -50,6 +58,10 @@ export class KarmaFactory {
       ? this.createKarmaCommandLineTestRunExecutor()
       : this.createKarmaHttpTestRunExecutor();
   }
+
+  // public createTestRunEmitter(): TestRunEventEmitter {
+  //   return new TestRunEventEmitter(this.testRunEmitter, this.testResolver)
+  // }
 
   private createKarmaHttpTestRunExecutor(): KarmaHttpTestRunExecutor {
     this.logger.info(`Creating Karma http test run executor`);
@@ -127,5 +139,9 @@ export class KarmaFactory {
     this.logger.info(`Project detected to ${isAngularProject ? 'be' : 'not be'} an Angular project`);
 
     return isAngularProject;
+  }
+
+  public dispose() {
+    this.disposables.forEach(disposable => disposable.dispose());
   }
 }

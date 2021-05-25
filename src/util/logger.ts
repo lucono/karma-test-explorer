@@ -5,18 +5,16 @@ import { LogLevel } from "../core/log-level";
 
 declare type LogAction = (...msg: any[]) => void;
 
-export type DebugLoggingResolver = () => boolean;
-
 export class Logger implements Disposable {
 
-  private readonly isDebugLoggingEnabled: DebugLoggingResolver;
-
-  constructor(private readonly logger: Log, debugLoggingResolver?: DebugLoggingResolver) {
-    this.isDebugLoggingEnabled = debugLoggingResolver ?? (() => false);
-  }
+  public constructor(
+    private readonly logger: Log,
+    private readonly loggerName: string,
+    private readonly isDebugMode?: boolean)
+  {}
 
   public debug(msgProvider: () => string, ...params: any[]) {
-    if (!this.isDebugLoggingEnabled()) {
+    if (!this.isDebugMode) {
       return;
     }
     const msg = msgProvider();
@@ -70,7 +68,7 @@ export class Logger implements Disposable {
 
   private formatMsg(msg: string, logLevel: LogLevel): string {
     const date = new Date();
-    return `[${date.toLocaleTimeString()}] ${logLevel.toUpperCase()}: ${msg}`;
+    return `[${date.toLocaleTimeString()}] [${this.loggerName}] ${logLevel.toUpperCase()}: ${msg}`;
   }
   
   public dispose(): void {
