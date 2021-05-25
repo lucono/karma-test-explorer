@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
-import * as glob from "glob";
-import * as path from 'path';
+import { sync } from "glob";
+import { resolve } from 'path';
 import { Logger } from "./logger";
 
 enum TestNodeType {
@@ -47,7 +47,7 @@ export class SpecLocator {
     let loadedFileCount: number = 0;
 
     filePatterns
-      .map(patternString => glob.sync(patternString, options))
+      .map(patternString => sync(patternString, options))
       .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
       .forEach(filePath => {
         this.processFile(filePath, fileEncoding);
@@ -58,7 +58,7 @@ export class SpecLocator {
   }
 
   private processFile(filePath: string, fileEncoding?: string) {
-    const fileAbsolutePath = path.resolve(this.cwd, filePath);
+    const fileAbsolutePath = resolve(this.cwd, filePath);
     const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
     this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
 
@@ -98,7 +98,7 @@ export class SpecLocator {
   }
 
   public isSpecFile(filePath: string): boolean {
-    const fileAbsolutePath = path.resolve(this.cwd, filePath);
+    const fileAbsolutePath = resolve(this.cwd, filePath);
     return this.fileInfoMap.has(fileAbsolutePath);
   }
 

@@ -1,7 +1,8 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { TestResults } from "./test-result";
+import { Disposable } from "./disposable";
+import { TestResults } from "./test-status";
 
-export interface TestRunner {
+export interface TestRunner extends Disposable {
 
   loadTests(karmaPort: number): Promise<TestSuiteInfo>;
 

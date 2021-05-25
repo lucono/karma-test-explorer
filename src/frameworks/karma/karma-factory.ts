@@ -13,21 +13,22 @@ import { existsSync } from "fs";
 import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";
 import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "./karma-command-line-test-server-executor";
-import { TestRetriever, TestRunEventEmitter } from "./integration/test-run-event-emitter";
+import { TestRunEventEmitter } from "./integration/test-run-event-emitter";
 import { EventEmitter } from "vscode";
 import { TestRunEvent } from "../../api/test-events";
+import { TestResolver } from "./integration/test-resolver";
 
 export class KarmaFactory {
   public constructor(
     private readonly config: ExtensionConfig,
     private readonly testRunEmitter: EventEmitter<TestRunEvent>,
-    private readonly testRetriever: TestRetriever,
+    private readonly testResolver: TestResolver,
     private readonly logger: Logger,
     private readonly serverProcessLogger: ServerProcessLogger
   ) {}
 
   createTestRunEmitter(): TestRunEventEmitter {
-    return new TestRunEventEmitter(this.testRunEmitter, this.testRetriever)
+    return new TestRunEventEmitter(this.testRunEmitter, this.testResolver)
   }
 
   public createTestRunner(
@@ -124,7 +125,7 @@ export class KarmaFactory {
     const isAngularProject = (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
 
     this.logger.info(`Project detected to ${isAngularProject ? 'be' : 'not be'} an Angular project`);
-    
+
     return isAngularProject;
   }
 }

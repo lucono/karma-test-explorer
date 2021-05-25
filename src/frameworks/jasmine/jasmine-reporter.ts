@@ -1,4 +1,4 @@
-import { TestResult } from "../../api/test-result";
+import { TestStatus } from "../../api/test-status";
 import { TestRunStatus } from "./test-run-status";
 import { SpecCompleteResponse } from "../karma/integration/spec-complete-response";
 import { Server as SocketIOServer} from "socket.io"
@@ -46,18 +46,18 @@ function TestExplorerJasmineReporter(
   };
 
   this.onSpecComplete = (browser: any, spec: { [key: string]: any }) => {
-    let status: TestResult;
+    let status: TestStatus;
     let fullResponse: { [key: string]: any } | undefined;
 
     if (spec.skipped) {
-      status = TestResult.Skipped;
+      status = TestStatus.Skipped;
       this.specSkipped(browser, spec);
 
     } else if (spec.success) {
-      status = TestResult.Success;
+      status = TestStatus.Success;
 
     } else {
-      status = TestResult.Failed;
+      status = TestStatus.Failed;
       fullResponse = spec;
     }
 

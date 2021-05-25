@@ -20,7 +20,7 @@ export class KarmaServer implements TestServer {
     private readonly serverExecutionHandler: TestServerExecutor,
     private readonly logger: Logger)
   { }
-
+  
   public start(
     karmaPort: number,
     karmaSocketPort: number): Execution
@@ -161,6 +161,10 @@ export class KarmaServer implements TestServer {
 
   private async futureServerExit(): Promise<void> {
     return this.serverExecutionInfo?.serverExecution.stopped();
+  }
+  
+  public dispose(): void {
+    // FIXME: Pending impl
   }
 }
 

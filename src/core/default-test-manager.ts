@@ -1,0 +1,172 @@
+import { TestRunner } from "../api/test-runner";
+import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
+import { Logger } from "../util/logger";
+import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { ExtensionConfig } from "./extension-config";
+import { KarmaServer } from "../frameworks/karma/karma-test-server";
+import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
+import { Execution } from "../api/execution";
+import { TestResults } from "../api/test-status";
+import { TestType } from "../api/test-infos";
+import { TestManager } from "../api/test-manager";
+
+// export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
+
+export class DefaultTestManager implements TestManager {
+  private disposables: { dispose: () => void }[] = [];
+  private testRunning: boolean = false;
+
+  public constructor(
+    private readonly karmaServer: KarmaServer,
+    private readonly testRunner: TestRunner,
+    private readonly karmaEventListener: KarmaEventListener,
+    private readonly logger: Logger
+  ) {
+    // DisposablesHelper.from(karmaServer, testRunner, karmaEventListener, logger);
+
+    this.disposables.push(karmaServer);
+    this.disposables.push(testRunner);
+    this.disposables.push(karmaEventListener);
+    this.disposables.push(logger);
+  }
+
+  public async restart(config: ExtensionConfig): Promise<void> {
+    try {
+      await this.stopCurrentRun();
+
+      const serverKarmaPort = await getAvailablePortPromise({ port: config.karmaPort });
+
+      const candidateKarmerListenerPorts: number[] = await new Promise((resolve, reject) => {
+        getAvailablePorts(2, { port: config.defaultSocketConnectionPort }, (error: Error, ports: number[]) => {
+            if (!error) {
+              resolve(ports);
+              return;
+            }
+            reject(`Failed to get available ports for karma listener socket: ${error.message ?? error}`)
+          });
+      });
+      const karmerListenerSocketPort = candidateKarmerListenerPorts[0] !== serverKarmaPort
+        ? candidateKarmerListenerPorts[0]
+        : candidateKarmerListenerPorts[1];
+
+      this.logger.info(`Using available karma port: ${config.karmaPort} --> ${serverKarmaPort}`);
+      this.logger.info(`Using available karma listener socket port: ${config.defaultSocketConnectionPort} --> ${karmerListenerSocketPort}`);
+
+      const karmaServerExecution: Execution = this.karmaServer.start(
+        serverKarmaPort,
+        karmerListenerSocketPort);
+
+      await karmaServerExecution.started();
+
+      await new Promise<void>((resolve, reject) => {
+        this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)
+          .then(() => resolve())
+          .catch(failureReason => reject(`${failureReason}`));
+        
+          karmaServerExecution.stopped().then(() => reject(`Karma server quit prematurely`));
+      });
+    } catch (error) {
+      this.logger.error(`Failed to load tests: ${error}`);
+      await this.stopCurrentRun();
+      throw error;
+    }
+  }
+
+  public async loadTests(config: ExtensionConfig): Promise<TestSuiteInfo> {
+    try {
+      if (!this.isSystemsRunning()) {
+        this.logger.info(
+          `Request to load tests - ` +
+          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `Restarting both`);
+
+        await this.restart(config);
+      }
+      
+      this.logger.info("Proceeding to load tests");
+
+      const karmaPort = this.karmaServer.getServerPort()!;
+      const testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort);
+
+      return testSuiteInfo;
+      
+    } catch (error) {
+      const failureMessage = `Test loading failed: ${error.message ?? error}`;
+      this.logger.error(failureMessage);
+      throw new Error(failureMessage);
+    }
+  }
+
+  public async runTests(config: ExtensionConfig, tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+    try {
+      if (!this.isSystemsRunning()) {
+        this.logger.info(`Request to run tests - ` +
+          `karma server is ${!this.karmaServer.isRunning() ? 'not' : ''} running, and ` +
+          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `Restarting both`);
+
+        await this.restart(config);
+      }
+      
+      this.logger.info("Proceeding to run tests");
+
+      this.testRunning = true;
+      const karmaPort: number = this.karmaServer.getServerPort()!;
+      const uniqueTests = this.removeTestOverlaps(tests);
+      const testResults: TestResults = await this.testRunner.runTests(karmaPort, uniqueTests);
+
+      return testResults;
+
+    } finally {
+      this.testRunning = false;
+    }
+  }
+
+  public async stopCurrentRun(): Promise<void> {
+    if (this.karmaEventListener.isRunning()) {
+      await this.karmaEventListener.stop();
+    }
+
+    if (this.karmaServer.isRunning()) {
+      // FIXME: Should this use stop() instead of kill()?
+      // Which one best guarantees termination of both karma
+      // and its launched browser/s without leaving any orphans?
+      await this.karmaServer.stop();
+    }
+  }
+
+  private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {
+    const resolvedTests = new Set(tests);
+
+    const removeDuplicates = (test: TestInfo | TestSuiteInfo) => {
+      if (resolvedTests.has(test)) {
+        resolvedTests.delete(test);
+      }
+      if (test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest));
+      }
+    }
+
+    tests.forEach(test => {
+      if (resolvedTests.has(test) && test.type === TestType.Suite) {
+        test.children.forEach(childTest => removeDuplicates(childTest))
+      };
+    });
+
+    return [ ...resolvedTests ];
+  }
+
+  public isTestRunning(): boolean {
+    return this.testRunning;
+  }
+
+  private isSystemsRunning(): boolean {
+    return this.karmaServer.isRunning() && this.karmaEventListener.isRunning();
+  }
+
+  public dispose(): void {
+    this.stopCurrentRun();
+    this.disposables.forEach(disposable => disposable.dispose());
+  }
+}

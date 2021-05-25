@@ -6,7 +6,11 @@ import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, Tes
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
 
-  public groupByFolder(rootSuite: TestSuiteInfo, rootPath: string, collapseSingleFolders: boolean = true): TestSuiteInfo {
+  public groupByFolder(
+    rootSuite: TestSuiteInfo,
+    rootPath: string,
+    collapseSingleFolders: boolean = true): TestSuiteInfo
+  {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
     const fileLessSpecsSuite: TestSuiteInfo[] = [];

@@ -7,15 +7,16 @@ import { SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../../../api/execution";
-import { TestResult } from "../../../api/test-result";
+import { TestStatus } from "../../../api/test-status";
 import * as express from "express"
+import { Disposable } from "../../../api/disposable";
 
 const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
-export type TestCapture = { [key in TestResult]: SpecCompleteResponse[] };
+export type TestCapture = { [key in TestStatus]: SpecCompleteResponse[] };
 
-export class KarmaEventListener {
+export class KarmaEventListener implements Disposable {
   private isListening: boolean = false;
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
@@ -125,9 +126,9 @@ export class KarmaEventListener {
       await testExecution.stopped();
 
       const capturedTests: TestCapture = {
-        [TestResult.Failed]: this.failedSpecs,
-        [TestResult.Success]: this.passedSpecs,
-        [TestResult.Skipped]: this.skippedSpecs
+        [TestStatus.Failed]: this.failedSpecs,
+        [TestStatus.Success]: this.passedSpecs,
+        [TestStatus.Skipped]: this.skippedSpecs
       };
 
       return capturedTests;
@@ -166,22 +167,22 @@ export class KarmaEventListener {
 
       return;
     }
-    const testResult: TestResult = results.status;
+    const testStatus: TestStatus = results.status;
 
-    if (!Object.values(TestResult).includes(testResult)) {
-      this.logger.warn(`Skipping captured spec with unknown result value: ${testResult}`);
-      this.logger.debug(() => `Skipped captured spec with unknown result '${testResult}': ${results}`);
+    if (!Object.values(TestStatus).includes(testStatus)) {
+      this.logger.warn(`Skipping captured spec with unknown result value: ${testStatus}`);
+      this.logger.debug(() => `Skipped captured spec with unknown result '${testStatus}': ${results}`);
       return;
     }
 
     this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
     this.eventEmitter.emitTestResultEvent(testId, event.results);
 
-    if (testResult === TestResult.Success) {
+    if (testStatus === TestStatus.Success) {
       this.passedSpecs.push(results);
-    } else if (testResult === TestResult.Failed) {
+    } else if (testStatus === TestStatus.Failed) {
       this.failedSpecs.push(results);
-    } else if (testResult === TestResult.Skipped) {
+    } else if (testStatus === TestStatus.Skipped) {
       this.skippedSpecs.push(results);
     }
 
@@ -235,5 +236,9 @@ export class KarmaEventListener {
 
   public isRunning(): boolean {
     return this.server !== undefined;
+  }
+  
+  public dispose(): void {
+    // FIXME: Pending impl
   }
 }

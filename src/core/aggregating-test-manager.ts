@@ -1,0 +1,94 @@
+import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { Disposable } from "../api/disposable";
+import { TestGrouping } from "../api/test-grouping";
+import { TestManager } from "../api/test-manager";
+import { TestStatus, TestResults } from "../api/test-status";
+import { Logger } from "../util/logger";
+import { ExtensionConfig } from "./extension-config";
+import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
+import { TestCountProcessor } from "./test-count-processor";
+import { TestSuiteMerger } from "./test-suite-merger";
+import { TestSuiteOrganizer } from "./test-suite-organizer";
+
+export class AggregatingTestManager implements TestManager {
+
+  private readonly disposables: Disposable[] = [];
+
+  public constructor(
+    private readonly testManagers: TestManager[],
+    private readonly testSuiteOrganizer: TestSuiteOrganizer,
+    private readonly testCountProcessor: TestCountProcessor,
+    private readonly suiteTestResultEmitter: SuiteAggregateTestResultEmitter,
+    private readonly testSuiteMerger: TestSuiteMerger,
+    private readonly logger: Logger)
+  {}
+  
+  public async restart(config: ExtensionConfig): Promise<void> {
+    await Promise.all(this.testManagers.map(manager => manager.restart(config)));
+  }
+
+  public async loadTests(config: ExtensionConfig): Promise<TestSuiteInfo> {
+    const loadedTests: TestSuiteInfo[] = await Promise.all(
+      this.testManagers.map(manager => manager.loadTests(config))
+    );
+
+    let testSuiteInfo: TestSuiteInfo = this.testSuiteMerger.merge(loadedTests)!;
+
+    if (!testSuiteInfo) {
+      throw new Error(`Failed to load any tests`);
+    }
+
+    if (config.testGrouping === TestGrouping.Folder) {
+      testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, config.projectRootPath);
+    }
+
+    const totalTestCount = this.testCountProcessor.addTestCounts(testSuiteInfo, (testSuite, testCount) => {
+      testSuite.testCount = testCount;
+      testSuite.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
+    });
+
+    this.logger.info(totalTestCount > 0
+      ? `Test loading - ${totalTestCount} total tests loaded from Karma`
+      : `Test loading - No tests found`);
+
+    return testSuiteInfo;
+  }
+
+  public async runTests(config: ExtensionConfig, tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+    const testResultsList: TestResults[] = await Promise.all(
+      this.testManagers.map(manager => manager.runTests(config, tests))
+    );
+
+    // this.handleTestSuiteResults(testResults, config.testGrouping, config.projectRootPath);
+
+    if (config.testGrouping === TestGrouping.Folder) {
+      Object.values(TestStatus).forEach(testStatus => {
+        testResultsList.forEach(testResults => {
+          testResults[testStatus] = this.testSuiteOrganizer.groupByFolder(testResults[testStatus], config.projectRootPath, false);
+        });
+      });
+    }
+
+    const combinedTestResults = {} as TestResults;
+
+    Object.values(TestStatus).forEach(testStatus => {
+      combinedTestResults[testStatus] = this.testSuiteMerger.merge(testResultsList.map(testResults => testResults[testStatus]))!;
+    });
+
+    this.suiteTestResultEmitter.processTestResults(combinedTestResults);
+
+    return combinedTestResults;
+  }
+
+  public async stopCurrentRun(): Promise<void> {
+    await Promise.all(this.testManagers.map(manager => manager.stopCurrentRun()));
+  }
+
+  public isTestRunning(): boolean {
+    return this.testManagers.some(manager => manager.isTestRunning());
+  }
+
+  public dispose() {
+    this.disposables.forEach(disposable => disposable.dispose());
+  }
+}

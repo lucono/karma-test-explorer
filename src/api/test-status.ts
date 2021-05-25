@@ -1,9 +1,9 @@
 import { TestSuiteInfo } from "vscode-test-adapter-api";
 
-export enum TestResult {
+export enum TestStatus {
   Failed = "Failed",
   Skipped = "Skipped",
   Success = "Success",
 }
 
-export type TestResults = { [key in TestResult]: TestSuiteInfo };
+export type TestResults = { [key in TestStatus]: TestSuiteInfo };

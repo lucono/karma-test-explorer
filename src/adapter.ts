@@ -12,21 +12,20 @@ import {
 } from "vscode-test-adapter-api";
 import { DebugLoggingResolver, Logger } from "./util/logger";
 import { Log } from "vscode-test-adapter-util";
-import { TestExplorer, TestResolver } from "./core/test-explorer";
+import { DefaultTestManager } from "./core/default-test-manager";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
-import { TestRetriever } from "./frameworks/karma/integration/test-run-event-emitter";
 import { KarmaEventListener } from "./frameworks/karma/integration/karma-event-listener";
 import { SpecLocation, SpecLocator, SpecLocatorOptions } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
-import { TestSuiteOrganizer } from "./core/test-suite-organizer";
 import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder } from "vscode";
 import { KarmaServer } from "./frameworks/karma/karma-test-server";
 import { TestType } from "./api/test-infos";
 import { KarmaFactory } from "./frameworks/karma/karma-factory";
 import { ServerProcessLogger } from "./frameworks/karma/karma-command-line-test-server-executor";
 import { TestLoadEvent, TestRunEvent } from "./api/test-events";
+import { TestResolver } from "./frameworks/karma/integration/test-resolver";
 
 export class Adapter implements TestAdapter {
 
@@ -40,11 +39,23 @@ export class Adapter implements TestAdapter {
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
   private readonly testRunEmitter = new EventEmitter<TestRunEvent>();
   private readonly autorunEmitter = new EventEmitter<void>();
-  private readonly testExplorer: TestExplorer;
+  private readonly testManager: DefaultTestManager;
   private readonly debugger: Debugger;
   private readonly logger: Logger;
 
   constructor(public readonly workspaceFolder: WorkspaceFolder, private readonly configPrefix: string, log: Log) {
+    const testResolver: TestResolver = {
+      resolveTest: (testId: string): TestInfo | undefined => {
+        const test = this.loadedTestsById.get(testId);
+        return test?.type === TestType.Test ? test : undefined;
+      },
+
+      resolveTestSuite: (testSuiteId: string): TestSuiteInfo | undefined => {
+        const testSuite = this.loadedTestsById.get(testSuiteId);
+        return testSuite?.type === TestType.Suite ? testSuite : undefined;
+      }
+    };
+
     const debugModeResolver: DebugLoggingResolver = () => this.config.debugLevelLoggingEnabled;
     this.logger = new Logger(log, debugModeResolver);
 
@@ -55,7 +66,7 @@ export class Adapter implements TestAdapter {
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
 
-      if (this.testExplorer.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
+      if (this.testManager.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
         let log = data.toString().replace(regex, "");
         if (log.startsWith("e ")) {
           log = `HeadlessChrom${log}`;
@@ -64,15 +75,10 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    const testRetriever: TestRetriever = (testId: string) => {
-      const test = this.loadedTestsById.get(testId);
-      return test?.type === TestType.Test ? test : undefined;
-    }
-
     const factory = new KarmaFactory(
       this.config,
       this.testRunEmitter,
-      testRetriever,
+      testResolver,
       this.logger,
       karmaServerProcessLogger);
 
@@ -81,21 +87,20 @@ export class Adapter implements TestAdapter {
     };
     const testRunEventEmitter = factory.createTestRunEmitter();
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, this.logger);
-    const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
+    // const testSuiteOrganizer = new TestSuiteOrganizer(this.logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, this.logger);
     const testServerExecutor = factory.createTestServerExecutor();
     const testRunExecutor = factory.createTestRunExecutor();
     const testRunner = factory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
     const testServer = new KarmaServer(testServerExecutor, this.logger);
-    const testResolver: TestResolver = (testSuiteId: string) => this.loadedTestsById.get(testSuiteId);
 
-    this.testExplorer = new TestExplorer(
+    this.testManager = new DefaultTestManager(
       testServer,
       testRunner,
       karmaEventListener,
-      this.testRunEmitter,
-      testSuiteOrganizer,
-      testResolver,
+      // this.testRunEmitter,
+      // testSuiteOrganizer,
+      // testResolver,
       this.logger);
 
     this.debugger = new Debugger(this.logger);
@@ -160,9 +165,9 @@ export class Adapter implements TestAdapter {
     
     try {
       if (isHardRefresh) {
-        await this.testExplorer.restart(this.config);
+        await this.testManager.restart(this.config);
       }
-      loadedTests = await this.testExplorer.loadTests(this.config);
+      loadedTests = await this.testManager.loadTests(this.config);
     } catch (error) {
       loadError = `Failed to load tests: ${error?.message ?? error}`;
     }
@@ -211,7 +216,7 @@ export class Adapter implements TestAdapter {
     let runError: string | undefined;
 
     try {
-      await this.testExplorer.runTests(this.config, runAllTests ? [] : tests);
+      await this.testManager.runTests(this.config, runAllTests ? [] : tests);
     } catch (error) {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
@@ -234,12 +239,12 @@ export class Adapter implements TestAdapter {
 
   public async cancel(): Promise<void> {
     this.logger.debug(() => `Aborting any currently running test operation`);
-    await this.testExplorer.stopCurrentRun();
+    await this.testManager.stopCurrentRun();
     this.isTestProcessRunning = false;
   }
 
   public async dispose(): Promise<void> {
-    this.testExplorer.dispose();
+    this.testManager.dispose();
     this.disposables.forEach(disposable => disposable.dispose());
     this.disposables = [];
   }

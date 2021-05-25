@@ -1,4 +1,4 @@
-import { TestResult } from "../../../api/test-result";
+import { TestStatus } from "../../../api/test-status";
 
 export interface SpecCompleteResponse {
     readonly id: string;
@@ -6,7 +6,7 @@ export interface SpecCompleteResponse {
     readonly suite: string[];
     readonly description: string;
     readonly fullName: string;
-    readonly status: TestResult;
+    readonly status: TestStatus;
     readonly timeSpentInMilliseconds: string;
     readonly filePath?: string;
     readonly line?: number;

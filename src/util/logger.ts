@@ -1,12 +1,13 @@
 import { Log } from "vscode-test-adapter-util";
-import { TestResult } from "../api/test-result";
+import { Disposable } from "../api/disposable";
+import { TestStatus } from "../api/test-status";
 import { LogLevel } from "../core/log-level";
 
 declare type LogAction = (...msg: any[]) => void;
 
 export type DebugLoggingResolver = () => boolean;
 
-export class Logger {
+export class Logger implements Disposable {
 
   private readonly isDebugLoggingEnabled: DebugLoggingResolver;
 
@@ -46,11 +47,11 @@ export class Logger {
     global.console.log(formattedMsg);
   }
 
-  public status(status: TestResult) {
+  public status(testStatus: TestStatus) {
     let msg;
-    if (status === TestResult.Success) {
+    if (testStatus === TestStatus.Success) {
       msg = `[SUCCESS] ✅ Passed`;
-    } else if (status === TestResult.Failed) {
+    } else if (testStatus === TestStatus.Failed) {
       msg = `[FAILURE] ❌ failed`;
     } else {
       msg = `[SKIPPED] Test Skipped`;
@@ -70,5 +71,9 @@ export class Logger {
   private formatMsg(msg: string, logLevel: LogLevel): string {
     const date = new Date();
     return `[${date.toLocaleTimeString()}] ${logLevel.toUpperCase()}: ${msg}`;
+  }
+  
+  public dispose(): void {
+    // FIXME: Pending impl
   }
 }

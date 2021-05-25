@@ -1,6 +1,7 @@
+import { Disposable } from "./disposable";
 import { Execution } from "./execution";
 
-export interface TestServer {
+export interface TestServer extends Disposable {
 
   start(karmaPort: number, karmaSocketPort: number): Execution;
 
@@ -9,5 +10,4 @@ export interface TestServer {
   isRunning(): boolean;
 
   getServerPort(): number | undefined;
-
 }

@@ -16,6 +16,7 @@ export interface KarmaCommandLineTestRunExecutorOptions {
 }
 
 export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
+
   public constructor(
     private readonly projectRootPath: string,
     private readonly baseKarmaConfigFile: string,

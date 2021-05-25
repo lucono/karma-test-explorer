@@ -1,21 +1,22 @@
 import { TestEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
 import { TestState } from "../../../core/test-state";
 import { SpecCompleteResponse } from "./spec-complete-response";
-import { TestResult } from "../../../api/test-result";
+import { TestStatus } from "../../../api/test-status";
 import { TestRunEvent } from "../../../api/test-events";
 import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
+import { TestResolver } from "./test-resolver";
 
-export type TestRetriever = (testId: string) => TestInfo | undefined;
+// export type TestRetriever = (testId: string) => TestInfo | undefined;
 
 export class TestRunEventEmitter {
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
-    private readonly testRetriever: TestRetriever
+    private readonly testResolver: TestResolver
   ) {}
 
   public emitTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
-    const test: TestInfo | undefined = this.testRetriever(testId);
+    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
     const testEvent: TestEvent = {
       type: TestType.Test,
@@ -26,7 +27,7 @@ export class TestRunEventEmitter {
   }
 
   public emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    const test: TestInfo | undefined = this.testRetriever(testId);
+    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
     
     const testState = this.mapTestResultToTestState(testResult.status);
     const testTime = `${testResult.timeSpentInMilliseconds} ms`;
@@ -72,11 +73,11 @@ export class TestRunEventEmitter {
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  private mapTestResultToTestState(testResult: TestResult): TestState {
-    switch (testResult) {
-      case TestResult.Success: return TestState.Passed;
-      case TestResult.Failed: return TestState.Failed;
-      case TestResult.Skipped: return TestState.Skipped;
+  private mapTestResultToTestState(testStatus: TestStatus): TestState {
+    switch (testStatus) {
+      case TestStatus.Success: return TestState.Passed;
+      case TestStatus.Failed: return TestState.Failed;
+      case TestStatus.Skipped: return TestState.Skipped;
     }
   }
 
