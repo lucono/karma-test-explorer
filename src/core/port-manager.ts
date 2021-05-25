@@ -44,7 +44,11 @@ export class PortManager implements Disposable {
     }
 
     foundPorts.forEach(port => this.assignedPorts.add(port));
-    futurePortRelease.then(() => foundPorts.forEach(port => this.assignedPorts.delete(port)));
+
+    futurePortRelease.then(() => {
+      this.logger.debug(() => `Releasing ports: ${JSON.stringify(foundPorts)}`);
+      foundPorts.forEach(port => this.assignedPorts.delete(port));
+    });
 
     this.logger.info(
       `Request for ${portCount} ports at base port ${basePort} produced: ` +
