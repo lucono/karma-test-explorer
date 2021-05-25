@@ -1,6 +1,7 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
 import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/jasmine-reporter";
 import { dirname, resolve } from "path";
+import { KARMA_PORT_ENV_VAR, KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "../karma-constants";
 
 const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
 
@@ -11,11 +12,16 @@ export class KarmaConfigurator {
     // remove 'logLevel' changing
     // https://github.com/karma-runner/karma/issues/614 is ready
 
-    config.port = parseInt(process.env.karmaPort!, 10); // FIXME Use shared constants for all environment variable exchange
+    config.port = parseInt(process.env[KARMA_PORT_ENV_VAR]!, 10); // FIXME Use shared constants for all environment variable exchange
     config.logLevel = config.LOG_INFO;
     config.autoWatch = false;
     config.autoWatchBatchDelay = 0;
-    (config.client ??= {}).clearContext = true;
+
+    config.client ??= {};
+    config.client.clearContext = true;
+    config.client.shardIndex = parseInt(process.env[KARMA_SHARD_INDEX_ENV_VAR]!, 10);
+    config.client.totalShards = parseInt( process.env[KARMA_TOTAL_SHARDS_ENV_VAR]!, 10);
+
     config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
     config.browserNoActivityTimeout = undefined;
     config.singleRun = false;

@@ -1,4 +1,4 @@
-import { ConfigOptions as KarmaConfigOptions } from "karma";
+import { ConfigOptions as KarmaConfigOptions  } from "karma";
 
 declare module "karma" {
   interface Config extends KarmaConfigOptions {}
@@ -8,6 +8,11 @@ declare module "karma" {
     configFile?: string;
     coverageIstanbulReporter?: any;
     reporters: string[];
+  }
+
+  interface ClientOptions {
+    shardIndex?: number;
+    totalShards?: number;
   }
 
   interface CustomLauncher {

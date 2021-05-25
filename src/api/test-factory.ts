@@ -15,9 +15,7 @@ export interface TestFactory extends Disposable {
     karmaEventListener: KarmaEventListener,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper): TestRunner;
 
-  createTestServerExecutor(): TestServerExecutor;
+  createTestServerExecutor(serverShardIndex?: number, totalServerShards?: number): TestServerExecutor;
 
   createTestRunExecutor(): TestRunExecutor;
-
-  // createTestRunEmitter(): TestRunEventEmitter;
 }

@@ -4,6 +4,7 @@ import { SpecCompleteResponse } from "../karma/integration/spec-complete-respons
 import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
+import { KARMA_SOCKET_PORT_ENV_VAR } from "../karma/karma-constants";
 
 const PING_TIMEOUT = 24 * 60 * 60 * 1000;
 const PING_INTERVAL = 24 * 60 * 60 * 1000;
@@ -23,7 +24,7 @@ function TestExplorerJasmineReporter(
   this.emitter = emitter;
   // this.adapters = [];
 
-  const socketPort = process.env.karmaSocketPort as string;
+  const socketPort = process.env[KARMA_SOCKET_PORT_ENV_VAR] as string;
   log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
   
   const socket = io("http://localhost:" + socketPort + "/", {

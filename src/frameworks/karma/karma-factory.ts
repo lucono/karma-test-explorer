@@ -20,6 +20,7 @@ import { TestServer } from "../../api/test-server";
 import { KarmaServer } from "./karma-test-server";
 import { TestFactory } from "../../api/test-factory";
 import { Disposable } from "../../api/disposable";
+import { KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "./karma-constants";
 
 export class KarmaFactory implements TestFactory {
 
@@ -47,10 +48,13 @@ export class KarmaFactory implements TestFactory {
     return new KarmaTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper, this.logger);
   }
 
-  public createTestServerExecutor(): TestServerExecutor {
-    return this.isAngularProject()
-      ? this.createAngularTestServerExecutor()
-      : this.createKarmaCommandLineTestServerExecutor();
+  public createTestServerExecutor(
+    serverShardIndex: number = 0,
+    totalServerShards: number = 1): TestServerExecutor
+  {
+    return this.isAngularProject()  // FIXME: Angular concerns should not be here but in Angular factory (?)
+      ? this.createAngularTestServerExecutor(serverShardIndex, totalServerShards)
+      : this.createKarmaCommandLineTestServerExecutor(serverShardIndex, totalServerShards);
   }
 
   public createTestRunExecutor(): TestRunExecutor {
@@ -85,13 +89,18 @@ export class KarmaFactory implements TestFactory {
       this.logger);
   }
 
-  private createKarmaCommandLineTestServerExecutor(): KarmaCommandLineTestServerExecutor {
+  private createKarmaCommandLineTestServerExecutor(
+    serverShardIndex: number,
+    totalServerShards: number): KarmaCommandLineTestServerExecutor
+  {
     this.logger.info(`Creating Karma test server executor`);
     
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env
+      ...this.config.env,
+      [KARMA_SHARD_INDEX_ENV_VAR]: `${serverShardIndex}`,
+      [KARMA_TOTAL_SHARDS_ENV_VAR]: `${totalServerShards}`
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,
@@ -107,7 +116,10 @@ export class KarmaFactory implements TestFactory {
       this.logger);
   }
 
-  private createAngularTestServerExecutor(): AngularTestServerExecutor {
+  private createAngularTestServerExecutor(
+    serverShardIndex: number = 0,
+    totalServerShards: number = 1): AngularTestServerExecutor
+  {
     this.logger.info(`Creating Angular test server executor`);
     
     const angularProject = getDefaultAngularProject(this.config.projectRootPath);
@@ -115,7 +127,9 @@ export class KarmaFactory implements TestFactory {
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env
+      ...this.config.env,
+        [KARMA_SHARD_INDEX_ENV_VAR]: `${serverShardIndex}`,
+        [KARMA_TOTAL_SHARDS_ENV_VAR]: `${totalServerShards}`
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,

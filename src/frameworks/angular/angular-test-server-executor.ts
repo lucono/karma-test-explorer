@@ -10,6 +10,7 @@ import { AngularProject } from "./angular-project";
 // import { getDefaultAngularProject } from "./angular-config-loader";
 import { ServerStopExecutor, TestServerExecutor } from "../../api/test-server-executor";
 import { Execution } from "../../api/execution";
+import { KARMA_PORT_ENV_VAR, KARMA_SOCKET_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "../karma/karma-constants";
 
 export interface AngularTestServerExecutorOptions {
   environment: { [key: string]: string | undefined };
@@ -33,9 +34,9 @@ export class AngularTestServerExecutor implements TestServerExecutor {
   {
     const env: { [key: string]: string } = {
       ...this.options.environment,
-      userKarmaConfigPath: this.angularProject.karmaConfigPath,
-      karmaPort: `${karmaPort}`,
-      karmaSocketPort: `${karmaSocketPort}`
+      [USER_KARMA_CONFIG_PATH_ENV_VAR]: this.angularProject.karmaConfigPath,
+      [KARMA_PORT_ENV_VAR]: `${karmaPort}`,
+      [KARMA_SOCKET_PORT_ENV_VAR]: `${karmaSocketPort}`
     };
 
     const spawnOptions: SpawnOptions = {

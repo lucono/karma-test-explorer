@@ -7,6 +7,7 @@ import { Logger } from "../../util/logger";
 import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
 import { ServerStopExecutor, TestServerExecutor } from "../../api/test-server-executor";
 import { Execution } from "../../api/execution";
+import { KARMA_PORT_ENV_VAR, KARMA_SOCKET_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "./karma-constants";
 
 export type ServerProcessLogger = (data: string, serverPort: number) => void;
 
@@ -32,9 +33,9 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
   {
     const environment: { [key: string]: string } = {
       ...this.options.environment,
-      karmaPort: `${karmaPort}`,
-      karmaSocketPort: `${karmaSocketPort}`,
-      userKarmaConfigPath: this.userKarmaConfigFile
+      [KARMA_PORT_ENV_VAR]: `${karmaPort}`,
+      [KARMA_SOCKET_PORT_ENV_VAR]: `${karmaSocketPort}`,
+      [USER_KARMA_CONFIG_PATH_ENV_VAR]: this.userKarmaConfigFile
     };
 
     const spawnOptions: SpawnOptions = {

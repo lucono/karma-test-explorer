@@ -23,7 +23,7 @@ export class TestExplorerFactory {
 
   private disposables: { dispose(): void }[] = [];
   private readonly config: ExtensionConfig;
-  private logger: Logger;
+  private readonly logger: Logger;
 
   constructor(
     workspaceFolder: WorkspaceFolder,
@@ -61,15 +61,28 @@ export class TestExplorerFactory {
   public createTestManager(
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
-    testResolver: TestResolver): TestManager
+    testResolver: TestResolver,
+    serverInstances: number = 1): TestManager
   {
-    const defaultTestManager: DefaultTestManager = this.createDefaultTestManager(
-      testRunEmitter,
-      specLocationResolver,
-      testResolver);
-    
+    const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
+
+    const testManagers: TestManager[] = [];
+    const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
+    let shardIndex = 0;
+
+    while (shardIndex < totalServerShards) {
+      testManagers.push(this.createDefaultTestManager(
+        testRunEmitter,
+        specLocationResolver,
+        testResolver,
+        shardIndex,
+        totalServerShards));
+
+      shardIndex++;
+    }
+
     const aggregatingTestManager: AggregatingTestManager = this.createAggregatingTestManager(
-      [ defaultTestManager ],
+      testManagers,
       testRunEmitter,
       testResolver); 
 
@@ -121,7 +134,9 @@ export class TestExplorerFactory {
   private createDefaultTestManager(
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
-    testResolver: TestResolver): DefaultTestManager
+    testResolver: TestResolver,
+    serverShardIndex: number = 0,
+    totalServerShards: number = 1): DefaultTestManager
   {
     const logger = new Logger(this.log, 'DefaultTestManager', this.config.debugLevelLoggingEnabled);
     let testManager: DefaultTestManager;
@@ -152,7 +167,7 @@ export class TestExplorerFactory {
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, logger);
     // const testSuiteOrganizer = new TestSuiteOrganizer(logger);
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, logger);
-    const testServerExecutor = testFactory.createTestServerExecutor();
+    const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
     const testServer = testFactory.createTestServer(testServerExecutor);
