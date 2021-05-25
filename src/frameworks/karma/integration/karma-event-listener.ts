@@ -8,10 +8,11 @@ import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../../../api/execution";
 import { TestStatus } from "../../../api/test-status";
-import * as express from "express"
 import { Disposable } from "../../../api/disposable";
+import * as express from "express"
+import { DeferredPromise } from "../../../util/deferred-promise";
 
-const DEFAULT_SOCKET_PORT = 9999;
+// const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
 export type TestCapture = { [key in TestStatus]: SpecCompleteResponse[] };
@@ -31,17 +32,19 @@ export class KarmaEventListener implements Disposable {
     private readonly logger: Logger
   ) {}
 
-  public async acceptKarmaConnection(socketPort?: number): Promise<void> {
-    if (this.isRunning()) {
-      this.logger.info(
-        `Request to open new karma listener connection on port ${socketPort} - ` +
-        `Stopping currently running listener`);
-      
-      await this.stop();
-    }
-    this.logger.info(`Attempting to listen on port ${socketPort}`);
+  public acceptKarmaConnection(socketPort: number): Execution {
+    const connectionClosedDeferred: DeferredPromise = new DeferredPromise();
 
-    return new Promise<void>((resolve, reject) => {
+    const connectionEstablishedPromise = new Promise<void>(async (resolve, reject) => {
+      if (this.isRunning()) {
+        this.logger.info(
+          `Request to open new karma listener connection on port ${socketPort} - ` +
+          `Stopping currently running listener`);
+        
+        await this.stop();
+      }
+      this.logger.info(`Attempting to listen on port ${socketPort}`);
+  
       const app = express();
       const server = createServer(app);
       this.server = server;
@@ -52,17 +55,17 @@ export class KarmaEventListener implements Disposable {
       } as ServerOptions;
   
       const io = new SocketIOServer(server, socketServerOptions);
-      const port = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
+      // const socketPort = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
   
-      if (port !== socketPort) {
-        this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${port}' instead`);
-      }
+      // if (socketPort !== socketPort) {
+      //   this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${socketPort}' instead`);
+      // }
       
-      this.logger.info(`Waiting on port ${port} for Karma to connect...`);
+      this.logger.info(`Waiting on port ${socketPort} for Karma to connect...`);
       let connectTimeoutId: ReturnType<typeof setTimeout>;
 
       io.on("connection", (socket) => {
-        this.logger.info(`Karma Event Listener: New socket connection from Karma on port ${port}`);
+        this.logger.info(`Karma Event Listener: New socket connection from Karma on port ${socketPort}`);
         this.sockets.add(socket);
 
         socket.on(KarmaEventName.BrowserConnected, () => {
@@ -99,21 +102,29 @@ export class KarmaEventListener implements Disposable {
         });
       });
 
-      server!.listen(port, () => {
-        this.logger.info(`Karma Event Listener: Listening to KarmaReporter events on port ${port}`);
+      server!.listen(socketPort, () => {
+        this.logger.info(`Karma Event Listener: Listening to KarmaReporter events on port ${socketPort}`);
       });
 
       server!.on("close", () => {
-        this.logger.info(`Karma Event Listener: Connection closed on ${port}`);
+        this.logger.info(`Karma Event Listener: Connection closed on ${socketPort}`);
         clearTimeout(connectTimeoutId);
         this.server = undefined;
+        connectionClosedDeferred.resolve();
       });
 
       connectTimeoutId = setTimeout(() => {
-        this.logger.error(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect on port ${port}`);
+        this.logger.error(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect on port ${socketPort}`);
         reject(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect`);
       }, KARMA_CONNECT_TIMEOUT);
     });
+
+    const karmaConnection: Execution = {
+      started: () => connectionEstablishedPromise,
+      stopped: () => connectionClosedDeferred.promise()
+    };
+
+    return karmaConnection;
   }
 
   public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {

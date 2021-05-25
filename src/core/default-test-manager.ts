@@ -2,12 +2,14 @@ import { TestRunner } from "../api/test-runner";
 import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
 import { Logger } from "../util/logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
+// import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "../api/execution";
 import { TestResults } from "../api/test-status";
 import { TestType } from "../api/test-infos";
 import { TestManager } from "../api/test-manager";
 import { TestServer } from "../api/test-server";
+import { PortManager } from "./port-manager";
+import { DeferredPromise } from "../util/deferred-promise";
 
 // export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
 
@@ -19,6 +21,7 @@ export class DefaultTestManager implements TestManager {
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
+    private readonly portManager: PortManager,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
     private readonly logger: Logger
@@ -35,23 +38,26 @@ export class DefaultTestManager implements TestManager {
     try {
       await this.stopCurrentRun();
 
-      const serverKarmaPort = await getAvailablePortPromise({ port: this.defaultKarmaPort });
+      const deferredKarmaPortRelease: DeferredPromise = new DeferredPromise();
+      const deferredListenerSocketPortRelease: DeferredPromise = new DeferredPromise();
 
-      const candidateKarmerListenerPorts: number[] = await new Promise((resolve, reject) => {
-        getAvailablePorts(2, { port: this.defaultKarmaSocketConnectionPort }, (error: Error, ports: number[]) => {
-            if (!error) {
-              resolve(ports);
-              return;
-            }
-            reject(`Failed to get available ports for karma listener socket: ${error.message ?? error}`)
-          });
-      });
-      const karmerListenerSocketPort = candidateKarmerListenerPorts[0] !== serverKarmaPort
-        ? candidateKarmerListenerPorts[0]
-        : candidateKarmerListenerPorts[1];
+      const serverKarmaPort = await this.portManager.findAvailablePort(
+        this.defaultKarmaPort, 
+        deferredKarmaPortRelease.promise()
+      );  // FIXME: Decide on consistent style
 
-      this.logger.info(`Using available karma port: ${this.defaultKarmaPort} --> ${serverKarmaPort}`);
-      this.logger.info(`Using available karma listener socket port: ${this.defaultKarmaSocketConnectionPort} --> ${karmerListenerSocketPort}`);
+      const karmerListenerSocketPort = await this.portManager.findAvailablePort(
+        this.defaultKarmaSocketConnectionPort, 
+        deferredListenerSocketPortRelease.promise()
+      );  // FIXME: Decide on consistent style
+
+      this.logger.info(
+        `Using available karma port: ` +
+        `${this.defaultKarmaPort} --> ${serverKarmaPort}`);
+
+      this.logger.info(
+        `Using available karma listener socket port: ` +
+        `${this.defaultKarmaSocketConnectionPort} --> ${karmerListenerSocketPort}`);
 
       const karmaServerExecution: Execution = this.testServer.start(
         serverKarmaPort,
@@ -60,11 +66,22 @@ export class DefaultTestManager implements TestManager {
       await karmaServerExecution.started();
 
       await new Promise<void>((resolve, reject) => {
-        this.karmaEventListener.acceptKarmaConnection(karmerListenerSocketPort)
+        const karmaServerConnection: Execution = this.karmaEventListener.acceptKarmaConnection(
+          karmerListenerSocketPort
+        );
+  
+        karmaServerConnection.started()
           .then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-          karmaServerExecution.stopped().then(() => reject(`Karma server quit unexpectedly`));
+        karmaServerConnection.stopped().then(() => {
+          deferredListenerSocketPortRelease.resolve();
+        });
+
+        karmaServerExecution.stopped().then(() => {
+          deferredKarmaPortRelease.resolve();
+          reject(`Karma server quit unexpectedly`);
+        });
       });
     } catch (error) {
       this.logger.error(`Failed to load tests: ${error}`);

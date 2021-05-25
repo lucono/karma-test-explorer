@@ -18,6 +18,7 @@ import { Log } from "vscode-test-adapter-util";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
 import { TestRunEventEmitter } from "../frameworks/karma/integration/test-run-event-emitter";
+import { PortManager } from "./port-manager";
 
 export class TestExplorerFactory {
 
@@ -71,6 +72,8 @@ export class TestExplorerFactory {
     let shardIndex = 0;
 
     while (shardIndex < totalServerShards) {
+      this.logger.info(`Creating ${shardIndex} of ${totalServerShards} sharded karma instances`);
+
       testManagers.push(this.createDefaultTestManager(
         testRunEmitter,
         specLocationResolver,
@@ -138,8 +141,16 @@ export class TestExplorerFactory {
     serverShardIndex: number = 0,
     totalServerShards: number = 1): DefaultTestManager
   {
-    const logger = new Logger(this.log, 'DefaultTestManager', this.config.debugLevelLoggingEnabled);
+    const makeShardLogger = (loggerName: string): Logger => {
+      const shardLoggerName = totalServerShards > 1
+        ? `${loggerName}-${serverShardIndex}`
+        : `${loggerName}`;
+
+      return new Logger(this.log, shardLoggerName, this.config.debugLevelLoggingEnabled);
+    };
+
     let testManager: DefaultTestManager;
+    const serverProcessLogger = makeShardLogger(`ServerProcessLogger`);
 
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
@@ -149,36 +160,35 @@ export class TestExplorerFactory {
         if (log.startsWith("e ")) {
           log = `HeadlessChrom${log}`;
         }
-        logger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+        serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
       }
     };
 
     const testFactory: TestFactory = new KarmaFactory(
       this.config,
-      // testRunEmitter,
-      // testResolver,
       karmaServerProcessLogger,
-      logger);
-
-    // const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
-    //   return specLocator?.getSpecLocation(suite, description) ?? [];
-    // };
+      makeShardLogger(`TestFactory`)
+    );
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
+      specLocationResolver,
+      makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
+    );
     const testRunEventEmitter = new TestRunEventEmitter(testRunEmitter, testResolver);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, logger);
-    // const testSuiteOrganizer = new TestSuiteOrganizer(logger);
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(specLocationResolver, logger);
+    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
     const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
     const testServer = testFactory.createTestServer(testServerExecutor);
+    const portManager = new PortManager(makeShardLogger(`PortManager`));
 
     testManager = new DefaultTestManager(
       testServer,
       testRunner,
       karmaEventListener,
+      portManager,
       this.config.karmaPort,
       this.config.defaultSocketConnectionPort,
-      logger);
+      makeShardLogger(`DefaultTestManager`));
 
     return testManager;
   }
