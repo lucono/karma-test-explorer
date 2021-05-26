@@ -63,7 +63,9 @@ export class ShardManager implements Disposable {
     });
 
     this.logger.info(`--- Shard results: ---`);
-    shardBuckets.forEach((shard, index) => this.logger.info(`shard ${index} weight: ${this.getTestWeight(shard)}`));
+    shardBuckets.forEach((shard, index) => this.logger.info(
+      `shard ${index} weight: ${this.getTestWeight(shard)} (${shard.length} items)`)
+    );
     this.logger.info(`----------------------`);
 
     return shardBuckets;
