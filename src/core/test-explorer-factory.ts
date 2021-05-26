@@ -73,7 +73,9 @@ export class TestExplorerFactory {
     let shardIndex = 0;
 
     while (shardIndex < totalServerShards) {
-      this.logger.info(`Creating ${shardIndex} of ${totalServerShards} sharded karma instances`);
+      this.logger.info(
+        `Creating ${shardIndex + 1} of ${totalServerShards} ` +
+        `sharded karma instances (shard ${shardIndex})`);
 
       testManagers.push(this.createDefaultTestManager(
         testRunEmitter,

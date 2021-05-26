@@ -93,7 +93,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     const serverExecution: Execution<ServerStopExecutor> = {
       started: () => angularProcess.execution().started().then(() => serverStopper),
-      stopped: angularProcess.execution().stopped
+      ended: angularProcess.execution().ended
     };
 
     return serverExecution;

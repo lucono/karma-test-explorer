@@ -121,7 +121,7 @@ export class KarmaEventListener implements Disposable {
 
     const karmaConnection: Execution = {
       started: () => connectionEstablishedPromise,
-      stopped: () => connectionClosedDeferred.promise()
+      ended: () => connectionClosedDeferred.promise()
     };
 
     return karmaConnection;
@@ -134,7 +134,7 @@ export class KarmaEventListener implements Disposable {
       this.currentSpecs = specs;
       this.isListening = true;
 
-      await testExecution.stopped();
+      await testExecution.ended();
 
       const capturedTests: TestCapture = {
         [TestStatus.Failed]: this.failedSpecs,

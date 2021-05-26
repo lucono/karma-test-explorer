@@ -61,7 +61,7 @@ export class KarmaServer implements TestServer {
 
       this.setServerInfo(serverExecutionInfo);
 
-      serverExecution.stopped().then(() => {
+      serverExecution.ended().then(() => {
         this.clearServerInfo(serverExecutionInfo);
 
         const serverWasTerminating = this.serverCurrentlyTerminating;
@@ -92,7 +92,7 @@ export class KarmaServer implements TestServer {
 
     const karmaServerExecution: Execution = {
       started: () => serverStartedPromise,
-      stopped: () => serverStoppedDeferred.promise()
+      ended: () => serverStoppedDeferred.promise()
     };
 
     return karmaServerExecution;
@@ -135,7 +135,7 @@ export class KarmaServer implements TestServer {
     this.serverCurrentlyTerminating = serverIsTerminatingPromise;
 
     await serverStopper.executeServerStop();
-    await serverExecution.stopped();
+    await serverExecution.ended();
     
     this.logger.info(`Karma server on port ${serverPort} killed`);
     serverIsTerminatingDeferred.resolve();
@@ -160,7 +160,7 @@ export class KarmaServer implements TestServer {
   }
 
   private async futureServerExit(): Promise<void> {
-    return this.serverExecutionInfo?.serverExecution.stopped();
+    return this.serverExecutionInfo?.serverExecution.ended();
   }
   
   public dispose(): void {

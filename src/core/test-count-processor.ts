@@ -18,26 +18,11 @@ export class TestCountProcessor {
           ? 1
           : this.addTestCounts(testOrSuite, testCountProcessor);
       });
+    } else {
+      this.logger.debug(() => `Encountered empty test suite: ${testSuite.id}`);
     }
     testCountProcessor(testSuite, totalTestCount);
 
-    this.logger.debug(() => `Added test counts for suite of total ${totalTestCount} tests`);
     return totalTestCount;
   }
-
-  // private process<S>(
-  //   test: AnyTestInfo,
-  //   testProcessor: (test: AnyTestInfo, result: S | undefined) => void,
-  //   aggregator: (aggregate: S | undefined, newItem: S) => S): S
-  // {
-  //   let result: S | undefined;
-
-  //   if ('children' in test) {
-  //     result = test.children
-  //       .map((child: AnyTestInfo) => this.process(child, testProcessor, aggregator))
-  //       .reduce(aggregator);
-  //   }
-  //   testProcessor(test, result);
-  //   return result;
-  // }
 }

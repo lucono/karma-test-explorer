@@ -90,7 +90,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
   
     const serverExecution: Execution<ServerStopExecutor> = {
       started: () => karmaServerProcess.execution().started().then(() => serverStopper),
-      stopped: karmaServerProcess.execution().stopped
+      ended: karmaServerProcess.execution().ended
     };
 
     return serverExecution;

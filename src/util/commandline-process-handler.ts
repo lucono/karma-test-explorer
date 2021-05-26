@@ -58,7 +58,7 @@ export class CommandlineProcessHandler {
 
     const processExecution: Execution = {
       started: () => processStartedPromise,
-      stopped: () => futureProcessExit
+      ended: () => futureProcessExit
     };
 
     this.processExecution = processExecution;

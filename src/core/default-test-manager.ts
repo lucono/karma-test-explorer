@@ -74,11 +74,11 @@ export class DefaultTestManager implements TestManager {
           .then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-        karmaServerConnection.stopped().then(() => {
+        karmaServerConnection.ended().then(() => {
           deferredListenerSocketPortRelease.resolve();
         });
 
-        karmaServerExecution.stopped().then(() => {
+        karmaServerExecution.ended().then(() => {
           deferredKarmaPortRelease.resolve();
           reject(`Karma server quit unexpectedly`);
         });

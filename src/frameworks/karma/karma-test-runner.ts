@@ -26,13 +26,13 @@ export class KarmaTestRunner implements TestRunner {
 
     const testLoadOperation: Execution = {
       started: () => testLoadStartedDeferred.promise(),
-      stopped: () => testLoadEndedDeferred.promise()
+      ended: () => testLoadEndedDeferred.promise()
     };
     const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
     const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
 
     testLoadStartedDeferred.resolve();
-    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).stopped();
+    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
     testLoadEndedDeferred.resolve();
 
     const capturedSpecs: TestCapture = await testCapture;
@@ -91,14 +91,14 @@ export class KarmaTestRunner implements TestRunner {
 
     const testRunOperation: Execution = {
       started: () => testRunStartedDeferred.promise(),
-      stopped: () => testRunEndedDeferred.promise()
+      ended: () => testRunEndedDeferred.promise()
     };
 
     const testNames: string[] = testList.map(test => test.fullName);
     const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
 
     testRunStartedDeferred.resolve();
-    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).stopped();
+    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
     testRunEndedDeferred.resolve();
     
     const capturedSpecs: TestCapture = await testCapture;
