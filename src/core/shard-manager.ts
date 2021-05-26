@@ -47,8 +47,15 @@ export class ShardManager implements Disposable {
       bfsQueue.push(...nextTest.children);
     }
 
-    decomposedTestsForSharding.sort(this.testWeightComparator).forEach(test => {
-      const lightestShard = shardBuckets.sort(this.testWeightComparator)[this.shardCount - 1];
+    const testWeightComparator = (
+      test1: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[],
+      test2: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[]): number =>
+    {
+      return this.getTestWeight(test1) - this.getTestWeight(test2);
+    }
+  
+    decomposedTestsForSharding.sort(testWeightComparator).forEach(test => {
+      const lightestShard = shardBuckets.sort(testWeightComparator)[this.shardCount - 1];
       lightestShard.push(test);
     });
 
@@ -63,13 +70,6 @@ export class ShardManager implements Disposable {
     return Array.isArray(tests)
       ? this.testWeightResolver(...tests)
       : this.testWeightResolver(tests);
-  }
-
-  private testWeightComparator(
-    test1: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[],
-    test2: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[]): number
-  {
-    return this.getTestWeight(test1) - this.getTestWeight(test2);
   }
 
   public dispose() {
