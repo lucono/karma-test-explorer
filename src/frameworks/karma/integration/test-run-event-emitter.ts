@@ -5,7 +5,7 @@ import { TestStatus } from "../../../api/test-status";
 import { TestRunEvent } from "../../../api/test-events";
 import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
-import { TestResolver } from "./test-resolver";
+import { TestResolver } from "../../../core/test-resolver";
 
 // export type TestRetriever = (testId: string) => TestInfo | undefined;
 

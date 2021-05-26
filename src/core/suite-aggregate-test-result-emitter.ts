@@ -1,12 +1,13 @@
 import { EventEmitter } from "vscode";
 import { TestSuiteEvent, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunEvent } from "../api/test-events";
-import { TestType } from "../api/test-infos";
+import { AnyTestInfo, TestType } from "../api/test-infos";
 import { TestStatus, TestResults } from "../api/test-status";
-import { TestResolver } from "../frameworks/karma/integration/test-resolver";
+import { TestResolver } from "./test-resolver";
 import { Logger } from "../util/logger";
-import { TestCountProcessor } from "./test-count-processor";
+// import { TestCountProcessor } from "../util/test-count-processor";
 import { TestSuiteState } from "./test-suite-state";
+import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 
 
 export class SuiteAggregateTestResultEmitter {
@@ -14,25 +15,33 @@ export class SuiteAggregateTestResultEmitter {
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
     private readonly testResolver: TestResolver,
-    private readonly testCountProcessor: TestCountProcessor,
+    private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly logger: Logger)
   {}
 
   public processTestResults(testResults: TestResults) {
     const testCountsBySuiteId: Map<string, { [key in TestStatus]?: number }> = new Map();
 
-    const testCountProcessor = (testSuite: TestSuiteInfo, testCount: number, testStatus: TestStatus) => {
-      const testCounts = testCountsBySuiteId.get(testSuite.id) ?? {};
-      testCounts[testStatus] = testCount;
-      testCountsBySuiteId.set(testSuite.id, testCounts);
+    const testCountProcessor = (test: AnyTestInfo, testCount: number, testStatus: TestStatus) => {
+      if (test.type === TestType.Suite) {
+        const testCounts = testCountsBySuiteId.get(test.id) ?? {};
+        testCounts[testStatus] = testCount;
+        testCountsBySuiteId.set(test.id, testCounts);
+      }
     };
 
     const totalTestCounts: { [key in TestStatus]?: number } = {};
+    // const totalTestCounts: Partial<Record<TestStatus, number>> = {}; //{ [key in TestStatus]?: number } = {};
 
     Object.values(TestStatus).forEach(testStatus => {
-      totalTestCounts[testStatus] = this.testCountProcessor.addTestCounts(testResults[testStatus], (testSuite, testCount) => {
-        testCountProcessor(testSuite, testCount, testStatus);
-      });
+      // totalTestCounts[testStatus] = this.testCountProcessor.addTestCounts(testResults[testStatus], (testSuite, testCount) => {
+      //   testCountProcessor(testSuite, testCount, testStatus);
+      // });
+      totalTestCounts[testStatus] = this.testSuiteTreeProcessor.processTestSuite<number>(
+        testResults[testStatus], 1, 0,
+        (test, testCount) => testCountProcessor(test, testCount, testStatus),
+        (runningTestCount, nextSuiteTestCount) => runningTestCount + nextSuiteTestCount
+      );
     });
 
     this.logger.info(

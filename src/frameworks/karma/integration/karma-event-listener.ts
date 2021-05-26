@@ -15,7 +15,8 @@ import { DeferredPromise } from "../../../util/deferred-promise";
 // const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
-export type TestCapture = { [key in TestStatus]: SpecCompleteResponse[] };
+// export type TestCapture = { [key in TestStatus]: SpecCompleteResponse[] };
+export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaEventListener implements Disposable {
   private isListening: boolean = false;

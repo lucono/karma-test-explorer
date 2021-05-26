@@ -7,20 +7,24 @@ import { EventEmitter, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
 import { ServerProcessLogger } from "../frameworks/karma/karma-command-line-test-server-executor";
 import { TestRunEvent } from "../api/test-events";
-import { TestResolver } from "../frameworks/karma/integration/test-resolver";
+import { TestResolver } from "./test-resolver";
 import { TestManager } from "../api/test-manager";
 import { AggregatingTestManager } from "./aggregating-test-manager";
-import { TestCountProcessor } from "./test-count-processor";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
-import { TestSuiteMerger } from "./test-suite-merger";
+import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "../util/logger";
 import { Log } from "vscode-test-adapter-util";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
 import { TestRunEventEmitter } from "../frameworks/karma/integration/test-run-event-emitter";
 import { PortManager } from "./port-manager";
+import { join } from "path";
+import { existsSync } from "fs";
+import { AngularFactory } from "../frameworks/angular/angular-factory";
+import { CascadingTestFactory } from "./cascading-test-factory";
+import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 
-export class TestExplorerFactory {
+export class MainFactory {
 
   private disposables: { dispose(): void }[] = [];
   private readonly config: ExtensionConfig;
@@ -101,7 +105,7 @@ export class TestExplorerFactory {
     testRunEmitter: EventEmitter<TestRunEvent>,
     testResolver: TestResolver)
   {
-    const testCountProcessor = new TestCountProcessor(new Logger(
+    const testSuiteTreeProcessor = new TestSuiteTreeProcessor(new Logger(
       this.log,
       'TestCountProcessor',
       this.config.debugLevelLoggingEnabled));
@@ -109,7 +113,7 @@ export class TestExplorerFactory {
     const suiteTestResultEmitter = new SuiteAggregateTestResultEmitter(
       testRunEmitter,
       testResolver,
-      testCountProcessor,
+      testSuiteTreeProcessor,
       new Logger(
         this.log,
         'SuiteAggregateTestResultEmitter',
@@ -128,7 +132,7 @@ export class TestExplorerFactory {
     const aggregatingTestManager = new AggregatingTestManager(
       testManagers,
       testSuiteOrganizer,
-      testCountProcessor,
+      testSuiteTreeProcessor,
       suiteTestResultEmitter,
       testSuiteMerger,
       this.config.testGrouping,
@@ -169,11 +173,28 @@ export class TestExplorerFactory {
       }
     };
 
-    const testFactory: TestFactory = new KarmaFactory(
+    const prioritizedTestFactories: Partial<TestFactory>[] = [];
+
+    prioritizedTestFactories.unshift(new KarmaFactory(
       this.config,
       karmaServerProcessLogger,
       makeShardLogger(`TestFactory`)
-    );
+    ));
+
+    if (this.isAngularProject()) {
+      prioritizedTestFactories.unshift(new AngularFactory(
+        this.config,
+        karmaServerProcessLogger,
+        makeShardLogger(`TestFactory`)
+      ));
+    }
+
+    const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, new Logger(
+      this.log,
+      `CascadingTestFactory`,
+      this.config.debugLevelLoggingEnabled
+    ));
+
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
       specLocationResolver,
       makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
@@ -195,6 +216,16 @@ export class TestExplorerFactory {
       makeShardLogger(`DefaultTestManager`));
 
     return testManager;
+  }
+
+  private isAngularProject(): boolean {
+    const angularJsonPath = join(this.config.projectRootPath, "angular.json");
+    const angularCliJsonPath = join(this.config.projectRootPath, ".angular-cli.json");
+    const isAngularProject = (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
+
+    this.logger.info(`Project detected to ${isAngularProject ? 'be' : 'not be'} an Angular project`);
+
+    return isAngularProject;
   }
 
   public async dispose(): Promise<void> {

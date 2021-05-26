@@ -5,9 +5,11 @@ import { TestManager } from "../api/test-manager";
 import { TestStatus, TestResults } from "../api/test-status";
 import { Logger } from "../util/logger";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
-import { TestCountProcessor } from "./test-count-processor";
-import { TestSuiteMerger } from "./test-suite-merger";
+// import { TestCountProcessor } from "../util/test-count-processor";
+import { TestSuiteMerger } from "../util/test-suite-merger";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
+import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
+import { AnyTestInfo, TestType } from "../api/test-infos";
 
 export class AggregatingTestManager implements TestManager {
 
@@ -16,7 +18,7 @@ export class AggregatingTestManager implements TestManager {
   public constructor(
     private readonly testManagers: TestManager[],
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
-    private readonly testCountProcessor: TestCountProcessor,
+    private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultEmitter,
     private readonly testSuiteMerger: TestSuiteMerger,
     private readonly testGrouping: TestGrouping,
@@ -50,10 +52,22 @@ export class AggregatingTestManager implements TestManager {
       testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, this.projectRootPath);
     }
 
-    const totalTestCount = this.testCountProcessor.addTestCounts(testSuiteInfo, (testSuite, testCount) => {
-      testSuite.testCount = testCount;
-      testSuite.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
-    });
+    const addTestCount = (test: AnyTestInfo, testCount: number) => {
+      if (test.type === TestType.Suite) {
+        test.testCount = testCount;
+        test.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
+      }
+    };
+
+    const totalTestCount = this.testSuiteTreeProcessor.processTestSuite<number>(
+      testSuiteInfo, 1, 0, addTestCount,
+      (runningTestCount, nextSuiteTestCount) => runningTestCount + nextSuiteTestCount
+    );
+
+    // const totalTestCount = this.testCountProcessor.addTestCounts(testSuiteInfo, (testSuite, testCount) => {
+    //   testSuite.testCount = testCount;
+    //   testSuite.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
+    // });
 
     this.logger.info(totalTestCount > 0
       ? `Test loading - ${totalTestCount} total tests loaded from Karma`

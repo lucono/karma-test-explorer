@@ -21,8 +21,8 @@ import { TestType } from "./api/test-infos";
 import { TestLoadEvent, TestRunEvent } from "./api/test-events";
 import { TestManager } from "./api/test-manager";
 import { Disposable } from "./api/disposable";
-import { TestExplorerFactory } from "./core/test-explorer-factory";
-import { TestResolver } from "./frameworks/karma/integration/test-resolver";
+import { MainFactory } from "./core/main-factory";
+import { TestResolver } from "./core/test-resolver";
 import { SpecLocationResolver } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
 
 export class Adapter implements TestAdapter {
@@ -38,7 +38,7 @@ export class Adapter implements TestAdapter {
   private readonly testRunEmitter = new EventEmitter<TestRunEvent>();
   private readonly autorunEmitter = new EventEmitter<void>();
 
-  private factory!: TestExplorerFactory;
+  private factory!: MainFactory;
   private config!: ExtensionConfig;
   private debugger!: Debugger;
   private logger!: Logger;
@@ -63,7 +63,7 @@ export class Adapter implements TestAdapter {
   }
 
   private init() {
-    this.factory = new TestExplorerFactory(this.workspaceFolder, this.configPrefix, this.log);
+    this.factory = new MainFactory(this.workspaceFolder, this.configPrefix, this.log);
     this.config = this.factory.getExtensionConfig();
     this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
 

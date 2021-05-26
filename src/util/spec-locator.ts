@@ -10,8 +10,10 @@ enum TestNodeType {
 };
 
 interface TestSuiteFileInfo {
-  descriptions: { [key in TestNodeType]: string[] },
-  lineNumbers: { [key in TestNodeType]: (number | undefined)[] }
+  // descriptions: { [key in TestNodeType]: string[] },
+  // lineNumbers: { [key in TestNodeType]: (number | undefined)[] }
+  descriptions: Record<TestNodeType, string[]>,
+  lineNumbers: Record<TestNodeType, (number | undefined)[]>
 }
 
 export interface SpecLocation {

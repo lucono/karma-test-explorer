@@ -2,7 +2,6 @@ import { TestRunner } from "../api/test-runner";
 import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
 import { Logger } from "../util/logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-// import { getPorts as getAvailablePorts, getPortPromise as getAvailablePortPromise } from "portfinder";
 import { Execution } from "../api/execution";
 import { TestResults } from "../api/test-status";
 import { TestType } from "../api/test-infos";
@@ -10,8 +9,6 @@ import { TestManager } from "../api/test-manager";
 import { TestServer } from "../api/test-server";
 import { PortManager } from "./port-manager";
 import { DeferredPromise } from "../util/deferred-promise";
-
-// export type TestResolver = (testId: string) => TestInfo | TestSuiteInfo | undefined;
 
 export class DefaultTestManager implements TestManager {
   private disposables: { dispose: () => void }[] = [];
