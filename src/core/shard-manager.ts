@@ -3,6 +3,8 @@ import { Disposable } from "../api/disposable";
 import { TestType } from "../api/test-infos";
 import { Logger } from "../util/logger";
 
+type TestItemOrList = TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[];
+
 export type TestWeightResolver = (...tests: (TestInfo | TestSuiteInfo)[]) => number;
 
 const testCountTestWeightResolver: TestWeightResolver = (...tests) => {
@@ -47,15 +49,16 @@ export class ShardManager implements Disposable {
       bfsQueue.push(...nextTest.children);
     }
 
-    const testWeightComparator = (
-      test1: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[],
-      test2: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[]): number =>
-    {
-      return this.getTestWeight(test1) - this.getTestWeight(test2);
+    const ascendingTestWeightComparator = (testSet1: TestItemOrList, testSet2: TestItemOrList): number => {
+      return this.getTestWeight(testSet1) - this.getTestWeight(testSet2);
+    }
+
+    const descendingTestWeightComparator = (testSet1: TestItemOrList, testSet2: TestItemOrList) => {
+      return ascendingTestWeightComparator(testSet2, testSet1);
     }
   
-    decomposedTestsForSharding.sort(testWeightComparator).forEach(test => {
-      const lightestShard = shardBuckets.sort(testWeightComparator)[this.shardCount - 1];
+    decomposedTestsForSharding.sort(descendingTestWeightComparator).forEach(test => {
+      const lightestShard = shardBuckets.sort(ascendingTestWeightComparator)[0];
       lightestShard.push(test);
     });
 
@@ -66,7 +69,7 @@ export class ShardManager implements Disposable {
     return shardBuckets;
   }
 
-  private getTestWeight(tests: TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[]): number {
+  private getTestWeight(tests: TestItemOrList): number {
     return Array.isArray(tests)
       ? this.testWeightResolver(...tests)
       : this.testWeightResolver(tests);
