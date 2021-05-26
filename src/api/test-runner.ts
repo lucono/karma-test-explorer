@@ -1,6 +1,6 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Disposable } from "./disposable";
-import { TestResults } from "./test-status";
+import { TestResults } from "./test-results";
 
 export interface TestRunner extends Disposable {
 

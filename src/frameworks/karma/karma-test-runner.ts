@@ -6,10 +6,11 @@ import { SpecCompleteResponse } from "./integration/spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "./integration/spec-response-to-test-suite-info-mapper";
 import { DeferredPromise } from "../../util/deferred-promise";
 import { Execution } from "../../api/execution";
-import { TestStatus, TestResults } from "../../api/test-status";
+import { TestStatus } from "../../api/test-status";
 import { TestRunExecutor } from "../../api/test-run-executor";
 import { RUN_ALL_TESTS_PATTERN, SKIP_ALL_TESTS_PATTERN } from "./karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../api/test-infos";
+import { TestResults } from "../../api/test-results";
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(

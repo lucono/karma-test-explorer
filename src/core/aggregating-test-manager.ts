@@ -2,7 +2,7 @@ import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Disposable } from "../api/disposable";
 import { TestGrouping } from "../api/test-grouping";
 import { TestManager } from "../api/test-manager";
-import { TestStatus, TestResults } from "../api/test-status";
+import { TestStatus } from "../api/test-status";
 import { Logger } from "../util/logger";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 // import { TestCountProcessor } from "../util/test-count-processor";
@@ -10,6 +10,8 @@ import { TestSuiteMerger } from "../util/test-suite-merger";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { AnyTestInfo, TestType } from "../api/test-infos";
+import { ShardManager } from "./shard-manager";
+import { TestResults } from "../api/test-results";
 
 export class AggregatingTestManager implements TestManager {
 
@@ -17,6 +19,7 @@ export class AggregatingTestManager implements TestManager {
 
   public constructor(
     private readonly testManagers: TestManager[],
+    private readonly shardManager: ShardManager,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultEmitter,
@@ -81,11 +84,13 @@ export class AggregatingTestManager implements TestManager {
   public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
     this.logger.info(`Starting aggregate server test run`);
 
-    const testResultsList: TestResults[] = await Promise.all(
-      this.testManagers.map(manager => manager.runTests(tests))
-    );
+    const testsForShards: (TestInfo | TestSuiteInfo)[][] = this.shardManager.divideTests(tests);
 
-    // this.handleTestSuiteResults(testResults, config.testGrouping, config.projectRootPath);
+    const testResultsList: TestResults[] = await Promise.all(
+      testsForShards.filter(testList => testList.length > 0).map((testList, index) => {
+        return this.testManagers[index].runTests(testList);
+      })
+    );
 
     if (this.testGrouping === TestGrouping.Folder) {
       Object.values(TestStatus).forEach(testStatus => {

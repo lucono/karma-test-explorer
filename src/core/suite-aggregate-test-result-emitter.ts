@@ -2,12 +2,13 @@ import { EventEmitter } from "vscode";
 import { TestSuiteEvent, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunEvent } from "../api/test-events";
 import { AnyTestInfo, TestType } from "../api/test-infos";
-import { TestStatus, TestResults } from "../api/test-status";
+import { TestStatus } from "../api/test-status";
 import { TestResolver } from "./test-resolver";
 import { Logger } from "../util/logger";
 // import { TestCountProcessor } from "../util/test-count-processor";
 import { TestSuiteState } from "./test-suite-state";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
+import { TestResults } from "../api/test-results";
 
 
 export class SuiteAggregateTestResultEmitter {

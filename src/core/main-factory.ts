@@ -23,6 +23,7 @@ import { existsSync } from "fs";
 import { AngularFactory } from "../frameworks/angular/angular-factory";
 import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
+import { ShardManager } from "./shard-manager";
 
 export class MainFactory {
 
@@ -92,8 +93,15 @@ export class MainFactory {
       shardIndex++;
     }
 
-    const aggregatingTestManager: AggregatingTestManager = this.createAggregatingTestManager(
+    const shardManager = new ShardManager(totalServerShards, new Logger(
+      this.log,
+      'ShardManager',
+      this.config.debugLevelLoggingEnabled)
+    );
+
+    const aggregatingTestManager = this.createAggregatingTestManager(
       testManagers,
+      shardManager,
       testRunEmitter,
       testResolver); 
 
@@ -102,8 +110,9 @@ export class MainFactory {
 
   private createAggregatingTestManager(
     testManagers: TestManager[],
+    shardManager: ShardManager,
     testRunEmitter: EventEmitter<TestRunEvent>,
-    testResolver: TestResolver)
+    testResolver: TestResolver): AggregatingTestManager
   {
     const testSuiteTreeProcessor = new TestSuiteTreeProcessor(new Logger(
       this.log,
@@ -131,6 +140,7 @@ export class MainFactory {
 
     const aggregatingTestManager = new AggregatingTestManager(
       testManagers,
+      shardManager,
       testSuiteOrganizer,
       testSuiteTreeProcessor,
       suiteTestResultEmitter,
