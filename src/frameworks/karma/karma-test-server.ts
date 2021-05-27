@@ -79,6 +79,9 @@ export class KarmaServer implements TestServer {
           window.showWarningMessage(message, 'Restart Server', 'Ignore').then(selection => {
             if (selection === 'Restart Server') {
               this.logger.info(`User chose to restart server`);
+              // FIXME: Ports may no longer be available. Perhaps move
+              // crash detection and restart upward to the test manager
+              // level and acquire new ports for use in the restart
               this.scheduleFutureStartup(0, karmaPort, karmaSocketPort);
 
             } else {

@@ -21,24 +21,26 @@ export class TestSuiteMerger implements Disposable {
     return mergedSuite;
   }
 
-  private mergeSuites(targetSuite: TestSuiteInfo, sourceSuite: TestSuiteInfo): TestSuiteInfo {
+  private mergeSuites(targetSuite: TestSuiteInfo, sourceSuite: TestSuiteInfo) {
     const targetChildrenById: Map<string, TestInfo | TestSuiteInfo> = new Map();
 
     targetSuite.children.forEach(suiteChild => targetChildrenById.set(suiteChild.id, suiteChild));
 
-    const mergedChildren: (TestInfo | TestSuiteInfo)[] = [];
+    // const mergedChildren: (TestInfo | TestSuiteInfo)[] = [];
 
     for (const sourceChild of sourceSuite.children) {
-      const duplicateTargetChild = targetChildrenById.get(sourceChild.id);
-      let mergedChild: TestInfo | TestSuiteInfo = sourceChild;
+      const duplicatedTargetChild = targetChildrenById.get(sourceChild.id);
 
-      if (sourceChild.type === TestType.Suite && duplicateTargetChild?.type === TestType.Suite) {
-        mergedChild = this.mergeSuites(duplicateTargetChild, sourceChild);
+      if (!duplicatedTargetChild) {
+        targetSuite.children.push(sourceChild);
+        continue;
       }
-      mergedChildren.push(mergedChild);
+      if (sourceChild.type === TestType.Suite && duplicatedTargetChild.type === TestType.Suite) {
+        this.mergeSuites(duplicatedTargetChild, sourceChild);
+      }
     }
-    targetSuite.children = mergedChildren;
-    return targetSuite;
+    // targetSuite.children = mergedChildren;
+    // return targetSuite;
   }
 
   public dispose() {

@@ -27,7 +27,13 @@ export class AggregatingTestManager implements TestManager {
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
     private readonly logger: Logger)
-  {}
+  {
+    if (testManagers.length === 0) {
+      throw new Error(
+        `Aggregating test manager requires at least ` +
+        `one delegate test manager but got zero`);
+    }
+  }
   
   public async restart(): Promise<void> {
     this.logger.info(`Restarting aggregate server`);
@@ -41,11 +47,12 @@ export class AggregatingTestManager implements TestManager {
   public async loadTests(): Promise<TestSuiteInfo> {
     this.logger.info(`Starting aggregate server test load`);
 
-    const loadedTests: TestSuiteInfo[] = await Promise.all(
-      this.testManagers.map(manager => manager.loadTests())
-    );
+    // const loadedTests: TestSuiteInfo[] = await Promise.all(
+    //   this.testManagers.map(manager => manager.loadTests())
+    // );
 
-    let testSuiteInfo: TestSuiteInfo = this.testSuiteMerger.merge(loadedTests)!;
+    // let testSuiteInfo: TestSuiteInfo = this.testSuiteMerger.merge(loadedTests)!;
+    let testSuiteInfo: TestSuiteInfo = await this.testManagers[0].loadTests();
 
     if (!testSuiteInfo) {
       throw new Error(`Failed to load any tests`);
