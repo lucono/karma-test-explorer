@@ -8,7 +8,7 @@ import { DeferredPromise } from "../../util/deferred-promise";
 import { Execution } from "../../api/execution";
 import { TestStatus } from "../../api/test-status";
 import { TestRunExecutor } from "../../api/test-run-executor";
-import { RUN_ALL_TESTS_PATTERN, SKIP_ALL_TESTS_PATTERN } from "./karma-constants";
+import { SKIP_ALL_TESTS_PATTERN } from "./karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../api/test-infos";
 import { TestResults } from "../../api/test-results";
 
@@ -46,8 +46,8 @@ export class KarmaTestRunner implements TestRunner {
 
     this.logger.info(`Load tests captured ` +
       `${capturedSpecs[TestStatus.Skipped].length} skipped specs, ` +
-      `${capturedSpecs[TestStatus.Success].length} skipped specs, ` +
-      `${capturedSpecs[TestStatus.Failed].length} skipped specs`);
+      `${capturedSpecs[TestStatus.Success].length} passed specs, ` +
+      `${capturedSpecs[TestStatus.Failed].length} failed specs`);
 
     const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
@@ -63,14 +63,15 @@ export class KarmaTestRunner implements TestRunner {
       { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;
+    const clientArgs: string[] = [];
     let testList: (TestInfo | TestSuiteInfo)[];
-    let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
+    // let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
 
     if (runAllTests) {
       this.logger.debug(() => `Received empty test list - Will run all tests`);
 
       testList = [];
-      aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
+      // aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
 
     } else {
       testList = this.toRunnableTests(tests);
@@ -83,10 +84,10 @@ export class KarmaTestRunner implements TestRunner {
       if (testPatterns.length === 0) {
         throw new Error(`No tests to run`);
       }
-      aggregateTestPattern = `/(${testPatterns.join("|")})/`;
+      const aggregateTestPattern = `/(${testPatterns.join("|")})/`;
+      clientArgs.push(`--grep=${aggregateTestPattern}`);
     }
 
-    const clientArgs = [`--grep=${aggregateTestPattern}`];
     const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
     const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 

@@ -24,9 +24,13 @@ export class ShardManager implements Disposable {
   public divideTests(
     tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[][]
   {
+    const shardBuckets: (TestInfo | TestSuiteInfo)[][] = Array.from({ length: this.shardCount }, () => []);
+
+    if (tests.length === 0) {
+      return shardBuckets;
+    }
     const totalTestWeight = this.testWeightResolver(...tests);
     const maxWeightPerShard = Math.ceil(totalTestWeight / this.shardCount); // FIXME: Add % tolerance to max weight
-    const shardBuckets: (TestInfo | TestSuiteInfo)[][] = Array.from({ length: this.shardCount }, () => []);
 
     const decomposedTestsForSharding: (TestInfo | TestSuiteInfo)[] = [];
     const bfsQueue: (TestInfo | TestSuiteInfo)[] = [ ...tests ];
@@ -57,9 +61,9 @@ export class ShardManager implements Disposable {
       return ascendingTestWeightComparator(testSet2, testSet1);
     }
   
-    decomposedTestsForSharding.sort(descendingTestWeightComparator).forEach(test => {
-      const lightestShard = shardBuckets.sort(ascendingTestWeightComparator)[0];
-      lightestShard.push(test);
+    decomposedTestsForSharding.sort(descendingTestWeightComparator).forEach(heaviestUnassignedTest => {
+      const currentLightestShard = shardBuckets.sort(ascendingTestWeightComparator)[0];
+      currentLightestShard.push(heaviestUnassignedTest);
     });
 
     this.logger.info(`--- Shard results: ---`);

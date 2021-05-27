@@ -91,12 +91,12 @@ export class AggregatingTestManager implements TestManager {
   public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
     this.logger.info(`Starting aggregate server test run`);
 
-    const testsForShards: (TestInfo | TestSuiteInfo)[][] = this.shardManager.divideTests(tests);
-
+    const testsForShards: (TestInfo | TestSuiteInfo)[][] = tests.length === 0
+      ? Array.from({ length: this.testManagers.length }, () => [])
+      : this.shardManager.divideTests(tests).filter(testList => testList.length > 0);
+    
     const testResultsList: TestResults[] = await Promise.all(
-      testsForShards.filter(testList => testList.length > 0).map((testList, index) => {
-        return this.testManagers[index].runTests(testList);
-      })
+      testsForShards.map((testList, index) => this.testManagers[index].runTests(testList))
     );
 
     if (this.testGrouping === TestGrouping.Folder) {
