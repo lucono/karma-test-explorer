@@ -10,5 +10,7 @@ export interface SpecCompleteResponse {
     readonly timeSpentInMilliseconds: string;
     readonly filePath?: string;
     readonly line?: number;
-    readonly fullResponse?: { [key: string]: any };
+    // readonly fullResponse?: { [key: string]: any };
 }
+
+export type LightSpecCompleteResponse = Omit<SpecCompleteResponse, "fullName" | "fullResponse">;

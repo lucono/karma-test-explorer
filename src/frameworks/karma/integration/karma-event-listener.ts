@@ -170,35 +170,37 @@ export class KarmaEventListener implements Disposable {
     }
     const { results } = event;
     const testId: string = results.id;
-    const isIncludedSpec = this.isIncludedSpec(results);
+    const fullName: string = [ ...results.suite, results.description ].join(" ");
+    const specResults: SpecCompleteResponse = { ...results, fullName };
+    const isIncludedSpec = this.isIncludedSpec(specResults);
 
     if (!isIncludedSpec) {
       this.logger.debug(() =>
-        `Karma Event Listener: Skipping spec id '${results.id}' - ` +
+        `Karma Event Listener: Skipping spec id '${specResults.id}' - ` +
         `Not part of current test run`);
 
       return;
     }
-    const testStatus: TestStatus = results.status;
+    const testStatus: TestStatus = specResults.status;
 
     if (!Object.values(TestStatus).includes(testStatus)) {
       this.logger.warn(`Skipping captured spec with unknown result value: ${testStatus}`);
-      this.logger.debug(() => `Skipped captured spec with unknown result '${testStatus}': ${results}`);
+      this.logger.debug(() => `Skipped captured spec with unknown result '${testStatus}': ${specResults}`);
       return;
     }
 
     this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
-    this.eventEmitter.emitTestResultEvent(testId, event.results);
+    this.eventEmitter.emitTestResultEvent(testId, specResults);
 
     if (testStatus === TestStatus.Success) {
-      this.passedSpecs.push(results);
+      this.passedSpecs.push(specResults);
     } else if (testStatus === TestStatus.Failed) {
-      this.failedSpecs.push(results);
+      this.failedSpecs.push(specResults);
     } else if (testStatus === TestStatus.Skipped) {
-      this.skippedSpecs.push(results);
+      this.skippedSpecs.push(specResults);
     }
 
-    this.logger.status(results.status);
+    this.logger.status(specResults.status);
   }
 
   public async stop(): Promise<void> {

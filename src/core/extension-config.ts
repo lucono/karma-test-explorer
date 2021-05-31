@@ -3,10 +3,10 @@ import { Logger } from "../util/logger";
 import { ConfigSetting } from "./config-setting"
 import { readFileSync } from "fs";
 import { parse as parseEnvironmentFile } from "dotenv";
-import { join, resolve } from "path";
-import * as dotenvExpand from "dotenv-expand";
+import { resolve } from "path";
 import { TestGrouping } from "../api/test-grouping";
 import { Disposable } from "../api/disposable";
+import * as dotenvExpand from "dotenv-expand";
 
 export class ExtensionConfig implements Disposable {
   public readonly projectRootPath: string;
@@ -33,7 +33,7 @@ export class ExtensionConfig implements Disposable {
   {
     const workspacePath = workspaceVSCODEPath.replace(/^\/([A-Za-z]):\//, "$1:/");
 
-    this.projectRootPath = join(workspacePath, config.get(ConfigSetting.ProjectRootPath) as string);
+    this.projectRootPath = resolve(workspacePath, config.get(ConfigSetting.ProjectRootPath) as string);
     this.userKarmaConfFilePath = resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath) as string);
     this.karmaPort = config.get(ConfigSetting.KarmaPort) as number;
     this.karmaProcessExecutable = config.get(ConfigSetting.KarmaProcessExecutable) as string;
@@ -43,12 +43,13 @@ export class ExtensionConfig implements Disposable {
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
     this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
-    this.baseKarmaConfFilePath = join(__dirname, "..", "frameworks", "karma", "config", "karma.conf.js");  // FIXME: use updated path
+    this.baseKarmaConfFilePath = resolve(__dirname, "..", "frameworks", "karma", "config", "karma.conf.js");  // FIXME: use updated path
     this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
 
-    this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile) ? undefined :
-      resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);
+    this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile)
+      ? undefined
+      : resolve(this.projectRootPath, config.get(ConfigSetting.EnvFile) as string);
 
     this.envFileEnvironment = this.getEnvironmentFromFile(this.envFile);
 
