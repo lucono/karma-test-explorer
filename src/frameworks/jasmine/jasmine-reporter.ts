@@ -5,6 +5,8 @@ import { Server as SocketIOServer} from "socket.io"
 import { io } from "socket.io-client";
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
 import { KARMA_SOCKET_PORT_ENV_VAR } from "../karma/karma-constants";
+import { EventEmitter } from "events";
+import { KarmaEventName } from "../karma/integration/karma-event-name";
 
 const PING_TIMEOUT = 24 * 60 * 60 * 1000;
 const PING_INTERVAL = 24 * 60 * 60 * 1000;
@@ -14,15 +16,16 @@ function TestExplorerJasmineReporter(
   baseReporterDecorator: any, 
   config: KarmaConfigOptions, 
   logger: any, 
-  emitter: any, 
+  emitter: EventEmitter, 
   injector: any
 ) {
+  const self = this;
   const log = logger.create(`reporter:${name}`);
 
-  baseReporterDecorator(this);
-  this.config = config;
-  this.emitter = emitter;
-  // this.adapters = [];
+  baseReporterDecorator(self);
+  self.config = config;
+  self.emitter = emitter;
+  // self.adapters = [];
 
   const socketPort = process.env[KARMA_SOCKET_PORT_ENV_VAR] as string;
   log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
@@ -38,21 +41,21 @@ function TestExplorerJasmineReporter(
   log.debug(`Using ping timeout '${PING_TIMEOUT}' and ping interval '${PING_INTERVAL}'`);
 
   Object.assign(socket, socketOptions);
-  this.socket = socket;
+  self.socket = socket;
 
   configureTimeouts(injector);
 
-  const emitEvent = (eventName: any, eventResults: any = null) => {
-    this.socket.emit(eventName, { name: eventName, results: eventResults });
+  const emitEvent = (eventName: KarmaEventName, eventResults: any = null) => {
+    self.socket.emit(eventName, { name: eventName, results: eventResults });
   };
 
-  this.onSpecComplete = (browser: any, spec: { [key: string]: any }) => {
+  self.onSpecComplete = (browser: any, spec: { [key: string]: any }) => {
     let status: TestStatus;
     let fullResponse: { [key: string]: any } | undefined;
 
     if (spec.skipped) {
       status = TestStatus.Skipped;
-      this.specSkipped(browser, spec);
+      self.specSkipped(browser, spec);
 
     } else if (spec.success) {
       status = TestStatus.Success;
@@ -62,7 +65,7 @@ function TestExplorerJasmineReporter(
       fullResponse = spec;
     }
 
-    const result: SpecCompleteResponse = {
+    const specResult: SpecCompleteResponse = {
       id: spec.id,
       failureMessages: spec.log,
       suite: spec.suite,
@@ -75,22 +78,22 @@ function TestExplorerJasmineReporter(
       // line,
     };
 
-    emitEvent("spec_complete", result);
+    emitEvent(KarmaEventName.SpecComplete, specResult);
   };
 
-  this.onRunComplete = (browserCollection: any, result: any) => {
-    emitEvent("run_complete", collectRunState(result));
+  self.onRunComplete = (browserCollection: any, result: any) => {
+    emitEvent(KarmaEventName.RunComplete, collectRunState(result));
   };
 
-  this.onBrowserError = (browser: any, error: any) => {
-    emitEvent("browser_error", error);
+  self.onBrowserError = (browser: any, error: any) => {
+    emitEvent(KarmaEventName.BrowserError, error);
   };
 
-  this.onBrowserStart = (browser: any, info: any) => {
-    emitEvent("browser_start");
+  self.onBrowserStart = (browser: any, info: any) => {
+    emitEvent(KarmaEventName.BrowserStart);
   };
 
-  this.emitter.on("browsers_change", (capturedBrowsers: any) => {
+  self.emitter.on(KarmaEventName.BrowserChange, (capturedBrowsers: any) => {
     if (!capturedBrowsers.forEach) {
       // filter out events from Browser object
       return;
@@ -103,7 +106,7 @@ function TestExplorerJasmineReporter(
       }
     });
     if (proceed) {
-      emitEvent("browser_connected");
+      emitEvent(KarmaEventName.BrowserConnected);
     }
   });
 }
