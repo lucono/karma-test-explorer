@@ -8,7 +8,7 @@
 		"/bin/bash", "${containerWorkspaceFolder}/.devcontainer/project-setup.sh"
 	],
 	"settings": {
-		"terminal.integrated.shell.linux": "/bin/bash"
+		"remote.autoForwardPorts": false
 	},
 	"extensions": [
 		"dbaeumer.vscode-eslint",

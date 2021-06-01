@@ -3,7 +3,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { silent } from "resolve-global";
 import { window } from "vscode";
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
 import { Execution } from "../../api/execution";
 import { TestRunExecutor } from "../../api/test-run-executor";

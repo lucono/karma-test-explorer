@@ -1,4 +1,4 @@
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { KarmaEventListener, TestCapture } from "./integration/karma-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "../../api/test-runner";

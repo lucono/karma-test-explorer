@@ -1,5 +1,5 @@
 import { WorkspaceConfiguration } from "vscode";
-import { Logger } from "../util/logger";
+import { Logger } from "./logger";
 import { ConfigSetting } from "./config-setting"
 import { readFileSync } from "fs";
 import { parse as parseEnvironmentFile } from "dotenv";

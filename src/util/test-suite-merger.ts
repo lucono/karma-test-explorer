@@ -1,7 +1,7 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Disposable } from "../api/disposable";
 import { TestType } from "../api/test-infos";
-import { Logger } from "./logger";
+import { Logger } from "../core/logger";
 
 export class TestSuiteMerger implements Disposable {
   public constructor(private readonly logger: Logger) {}

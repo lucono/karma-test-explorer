@@ -1,4 +1,4 @@
-import { Logger } from "../util/logger";
+import { Logger } from "./logger";
 import * as vscode from "vscode";
 import { Disposable } from "../api/disposable";
 

@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import { sync } from "glob";
 import { resolve } from 'path';
 import { Disposable } from "../api/disposable";
-import { Logger } from "./logger";
+import { Logger } from "../core/logger";
 
 enum TestNodeType {
   Describe = "describe",

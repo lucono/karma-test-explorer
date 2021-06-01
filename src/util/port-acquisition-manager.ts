@@ -1,8 +1,8 @@
-import { Logger } from "../util/logger";
+import { Logger } from "../core/logger";
 import { getPorts } from "portfinder";
 import { Disposable } from "../api/disposable";
 
-export class PortManager implements Disposable {
+export class PortAcquisitionManager implements Disposable {
 
   private assignedPorts: Set<number> = new Set();
 

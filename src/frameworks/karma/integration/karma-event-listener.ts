@@ -1,7 +1,7 @@
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { TestState } from "../../../core/test-state";
-import { Logger } from "../../../util/logger";
+import { Logger } from "../../../core/logger";
 import { TestRunEventEmitter } from "./test-run-event-emitter";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"

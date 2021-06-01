@@ -3,7 +3,7 @@ import { Disposable } from "../api/disposable";
 import { TestGrouping } from "../api/test-grouping";
 import { TestManager } from "../api/test-manager";
 import { TestStatus } from "../api/test-status";
-import { Logger } from "../util/logger";
+import { Logger } from "./logger";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 // import { TestCountProcessor } from "../util/test-count-processor";
 import { TestSuiteMerger } from "../util/test-suite-merger";

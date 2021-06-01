@@ -1,4 +1,4 @@
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { ExtensionConfig } from "../../core/extension-config";
 import { TestServerExecutor } from "../../api/test-server-executor";
 import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";

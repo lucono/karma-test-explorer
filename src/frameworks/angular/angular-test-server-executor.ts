@@ -1,7 +1,7 @@
 import { SpawnOptions } from "child_process";
 import { existsSync } from "fs";
 // import { ExtensionConfig } from "../../core/extension-config";
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
 import { join } from "path";
 import { silent } from "resolve-global";

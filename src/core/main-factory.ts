@@ -12,12 +12,12 @@ import { TestManager } from "../api/test-manager";
 import { AggregatingTestManager } from "./aggregating-test-manager";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 import { TestSuiteMerger } from "../util/test-suite-merger";
-import { Logger } from "../util/logger";
+import { Logger } from "./logger";
 import { Log } from "vscode-test-adapter-util";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
 import { TestRunEventEmitter } from "../frameworks/karma/integration/test-run-event-emitter";
-import { PortManager } from "./port-manager";
+import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { join } from "path";
 import { existsSync } from "fs";
 import { AngularFactory } from "../frameworks/angular/angular-factory";
@@ -73,7 +73,7 @@ export class MainFactory {
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
     const testManagers: TestManager[] = [];
-    const portManager = new PortManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
+    const portManager = new PortAcquisitionManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
     const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
     let shardIndex = 0;
 
@@ -156,7 +156,7 @@ export class MainFactory {
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver,
-    portManager: PortManager,
+    portManager: PortAcquisitionManager,
     serverShardIndex: number = 0,
     totalServerShards: number = 1): DefaultTestManager
   {

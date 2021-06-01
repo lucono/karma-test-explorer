@@ -1,6 +1,6 @@
 import { Disposable } from "../api/disposable";
 import { AnyTestInfo, TestType } from "../api/test-infos";
-import { Logger } from "./logger";
+import { Logger } from "../core/logger";
 
 export class TestSuiteTreeProcessor implements Disposable {
 

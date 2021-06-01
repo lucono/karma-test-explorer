@@ -1,7 +1,7 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Disposable } from "../api/disposable";
 import { TestType } from "../api/test-infos";
-import { Logger } from "../util/logger";
+import { Logger } from "./logger";
 
 type TestItemOrList = TestInfo | TestSuiteInfo | (TestInfo | TestSuiteInfo)[];
 

@@ -1,7 +1,7 @@
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { SpecLocation } from "../../../util/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
-import { Logger } from "../../../util/logger";
+import { Logger } from "../../../core/logger";
 import { TestType } from "../../../api/test-infos";
 
 // FIXME: Move to interface in spec-locator module

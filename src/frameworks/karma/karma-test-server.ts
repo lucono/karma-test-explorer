@@ -1,4 +1,4 @@
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { Execution } from "../../api/execution";
 import { DeferredPromise } from "../../util/deferred-promise";
 import { TestServer } from "../../api/test-server";

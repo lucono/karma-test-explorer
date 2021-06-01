@@ -1,5 +1,5 @@
 import { ChildProcess, SpawnOptions } from "child_process";
-import { Logger } from "./logger";
+import { Logger } from "../core/logger";
 import * as spawn from "cross-spawn";
 import * as psTree from "ps-tree";
 import { Execution } from "../api/execution";

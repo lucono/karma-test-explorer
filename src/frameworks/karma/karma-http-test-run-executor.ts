@@ -1,7 +1,7 @@
 
 import { request as httpRequest, RequestOptions } from "http";
 import { DeferredPromise } from "../../util/deferred-promise";
-import { Logger } from "../../util/logger";
+import { Logger } from "../../core/logger";
 import { Execution } from "../../api/execution";
 import { TestRunExecutor } from "../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "./karma-constants";

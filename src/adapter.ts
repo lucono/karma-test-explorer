@@ -10,7 +10,7 @@ import {
   TestSuiteInfo,
   RetireEvent
 } from "vscode-test-adapter-api";
-import { Logger } from "./util/logger";
+import { Logger } from "./core/logger";
 import { Log } from "vscode-test-adapter-util";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
