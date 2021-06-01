@@ -3,7 +3,7 @@ import { KarmaEventName } from "./karma-event-name";
 import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../util/logger";
 import { TestRunEventEmitter } from "./test-run-event-emitter";
-import { SpecCompleteResponse } from "./spec-complete-response";
+import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../../../api/execution";
@@ -168,7 +168,7 @@ export class KarmaEventListener implements Disposable {
     if (!this.isListening) {
       return;
     }
-    const { results } = event;
+    const results: LightSpecCompleteResponse = event.results;
     const testId: string = results.id;
     const fullName: string = [ ...results.suite, results.description ].join(" ");
     const specResults: SpecCompleteResponse = { ...results, fullName };

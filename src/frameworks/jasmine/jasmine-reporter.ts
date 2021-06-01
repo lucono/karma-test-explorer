@@ -1,10 +1,13 @@
 import { Server as SocketIOServer} from "socket.io"
-import { ConfigOptions as KarmaConfigOptions } from "karma";
+import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
 import { KARMA_SOCKET_PORT_ENV_VAR } from "../karma/karma-constants";
 import { EventEmitter } from "events";
 import { KarmaEventName } from "../karma/integration/karma-event-name";
 import { Worker } from "worker_threads";
-import { jasmineReporterTestEmitterWorkerFile } from "./test-result-emitter-worker"
+import { TestStatus } from "../../api/test-status";
+import { LightSpecCompleteResponse } from "../karma/integration/spec-complete-response";
+import { TestRunStatus } from "./test-run-status";
+import { resolve } from "path";
 // import { resolve } from "path";
 
 const pingTimeout = 24 * 60 * 60 * 1000;
@@ -34,8 +37,8 @@ function TestExplorerJasmineReporter(
     pingInterval
   };
 
-  // const workerScriptFile = resolve(__dirname, "test-result-emitter-worker.js");
-  const worker = new Worker(jasmineReporterTestEmitterWorkerFile, { workerData });
+  const workerScriptFile = resolve(__dirname, "test-result-emitter-worker.js");
+  const worker = new Worker(workerScriptFile, { workerData });
 
   log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
   log.debug(`Using ping timeout '${pingTimeout}' and ping interval '${pingInterval}'`);
@@ -52,14 +55,38 @@ function TestExplorerJasmineReporter(
   };
 
   self.onSpecComplete = (browser: any, spec: Record<string, any>) => {
+    let status: TestStatus;
+    // let fullResponse: { [key: string]: any } | undefined;
+
     if (spec.skipped) {
+      status = TestStatus.Skipped;
       self.specSkipped(browser, spec);
+
+    } else if (spec.success) {
+      status = TestStatus.Success;
+
+    } else {
+      status = TestStatus.Failed;
+      // fullResponse = spec;
     }
-    sendEvent(KarmaEventName.SpecComplete, spec);
+
+    const specResult: LightSpecCompleteResponse = {
+      id: spec.id,
+      failureMessages: spec.log,
+      suite: spec.suite,
+      description: spec.description,
+      status,
+      timeSpentInMilliseconds: spec.time
+      // fullResponse,
+      // fullName: spec.fullName,
+      // filePath,
+      // line,
+    };
+    sendEvent(KarmaEventName.SpecComplete, specResult);
   };
 
   self.onRunComplete = (browserCollection: any, result: any) => {
-    sendEvent(KarmaEventName.RunComplete, result);
+    sendEvent(KarmaEventName.RunComplete, collectRunState(result));
   };
 
   self.onBrowserError = (browser: any, error: any) => {
@@ -71,8 +98,10 @@ function TestExplorerJasmineReporter(
   };
 
   self.emitter.on(KarmaEventName.BrowserChange, (capturedBrowsers: any) => {
-    const browserHasConnected = Array.isArray(capturedBrowsers) && capturedBrowsers.every((newBrowser: any) => {
-      return newBrowser.id && newBrowser.name && newBrowser.id !== newBrowser.name;
+    let browserHasConnected = true;
+
+    capturedBrowsers.forEach?.((newBrowser: any) => {
+      browserHasConnected &&= newBrowser.id && newBrowser.name && newBrowser.id !== newBrowser.name;
     });
     
     if (browserHasConnected) {
@@ -102,6 +131,16 @@ function configureTimeouts(injector: any) {
       Object.assign(socketServer, socketOptions);
     }
   });
+}
+
+function collectRunState(runResult: KarmaTestResults): TestRunStatus {
+  if (runResult.disconnected) {
+    return TestRunStatus.Timeout;
+  } else if (runResult.error) {
+    return TestRunStatus.Error;
+  } else {
+    return TestRunStatus.Complete;
+  }
 }
 
 TestExplorerJasmineReporter.$inject = ["baseReporterDecorator", "config", "logger", "emitter", "injector"];
