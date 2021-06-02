@@ -2,18 +2,24 @@ import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-
 import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
 import { Disposable } from "./disposable";
 import { TestRunExecutor } from "./test-run-executor";
+// import { TestRunExecutor } from "./test-run-executor";
 import { TestRunner } from "./test-runner";
 import { TestServer } from "./test-server";
 import { TestServerExecutor } from "./test-server-executor";
+// import { TestServerExecutor } from "./test-server-executor";
 
 export interface TestFactory extends Disposable {
     
-  createTestServer(testServerExecutor: TestServerExecutor): TestServer;
+  createTestServer(
+    // serverShardIndex?: number ,
+    // totalServerShards?: number,
+    testServerExecutor?: TestServerExecutor
+  ): TestServer;
   
   createTestRunner(
-    testRunExecutor: TestRunExecutor,
     karmaEventListener: KarmaEventListener,
-    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper): TestRunner;
+    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    testRunExecutor?: TestRunExecutor): TestRunner;
 
   createTestServerExecutor(serverShardIndex?: number, totalServerShards?: number): TestServerExecutor;
 

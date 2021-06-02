@@ -213,7 +213,7 @@ export class MainFactory {
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
     const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();
-    const testRunner = testFactory.createTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper);
+    const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
     const testServer = testFactory.createTestServer(testServerExecutor);
 
     testManager = new DefaultTestManager(

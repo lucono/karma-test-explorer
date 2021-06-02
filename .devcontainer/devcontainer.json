@@ -7,9 +7,6 @@
 	"postCreateCommand": [
 		"/bin/bash", "${containerWorkspaceFolder}/.devcontainer/project-setup.sh"
 	],
-	"settings": {
-		"remote.autoForwardPorts": false
-	},
 	"extensions": [
 		"dbaeumer.vscode-eslint",
 		"ms-vscode.vscode-typescript-tslint-plugin"

@@ -8,10 +8,6 @@ import { TestRunner } from "../../api/test-runner";
 import { KarmaEventListener } from "./integration/karma-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "./integration/spec-response-to-test-suite-info-mapper";
 import { KarmaTestRunner } from "./karma-test-runner";
-// import { join } from "path";
-// import { existsSync } from "fs";
-// import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";
-// import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "./karma-command-line-test-server-executor";
 import { TestServer } from "../../api/test-server";
 import { KarmaServer } from "./karma-test-server";
@@ -31,16 +27,22 @@ export class KarmaFactory implements TestFactory {
     this.disposables.push(config, logger);
   }
 
-  public createTestServer(testServerExecutor: TestServerExecutor): TestServer {
-    return new KarmaServer(testServerExecutor, this.logger);
+  public createTestServer(
+    // serverShardIndex: number = 0,
+    // totalServerShards: number = 1,
+    testServerExecutor?: TestServerExecutor
+  ): TestServer {
+    const serverExecutor = testServerExecutor ?? this.createTestServerExecutor();
+    return new KarmaServer(serverExecutor, this.logger);
   }
 
   public createTestRunner(
-    testRunExecutor: TestRunExecutor,
     karmaEventListener: KarmaEventListener,
-    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper): TestRunner
+    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    testRunExecutor?: TestRunExecutor): TestRunner
   {
-    return new KarmaTestRunner(testRunExecutor, karmaEventListener, specToTestSuiteMapper, this.logger);
+    const runExecutor = testRunExecutor ?? this.createTestRunExecutor();
+    return new KarmaTestRunner(runExecutor, karmaEventListener, specToTestSuiteMapper, this.logger);
   }
 
   public createTestServerExecutor(
@@ -57,10 +59,6 @@ export class KarmaFactory implements TestFactory {
       ? this.createKarmaCommandLineTestRunExecutor()
       : this.createKarmaHttpTestRunExecutor();
   }
-
-  // public createTestRunEmitter(): TestRunEventEmitter {
-  //   return new TestRunEventEmitter(this.testRunEmitter, this.testResolver)
-  // }
 
   private createKarmaHttpTestRunExecutor(): KarmaHttpTestRunExecutor {
     this.logger.info(`Creating Karma http test run executor`);
