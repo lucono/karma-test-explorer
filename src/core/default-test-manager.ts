@@ -1,5 +1,5 @@
 import { TestRunner } from "../api/test-runner";
-import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
+import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Execution } from "../api/execution";

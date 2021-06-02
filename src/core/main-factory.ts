@@ -1,11 +1,9 @@
 import { DefaultTestManager } from "./default-test-manager";
 import { ExtensionConfig } from "./extension-config";
-import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
-import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
+import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
+import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
-import { EventEmitter, workspace, WorkspaceFolder } from "vscode";
-import { KarmaFactory } from "../frameworks/karma/karma-factory";
-import { ServerProcessLogger } from "../frameworks/karma/karma-command-line-test-server-executor";
+import { EventEmitter, Uri, workspace } from "vscode";
 import { TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
 import { TestManager } from "../api/test-manager";
@@ -13,17 +11,21 @@ import { AggregatingTestManager } from "./aggregating-test-manager";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "./logger";
-import { Log } from "vscode-test-adapter-util";
+// import { Log } from "vscode-test-adapter-util";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
-import { TestFactory } from "../api/test-factory";
-import { TestRunEventEmitter } from "../frameworks/karma/integration/test-run-event-emitter";
+import { TestRunEventEmitter } from "../frameworks/karma/runner/test-run-event-emitter";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { join } from "path";
 import { existsSync } from "fs";
-import { AngularFactory } from "../frameworks/angular/angular-factory";
-import { CascadingTestFactory } from "./cascading-test-factory";
+import { AngularTestServerFactory } from "../frameworks/angular/angular-test-server-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { ShardManager } from "./shard-manager";
+import { TestServerFactory } from "../api/test-server-factory";
+import { TestRunnerFactory } from "../api/test-runner-factory";
+import { CascadingTestServerFactory } from "./cascading-test-server-factory";
+import { KarmaTestServerFactory } from "../frameworks/karma/server/karma-test-server-factory";
+import { KarmaTestRunnerFactory } from "../frameworks/karma/runner/karma-test-runner-factory";
+import { Log } from "./log";
 
 export class MainFactory {
 
@@ -32,11 +34,11 @@ export class MainFactory {
   private readonly logger: Logger;
 
   constructor(
-    workspaceFolder: WorkspaceFolder,
+    workspaceFolderUri: Uri,
     configPrefix: string,
     private readonly log: Log)
   {
-    this.config = this.createConfig(workspaceFolder, configPrefix);
+    this.config = this.createConfig(workspaceFolderUri, configPrefix);
     this.logger = new Logger(log, 'TestExplorerFactory', this.config.debugLevelLoggingEnabled);
     this.disposables.push(this.log);
   }
@@ -46,12 +48,12 @@ export class MainFactory {
   }
 
   private createConfig(
-    workspaceFolder: WorkspaceFolder,
+    workspaceFolderUri: Uri,
     configPrefix: string): ExtensionConfig
   {
-    const config = workspace.getConfiguration(configPrefix, workspaceFolder.uri);
+    const config = workspace.getConfiguration(configPrefix, workspaceFolderUri);
     const configLogger = new Logger(this.log, 'ExtensionConfig', true);
-    return new ExtensionConfig(config, workspaceFolder.uri.path, configLogger);
+    return new ExtensionConfig(config, workspaceFolderUri.path, configLogger);
   }
 
   public fetchTestInfo(): SpecLocator {
@@ -70,6 +72,47 @@ export class MainFactory {
     testResolver: TestResolver,
     serverInstances: number = 1): TestManager
   {
+    // let testManager: DefaultTestManager;
+    // const serverProcessLogger = makeShardLogger(`ServerProcessLogger`);
+
+    // const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
+    //   const regex = new RegExp(/\(.*?)\m/, "g");
+
+    //   if (testManager?.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
+    //     let log = data.toString().replace(regex, "");
+    //     if (log.startsWith("e ")) {
+    //       log = `HeadlessChrom${log}`;
+    //     }
+    //     serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+    //   }
+    // };
+
+    const prioritizedTestServerFactories: Partial<TestServerFactory>[] = [];
+
+    prioritizedTestServerFactories.unshift(new KarmaTestServerFactory(
+      this.config,
+      // karmaServerProcessLogger,
+      new Logger(this.log, `KarmaTestServerFactory`, this.config.debugLevelLoggingEnabled)
+    ));
+
+    if (this.isAngularProject()) {
+      prioritizedTestServerFactories.unshift(new AngularTestServerFactory(
+        this.config,
+        // karmaServerProcessLogger,
+        new Logger(this.log, `AngularTestServerFactory`, this.config.debugLevelLoggingEnabled)
+      ));
+    }
+
+    const testServerFactory: TestServerFactory = new CascadingTestServerFactory(
+      prioritizedTestServerFactories,
+      new Logger(this.log, `CascadingTestServerFactory`, this.config.debugLevelLoggingEnabled)
+    );
+
+    const testRunnerFactory: TestRunnerFactory = new KarmaTestRunnerFactory(
+      this.config,
+      new Logger(this.log, `KarmaTestRunnerFactory`, this.config.debugLevelLoggingEnabled)
+    )
+
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
     const testManagers: TestManager[] = [];
@@ -83,6 +126,8 @@ export class MainFactory {
         `sharded karma instances (shard ${shardIndex})`);
 
       testManagers.push(this.createDefaultTestManager(
+        testServerFactory,
+        testRunnerFactory,
         testRunEmitter,
         specLocationResolver,
         testResolver,
@@ -153,6 +198,8 @@ export class MainFactory {
   }
 
   private createDefaultTestManager(
+    testServerFactory: TestServerFactory,
+    testRunnerFactory: TestRunnerFactory,
     testRunEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver,
@@ -168,42 +215,46 @@ export class MainFactory {
       return new Logger(this.log, shardLoggerName, this.config.debugLevelLoggingEnabled);
     };
 
-    let testManager: DefaultTestManager;
-    const serverProcessLogger = makeShardLogger(`ServerProcessLogger`);
+    // let testManager: DefaultTestManager;
+    // const serverProcessLogger = makeShardLogger(`ServerProcessLogger`);
 
-    const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
-      const regex = new RegExp(/\(.*?)\m/, "g");
+    // const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
+    //   const regex = new RegExp(/\(.*?)\m/, "g");
 
-      if (testManager?.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
-        let log = data.toString().replace(regex, "");
-        if (log.startsWith("e ")) {
-          log = `HeadlessChrom${log}`;
-        }
-        serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
-      }
-    };
+    //   if (testManager?.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
+    //     let log = data.toString().replace(regex, "");
+    //     if (log.startsWith("e ")) {
+    //       log = `HeadlessChrom${log}`;
+    //     }
+    //     serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+    //   }
+    // };
 
-    const prioritizedTestFactories: Partial<TestFactory>[] = [];
+    // const prioritizedTestServerFactories: Partial<TestServerFactory>[] = [];
 
-    prioritizedTestFactories.unshift(new KarmaFactory(
-      this.config,
-      karmaServerProcessLogger,
-      makeShardLogger(`TestFactory`)
-    ));
+    // prioritizedTestServerFactories.unshift(new KarmaTestServerFactory(
+    //   this.config,
+    //   karmaServerProcessLogger,
+    //   new Logger(this.log, `KarmaTestServerFactory`, this.config.debugLevelLoggingEnabled)
+    // ));
 
-    if (this.isAngularProject()) {
-      prioritizedTestFactories.unshift(new AngularFactory(
-        this.config,
-        karmaServerProcessLogger,
-        makeShardLogger(`TestFactory`)
-      ));
-    }
+    // if (this.isAngularProject()) {
+    //   prioritizedTestServerFactories.unshift(new AngularTestServerFactory(
+    //     this.config,
+    //     karmaServerProcessLogger,
+    //     new Logger(this.log, `AngularTestServerFactory`, this.config.debugLevelLoggingEnabled)
+    //   ));
+    // }
 
-    const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, new Logger(
-      this.log,
-      `CascadingTestFactory`,
-      this.config.debugLevelLoggingEnabled
-    ));
+    // const testServerFactory: TestServerFactory = new CascadingTestServerFactory(
+    //   prioritizedTestServerFactories,
+    //   new Logger(this.log, `CascadingTestServerFactory`, this.config.debugLevelLoggingEnabled)
+    // );
+
+    // const testRunnerFactory: TestRunnerFactory = new KarmaTestRunnerFactory(
+    //   this.config,
+    //   new Logger(this.log, `KarmaTestRunnerFactory`, this.config.debugLevelLoggingEnabled)
+    // )
 
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
       specLocationResolver,
@@ -211,12 +262,14 @@ export class MainFactory {
     );
     const testRunEventEmitter = new TestRunEventEmitter(testRunEmitter, testResolver);
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
-    const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
-    const testRunExecutor = testFactory.createTestRunExecutor();
-    const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
-    const testServer = testFactory.createTestServer(testServerExecutor);
 
-    testManager = new DefaultTestManager(
+    const testServerExecutor = testServerFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
+    const testServer = testServerFactory.createTestServer(testServerExecutor);
+
+    const testRunExecutor = testRunnerFactory.createTestRunExecutor();
+    const testRunner = testRunnerFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
+
+    const testManager = new DefaultTestManager(
       testServer,
       testRunner,
       karmaEventListener,

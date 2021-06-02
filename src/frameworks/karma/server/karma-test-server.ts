@@ -1,9 +1,9 @@
-import { Logger } from "../../core/logger";
-import { Execution } from "../../api/execution";
-import { DeferredPromise } from "../../util/deferred-promise";
-import { TestServer } from "../../api/test-server";
+import { Logger } from "../../../core/logger";
+import { Execution } from "../../../api/execution";
+import { DeferredPromise } from "../../../util/deferred-promise";
+import { TestServer } from "../../../api/test-server";
 import { window } from "vscode";
-import { ServerStopExecutor, TestServerExecutor } from "../../api/test-server-executor";
+import { ServerStopExecutor, TestServerExecutor } from "../../../api/test-server-executor";
 
 type ServerExecutionInfo = {
   serverExecution: Execution<ServerStopExecutor>,

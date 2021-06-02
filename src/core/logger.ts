@@ -1,6 +1,6 @@
-import { Log } from "vscode-test-adapter-util";
 import { Disposable } from "../api/disposable";
 import { TestStatus } from "../api/test-status";
+import { Log } from "./log";
 import { LogLevel } from "./log-level";
 
 declare type LogAction = (...msg: any[]) => void;

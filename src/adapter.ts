@@ -11,7 +11,7 @@ import {
   RetireEvent
 } from "vscode-test-adapter-api";
 import { Logger } from "./core/logger";
-import { Log } from "vscode-test-adapter-util";
+// import { Log } from "vscode-test-adapter-util";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
 import { SpecLocation, SpecLocator } from './util/spec-locator';
@@ -23,7 +23,8 @@ import { TestManager } from "./api/test-manager";
 import { Disposable } from "./api/disposable";
 import { MainFactory } from "./core/main-factory";
 import { TestResolver } from "./core/test-resolver";
-import { SpecLocationResolver } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
+import { SpecLocationResolver } from "./frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { Log } from "./core/log";
 
 export class Adapter implements TestAdapter {
 
@@ -63,7 +64,7 @@ export class Adapter implements TestAdapter {
   }
 
   private init() {
-    this.factory = new MainFactory(this.workspaceFolder, this.configPrefix, this.log);
+    this.factory = new MainFactory(this.workspaceFolder.uri, this.configPrefix, this.log);
     this.config = this.factory.getExtensionConfig();
     this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
 
