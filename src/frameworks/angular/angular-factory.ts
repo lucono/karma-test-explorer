@@ -4,7 +4,7 @@ import { TestServerExecutor } from "../../api/test-server-executor";
 import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";
 import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { TestFactory } from "../../api/test-factory";
-import { KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "../karma/karma-command-line-test-server-executor";
+import { KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "../karma/server/karma-command-line-test-server-executor";
 import { KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "../karma/karma-constants";
 
 export class AngularFactory implements Partial<TestFactory> {

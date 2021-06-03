@@ -9,8 +9,8 @@ import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
 import { Execution } from "../../../api/execution";
 import { TestStatus } from "../../../api/test-status";
 import { Disposable } from "../../../api/disposable";
-import * as express from "express"
 import { DeferredPromise } from "../../../util/deferred-promise";
+import * as express from "express"
 
 // const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config

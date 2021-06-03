@@ -1,18 +1,27 @@
 import { io } from "socket.io-client";
 import { parentPort, workerData } from "worker_threads";
-import { KarmaEvent } from "../karma/integration/karma-event";
+import { KarmaEvent } from "../karma/runner/karma-event";
+import { TestResultEmitterWorkerData } from "./test-result-emitter-worker-data";
 
-const { socketPort, pingTimeout, pingInterval } = workerData;
+const initWorker = () => {
+  if (!parentPort || !workerData) {
+    return;
+  }
 
-const socket = io("http://localhost:" + socketPort + "/", {
-  forceNew: true, 
-  reconnection: true
-});
+  const { socketPort, pingTimeout, pingInterval }: TestResultEmitterWorkerData = workerData;
+  
+  const socket = io("http://localhost:" + socketPort + "/", {
+    forceNew: true, 
+    reconnection: true
+  });
+  
+  const socketOptions = { pingTimeout, pingInterval };
+  
+  Object.assign(socket, socketOptions);
+  
+  parentPort?.on("message", (event: KarmaEvent) => {
+    socket.emit(event.name, event);
+  });
+};
 
-const socketOptions = { pingTimeout, pingInterval };
-
-Object.assign(socket, socketOptions);
-
-parentPort?.on("message", (event: KarmaEvent) => {
-  socket.emit(event.name, event);
-});
+initWorker();

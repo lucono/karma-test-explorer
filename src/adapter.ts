@@ -23,7 +23,7 @@ import { TestManager } from "./api/test-manager";
 import { Disposable } from "./api/disposable";
 import { MainFactory } from "./core/main-factory";
 import { TestResolver } from "./core/test-resolver";
-import { SpecLocationResolver } from "./frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
+import { SpecLocationResolver } from "./frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 
 export class Adapter implements TestAdapter {
 

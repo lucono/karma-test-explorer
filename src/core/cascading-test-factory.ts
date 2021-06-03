@@ -3,8 +3,8 @@ import { TestRunExecutor } from "../api/test-run-executor";
 import { TestRunner } from "../api/test-runner";
 import { TestServer } from "../api/test-server";
 import { TestServerExecutor } from "../api/test-server-executor";
-import { KarmaEventListener } from "../frameworks/karma/integration/karma-event-listener";
-import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/integration/spec-response-to-test-suite-info-mapper";
+import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
+import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { Logger } from "./logger";
 
 export class CascadingTestFactory implements TestFactory {

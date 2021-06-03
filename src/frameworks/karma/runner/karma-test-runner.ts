@@ -1,16 +1,16 @@
-import { Logger } from "../../core/logger";
-import { KarmaEventListener, TestCapture } from "./integration/karma-event-listener";
+import { Logger } from "../../../core/logger";
+import { KarmaEventListener, TestCapture } from "./karma-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { TestRunner } from "../../api/test-runner";
-import { SpecCompleteResponse } from "./integration/spec-complete-response";
-import { SpecResponseToTestSuiteInfoMapper } from "./integration/spec-response-to-test-suite-info-mapper";
-import { DeferredPromise } from "../../util/deferred-promise";
-import { Execution } from "../../api/execution";
-import { TestStatus } from "../../api/test-status";
-import { TestRunExecutor } from "../../api/test-run-executor";
-import { SKIP_ALL_TESTS_PATTERN } from "./karma-constants";
-import { AnyTestInfo, TestSuiteType, TestType } from "../../api/test-infos";
-import { TestResults } from "../../api/test-results";
+import { TestRunner } from "../../../api/test-runner";
+import { SpecCompleteResponse } from "./spec-complete-response";
+import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
+import { DeferredPromise } from "../../../util/deferred-promise";
+import { Execution } from "../../../api/execution";
+import { TestStatus } from "../../../api/test-status";
+import { TestRunExecutor } from "../../../api/test-run-executor";
+import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
+import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
+import { TestResults } from "../../../api/test-results";
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(
