@@ -34,6 +34,29 @@ const initWorker = () => {
     config
   }: KarmaRunnerWorkerData = workerData;
   
+  let loadedRootSuite: TestSuiteInfo | undefined;
+  let loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
+
+  const testRunEmitter = new EventEmitter<TestRunEvent>();
+  
+  const storeLoadedTests = (rootSuite?: TestSuiteInfo) => {
+    const testsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
+
+    const processTestTree = (test: TestInfo | TestSuiteInfo): void => {
+      testsById.set(test.id, test);
+      if (test.type === TestType.Suite && test.children?.length) {
+        test.children.forEach(childTest => processTestTree(childTest));
+      }
+    };
+
+    if (rootSuite) {
+      processTestTree(rootSuite);
+    }
+    loadedRootSuite = rootSuite;
+    loadedTestsById = testsById;
+    loadedRootSuite = rootSuite;
+  }
+
   const logMessage = (message: string, logLevel: LogLevel) => {
     const logResponse: KarmaRunnerWorkerLogResponse = {
       type: KarmaRunnerWorkerResponseType.LogMessage,
@@ -72,9 +95,6 @@ const initWorker = () => {
     makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
   );
   
-  const loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
-  const testRunEmitter = new EventEmitter<TestRunEvent>();
-  
   const testResolver: TestResolver = {
     resolveTest: (testId: string): TestInfo | undefined => {
       const test = loadedTestsById.get(testId);
@@ -98,7 +118,10 @@ const initWorker = () => {
   
   testManagerPort.on(`message`, (request: KarmaRunnerWorkerTestRequest) => {
     if (request.type === KarmaRunnerWorkerRequestType.LoadTests) {
-      testRunner.loadTests(serverPort).then(loadedTests => testManagerPort.postMessage(loadedTests));
+      testRunner.loadTests(serverPort).then(loadedTests => {
+        storeLoadedTests(loadedTests);
+        testManagerPort.postMessage(loadedTests);
+      });
 
     } else if (request.type === KarmaRunnerWorkerRequestType.RunTests) {
       testRunner.runTests(serverPort, request.tests).then(testResults => testManagerPort.postMessage(testResults));

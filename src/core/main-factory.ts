@@ -108,10 +108,10 @@ export class MainFactory {
       new Logger(this.log, `CascadingTestServerFactory`, this.config.debugLevelLoggingEnabled)
     );
 
-    const testRunnerFactory: TestRunnerFactory = new KarmaTestRunnerFactory(
-      this.config,
-      new Logger(this.log, `KarmaTestRunnerFactory`, this.config.debugLevelLoggingEnabled)
-    )
+    // const testRunnerFactory: TestRunnerFactory = new KarmaTestRunnerFactory(
+    //   this.config,
+    //   new Logger(this.log, `KarmaTestRunnerFactory`, this.config.debugLevelLoggingEnabled)
+    // )
 
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
