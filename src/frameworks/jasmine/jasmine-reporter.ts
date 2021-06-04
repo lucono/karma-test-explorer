@@ -38,7 +38,7 @@ function TestExplorerJasmineReporter(
     pingInterval
   };
 
-  const workerScriptFile = resolve(__dirname, "test-result-emitter-worker.js");
+  const workerScriptFile = resolve(__dirname, '..', 'karma', 'runner', 'test-result-emitter-worker.js');
   const worker = new Worker(workerScriptFile, { workerData });
 
   log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
