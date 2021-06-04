@@ -1,5 +1,5 @@
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { MessageMatchingWorker } from "../util/message-matching-worker";
 import { Disposable } from "./disposable";
 import { TestRunExecutor } from "./test-run-executor";
 // import { TestRunExecutor } from "./test-run-executor";
@@ -17,7 +17,7 @@ export interface TestFactory extends Disposable {
   ): TestServer;
   
   createTestRunner(
-    karmaEventListener: KarmaEventListener,
+    karmaEventListenerWorker: MessageMatchingWorker,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     testRunExecutor?: TestRunExecutor): TestRunner;
 

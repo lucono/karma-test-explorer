@@ -1,5 +1,4 @@
 import { TestRunner } from "../api/test-runner";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Execution } from "../api/execution";
@@ -9,15 +8,19 @@ import { TestServer } from "../api/test-server";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { DeferredPromise } from "../util/deferred-promise";
 import { TestResults } from "../api/test-results";
+import { MessageMatchingWorker } from "../util/message-matching-worker";
+import { KarmaTestListenerReceiveConnectionRequest, KarmaTestListenerStopRequest, KarmaTestListenerWorkerRequestType, KarmaTestListenerWorkerResponse, KarmaTestListenerWorkerResponseType } from "../frameworks/karma/runner/test-result-receiver-worker-messages";
 
 export class DefaultTestManager implements TestManager {
   private disposables: { dispose: () => void }[] = [];
   private testRunning: boolean = false;
+  private eventListenerConnected: boolean = false;
 
   public constructor(
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
-    private readonly karmaEventListener: KarmaEventListener,
+    // private readonly karmaEventListener: KarmaEventListener,
+    private readonly karmaEventListenerWorker: MessageMatchingWorker,
     private readonly portManager: PortAcquisitionManager,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
@@ -25,9 +28,16 @@ export class DefaultTestManager implements TestManager {
   ) {
     // DisposablesHelper.from(karmaServer, testRunner, karmaEventListener, logger);
 
+    karmaEventListenerWorker.on('message', (data: KarmaTestListenerWorkerResponse) => {
+      if (data.type === KarmaTestListenerWorkerResponseType.Connected) {
+        this.eventListenerConnected = true;
+      } else if (data.type === KarmaTestListenerWorkerResponseType.Disconnected) {
+        this.eventListenerConnected = false;
+      }
+    });
     this.disposables.push(testServer);
     this.disposables.push(testRunner);
-    this.disposables.push(karmaEventListener);
+    this.disposables.push(karmaEventListenerWorker);
     this.disposables.push(logger);
   }
 
@@ -63,17 +73,18 @@ export class DefaultTestManager implements TestManager {
       await karmaServerExecution.started();
 
       await new Promise<void>((resolve, reject) => {
-        const karmaServerConnection: Execution = this.karmaEventListener.receiveKarmaConnection(
-          karmerListenerSocketPort
-        );
+        const workerRequest: KarmaTestListenerReceiveConnectionRequest = {
+          type: KarmaTestListenerWorkerRequestType.ReceiveConnection,
+          socketPort: karmerListenerSocketPort
+        };
+        const karmaServerConnection: Promise<void> = this.karmaEventListenerWorker.postMessage(workerRequest);
   
-        karmaServerConnection.started()
-          .then(() => resolve())
+        karmaServerConnection.then(() => resolve())
           .catch(failureReason => reject(`${failureReason}`));
         
-        karmaServerConnection.ended().then(() => {
-          deferredListenerSocketPortRelease.resolve();
-        });
+        // karmaServerConnection.ended().then(() => {
+        //   deferredListenerSocketPortRelease.resolve();
+        // });
 
         karmaServerExecution.ended().then(() => {
           deferredKarmaPortRelease.resolve();
@@ -93,7 +104,7 @@ export class DefaultTestManager implements TestManager {
         this.logger.info(
           `Request to load tests - ` +
           `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
-          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `karma listener is ${!this.eventListenerConnected ? 'not' : ''} running - ` +
           `Restarting both`);
 
         await this.restart();
@@ -118,7 +129,7 @@ export class DefaultTestManager implements TestManager {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +
           `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
-          `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+          `karma listener is ${!this.eventListenerConnected ? 'not' : ''} running - ` +
           `Restarting both`);
 
         await this.restart();
@@ -139,8 +150,11 @@ export class DefaultTestManager implements TestManager {
   }
 
   public async stopCurrentRun(): Promise<void> {
-    if (this.karmaEventListener.isRunning()) {
-      await this.karmaEventListener.stop();
+    if (this.eventListenerConnected) {
+      const workerMsg: KarmaTestListenerStopRequest = {
+        type: KarmaTestListenerWorkerRequestType.Stop
+      };
+      await this.karmaEventListenerWorker.postMessage(workerMsg);
     }
 
     if (this.testServer.isRunning()) {
@@ -177,7 +191,7 @@ export class DefaultTestManager implements TestManager {
   }
 
   private isSystemsRunning(): boolean {
-    return this.testServer.isRunning() && this.karmaEventListener.isRunning();
+    return this.testServer.isRunning() && this.eventListenerConnected;
   }
 
   public dispose(): void {

@@ -1,21 +1,23 @@
 import { Logger } from "../../../core/logger";
-import { KarmaEventListener, TestCapture } from "./karma-event-listener";
+import { TestCapture } from "./karma-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "../../../api/test-runner";
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
 import { DeferredPromise } from "../../../util/deferred-promise";
-import { Execution } from "../../../api/execution";
 import { TestStatus } from "../../../api/test-status";
 import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
 import { TestResults } from "../../../api/test-results";
+import { MessageMatchingWorker } from "../../../util/message-matching-worker";
+import { KarmaTestListenerStartListeningForTestsRequest, KarmaTestListenerStopListeningForTestsRequest, KarmaTestListenerTestCaptureResponse, KarmaTestListenerWorkerRequestType } from "./test-result-receiver-worker-messages";
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(
     private readonly testRunExecutor: TestRunExecutor,
-    private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
+    // private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
+    private readonly karmaEventListenerWorker: MessageMatchingWorker,
     private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly logger: Logger
   ) {}
@@ -25,18 +27,23 @@ export class KarmaTestRunner implements TestRunner {
     const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
     const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
-    const testLoadOperation: Execution = {
-      started: () => testLoadStartedDeferred.promise(),
-      ended: () => testLoadEndedDeferred.promise()
+    // const testLoadOperation: Execution = {
+    //   started: () => testLoadStartedDeferred.promise(),
+    //   ended: () => testLoadEndedDeferred.promise()
+    // };
+    // const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
+    const workerMessage: KarmaTestListenerStartListeningForTestsRequest = {
+      type: KarmaTestListenerWorkerRequestType.StartListeningForTests,
+      specs: []
     };
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
+    const testCapture: Promise<KarmaTestListenerTestCaptureResponse> = this.karmaEventListenerWorker.postMessage(workerMessage);
     const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
 
     testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
     testLoadEndedDeferred.resolve();
 
-    const capturedSpecs: TestCapture = await testCapture;
+    const capturedSpecs: TestCapture = (await testCapture).testCapture;
 
     const loadedSpecs: SpecCompleteResponse[] = [
       ...capturedSpecs[TestStatus.Skipped],
@@ -88,22 +95,32 @@ export class KarmaTestRunner implements TestRunner {
       clientArgs.push(`--grep=${aggregateTestPattern}`);
     }
 
-    const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
-    const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
+    // const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
+    // const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
-    const testRunOperation: Execution = {
-      started: () => testRunStartedDeferred.promise(),
-      ended: () => testRunEndedDeferred.promise()
-    };
+    // const testRunOperation: Execution = {
+    //   started: () => testRunStartedDeferred.promise(),
+    //   ended: () => testRunEndedDeferred.promise()
+    // };
 
     const testNames: string[] = testList.map(test => test.fullName);
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    // const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    const startListeningMessage: KarmaTestListenerStartListeningForTestsRequest = {
+      type: KarmaTestListenerWorkerRequestType.StartListeningForTests,
+      specs: testNames
+    };
+    const testCapture: Promise<KarmaTestListenerTestCaptureResponse> = this.karmaEventListenerWorker.postMessage(startListeningMessage);
 
-    testRunStartedDeferred.resolve();
+    // testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
-    testRunEndedDeferred.resolve();
+    // testRunEndedDeferred.resolve();
     
-    const capturedSpecs: TestCapture = await testCapture;
+    const stopListeningMessage: KarmaTestListenerStopListeningForTestsRequest = {
+      type: KarmaTestListenerWorkerRequestType.StopListeningForTests
+    };
+    this.karmaEventListenerWorker.postMessage(stopListeningMessage);
+
+    const capturedSpecs: TestCapture = (await testCapture).testCapture;
     const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Failed]);
     const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Success]);
     const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Skipped]);

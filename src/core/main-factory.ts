@@ -1,6 +1,5 @@
 import { DefaultTestManager } from "./default-test-manager";
 import { ExtensionConfig } from "./extension-config";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, workspace, WorkspaceFolder } from "vscode";
@@ -15,16 +14,16 @@ import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "./logger";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
-import { TestRunEventEmitter } from "../frameworks/karma/runner/test-run-event-emitter";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
-import { join } from "path";
+import { join, resolve } from "path";
 import { existsSync } from "fs";
 import { AngularFactory } from "../frameworks/angular/angular-factory";
 import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { ShardManager } from "./shard-manager";
 import { Log } from "./log";
-import { KarmaTestRunEventEmitter } from "../frameworks/karma/runner/karma-test-run-event-emitter";
+import { MessageMatchingWorker } from "../util/message-matching-worker";
+import { TestResultReceiverWorkerData } from "../frameworks/karma/runner/test-result-receiver-worker-data";
 
 export class MainFactory {
 
@@ -210,17 +209,32 @@ export class MainFactory {
       specLocationResolver,
       makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
     );
-    const testRunEventEmitter: TestRunEventEmitter = new KarmaTestRunEventEmitter(testRunEmitter, testResolver);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
+    // const testRunEventEmitter: TestRunEventEmitter = new KarmaTestRunEventEmitter(testRunEmitter, testResolver);
+    // const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
+
+    const testResultReceiverWorkerScript = resolve(__dirname,
+      '..', 'frameworks', 'karma', 'runner', 'test-result-emitter-worker.js'
+    );
+
+    const testResultReceiverWorkerData: TestResultReceiverWorkerData = {
+      isDebugMode: this.config.debugLevelLoggingEnabled
+    };
+
+    const karmaEventListenerWorker: MessageMatchingWorker = new MessageMatchingWorker(
+      testResultReceiverWorkerScript,
+      makeShardLogger(`MessageMatchingWorker`),
+      { workerData: testResultReceiverWorkerData }
+    );
     const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();
-    const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
+    const testRunner = testFactory.createTestRunner(karmaEventListenerWorker, specToTestSuiteMapper, testRunExecutor);
     const testServer = testFactory.createTestServer(testServerExecutor);
 
     testManager = new DefaultTestManager(
       testServer,
       testRunner,
-      karmaEventListener,
+      // karmaEventListener,
+      karmaEventListenerWorker,
       portManager,
       this.config.karmaPort,
       this.config.defaultSocketConnectionPort,

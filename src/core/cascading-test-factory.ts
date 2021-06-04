@@ -3,8 +3,8 @@ import { TestRunExecutor } from "../api/test-run-executor";
 import { TestRunner } from "../api/test-runner";
 import { TestServer } from "../api/test-server";
 import { TestServerExecutor } from "../api/test-server-executor";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { MessageMatchingWorker } from "../util/message-matching-worker";
 import { Logger } from "./logger";
 
 export class CascadingTestFactory implements TestFactory {
@@ -29,7 +29,7 @@ export class CascadingTestFactory implements TestFactory {
   }
 
   public createTestRunner(
-    karmaEventListener: KarmaEventListener,
+    karmaEventListenerWorker: MessageMatchingWorker,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     testRunExecutor?: TestRunExecutor): TestRunner
   {
@@ -41,7 +41,7 @@ export class CascadingTestFactory implements TestFactory {
         `requested action: Create Test Runner`);
     }
     return delegateFactory.createTestRunner!(
-      karmaEventListener,
+      karmaEventListenerWorker,
       specToTestSuiteMapper,
       testRunExecutor ?? this.createTestRunExecutor());
   }
