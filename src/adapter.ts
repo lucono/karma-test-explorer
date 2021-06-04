@@ -11,7 +11,6 @@ import {
   RetireEvent
 } from "vscode-test-adapter-api";
 import { Logger } from "./core/logger";
-import { Log } from "vscode-test-adapter-util";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
 import { SpecLocation, SpecLocator } from './util/spec-locator';
@@ -24,6 +23,7 @@ import { Disposable } from "./api/disposable";
 import { MainFactory } from "./core/main-factory";
 import { TestResolver } from "./core/test-resolver";
 import { SpecLocationResolver } from "./frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { Log } from "./core/log";
 
 export class Adapter implements TestAdapter {
 

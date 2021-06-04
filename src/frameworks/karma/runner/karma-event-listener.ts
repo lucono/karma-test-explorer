@@ -33,7 +33,7 @@ export class KarmaEventListener implements Disposable {
     private readonly logger: Logger
   ) {}
 
-  public acceptKarmaConnection(socketPort: number): Execution {
+  public receiveKarmaConnection(socketPort: number): Execution {
     const connectionClosedDeferred: DeferredPromise = new DeferredPromise();
 
     const connectionEstablishedPromise = new Promise<void>(async (resolve, reject) => {
@@ -129,7 +129,6 @@ export class KarmaEventListener implements Disposable {
   }
 
   public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {
-
     try {
       this.clearCapturedSpecs();
       this.currentSpecs = specs;

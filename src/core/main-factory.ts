@@ -13,7 +13,6 @@ import { AggregatingTestManager } from "./aggregating-test-manager";
 import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
 import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "./logger";
-import { Log } from "vscode-test-adapter-util";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
 import { TestRunEventEmitter } from "../frameworks/karma/runner/test-run-event-emitter";
@@ -24,6 +23,8 @@ import { AngularFactory } from "../frameworks/angular/angular-factory";
 import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { ShardManager } from "./shard-manager";
+import { Log } from "./log";
+import { KarmaTestRunEventEmitter } from "../frameworks/karma/runner/karma-test-run-event-emitter";
 
 export class MainFactory {
 
@@ -209,7 +210,7 @@ export class MainFactory {
       specLocationResolver,
       makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
     );
-    const testRunEventEmitter = new TestRunEventEmitter(testRunEmitter, testResolver);
+    const testRunEventEmitter: TestRunEventEmitter = new KarmaTestRunEventEmitter(testRunEmitter, testResolver);
     const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
     const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();

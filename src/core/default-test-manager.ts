@@ -63,7 +63,7 @@ export class DefaultTestManager implements TestManager {
       await karmaServerExecution.started();
 
       await new Promise<void>((resolve, reject) => {
-        const karmaServerConnection: Execution = this.karmaEventListener.acceptKarmaConnection(
+        const karmaServerConnection: Execution = this.karmaEventListener.receiveKarmaConnection(
           karmerListenerSocketPort
         );
   

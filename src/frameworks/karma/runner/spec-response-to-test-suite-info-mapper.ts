@@ -7,7 +7,7 @@ import { TestType } from "../../../api/test-infos";
 // FIXME: Move to interface in spec-locator module
 export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
 
-export class SpecResponseToTestSuiteInfoMapper {
+export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thread candidate
   public constructor(
     private readonly specLocationResolver: SpecLocationResolver,
     private readonly logger: Logger)

@@ -8,7 +8,7 @@ import { TestStatus } from "../../api/test-status";
 import { LightSpecCompleteResponse } from "../karma/runner/spec-complete-response";
 import { TestRunStatus } from "./test-run-status";
 import { resolve } from "path";
-import { TestResultEmitterWorkerData } from "./test-result-emitter-worker-data";
+import { TestResultEmitterWorkerData } from "../karma/runner/test-result-emitter-worker-data";
 // import { resolve } from "path";
 
 const pingTimeout = 24 * 60 * 60 * 1000;

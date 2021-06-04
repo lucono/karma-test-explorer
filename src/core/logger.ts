@@ -1,6 +1,6 @@
-import { Log } from "vscode-test-adapter-util";
 import { Disposable } from "../api/disposable";
 import { TestStatus } from "../api/test-status";
+import { Log } from "./log";
 import { LogLevel } from "./log-level";
 
 declare type LogAction = (...msg: any[]) => void;
@@ -22,7 +22,7 @@ export class Logger implements Disposable {
     this.logger.debug(formattedMsg);
     this.logParams(this.logger.debug, params);
     global.console.log(formattedMsg);
-  };
+  }
 
   public warn(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.WARN);
@@ -45,7 +45,7 @@ export class Logger implements Disposable {
     global.console.log(formattedMsg);
   }
 
-  public status(testStatus: TestStatus) {
+  public status(testStatus: TestStatus) {  // FIXME: Remove in favor of the standard Log methods?
     let msg;
     if (testStatus === TestStatus.Success) {
       msg = `[SUCCESS] ✅ Passed`;
