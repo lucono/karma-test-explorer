@@ -168,9 +168,9 @@ export class KarmaEventListener implements Disposable {
       return;
     }
     const results: LightSpecCompleteResponse = event.results;
-    const testId: string = results.id;
     const fullName: string = [ ...results.suite, results.description ].join(" ");
-    const specResults: SpecCompleteResponse = { ...results, fullName };
+    const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
+    const specResults: SpecCompleteResponse = { ...results, id: testId, fullName };
     const isIncludedSpec = this.isIncludedSpec(specResults);
 
     if (!isIncludedSpec) {

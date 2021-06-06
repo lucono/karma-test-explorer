@@ -147,11 +147,15 @@ export class TestSuiteOrganizer {
 
   private createTestFileSuite(filePath: string): TestFileSuiteInfo {
     const specFileName = basename(filePath);
-    const indexOfFileExtension = specFileName.indexOf('.');
+    // const indexOfFileExtension = specFileName.indexOf('.');
 
-    const fileNameWithoutExtension = indexOfFileExtension > 0
-      ? specFileName.substring(0, indexOfFileExtension)
-      : specFileName;  
+    // const fileNameWithoutExtension = indexOfFileExtension > 0
+    //   ? specFileName.substring(0, indexOfFileExtension)
+    //   : specFileName;
+    
+    const friendlyFileLabel = specFileName.replace(
+      /^(test[_\.-])?([^\.]*)([_\.-]test)?(\..*)$/i,
+      '$2');
 
     return {
       type: TestType.Suite,
@@ -160,7 +164,7 @@ export class TestSuiteOrganizer {
       line: 0,
       id: filePath,
       fullName: '', // To prevent being runnable with grep pattern of fullName
-      label: fileNameWithoutExtension,
+      label: friendlyFileLabel,
       tooltip: filePath,
       children: [],
       testCount: 0
