@@ -1,6 +1,6 @@
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
+import { sep as pathSeparator, dirname, basename, normalize, relative, resolve, join } from "path";
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
 
 export class TestSuiteOrganizer {
@@ -34,7 +34,7 @@ export class TestSuiteOrganizer {
       let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(testFileRelativePath);
 
       if (!testFileSuite) {
-        testFileSuite = this.createTestFileSuite(testFileRelativePath);
+        testFileSuite = this.createTestFileSuite(rootPath, testFileRelativePath);
         testFileSuitesByFilePath.set(testFileRelativePath, testFileSuite);
       }
       testFileSuite.children.push(test);
@@ -128,8 +128,8 @@ export class TestSuiteOrganizer {
       : 1;
   }
 
-  private createFolderSuite(path: string): TestFolderSuiteInfo {
-    const folderPath = normalize(path);
+  private createFolderSuite(relativePath: string): TestFolderSuiteInfo {
+    const folderPath = normalize(relativePath);
     const folderName = basename(folderPath);
 
     return {
@@ -145,27 +145,21 @@ export class TestSuiteOrganizer {
     };
   }
 
-  private createTestFileSuite(filePath: string): TestFileSuiteInfo {
-    const specFileName = basename(filePath);
-    // const indexOfFileExtension = specFileName.indexOf('.');
-
-    // const fileNameWithoutExtension = indexOfFileExtension > 0
-    //   ? specFileName.substring(0, indexOfFileExtension)
-    //   : specFileName;
-    
-    const friendlyFileLabel = specFileName.replace(
+  private createTestFileSuite(rootPath: string, relativeFilePath: string): TestFileSuiteInfo {
+    const absoluteFilePath: string = resolve(rootPath, relativeFilePath);
+    const friendlyFileLabel = basename(relativeFilePath).replace(
       /^(test[_\.-])?([^\.]*)([_\.-]test)?(\..*)$/i,
       '$2');
 
     return {
       type: TestType.Suite,
       suiteType: TestSuiteType.File,
-      file: filePath,
+      file: absoluteFilePath,
       line: 0,
-      id: filePath,
+      id: relativeFilePath,
       fullName: '', // To prevent being runnable with grep pattern of fullName
       label: friendlyFileLabel,
-      tooltip: filePath,
+      tooltip: relativeFilePath,
       children: [],
       testCount: 0
     };
