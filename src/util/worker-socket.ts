@@ -24,8 +24,8 @@ export class WorkerSocket {
 
   public constructor(
     private readonly messagePort: MessagePort,
-    readonly pingTimeout: number,
-    readonly pingInterval: number,
+    private readonly pingTimeout: number,
+    private readonly pingInterval: number,
     private readonly logger: Logger)
   {}
 
@@ -37,8 +37,8 @@ export class WorkerSocket {
     this.server = server;
 
     const socketServerOptions = {
-      pingInterval: 24 * 60 * 60 * 1000,
-      pingTimeout: 24 * 60 * 60 * 1000
+      pingInterval: this.pingInterval,
+      pingTimeout: this.pingTimeout
     } as ServerOptions;
 
     const io = new SocketIOServer(server, socketServerOptions);
@@ -49,8 +49,9 @@ export class WorkerSocket {
 
       const connectMessage: SocketMessage = {
         type: SocketEventType.Connect,
-        event: 'connection'
+        event: SocketEventType.Connect
       };
+      this.logger.debug(() => `Worker socket sending new message: ${JSON.stringify(connectMessage, null, 2)}`);
       this.messagePort.postMessage(connectMessage);
     });
 
@@ -59,6 +60,7 @@ export class WorkerSocket {
         type: SocketEventType.Listen,
         event: SocketEventType.Listen
       };
+      this.logger.debug(() => `Worker socket sending new message: ${JSON.stringify(listenMessage, null, 2)}`);
       this.messagePort.postMessage(listenMessage);
     });
 
@@ -76,6 +78,7 @@ export class WorkerSocket {
         return;
       }
       const socketMessage: SocketMessage = { type: SocketEventType.Data, event, data };
+      this.logger.debug(() => `Worker socket sending new message: ${JSON.stringify(socketMessage, null, 2)}`);
       this.messagePort.postMessage(socketMessage);
     });
   }
@@ -89,6 +92,7 @@ export class WorkerSocket {
       event: 'disconnect',
       data: disconnectReason
     };
+    this.logger.debug(() => `Worker socket sending new message: ${JSON.stringify(disconnectMessage, null, 2)}`);
     this.messagePort.postMessage(disconnectMessage);
   }
   
@@ -135,10 +139,10 @@ const initWorker = () => {
   }
 
   const log: Log = {
-    info: process.stdout.write,
-    debug: process.stdout.write,
-    warn: process.stdout.write,
-    error: process.stdout.write,
+    info: global.console.log,
+    debug: global.console.log,
+    warn: global.console.log,
+    error: global.console.log,
     dispose: () => {}
   };
 

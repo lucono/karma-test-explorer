@@ -21,28 +21,28 @@ export class Logger implements Disposable {
     const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);
     this.logger.debug(formattedMsg);
     this.logParams(this.logger.debug, params);
-    // global.console.log(formattedMsg);
+    global.console.log(formattedMsg);
   }
 
   public warn(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.WARN);
     this.logger.warn(formattedMsg);
     this.logParams(this.logger.warn, params);
-    // global.console.log(formattedMsg);
+    global.console.log(formattedMsg);
   }
 
   public info(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.INFO);
     this.logger.info(formattedMsg);
     this.logParams(this.logger.info, params);
-    // global.console.log(formattedMsg);
+    global.console.log(formattedMsg);
   }
 
   public error(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.ERROR);
     this.logger.error(formattedMsg);
     this.logParams(this.logger.error, params);
-    // global.console.log(formattedMsg);
+    global.console.log(formattedMsg);
   }
 
   public status(testStatus: TestStatus) {  // FIXME: Remove in favor of the standard Log methods?

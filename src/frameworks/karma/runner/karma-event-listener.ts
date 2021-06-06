@@ -38,7 +38,7 @@ export class KarmaEventListener implements Disposable {
     private readonly eventEmitter: TestRunEventEmitter,
     private readonly logger: Logger)
   {
-    const socketWorkerScript: string = resolve(__dirname, '..', '..', 'util', 'worker-socket.js');
+    const socketWorkerScript: string = resolve(__dirname, '..', '..', '..', 'util', 'worker-socket.js');
     const workerData = {
       pingTimeout: PING_TIMEOUT,
       pingInterval: PING_INTERVAL,
@@ -62,7 +62,7 @@ export class KarmaEventListener implements Disposable {
 
       const socketMessage: SocketMessage = {
         type: SocketEventType.Connect,
-        event: 'connect',
+        event: SocketEventType.Connect,
         data: socketPort
       };
       this.socketWorker.postMessage(socketMessage);
@@ -120,12 +120,12 @@ export class KarmaEventListener implements Disposable {
       this.currentSpecs = specs;
       this.isListening = true;
 
-      const socketMessage: SocketMessage = {
-        type: SocketEventType.Listen,
-        event: 'listen',
-        data: specs
-      };
-      this.socketWorker.postMessage(socketMessage);
+      // const socketMessage: SocketMessage = {
+      //   type: SocketEventType.Listen,
+      //   event: 'listen',
+      //   data: specs
+      // };
+      // this.socketWorker.postMessage(socketMessage);
   
       await testExecution.ended();
 
@@ -158,6 +158,7 @@ export class KarmaEventListener implements Disposable {
 
   private onSpecComplete(event: KarmaEvent) {
     if (!this.isListening) {
+      this.logger.debug(() => `Ignoring spec complete event while no active listening session`);
       return;
     }
     const results: LightSpecCompleteResponse = event.results;

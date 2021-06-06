@@ -33,7 +33,7 @@ export class DefaultTestManager implements TestManager {
 
   public async restart(): Promise<void> {
     try {
-      await this.stopCurrentRun();
+      // await this.stopCurrentRun(); // FIXME: reinstate after fixing event listener and socket worker
 
       const deferredKarmaPortRelease: DeferredPromise = new DeferredPromise();
       const deferredListenerSocketPortRelease: DeferredPromise = new DeferredPromise();
