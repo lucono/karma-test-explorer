@@ -24,6 +24,9 @@ export class ShardManager implements Disposable {
   public divideTests(
     tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[][]
   {
+    if (this.shardCount === 1) {
+      return [[ ...tests ]];
+    }
     const shardBuckets: (TestInfo | TestSuiteInfo)[][] = Array.from({ length: this.shardCount }, () => []);
 
     if (tests.length === 0) {
