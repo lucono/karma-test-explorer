@@ -30,12 +30,12 @@ export class TestSuiteOrganizer {
         fileLessSpecsSuite.push(test);
         return;
       }
-      const testFileRelativePath: string = relative(rootPath, test.file);
-      let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(testFileRelativePath);
+      // const testFileRelativePath: string = relative(rootPath, test.file);
+      let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(test.file);
 
       if (!testFileSuite) {
-        testFileSuite = this.createTestFileSuite(rootPath, testFileRelativePath);
-        testFileSuitesByFilePath.set(testFileRelativePath, testFileSuite);
+        testFileSuite = this.createTestFileSuite(rootPath, test.file);
+        testFileSuitesByFilePath.set(test.file, testFileSuite);
       }
       testFileSuite.children.push(test);
     });
@@ -145,9 +145,11 @@ export class TestSuiteOrganizer {
     };
   }
 
-  private createTestFileSuite(rootPath: string, relativeFilePath: string): TestFileSuiteInfo {
-    const absoluteFilePath: string = resolve(rootPath, relativeFilePath);
-    const friendlyFileLabel = basename(relativeFilePath).replace(
+  private createTestFileSuite(rootPath: string, absoluteFilePath: string): TestFileSuiteInfo {
+    const relativeFilePath = relative(rootPath, absoluteFilePath);
+    const fileSuiteId = `${absoluteFilePath}:`;
+
+    const fileSuiteLabel = basename(absoluteFilePath).replace(
       /^(test[_\.-])?([^\.]*)([_\.-]test)?(\..*)$/i,
       '$2');
 
@@ -156,17 +158,18 @@ export class TestSuiteOrganizer {
       suiteType: TestSuiteType.File,
       file: absoluteFilePath,
       line: 0,
-      id: relativeFilePath,
+      id: fileSuiteId,
       fullName: '', // To prevent being runnable with grep pattern of fullName
-      label: friendlyFileLabel,
+      label: fileSuiteLabel,
       tooltip: relativeFilePath,
       children: [],
       testCount: 0
     };
   }
 
-  private getDescendantFolderSuite(baseFolderNode: TestFolderSuiteInfo, folderPath: string): TestFolderSuiteInfo {
-    const pathSegments = folderPath.split(pathSeparator);
+  private getDescendantFolderSuite(baseFolderNode: TestFolderSuiteInfo, folderAbsolutePath: string): TestFolderSuiteInfo {
+    const relativePathFromBase = relative(baseFolderNode.path, folderAbsolutePath);
+    const pathSegments = relativePathFromBase.split(pathSeparator);
     const currentFolderPathSegments = [] as string[];
     let currentFolderNode: TestFolderSuiteInfo = baseFolderNode;
 
