@@ -1,6 +1,6 @@
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { sep as pathSeparator, dirname, basename, normalize, relative, resolve, join } from "path";
+import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
 
 export class TestSuiteOrganizer {
