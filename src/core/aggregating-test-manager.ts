@@ -107,8 +107,8 @@ export class AggregatingTestManager implements TestManager {
       ended: () => testRunDeferredEnd.promise()
     };
 
-    this.testRunEventProcessor.processTestRun(testRunExecution); // FIXME: Add test run id
     testRunDeferredStart.resolve();
+    this.testRunEventProcessor.processTestRun(testRunExecution); // FIXME: Add test run id
 
     const testResultsList: TestResults[] = await Promise.all(
       testsForShards.map((testList, index) => this.testManagers[index].runTests(testList))

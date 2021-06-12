@@ -19,8 +19,8 @@ export class KarmaConfigurator {
 
     config.client ??= {};
     config.client.clearContext = true;
-    config.client.shardIndex = parseInt(process.env[KARMA_SHARD_INDEX_ENV_VAR]!, 10);
-    config.client.totalShards = parseInt( process.env[KARMA_TOTAL_SHARDS_ENV_VAR]!, 10);
+    config.client.shardIndex = parseInt(process.env[KARMA_SHARD_INDEX_ENV_VAR]!, 10);  // FIXME: Retire reliance on karma-jasmine sharding
+    config.client.totalShards = parseInt( process.env[KARMA_TOTAL_SHARDS_ENV_VAR]!, 10);  // FIXME: Retire reliance on karma-jasmine sharding
 
     config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
     config.browserNoActivityTimeout = undefined;

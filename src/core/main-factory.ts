@@ -72,7 +72,11 @@ export class MainFactory {
   {
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
-    const testRunEventProcessor = new KarmaTestRunEventProcessor(testRunEventEmitter, testResolver);
+    const testRunEventProcessor = new KarmaTestRunEventProcessor(testRunEventEmitter, testResolver, new Logger(
+      this.log,
+      `KarmaTestRunEventProcessor`,
+      this.config.debugLevelLoggingEnabled
+    ));
     const portManager = new PortAcquisitionManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
     const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
 

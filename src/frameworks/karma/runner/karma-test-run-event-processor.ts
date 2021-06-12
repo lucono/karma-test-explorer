@@ -7,26 +7,38 @@ import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
 import { TestResolver } from "../../../core/test-resolver";
 import { Execution } from "../../../api/execution";
+import { Logger } from "../../../core/logger";
 
 export class KarmaTestRunEventProcessor {
   private readonly processedTestResultEvents: Set<string> = new Set();
   private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
+  private isProcessingEvents: boolean = false;
   // private activeTestRunId?: string;
 
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
-    private readonly testResolver: TestResolver
+    private readonly testResolver: TestResolver,
+    private readonly logger: Logger
   ) {}
 
   public async processTestRun(testRunExecution: Execution): Promise<void> {
-    this.processedTestResultEvents.clear();
-    this.bufferedTestResultEvents.clear();
+    try {
+      this.processedTestResultEvents.clear();
+      this.bufferedTestResultEvents.clear();
+      this.isProcessingEvents = true;
+  
+      // await testRunExecution.started();  // FIXME
+      // this.activeTestRunId = activeTestRunId;
+  
+      await testRunExecution.ended();
+      this.processBufferedEvents();
 
-    // await testRunExecution.started();  // FIXME
-    // this.activeTestRunId = activeTestRunId;
+    } catch (error) {
+      this.logger.error(`Failed while processing test run: ${error.message ?? error}`);
 
-    await testRunExecution.ended();
-    this.processBufferedEvents();
+    } finally {
+      this.isProcessingEvents = false;
+    }
   }
 
   public processTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
@@ -41,7 +53,7 @@ export class KarmaTestRunEventProcessor {
   }
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    if (this.processedTestResultEvents.has(testId)) {
+    if (!this.isProcessingEvents || this.processedTestResultEvents.has(testId)) {
       return;
     }
     if (testResult.status === TestStatus.Skipped) {
