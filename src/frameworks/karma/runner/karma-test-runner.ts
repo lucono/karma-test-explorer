@@ -59,7 +59,7 @@ export class KarmaTestRunner implements TestRunner {
     tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults>
   {
     this.logger.info(
-      `Requested ${tests.length} tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
+      `Requested ${tests.length} tests to run having Ids: ${JSON.stringify(tests.map(test => test.id))}`,
       { divider: "Karma Logs" });  // FIXME: what's divider?
 
     const runAllTests = tests.length === 0;

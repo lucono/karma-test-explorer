@@ -24,9 +24,9 @@ export class KarmaEventListener implements Disposable {
   private readonly sockets: Set<Socket> = new Set();
 
   private currentSpecs: string[] = [];
-  private failedSpecs: SpecCompleteResponse[] = [];
-  private passedSpecs: SpecCompleteResponse[] = [];
-  private skippedSpecs: SpecCompleteResponse[] = [];
+  private failedSpecs: Map<string, SpecCompleteResponse> = new Map();
+  private passedSpecs: Map<string, SpecCompleteResponse> = new Map();
+  private skippedSpecs: Map<string, SpecCompleteResponse> = new Map();
 
   public constructor(
     private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
@@ -137,9 +137,9 @@ export class KarmaEventListener implements Disposable {
       await testExecution.ended();
 
       const capturedTests: TestCapture = {
-        [TestStatus.Failed]: this.failedSpecs,
-        [TestStatus.Success]: this.passedSpecs,
-        [TestStatus.Skipped]: this.skippedSpecs
+        [TestStatus.Failed]: Array.from(this.failedSpecs.values()),
+        [TestStatus.Success]: Array.from(this.passedSpecs.values()),
+        [TestStatus.Skipped]: Array.from(this.skippedSpecs.values())
       };
 
       return capturedTests;
@@ -192,11 +192,11 @@ export class KarmaEventListener implements Disposable {
     this.testRunEventProcessor.processTestResultEvent(testId, specResults);
 
     if (testStatus === TestStatus.Success) {
-      this.passedSpecs.push(specResults);
+      this.passedSpecs.set(testId, specResults);
     } else if (testStatus === TestStatus.Failed) {
-      this.failedSpecs.push(specResults);
+      this.failedSpecs.set(testId, specResults);
     } else if (testStatus === TestStatus.Skipped) {
-      this.skippedSpecs.push(specResults);
+      this.skippedSpecs.set(testId, specResults);
     }
 
     this.logger.status(specResults.status);
@@ -226,9 +226,9 @@ export class KarmaEventListener implements Disposable {
   }
 
   private clearCapturedSpecs() {
-    this.passedSpecs = [];
-    this.failedSpecs = [];
-    this.skippedSpecs = [];
+    this.passedSpecs.clear();
+    this.failedSpecs.clear();
+    this.skippedSpecs.clear();
   }
 
   private cleanupConnections() {

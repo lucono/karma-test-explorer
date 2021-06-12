@@ -42,7 +42,7 @@ export class KarmaFactory implements TestFactory {
     testRunExecutor?: TestRunExecutor): TestRunner
   {
     const runExecutor = testRunExecutor ?? this.createTestRunExecutor();
-    return new KarmaTestRunner(runExecutor, karmaEventListener, specToTestSuiteMapper, this.logger);
+    return new KarmaTestRunner(runExecutor, karmaEventListener, specToTestSuiteMapper, this.logger); // FIXME: Create new properly named logger
   }
 
   public createTestServerExecutor(
