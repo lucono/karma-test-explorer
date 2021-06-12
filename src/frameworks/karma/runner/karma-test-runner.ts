@@ -8,7 +8,7 @@ import { DeferredPromise } from "../../../util/deferred-promise";
 import { Execution } from "../../../api/execution";
 import { TestStatus } from "../../../api/test-status";
 import { TestRunExecutor } from "../../../api/test-run-executor";
-import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
+// import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
 import { TestResults } from "../../../api/test-results";
 
@@ -30,7 +30,7 @@ export class KarmaTestRunner implements TestRunner {
       ended: () => testLoadEndedDeferred.promise()
     };
     const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
-    const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
+    const clientArgs: string[] = [ `--grep=` ];
 
     testLoadStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
@@ -84,7 +84,7 @@ export class KarmaTestRunner implements TestRunner {
       if (testPatterns.length === 0) {
         throw new Error(`No tests to run`);
       }
-      const aggregateTestPattern = `/(${testPatterns.join("|")})/`;
+      const aggregateTestPattern = `${testPatterns.join("|")}`;
       clientArgs.push(`--grep=${aggregateTestPattern}`);
     }
 
