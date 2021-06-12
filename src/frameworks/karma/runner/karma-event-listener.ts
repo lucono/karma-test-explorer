@@ -1,6 +1,6 @@
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
-import { TestState } from "../../../core/test-state";
+// import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
@@ -188,7 +188,7 @@ export class KarmaEventListener implements Disposable {
       return;
     }
 
-    this.testRunEventProcessor.processTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
+    // this.testRunEventProcessor.processTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
     this.testRunEventProcessor.processTestResultEvent(testId, specResults);
 
     if (testStatus === TestStatus.Success) {

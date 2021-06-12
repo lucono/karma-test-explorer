@@ -22,6 +22,8 @@ export class KarmaTestRunEventProcessor {
   ) {}
 
   public async processTestRun(testRunExecution: Execution): Promise<void> {
+    this.logger.debug(() => `Processing new test run`);
+
     try {
       this.processedTestResultEvents.clear();
       this.bufferedTestResultEvents.clear();
@@ -33,6 +35,8 @@ export class KarmaTestRunEventProcessor {
       await testRunExecution.ended();
       this.processBufferedEvents();
 
+      this.logger.debug(() => `Done processing test run`);
+
     } catch (error) {
       this.logger.error(`Failed while processing test run: ${error.message ?? error}`);
 
@@ -41,22 +45,21 @@ export class KarmaTestRunEventProcessor {
     }
   }
 
-  public processTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
-    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
-
-    const testEvent: TestEvent = {
-      type: TestType.Test,
-      test: test ?? testId,
-      state: testState
-    };
-    this.eventEmitterInterface.fire(testEvent);
-  }
-
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     if (!this.isProcessingEvents || this.processedTestResultEvents.has(testId)) {
+      this.logger.debug(() => 
+        `Ignoring duplicate previously processed test result with ` +
+        `test id '${testId}' and status '${testResult.status}`);
+
       return;
     }
+
     if (testResult.status === TestStatus.Skipped) {
+      this.logger.debug(() => 
+        `Buffering test result with ` +
+        `test id '${testId}' and status '${testResult.status}`);
+
+      this.emitTestRunningEvent(testId);
       this.bufferedTestResultEvents.set(testId, testResult);
       return;
     }
@@ -65,6 +68,17 @@ export class KarmaTestRunEventProcessor {
 
     this.processedTestResultEvents.add(testId);
     this.bufferedTestResultEvents.delete(testId);
+  }
+
+  private emitTestRunningEvent(testId: string) {
+    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
+
+    const testEvent: TestEvent = {
+      type: TestType.Test,
+      test: test ?? testId,
+      state: TestState.Running
+    };
+    this.eventEmitterInterface.fire(testEvent);
   }
 
   private emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
@@ -115,6 +129,8 @@ export class KarmaTestRunEventProcessor {
   }
 
   private processBufferedEvents(): void {  // FIXME: Currently unused
+    this.logger.debug(() => `Processing ${this.bufferedTestResultEvents.size} buffered events`);
+
     this.bufferedTestResultEvents.forEach((testResult, testId) => {
       this.emitTestResultEvent(testId, testResult);
       this.processedTestResultEvents.add(testId);

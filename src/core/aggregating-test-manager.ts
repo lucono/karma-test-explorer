@@ -124,8 +124,9 @@ export class AggregatingTestManager implements TestManager {
     }
 
     const combinedTestResults = {} as TestResults;
+    const testStatusesOrderedForDeduplicationPriority: TestStatus[] = [TestStatus.Failed, TestStatus.Success, TestStatus.Skipped];
 
-    Object.values(TestStatus).forEach(testStatus => {
+    testStatusesOrderedForDeduplicationPriority.forEach(testStatus => {
       combinedTestResults[testStatus] = this.testSuiteMerger.merge(testResultsList.map(testResults => testResults[testStatus]))!;
     });
 
