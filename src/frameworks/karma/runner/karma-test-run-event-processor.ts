@@ -6,16 +6,30 @@ import { TestRunEvent } from "../../../api/test-events";
 import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
 import { TestResolver } from "../../../core/test-resolver";
+import { Execution } from "../../../api/execution";
 
-// export type TestRetriever = (testId: string) => TestInfo | undefined;
+export class KarmaTestRunEventProcessor {
+  private readonly processedTestResultEvents: Set<string> = new Set();
+  private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
+  // private activeTestRunId?: string;
 
-export class KarmaTestRunEventEmitter {
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
     private readonly testResolver: TestResolver
   ) {}
 
-  public emitTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
+  public async processTestRun(testRunExecution: Execution): Promise<void> {
+    this.processedTestResultEvents.clear();
+    this.bufferedTestResultEvents.clear();
+
+    // await testRunExecution.started();  // FIXME
+    // this.activeTestRunId = activeTestRunId;
+
+    await testRunExecution.ended();
+    this.processBufferedEvents();
+  }
+
+  public processTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
     const testEvent: TestEvent = {
@@ -26,7 +40,22 @@ export class KarmaTestRunEventEmitter {
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+  public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+    if (this.processedTestResultEvents.has(testId)) {
+      return;
+    }
+    if (testResult.status === TestStatus.Skipped) {
+      this.bufferedTestResultEvents.set(testId, testResult);
+      return;
+    }
+
+    this.emitTestResultEvent(testId, testResult);
+
+    this.processedTestResultEvents.add(testId);
+    this.bufferedTestResultEvents.delete(testId);
+  }
+
+  private emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
     
     const testState = this.mapTestResultToTestState(testResult.status);
@@ -71,6 +100,14 @@ export class KarmaTestRunEventEmitter {
     };
 
     this.eventEmitterInterface.fire(testEvent);
+  }
+
+  private processBufferedEvents(): void {  // FIXME: Currently unused
+    this.bufferedTestResultEvents.forEach((testResult, testId) => {
+      this.emitTestResultEvent(testId, testResult);
+      this.processedTestResultEvents.add(testId);
+    });
+    this.bufferedTestResultEvents.clear();
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {

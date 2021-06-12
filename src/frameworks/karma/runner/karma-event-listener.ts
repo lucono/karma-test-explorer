@@ -2,7 +2,6 @@ import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
-import { TestRunEventEmitter } from "./test-run-event-emitter";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
@@ -11,6 +10,7 @@ import { TestStatus } from "../../../api/test-status";
 import { Disposable } from "../../../api/disposable";
 import { DeferredPromise } from "../../../util/deferred-promise";
 import * as express from "express"
+import { KarmaTestRunEventProcessor } from "./karma-test-run-event-processor";
 
 // const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
@@ -29,7 +29,7 @@ export class KarmaEventListener implements Disposable {
   private skippedSpecs: SpecCompleteResponse[] = [];
 
   public constructor(
-    private readonly eventEmitter: TestRunEventEmitter,
+    private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
     private readonly logger: Logger
   ) {}
 
@@ -188,8 +188,8 @@ export class KarmaEventListener implements Disposable {
       return;
     }
 
-    this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
-    this.eventEmitter.emitTestResultEvent(testId, specResults);
+    this.testRunEventProcessor.processTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
+    this.testRunEventProcessor.processTestResultEvent(testId, specResults);
 
     if (testStatus === TestStatus.Success) {
       this.passedSpecs.push(specResults);

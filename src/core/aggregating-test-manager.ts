@@ -4,7 +4,7 @@ import { TestGrouping } from "../api/test-grouping";
 import { TestManager } from "../api/test-manager";
 import { TestStatus } from "../api/test-status";
 import { Logger } from "./logger";
-import { SuiteAggregateTestResultEmitter } from "./suite-aggregate-test-result-emitter";
+import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
 // import { TestCountProcessor } from "../util/test-count-processor";
 import { TestSuiteMerger } from "../util/test-suite-merger";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
@@ -12,6 +12,9 @@ import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { AnyTestInfo, TestType } from "../api/test-infos";
 import { ShardManager } from "./shard-manager";
 import { TestResults } from "../api/test-results";
+import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
+import { Execution } from "../api/execution";
+import { DeferredPromise } from "../util/deferred-promise";
 
 export class AggregatingTestManager implements TestManager {
 
@@ -22,7 +25,8 @@ export class AggregatingTestManager implements TestManager {
     private readonly shardManager: ShardManager,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
-    private readonly suiteTestResultEmitter: SuiteAggregateTestResultEmitter,
+    private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
+    private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testSuiteMerger: TestSuiteMerger,
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
@@ -95,9 +99,21 @@ export class AggregatingTestManager implements TestManager {
       ? Array.from({ length: this.testManagers.length }, () => [])
       : this.shardManager.divideTests(tests).filter(testList => testList.length > 0);
     
+    const testRunDeferredStart = new DeferredPromise();
+    const testRunDeferredEnd = new DeferredPromise();
+
+    const testRunExecution: Execution = {
+      started: () => testRunDeferredStart.promise(),
+      ended: () => testRunDeferredEnd.promise()
+    };
+
+    this.testRunEventProcessor.processTestRun(testRunExecution); // FIXME: Add test run id
+    testRunDeferredStart.resolve();
+
     const testResultsList: TestResults[] = await Promise.all(
       testsForShards.map((testList, index) => this.testManagers[index].runTests(testList))
     );
+    testRunDeferredEnd.resolve();
 
     if (this.testGrouping === TestGrouping.Folder) {
       Object.values(TestStatus).forEach(testStatus => {

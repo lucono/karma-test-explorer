@@ -11,7 +11,7 @@ import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { TestResults } from "../api/test-results";
 
 
-export class SuiteAggregateTestResultEmitter {
+export class SuiteAggregateTestResultProcessor {
 
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
