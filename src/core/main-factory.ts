@@ -15,7 +15,7 @@ import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "./logger";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
-import { TestRunEventEmitter } from "../frameworks/karma/runner/test-run-event-emitter";
+import { TestResultAccumulator } from "../frameworks/karma/runner/test-result-accumulator";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -24,7 +24,7 @@ import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { ShardManager } from "./shard-manager";
 import { Log } from "./log";
-import { KarmaTestRunEventEmitter } from "../frameworks/karma/runner/karma-test-run-event-emitter";
+import { KarmaTestResultAccumulator } from "../frameworks/karma/runner/karma-test-result-accumulator";
 
 export class MainFactory {
 
@@ -73,25 +73,22 @@ export class MainFactory {
   {
     const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
 
-    const testManagers: TestManager[] = [];
+    const testRunEventProcessor: TestResultAccumulator = new KarmaTestResultAccumulator(testRunEmitter, testResolver);
     const portManager = new PortAcquisitionManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
     const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
-    let shardIndex = 0;
+    const testManagers: TestManager[] = [];
 
-    while (shardIndex < totalServerShards) {
+    for (let shardIndex = 0; shardIndex < totalServerShards; shardIndex++) {
       this.logger.info(
         `Creating ${shardIndex + 1} of ${totalServerShards} ` +
         `sharded karma instances (shard ${shardIndex})`);
 
       testManagers.push(this.createDefaultTestManager(
-        testRunEmitter,
+        testRunEventProcessor,
         specLocationResolver,
-        testResolver,
         portManager,
         shardIndex,
         totalServerShards));
-
-      shardIndex++;
     }
 
     const shardManager = new ShardManager(totalServerShards, new Logger(
@@ -154,9 +151,8 @@ export class MainFactory {
   }
 
   private createDefaultTestManager(
-    testRunEmitter: EventEmitter<TestRunEvent>,
+    testRunEventProcessor: TestResultAccumulator,
     specLocationResolver: SpecLocationResolver,
-    testResolver: TestResolver,
     portManager: PortAcquisitionManager,
     serverShardIndex: number = 0,
     totalServerShards: number = 1): DefaultTestManager
@@ -210,8 +206,7 @@ export class MainFactory {
       specLocationResolver,
       makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
     );
-    const testRunEventEmitter: TestRunEventEmitter = new KarmaTestRunEventEmitter(testRunEmitter, testResolver);
-    const karmaEventListener = new KarmaEventListener(testRunEventEmitter, makeShardLogger('KarmaEventListener'));
+    const karmaEventListener = new KarmaEventListener(testRunEventProcessor, makeShardLogger('KarmaEventListener'));
     const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);

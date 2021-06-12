@@ -11,6 +11,7 @@ import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
 import { TestResults } from "../../../api/test-results";
+import { TestResultAccumulator } from "./test-result-accumulator";
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(
@@ -56,7 +57,8 @@ export class KarmaTestRunner implements TestRunner {
 
   public async runTests(
     karmaPort: number,
-    tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults>
+    tests: (TestInfo | TestSuiteInfo)[],
+    testResultAccumulator: TestResultAccumulator): Promise<TestResults>
   {
     this.logger.info(
       `Requested ${tests.length} tests to run: ${JSON.stringify(tests.map(test => test.fullName))}`,
@@ -97,7 +99,11 @@ export class KarmaTestRunner implements TestRunner {
     };
 
     const testNames: string[] = testList.map(test => test.fullName);
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(
+      testRunOperation,
+      testNames,
+      testResultAccumulator);
 
     testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();

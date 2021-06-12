@@ -1,11 +1,14 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
+import { TestResultAccumulator } from "../frameworks/karma/runner/test-result-accumulator";
 import { Disposable } from "./disposable";
-import { TestResults } from "./test-results";
 
 export interface TestRunner extends Disposable {
 
   loadTests(karmaPort: number): Promise<TestSuiteInfo>;
 
-  runTests(karmaPort: number, tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults>;
+  runTests(
+    karmaPort: number,
+    tests: (TestInfo | TestSuiteInfo)[],
+    testResultAccumulator: TestResultAccumulator): void;
 
 }

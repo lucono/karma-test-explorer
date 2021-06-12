@@ -2,7 +2,7 @@ import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
-import { TestRunEventEmitter } from "./test-run-event-emitter";
+import { TestResultAccumulator } from "./test-result-accumulator";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 import { Server as HttpServer, createServer} from "http"
 import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
@@ -27,9 +27,9 @@ export class KarmaEventListener implements Disposable {
   private failedSpecs: SpecCompleteResponse[] = [];
   private passedSpecs: SpecCompleteResponse[] = [];
   private skippedSpecs: SpecCompleteResponse[] = [];
+  private testResultAccumulator?: TestResultAccumulator;
 
   public constructor(
-    private readonly eventEmitter: TestRunEventEmitter,
     private readonly logger: Logger
   ) {}
 
@@ -128,10 +128,15 @@ export class KarmaEventListener implements Disposable {
     return karmaConnection;
   }
 
-  public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {
+  public async listenForTests(
+    testExecution: Execution,
+    specs: string[] = [],
+    testResultAccumulator: TestResultAccumulator): Promise<TestCapture>
+  {
     try {
       this.clearCapturedSpecs();
       this.currentSpecs = specs;
+      this.testResultAccumulator = testResultAccumulator;
       this.isListening = true;
 
       await testExecution.ended();
@@ -151,6 +156,7 @@ export class KarmaEventListener implements Disposable {
     } finally {
       this.isListening = false;
       this.currentSpecs = [];
+      this.testResultAccumulator = undefined;
       this.clearCapturedSpecs();
     }
   }
@@ -188,8 +194,7 @@ export class KarmaEventListener implements Disposable {
       return;
     }
 
-    this.eventEmitter.emitTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
-    this.eventEmitter.emitTestResultEvent(testId, specResults);
+    this.testResultAccumulator?.addTestResult(testId, specResults);
 
     if (testStatus === TestStatus.Success) {
       this.passedSpecs.push(specResults);

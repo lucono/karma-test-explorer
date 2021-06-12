@@ -176,7 +176,7 @@ export class DefaultTestManager implements TestManager {
     return this.testRunning;
   }
 
-  private isSystemsRunning(): boolean {
+  private isSystemsRunning(): boolean {  // FIXME: Find better method name
     return this.testServer.isRunning() && this.karmaEventListener.isRunning();
   }
 

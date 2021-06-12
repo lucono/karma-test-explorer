@@ -6,27 +6,19 @@ import { TestRunEvent } from "../../../api/test-events";
 import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
 import { TestResolver } from "../../../core/test-resolver";
+import { TestResultAccumulator } from "./test-result-accumulator";
+import { TestResults } from "../../../api/test-results";
 
 // export type TestRetriever = (testId: string) => TestInfo | undefined;
 
-export class KarmaTestRunEventEmitter {
+export class KarmaTestResultAccumulator implements TestResultAccumulator {
+  
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
     private readonly testResolver: TestResolver
   ) {}
-
-  public emitTestStateEvent(testId: string, testState: TestState, testRunId?: string) {
-    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
-
-    const testEvent: TestEvent = {
-      type: TestType.Test,
-      test: test ?? testId,
-      state: testState
-    };
-    this.eventEmitterInterface.fire(testEvent);
-  }
-
-  public emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+  
+  public addTestResult(testId: string, testResult: SpecCompleteResponse) {
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
     
     const testState = this.mapTestResultToTestState(testResult.status);
@@ -60,7 +52,13 @@ export class KarmaTestRunEventEmitter {
       }
     }
 
-    const testEvent: TestEvent = {
+    const testRunningEvent: TestEvent = {
+      type: TestType.Test,
+      test: test ?? testId,
+      state: TestState.Running
+    };
+
+    const testCompleteEvent: TestEvent = {
       type: TestType.Test,
       test: test ?? testId,
       state: testState,
@@ -70,7 +68,12 @@ export class KarmaTestRunEventEmitter {
       decorations
     };
 
-    this.eventEmitterInterface.fire(testEvent);
+    this.eventEmitterInterface.fire(testRunningEvent);
+    this.eventEmitterInterface.fire(testCompleteEvent);
+  }
+
+  public getTestResults(): TestResults {
+    throw new Error("Method not implemented.");  // FIXME
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {
