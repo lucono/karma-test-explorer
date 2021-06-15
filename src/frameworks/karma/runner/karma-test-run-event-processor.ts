@@ -55,18 +55,20 @@ export class KarmaTestRunEventProcessor {
 
     if (processedTest && processedTest.status !== TestStatus.Skipped) {
       this.logger.debug(() => 
-        `Ignoring duplicate previously processed test result with ` +
-        `test id '${testId}' and status '${testResult.status}`);
+        `Ignoring duplicate previously processed test result. ` +
+        `Processed test: id='${testId}', status='${testResult.status}'. ` +
+        `Duplicate test: id='${processedTest.id}', status='${processedTest.status}'`);
 
       return;
     }
+
+    this.emitTestRunningEvent(testId);
 
     if (testResult.status === TestStatus.Skipped && this.options.bufferSkippedTestEvents) {
       this.logger.debug(() => 
         `Buffering test result with ` +
         `test id '${testId}' and status '${testResult.status}`);
 
-      this.emitTestRunningEvent(testId);
       this.bufferedTestResultEvents.set(testId, testResult);
       return;
     }
