@@ -6,47 +6,54 @@ import { TestRunEvent } from "../../../api/test-events";
 import { TestType } from "../../../api/test-infos";
 import { EventEmitter } from "vscode";
 import { TestResolver } from "../../../core/test-resolver";
-import { Execution } from "../../../api/execution";
+// import { Execution } from "../../../api/execution";
 import { Logger } from "../../../core/logger";
 
+export interface TestEventProcessingOptions {
+  bufferSkippedTestEvents?: boolean
+}
+
 export class KarmaTestRunEventProcessor {
-  private readonly processedTestResultEvents: Set<string> = new Set();
+  private readonly processedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
   private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
-  private isProcessingEvents: boolean = false;
+  // private isProcessingEvents: boolean = false;
   // private activeTestRunId?: string;
 
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
     private readonly testResolver: TestResolver,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly options: TestEventProcessingOptions = {}
   ) {}
 
-  public async processTestRun(testRunExecution: Execution): Promise<void> {
-    this.logger.debug(() => `Processing new test run`);
+  // public async processTestRun(testRunExecution: Execution): Promise<void> {
+  //   this.logger.debug(() => `Processing new test run`);
 
-    try {
-      this.processedTestResultEvents.clear();
-      this.bufferedTestResultEvents.clear();
-      this.isProcessingEvents = true;
+  //   try {
+  //     this.processedTestResultEvents.clear();
+  //     this.bufferedTestResultEvents.clear();
+  //     this.isProcessingEvents = true;
   
-      // await testRunExecution.started();  // FIXME
-      // this.activeTestRunId = activeTestRunId;
+  //     // await testRunExecution.started();  // FIXME
+  //     // this.activeTestRunId = activeTestRunId;
   
-      await testRunExecution.ended();
-      this.processBufferedEvents();
+  //     await testRunExecution.ended();
+  //     this.processBufferedEvents();
 
-      this.logger.debug(() => `Done processing test run`);
+  //     this.logger.debug(() => `Done processing test run`);
 
-    } catch (error) {
-      this.logger.error(`Failed while processing test run: ${error.message ?? error}`);
+  //   } catch (error) {
+  //     this.logger.error(`Failed while processing test run: ${error.message ?? error}`);
 
-    } finally {
-      this.isProcessingEvents = false;
-    }
-  }
+  //   } finally {
+  //     this.isProcessingEvents = false;
+  //   }
+  // }
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    if (!this.isProcessingEvents || this.processedTestResultEvents.has(testId)) {
+    const processedTest = this.processedTestResultEvents.get(testId);
+
+    if (processedTest && processedTest.status !== TestStatus.Skipped) {
       this.logger.debug(() => 
         `Ignoring duplicate previously processed test result with ` +
         `test id '${testId}' and status '${testResult.status}`);
@@ -54,7 +61,7 @@ export class KarmaTestRunEventProcessor {
       return;
     }
 
-    if (testResult.status === TestStatus.Skipped) {
+    if (testResult.status === TestStatus.Skipped && this.options.bufferSkippedTestEvents) {
       this.logger.debug(() => 
         `Buffering test result with ` +
         `test id '${testId}' and status '${testResult.status}`);
@@ -66,7 +73,7 @@ export class KarmaTestRunEventProcessor {
 
     this.emitTestResultEvent(testId, testResult);
 
-    this.processedTestResultEvents.add(testId);
+    this.processedTestResultEvents.set(testId, testResult);
     this.bufferedTestResultEvents.delete(testId);
   }
 
@@ -128,14 +135,27 @@ export class KarmaTestRunEventProcessor {
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  private processBufferedEvents(): void {  // FIXME: Currently unused
+  public concludeProcessing(): void {
+    if (this.bufferedTestResultEvents.size === 0) {
+      return;
+    }
     this.logger.debug(() => `Processing ${this.bufferedTestResultEvents.size} buffered events`);
 
     this.bufferedTestResultEvents.forEach((testResult, testId) => {
       this.emitTestResultEvent(testId, testResult);
-      this.processedTestResultEvents.add(testId);
+      this.processedTestResultEvents.set(testId, testResult);
     });
     this.bufferedTestResultEvents.clear();
+  }
+
+  public beginProcessing() {
+    this.processedTestResultEvents.clear();
+    this.bufferedTestResultEvents.clear();
+  }
+
+  public getProcessedEvents(): SpecCompleteResponse[] {
+    this.concludeProcessing();
+    return Array.from(this.processedTestResultEvents.values());
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {

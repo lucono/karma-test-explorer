@@ -91,7 +91,7 @@ export class MainFactory {
           log = `HeadlessChrom${log}`;
         }
         // serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
-        karmaOutputChannel.appendLine(`[karma:${serverPort}] ${data}`);
+        karmaOutputChannel.append(`[karma:${serverPort}] ${data}`);
       }
     };
 
