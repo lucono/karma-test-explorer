@@ -8,7 +8,7 @@ declare type LogAction = (...msg: any[]) => void;
 export class Logger implements Disposable {
 
   public constructor(
-    private readonly logger: Log,
+    private readonly log: Log,
     private readonly loggerName: string,
     private readonly isDebugMode?: boolean)
   {}
@@ -19,29 +19,29 @@ export class Logger implements Disposable {
     }
     const msg = msgProvider();
     const formattedMsg = this.formatMsg(msg, LogLevel.DEBUG);
-    this.logger.debug(formattedMsg);
-    this.logParams(this.logger.debug, params);
+    this.log.debug(formattedMsg);
+    this.logParams(this.log.debug, params);
     global.console.log(formattedMsg);
   }
 
   public warn(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.WARN);
-    this.logger.warn(formattedMsg);
-    this.logParams(this.logger.warn, params);
+    this.log.warn(formattedMsg);
+    this.logParams(this.log.warn, params);
     global.console.log(formattedMsg);
   }
 
   public info(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.INFO);
-    this.logger.info(formattedMsg);
-    this.logParams(this.logger.info, params);
+    this.log.info(formattedMsg);
+    this.logParams(this.log.info, params);
     global.console.log(formattedMsg);
   }
 
   public error(msg: string, ...params: any[]) {
     const formattedMsg = this.formatMsg(msg, LogLevel.ERROR);
-    this.logger.error(formattedMsg);
-    this.logParams(this.logger.error, params);
+    this.log.error(formattedMsg);
+    this.logParams(this.log.error, params);
     global.console.log(formattedMsg);
   }
 

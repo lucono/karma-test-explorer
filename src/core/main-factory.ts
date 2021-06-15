@@ -3,7 +3,7 @@ import { ExtensionConfig } from "./extension-config";
 import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
-import { EventEmitter, workspace, WorkspaceFolder } from "vscode";
+import { EventEmitter, window, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
 import { ServerProcessLogger } from "../frameworks/karma/server/karma-command-line-test-server-executor";
 import { TestRunEvent } from "../api/test-events";
@@ -20,6 +20,7 @@ import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Log } from "./log";
 import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
+import { OUTPUT_CHANNEL_NAME } from "../constants";
 
 export class MainFactory {
 
@@ -78,7 +79,8 @@ export class MainFactory {
     const portManager = new PortAcquisitionManager(createLogger(PortAcquisitionManager.name));
 
     let testManager: DefaultTestManager;
-    const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
+    // const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
+    const karmaOutputChannel = window.createOutputChannel(`${OUTPUT_CHANNEL_NAME} - Server`);
 
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
@@ -88,7 +90,8 @@ export class MainFactory {
         if (log.startsWith("e ")) {
           log = `HeadlessChrom${log}`;
         }
-        serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+        // serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
+        karmaOutputChannel.appendLine(`[karma:${serverPort}] ${data}`);
       }
     };
 
