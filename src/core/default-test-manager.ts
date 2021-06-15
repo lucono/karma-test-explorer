@@ -111,7 +111,11 @@ export class DefaultTestManager implements TestManager {
       const karmaPort = this.testServer.getServerPort()!;
       const testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort);
 
-      return testSuiteInfo;
+      const organizedTestSuite: TestSuiteInfo = this.testGrouping === TestGrouping.Suite
+        ? testSuiteInfo
+        : this.testSuiteOrganizer.groupByFolder(testSuiteInfo, this.projectRootPath, false);
+
+      return organizedTestSuite;
       
     } catch (error) {
       const failureMessage = `Test loading failed: ${error.message ?? error}`;
@@ -145,7 +149,6 @@ export class DefaultTestManager implements TestManager {
       };
 
       this.suiteTestResultEmitter.processTestResults(organizedTestResults);
-  
       return organizedTestResults;
 
     } finally {
