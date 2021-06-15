@@ -20,7 +20,6 @@ import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Log } from "./log";
 import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
-import { OUTPUT_CHANNEL_NAME } from "../constants";
 
 export class MainFactory {
 
@@ -80,7 +79,7 @@ export class MainFactory {
 
     let testManager: DefaultTestManager;
     // const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
-    const karmaOutputChannel = window.createOutputChannel(`${OUTPUT_CHANNEL_NAME} - Server`);
+    const karmaOutputChannel = window.createOutputChannel(`Karma Server`);
 
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");

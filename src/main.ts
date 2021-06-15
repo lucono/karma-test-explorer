@@ -2,8 +2,9 @@ import { workspace, extensions, ExtensionContext } from "vscode";
 import { TestHub, testExplorerExtensionId } from "vscode-test-adapter-api";
 import { Log, TestAdapterRegistrar } from "vscode-test-adapter-util";
 import { Adapter } from "./adapter";
-import { CONFIG_PREFIX, OUTPUT_CHANNEL_NAME } from "./constants";
 
+const CONFIG_PREFIX = "karmaTestExplorer";
+const OUTPUT_CHANNEL_NAME = "Karma Test Explorer";
 const testExplorerAdapters: Adapter[] = [];
 
 export async function activate(context: ExtensionContext) {
