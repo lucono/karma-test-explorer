@@ -10,18 +10,14 @@ import { TestServerExecutor } from "./test-server-executor";
 
 export interface TestFactory extends Disposable {
     
-  createTestServer(
-    // serverShardIndex?: number ,
-    // totalServerShards?: number,
-    testServerExecutor?: TestServerExecutor
-  ): TestServer;
+  createTestServer( testServerExecutor?: TestServerExecutor): TestServer;
   
   createTestRunner(
     karmaEventListener: KarmaEventListener,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     testRunExecutor?: TestRunExecutor): TestRunner;
 
-  createTestServerExecutor(serverShardIndex?: number, totalServerShards?: number): TestServerExecutor;
+  createTestServerExecutor(): TestServerExecutor;
 
   createTestRunExecutor(): TestRunExecutor;
 }

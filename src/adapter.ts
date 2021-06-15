@@ -62,10 +62,25 @@ export class Adapter implements TestAdapter {
     this.testManager.dispose();
   }
 
+  constructor(
+    public readonly workspaceFolder: WorkspaceFolder,
+    private readonly configPrefix: string,
+    private readonly log: Log)
+  {
+    this.disposables.push(
+      this.testLoadEmitter,
+      this.testRunEmitter,
+      this.autorunEmitter,
+      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
+      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
+
+    this.init();
+  }
+
   private init() {
     this.factory = new MainFactory(this.workspaceFolder, this.configPrefix, this.log);
     this.config = this.factory.getExtensionConfig();
-    this.logger = new Logger(this.log, 'Adapter', this.config.debugLevelLoggingEnabled);
+    this.logger = new Logger(this.log, Adapter.name, this.config.debugLevelLoggingEnabled);
 
     this.logger.info(`Initializing adapter`);
 
@@ -88,26 +103,7 @@ export class Adapter implements TestAdapter {
       }
     };
 
-    this.testManager = this.factory.createTestManager(
-      this.testRunEmitter,
-      specLocationResolver,
-      testResolver,
-      2);  // FIXME: Get shard count from config
-  }
-
-  constructor(
-    public readonly workspaceFolder: WorkspaceFolder,
-    private readonly configPrefix: string,
-    private readonly log: Log)
-  {
-    this.disposables.push(
-      this.testLoadEmitter,
-      this.testRunEmitter,
-      this.autorunEmitter,
-      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
-      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
-
-    this.init();
+    this.testManager = this.factory.createTestManager(this.testRunEmitter, specLocationResolver, testResolver);
   }
 
   public async load(): Promise<void> {

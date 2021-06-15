@@ -8,10 +8,7 @@ import { KarmaFactory } from "../frameworks/karma/karma-factory";
 import { ServerProcessLogger } from "../frameworks/karma/server/karma-command-line-test-server-executor";
 import { TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
-import { TestManager } from "../api/test-manager";
-import { AggregatingTestManager } from "./aggregating-test-manager";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
-import { TestSuiteMerger } from "../util/test-suite-merger";
 import { Logger } from "./logger";
 import { SpecLocator, SpecLocatorOptions } from "../util/spec-locator";
 import { TestFactory } from "../api/test-factory";
@@ -21,7 +18,6 @@ import { existsSync } from "fs";
 import { AngularFactory } from "../frameworks/angular/angular-factory";
 import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
-import { ShardManager } from "./shard-manager";
 import { Log } from "./log";
 import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
 
@@ -37,7 +33,7 @@ export class MainFactory {
     private readonly log: Log)
   {
     this.config = this.createConfig(workspaceFolder, configPrefix);
-    this.logger = new Logger(log, 'TestExplorerFactory', this.config.debugLevelLoggingEnabled);
+    this.logger = new Logger(log, MainFactory.name, this.config.debugLevelLoggingEnabled);
     this.disposables.push(this.log);
   }
 
@@ -50,7 +46,7 @@ export class MainFactory {
     configPrefix: string): ExtensionConfig
   {
     const config = workspace.getConfiguration(configPrefix, workspaceFolder.uri);
-    const configLogger = new Logger(this.log, 'ExtensionConfig', true);
+    const configLogger = new Logger(this.log, ExtensionConfig.name, true);
     return new ExtensionConfig(config, workspaceFolder.uri.path, configLogger);
   }
 
@@ -67,114 +63,22 @@ export class MainFactory {
   public createTestManager(
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     specLocationResolver: SpecLocationResolver,
-    testResolver: TestResolver,
-    serverInstances: number = 1): TestManager
+    testResolver: TestResolver): DefaultTestManager
   {
-    const testFramework = 'jasmine'; // FIXME: Only jasmine framework supports sharding. Get actual framework from extension config
-
-    const testRunEventProcessor = new KarmaTestRunEventProcessor(testRunEventEmitter, testResolver, new Logger(
-      this.log,
-      `KarmaTestRunEventProcessor`,
-      this.config.debugLevelLoggingEnabled
-    ));
-    const portManager = new PortAcquisitionManager(new Logger(this.log, `PortManager`, this.config.debugLevelLoggingEnabled));
-    const totalServerShards = testFramework === 'jasmine' && serverInstances > 0 ? serverInstances : 1;
-
-    const testManagers: TestManager[] = [];
-
-    for (let shardIndex = 0; shardIndex < totalServerShards; shardIndex++) {
-      this.logger.info(
-        `Creating ${shardIndex + 1} of ${totalServerShards} ` +
-        `sharded karma instances (shard ${shardIndex})`);
-
-      testManagers.push(this.createDefaultTestManager(
-        testRunEventProcessor,
-        specLocationResolver,
-        portManager,
-        shardIndex,
-        totalServerShards
-      ));  // FIXME: Establish consistent style
-    }
-
-    const shardManager = new ShardManager(totalServerShards, new Logger(
-      this.log,
-      'ShardManager',
-      this.config.debugLevelLoggingEnabled)
-    );
-
-    const aggregatingTestManager = this.createAggregatingTestManager(
-      testManagers,
-      shardManager,
-      testRunEventEmitter,
-      testRunEventProcessor,
-      testResolver); 
-
-    return aggregatingTestManager;
-  }
-
-  private createAggregatingTestManager(
-    testManagers: TestManager[],
-    shardManager: ShardManager,
-    testRunEmitter: EventEmitter<TestRunEvent>,
-    testRunEventProcessor: KarmaTestRunEventProcessor,
-    testResolver: TestResolver): AggregatingTestManager
-  {
-    const testSuiteTreeProcessor = new TestSuiteTreeProcessor(new Logger(
-      this.log,
-      'TestCountProcessor',
-      this.config.debugLevelLoggingEnabled));
-
-    const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
-      testRunEmitter,
-      testResolver,
-      testSuiteTreeProcessor,
-      new Logger(
-        this.log,
-        'SuiteAggregateTestResultEmitter',
-        this.config.debugLevelLoggingEnabled));
-
-    const testSuiteOrganizer = new TestSuiteOrganizer(new Logger(
-      this.log,
-      'TestSuiteOrganizer',
-      this.config.debugLevelLoggingEnabled));
-
-    const testSuiteMerger = new TestSuiteMerger(new Logger(
-      this.log,
-      'TestSuiteMerger',
-      this.config.debugLevelLoggingEnabled));
-
-    const aggregatingTestManager = new AggregatingTestManager(
-      testManagers,
-      shardManager,
-      testSuiteOrganizer,
-      testSuiteTreeProcessor,
-      testRunEventProcessor,
-      suiteTestResultProcessor,
-      testSuiteMerger,
-      this.config.testGrouping,
-      this.config.projectRootPath,
-      new Logger(this.log, 'AggregatingTestManager', this.config.debugLevelLoggingEnabled));
-
-    return aggregatingTestManager;
-  }
-
-  private createDefaultTestManager(
-    testRunEventProcessor: KarmaTestRunEventProcessor,
-    specLocationResolver: SpecLocationResolver,
-    portManager: PortAcquisitionManager,
-    serverShardIndex: number = 0,
-    totalServerShards: number = 1): DefaultTestManager
-  {
-    const makeShardLogger = (loggerName: string): Logger => {
-      const shardLoggerName = totalServerShards > 1
-        ? `${loggerName}-${serverShardIndex}`
-        : `${loggerName}`;
-
-      return new Logger(this.log, shardLoggerName, this.config.debugLevelLoggingEnabled);
+    const createLogger = (loggerName: string): Logger => {
+      return new Logger(this.log, loggerName, this.config.debugLevelLoggingEnabled);
     };
 
+    const testRunEventProcessor = new KarmaTestRunEventProcessor(
+      testRunEventEmitter,
+      testResolver,
+      createLogger(KarmaTestRunEventProcessor.name
+    ));
+
+    const portManager = new PortAcquisitionManager(createLogger(PortAcquisitionManager.name));
+
     let testManager: DefaultTestManager;
-    const serverProcessLogger = makeShardLogger(`ServerProcessLogger`);
+    const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
 
     const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
       const regex = new RegExp(/\(.*?)\m/, "g");
@@ -193,41 +97,53 @@ export class MainFactory {
     prioritizedTestFactories.unshift(new KarmaFactory(
       this.config,
       karmaServerProcessLogger,
-      makeShardLogger(`TestFactory`)
+      createLogger(KarmaFactory.name)
     ));
 
     if (this.isAngularProject()) {
       prioritizedTestFactories.unshift(new AngularFactory(
         this.config,
         karmaServerProcessLogger,
-        makeShardLogger(`TestFactory`)
+        createLogger(AngularFactory.name)
       ));
     }
 
-    const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, new Logger(
-      this.log,
-      `CascadingTestFactory`,
-      this.config.debugLevelLoggingEnabled
-    ));
+    const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, createLogger(CascadingTestFactory.name));
 
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
       specLocationResolver,
-      makeShardLogger(`SpecResponseToTestSuiteInfoMapper`)
+      createLogger(SpecResponseToTestSuiteInfoMapper.name)
     );
-    const karmaEventListener = new KarmaEventListener(testRunEventProcessor, makeShardLogger('KarmaEventListener'));
-    const testServerExecutor = testFactory.createTestServerExecutor(serverShardIndex, totalServerShards);
+    const karmaEventListener = new KarmaEventListener(testRunEventProcessor, createLogger(KarmaEventListener.name));
+    const testServerExecutor = testFactory.createTestServerExecutor();
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
     const testServer = testFactory.createTestServer(testServerExecutor);
+
+    const testSuiteTreeProcessor = new TestSuiteTreeProcessor(createLogger(TestSuiteTreeProcessor.name));
+
+    const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
+      testRunEventEmitter,
+      testResolver,
+      testSuiteTreeProcessor,
+      createLogger(SuiteAggregateTestResultProcessor.name)
+    );
+
+    const testSuiteOrganizer = new TestSuiteOrganizer(createLogger(TestSuiteOrganizer.name));
 
     testManager = new DefaultTestManager(
       testServer,
       testRunner,
       karmaEventListener,
       portManager,
+      testSuiteOrganizer,
+      suiteTestResultProcessor,
+      this.config.testGrouping,
+      this.config.projectRootPath,
       this.config.karmaPort,
       this.config.defaultSocketConnectionPort,
-      makeShardLogger(`DefaultTestManager`));
+      createLogger(DefaultTestManager.name)
+    );
 
     return testManager;
   }

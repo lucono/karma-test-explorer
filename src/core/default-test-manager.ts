@@ -9,6 +9,9 @@ import { TestServer } from "../api/test-server";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { DeferredPromise } from "../util/deferred-promise";
 import { TestResults } from "../api/test-results";
+import { TestGrouping } from "../api/test-grouping";
+import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
+import { TestSuiteOrganizer } from "./test-suite-organizer";
 
 export class DefaultTestManager implements TestManager {
   private disposables: { dispose: () => void }[] = [];
@@ -19,6 +22,10 @@ export class DefaultTestManager implements TestManager {
     private readonly testRunner: TestRunner,
     private readonly karmaEventListener: KarmaEventListener,
     private readonly portManager: PortAcquisitionManager,
+    private readonly testSuiteOrganizer: TestSuiteOrganizer,
+    private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
+    private readonly testGrouping: TestGrouping,
+    private readonly projectRootPath: string,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
     private readonly logger: Logger
@@ -131,7 +138,15 @@ export class DefaultTestManager implements TestManager {
       const uniqueTests = this.removeTestOverlaps(tests);
       const testResults: TestResults = await this.testRunner.runTests(karmaPort, uniqueTests);
 
-      return testResults;
+      const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
+        Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
+        Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
+        Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
+      };
+
+      this.suiteTestResultEmitter.processTestResults(organizedTestResults);
+  
+      return organizedTestResults;
 
     } finally {
       this.testRunning = false;

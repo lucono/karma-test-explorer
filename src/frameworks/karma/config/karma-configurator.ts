@@ -1,7 +1,7 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
 import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/jasmine-reporter";
 import { dirname, resolve } from "path";
-import { KARMA_PORT_ENV_VAR, KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "../karma-constants";
+import { KARMA_PORT_ENV_VAR } from "../karma-constants";
 
 const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
 
@@ -19,8 +19,6 @@ export class KarmaConfigurator {
 
     config.client ??= {};
     config.client.clearContext = true;
-    config.client.shardIndex = parseInt(process.env[KARMA_SHARD_INDEX_ENV_VAR]!, 10);  // FIXME: Retire reliance on karma-jasmine sharding
-    config.client.totalShards = parseInt( process.env[KARMA_TOTAL_SHARDS_ENV_VAR]!, 10);  // FIXME: Retire reliance on karma-jasmine sharding
 
     config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
     config.browserNoActivityTimeout = undefined;

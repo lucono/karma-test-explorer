@@ -14,10 +14,7 @@ export class CascadingTestFactory implements TestFactory {
     private readonly logger: Logger)
   {}
 
-  public createTestServer(
-    // serverShardIndex: number = 0,
-    // totalServerShards: number = 1,
-    testServerExecutor?: TestServerExecutor): TestServer {
+  public createTestServer(testServerExecutor?: TestServerExecutor): TestServer {
     const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServer' in factory);
 
     if (!delegateFactory) {
@@ -46,9 +43,7 @@ export class CascadingTestFactory implements TestFactory {
       testRunExecutor ?? this.createTestRunExecutor());
   }
 
-  public createTestServerExecutor(
-    serverShardIndex?: number,
-    totalServerShards?: number): TestServerExecutor
+  public createTestServerExecutor(): TestServerExecutor
   {
     const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServerExecutor' in factory);
 
@@ -57,7 +52,7 @@ export class CascadingTestFactory implements TestFactory {
         `There are no delegate test factories able to fulfil ` +
         `requested action: Create Test Server Executor`);
     }
-    return delegateFactory.createTestServerExecutor!(serverShardIndex, totalServerShards);
+    return delegateFactory.createTestServerExecutor!();
   }
 
   public createTestRunExecutor(): TestRunExecutor {

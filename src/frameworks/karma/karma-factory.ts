@@ -13,7 +13,6 @@ import { TestServer } from "../../api/test-server";
 import { KarmaServer } from "./server/karma-test-server";
 import { TestFactory } from "../../api/test-factory";
 import { Disposable } from "../../api/disposable";
-import { KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "./karma-constants";
 
 export class KarmaFactory implements TestFactory {
 
@@ -27,11 +26,7 @@ export class KarmaFactory implements TestFactory {
     this.disposables.push(config, logger);
   }
 
-  public createTestServer(
-    // serverShardIndex: number = 0,
-    // totalServerShards: number = 1,
-    testServerExecutor?: TestServerExecutor
-  ): TestServer {
+  public createTestServer(testServerExecutor?: TestServerExecutor): TestServer {
     const serverExecutor = testServerExecutor ?? this.createTestServerExecutor();
     return new KarmaServer(serverExecutor, this.logger);
   }
@@ -45,13 +40,8 @@ export class KarmaFactory implements TestFactory {
     return new KarmaTestRunner(runExecutor, karmaEventListener, specToTestSuiteMapper, this.logger); // FIXME: Create new properly named logger
   }
 
-  public createTestServerExecutor(
-    serverShardIndex: number = 0,
-    totalServerShards: number = 1): TestServerExecutor
-  {
-    // return this.isAngularProject()  // FIXME: Angular concerns should not be here but in Angular factory (?)
-    //   ? this.createAngularTestServerExecutor(serverShardIndex, totalServerShards)
-    return this.createKarmaCommandLineTestServerExecutor(serverShardIndex, totalServerShards);
+  public createTestServerExecutor(): TestServerExecutor {
+    return this.createKarmaCommandLineTestServerExecutor();
   }
 
   public createTestRunExecutor(): TestRunExecutor {
@@ -82,18 +72,14 @@ export class KarmaFactory implements TestFactory {
       this.logger);
   }
 
-  private createKarmaCommandLineTestServerExecutor(
-    serverShardIndex: number,
-    totalServerShards: number): KarmaCommandLineTestServerExecutor
+  private createKarmaCommandLineTestServerExecutor(): KarmaCommandLineTestServerExecutor
   {
     this.logger.info(`Creating Karma test server executor`);
     
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env,
-      [KARMA_SHARD_INDEX_ENV_VAR]: `${serverShardIndex}`,
-      [KARMA_TOTAL_SHARDS_ENV_VAR]: `${totalServerShards}`
+      ...this.config.env
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,
@@ -108,45 +94,6 @@ export class KarmaFactory implements TestFactory {
       options,
       this.logger);
   }
-
-  // private createAngularTestServerExecutor(
-  //   serverShardIndex: number = 0,
-  //   totalServerShards: number = 1): AngularTestServerExecutor
-  // {
-  //   this.logger.info(`Creating Angular test server executor`);
-    
-  //   const angularProject = getDefaultAngularProject(this.config.projectRootPath);
-
-  //   const environment: { [key: string]: string | undefined } = {
-  //     ...process.env,
-  //     ...this.config.envFileEnvironment,
-  //     ...this.config.env,
-  //       [KARMA_SHARD_INDEX_ENV_VAR]: `${serverShardIndex}`,
-  //       [KARMA_TOTAL_SHARDS_ENV_VAR]: `${totalServerShards}`
-  //   };
-  //   const options: KarmaCommandLineTestServerExecutorOptions = {
-  //       environment,
-  //       serverProcessLogger: this.serverProcessLogger,
-  //       serverProcessErrorLogger: this.serverProcessLogger
-  //   };
-
-  //   return new AngularTestServerExecutor(
-  //     angularProject,
-  //     this.config.projectRootPath,
-  //     this.config.baseKarmaConfFilePath,
-  //     options,
-  //     this.logger);
-  // }
-
-  // private isAngularProject(): boolean {
-  //   const angularJsonPath = join(this.config.projectRootPath, "angular.json");
-  //   const angularCliJsonPath = join(this.config.projectRootPath, ".angular-cli.json");
-  //   const isAngularProject = (existsSync(angularJsonPath) || existsSync(angularCliJsonPath));
-
-  //   this.logger.info(`Project detected to ${isAngularProject ? 'be' : 'not be'} an Angular project`);
-
-  //   return isAngularProject;
-  // }
 
   public dispose() {
     this.disposables.forEach(disposable => disposable.dispose());

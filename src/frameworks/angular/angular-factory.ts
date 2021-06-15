@@ -5,7 +5,6 @@ import { AngularTestServerExecutor } from "../angular/angular-test-server-execut
 import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { TestFactory } from "../../api/test-factory";
 import { KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "../karma/server/karma-command-line-test-server-executor";
-import { KARMA_SHARD_INDEX_ENV_VAR, KARMA_TOTAL_SHARDS_ENV_VAR } from "../karma/karma-constants";
 
 export class AngularFactory implements Partial<TestFactory> {
 
@@ -15,9 +14,7 @@ export class AngularFactory implements Partial<TestFactory> {
     private readonly logger: Logger)
   { }
 
-  public createTestServerExecutor(
-    serverShardIndex: number = 0,
-    totalServerShards: number = 1): TestServerExecutor
+  public createTestServerExecutor(): TestServerExecutor
   {
     this.logger.info(`Creating Angular test server executor`);
     
@@ -26,9 +23,7 @@ export class AngularFactory implements Partial<TestFactory> {
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env,
-      [KARMA_SHARD_INDEX_ENV_VAR]: `${serverShardIndex}`,
-      [KARMA_TOTAL_SHARDS_ENV_VAR]: `${totalServerShards}`
+      ...this.config.env
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,

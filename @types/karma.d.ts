@@ -10,11 +10,6 @@ declare module "karma" {
     reporters: string[];
   }
 
-  interface ClientOptions {
-    shardIndex?: number;
-    totalShards?: number;
-  }
-
   interface CustomLauncher {
     debug: boolean;
   }
