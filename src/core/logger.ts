@@ -67,8 +67,9 @@ export class Logger implements Disposable {
   }
 
   private formatMsg(msg: string, logLevel: LogLevel): string {
-    const date = new Date();
-    return `[${date.toLocaleTimeString()}] [${this.loggerName}] ${logLevel.toUpperCase()}: ${msg}`;
+    // const date = new Date();
+    // return `[${date.toLocaleTimeString()}] [${this.loggerName}] ${logLevel.toUpperCase()}: ${msg}`;
+    return `[${this.loggerName}]: ${msg}`;
   }
   
   public dispose(): void {
