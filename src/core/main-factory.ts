@@ -140,6 +140,7 @@ export class MainFactory {
       karmaEventListener,
       portManager,
       testSuiteOrganizer,
+      testSuiteTreeProcessor,
       suiteTestResultProcessor,
       this.config.testGrouping,
       this.config.projectRootPath,

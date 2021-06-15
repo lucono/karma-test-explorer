@@ -3,7 +3,7 @@ import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-liste
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Execution } from "../api/execution";
-import { TestType } from "../api/test-infos";
+import { AnyTestInfo, TestType } from "../api/test-infos";
 import { TestManager } from "../api/test-manager";
 import { TestServer } from "../api/test-server";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
@@ -12,6 +12,7 @@ import { TestResults } from "../api/test-results";
 import { TestGrouping } from "../api/test-grouping";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
+import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 
 export class DefaultTestManager implements TestManager {
   private disposables: { dispose: () => void }[] = [];
@@ -23,6 +24,7 @@ export class DefaultTestManager implements TestManager {
     private readonly karmaEventListener: KarmaEventListener,
     private readonly portManager: PortAcquisitionManager,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
+    private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
@@ -109,13 +111,40 @@ export class DefaultTestManager implements TestManager {
       this.logger.info("Proceeding to load tests");
 
       const karmaPort = this.testServer.getServerPort()!;
-      const testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort);
+      let testSuiteInfo: TestSuiteInfo = await this.testRunner.loadTests(karmaPort);
 
-      const organizedTestSuite: TestSuiteInfo = this.testGrouping === TestGrouping.Suite
-        ? testSuiteInfo
-        : this.testSuiteOrganizer.groupByFolder(testSuiteInfo, this.projectRootPath, false);
-
-      return organizedTestSuite;
+      if (!testSuiteInfo) {
+        throw new Error(`Failed to load any tests`);
+      }
+  
+      if (this.testGrouping === TestGrouping.Folder) {
+        testSuiteInfo = this.testSuiteOrganizer.groupByFolder(testSuiteInfo, this.projectRootPath);
+      }
+  
+      const addTestCount = (test: AnyTestInfo, testCount: number) => {
+        if (test.type === TestType.Suite) {
+          test.testCount = testCount;
+          test.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
+        }
+      };
+  
+      const totalTestCount = this.testSuiteTreeProcessor.processTestSuite<number>(
+        testSuiteInfo, 1, 0, addTestCount,
+        (runningTestCount, nextSuiteTestCount) => runningTestCount + nextSuiteTestCount
+      );
+  
+      // const totalTestCount = this.testCountProcessor.addTestCounts(testSuiteInfo, (testSuite, testCount) => {
+      //   testSuite.testCount = testCount;
+      //   testSuite.description = testCount === 1 ? `(1 test)` : `(${testCount} tests)`;
+      // });
+  
+      this.logger.info(totalTestCount > 0
+        ? `Test loading - ${totalTestCount} total tests loaded from Karma`
+        : `Test loading - No tests found`);
+  
+      this.logger.info(`Aggregate server test load done`);
+  
+      return testSuiteInfo;
       
     } catch (error) {
       const failureMessage = `Test loading failed: ${error.message ?? error}`;
