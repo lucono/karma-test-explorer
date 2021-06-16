@@ -5,7 +5,6 @@ import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../fram
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, window, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
-import { ServerProcessLogger } from "../frameworks/karma/server/karma-command-line-test-server-executor";
 import { TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
@@ -20,6 +19,8 @@ import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Log } from "./log";
 import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
+import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-process-log";
+import { CommandLineProcessLog } from "../util/commandline-process-handler";
 
 export class MainFactory {
 
@@ -79,33 +80,21 @@ export class MainFactory {
 
     let testManager: DefaultTestManager;
     // const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
-    const karmaOutputChannel = window.createOutputChannel(`Karma Server`);
-
-    const karmaServerProcessLogger: ServerProcessLogger = (data: string, serverPort: number) => {
-      const regex = new RegExp(/\(.*?)\m/, "g");
-
-      if (testManager?.isTestRunning()) {  // FIXME: This doesn't seem to be logging Karma output as expected
-        let log = data.toString().replace(regex, "");
-        if (log.startsWith("e ")) {
-          log = `HeadlessChrom${log}`;
-        }
-        // serverProcessLogger.info(`${log}`, { divider: `Karma Server:${serverPort} Logs` });
-        karmaOutputChannel.append(`\n\n[karma:${serverPort}] ${data}`);
-      }
-    };
+    const karmaServerOutputChannel = window.createOutputChannel(`Karma Server`);
+    const karmaServerProcessLog: CommandLineProcessLog = new KarmaServerProcessLog(karmaServerOutputChannel);
 
     const prioritizedTestFactories: Partial<TestFactory>[] = [];
 
     prioritizedTestFactories.unshift(new KarmaFactory(
       this.config,
-      karmaServerProcessLogger,
+      karmaServerProcessLog,
       createLogger(KarmaFactory.name)
     ));
 
     if (this.isAngularProject()) {
       prioritizedTestFactories.unshift(new AngularFactory(
         this.config,
-        karmaServerProcessLogger,
+        karmaServerProcessLog,
         createLogger(AngularFactory.name)
       ));
     }

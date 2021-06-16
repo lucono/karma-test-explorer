@@ -2,7 +2,7 @@ import { SpawnOptions } from "child_process";
 import { existsSync } from "fs";
 // import { ExtensionConfig } from "../../core/extension-config";
 import { Logger } from "../../core/logger";
-import { CommandlineProcessHandler } from "../../util/commandline-process-handler";
+import { CommandLineProcessHandler, CommandLineProcessLog } from "../../util/commandline-process-handler";
 import { join } from "path";
 import { silent } from "resolve-global";
 import { window } from "vscode";
@@ -15,8 +15,7 @@ import { KARMA_PORT_ENV_VAR, KARMA_SOCKET_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_E
 export interface AngularTestServerExecutorOptions {
   environment: { [key: string]: string | undefined };
   angularProcessCommand?: string;
-  serverProcessLogger?: (data: string, serverPort: number) => void;
-  serverProcessErrorLogger?: (data: string, serverPort: number) => void;
+  serverProcessLog?: CommandLineProcessLog;
 }
 
 export class AngularTestServerExecutor implements TestServerExecutor {
@@ -24,7 +23,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     private readonly angularProject: AngularProject,
     private readonly workspaceRootPath: string,
     private readonly baseKarmaConfFile: string,
-    private readonly options: AngularTestServerExecutorOptions,
+    private readonly options: AngularTestServerExecutorOptions,  // FIXME: Options should be optional
     private readonly logger: Logger)
   {}
 
@@ -79,13 +78,12 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       `--no-watch`
     ];
 
-    const angularProcess = new CommandlineProcessHandler(
-      this.logger, 
-      command, 
-      processArguments, 
-      spawnOptions,
-      (data: string) => this.options.serverProcessLogger?.(data, karmaPort),
-      (data: string) => this.options.serverProcessErrorLogger?.(data, karmaPort));
+    const angularProcess = new CommandLineProcessHandler(
+      command,
+      processArguments,
+      this.logger,
+      this.options.serverProcessLog,
+      spawnOptions);
 
     const serverStopper: ServerStopExecutor = {
       executeServerStop: async () => angularProcess.stop()

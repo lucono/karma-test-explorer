@@ -4,13 +4,14 @@ import { TestServerExecutor } from "../../api/test-server-executor";
 import { AngularTestServerExecutor } from "../angular/angular-test-server-executor";
 import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { TestFactory } from "../../api/test-factory";
-import { KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "../karma/server/karma-command-line-test-server-executor";
+import { KarmaCommandLineTestServerExecutorOptions } from "../karma/server/karma-command-line-test-server-executor";
+import { CommandLineProcessLog } from "../../util/commandline-process-handler";
 
 export class AngularFactory implements Partial<TestFactory> {
 
   public constructor(
     private readonly config: ExtensionConfig,
-    private readonly serverProcessLogger: ServerProcessLogger,
+    private readonly serverProcessLog: CommandLineProcessLog,
     private readonly logger: Logger)
   { }
 
@@ -25,10 +26,10 @@ export class AngularFactory implements Partial<TestFactory> {
       ...this.config.envFileEnvironment,
       ...this.config.env
     };
+
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,
-        serverProcessLogger: this.serverProcessLogger,
-        serverProcessErrorLogger: this.serverProcessLogger
+        serverProcessLog: this.serverProcessLog
     };
 
     return new AngularTestServerExecutor(

@@ -4,7 +4,7 @@ import { join } from "path";
 import { silent } from "resolve-global";
 import { window } from "vscode";
 import { Logger } from "../../../core/logger";
-import { CommandlineProcessHandler } from "../../../util/commandline-process-handler";
+import { CommandLineProcessHandler, CommandLineProcessLog } from "../../../util/commandline-process-handler";
 import { Execution } from "../../../api/execution";
 import { TestRunExecutor } from "../../../api/test-run-executor";
 import { KARMA_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "../karma-constants";
@@ -12,8 +12,7 @@ import { KARMA_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "../karma-con
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: { [key: string]: string | undefined };
   karmaProcessCommand?: string;
-  serverProcessLogger?: (data: string, serverPort: number) => void;
-  serverProcessErrorLogger?: (data: string, serverPort: number) => void;
+  serverProcessLog?: CommandLineProcessLog;
 }
 
 export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
@@ -77,13 +76,12 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       ...escapedClientArgs
     ];
 
-    const karmaServerProcess = new CommandlineProcessHandler(
-      this.logger, 
-      command, 
-      processArguments, 
-      spawnOptions,
-      (data: string) => this.options.serverProcessLogger?.(data, karmaPort),
-      (data: string) => this.options.serverProcessErrorLogger?.(data, karmaPort));
+    const karmaServerProcess = new CommandLineProcessHandler(
+      command,
+      processArguments,
+      this.logger,
+      this.options.serverProcessLog,
+      spawnOptions);
 
     return karmaServerProcess.execution();
   }

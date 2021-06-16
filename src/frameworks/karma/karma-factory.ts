@@ -8,11 +8,12 @@ import { TestRunner } from "../../api/test-runner";
 import { KarmaEventListener } from "./runner/karma-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "./runner/spec-response-to-test-suite-info-mapper";
 import { KarmaTestRunner } from "./runner/karma-test-runner";
-import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions, ServerProcessLogger } from "./server/karma-command-line-test-server-executor";
+import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions } from "./server/karma-command-line-test-server-executor";
 import { TestServer } from "../../api/test-server";
 import { KarmaServer } from "./server/karma-test-server";
 import { TestFactory } from "../../api/test-factory";
 import { Disposable } from "../../api/disposable";
+import { CommandLineProcessLog } from "../../util/commandline-process-handler";
 
 export class KarmaFactory implements TestFactory {
 
@@ -20,7 +21,7 @@ export class KarmaFactory implements TestFactory {
   
   public constructor(
     private readonly config: ExtensionConfig,
-    private readonly serverProcessLogger: ServerProcessLogger,
+    private readonly serverProcessLog: CommandLineProcessLog,
     private readonly logger: Logger)
   {
     this.disposables.push(config, logger);
@@ -83,8 +84,7 @@ export class KarmaFactory implements TestFactory {
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,
-        serverProcessLogger: this.serverProcessLogger,
-        serverProcessErrorLogger: this.serverProcessLogger
+        serverProcessLog: this.serverProcessLog
     };
 
     return new KarmaCommandLineTestServerExecutor(

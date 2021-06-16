@@ -4,22 +4,35 @@ import * as spawn from "cross-spawn";
 import * as psTree from "ps-tree";
 import { Execution } from "../api/execution";
 
-export class CommandlineProcessHandler {
+export interface CommandLineProcessLog {
+  output(data: string): void;
+  error(data: string): void;
+}
+
+export class CommandLineProcessHandler {
   private readonly uid: string;
   private process: ChildProcess | undefined;
   private processExecution: Execution;
   private hasExited: boolean;
+  private readonly processLog: CommandLineProcessLog;
 
   public constructor(
-    private readonly logger: Logger,
     command: string,
     processArguments: string[],
+    private readonly logger: Logger,
+    processLog?: CommandLineProcessLog,
     runOptions?: SpawnOptions,
-    private readonly processLogger: (data: string) => void = logger.info.bind(logger),
-    private readonly processErrorLogger: (data: string) => void = logger.error.bind(logger))
+    // private readonly processLogger: (data: string) => void = logger.info.bind(logger),
+    // private readonly processErrorLogger: (data: string) => void = logger.error.bind(logger)
+    )
   {
     this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
     this.hasExited = false;
+
+    this.processLog = processLog ?? {
+      output: logger.info.bind(logger),
+      error: logger.error.bind(logger)
+    };
 
     this.logger.debug(() =>
       `Process ${this.uid}:
@@ -107,9 +120,9 @@ export class CommandlineProcessHandler {
   }
 
   private setupProcessOutputs(process: ChildProcess) {
-    process.stdout?.on("data", (data: any) => this.processLogger(`${data}`));
-    process.stderr?.on(`data`, (data: any) => this.processErrorLogger(`stderr: ${data}`));
-    process.on(`error`, (err: any) => this.logger.error(`Process ${this.uid}: Error from child process: ${err}`));
+    process.stdout?.on("data", (data: any) => this.processLog.output(`${data}`));
+    process.stderr?.on(`data`, (data: any) => this.processLog.error(`${data}`));
+    process.on(`error`, (error: any) => this.logger.error(`Process ${this.uid}: Error from child process: ${error}`));
 
     // Prevent karma server from being an orphan process.
     // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.

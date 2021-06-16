@@ -4,18 +4,15 @@ import { join } from "path";
 import { silent } from "resolve-global";
 import { window } from "vscode";
 import { Logger } from "../../../core/logger";
-import { CommandlineProcessHandler } from "../../../util/commandline-process-handler";
+import { CommandLineProcessHandler, CommandLineProcessLog } from "../../../util/commandline-process-handler";
 import { ServerStopExecutor, TestServerExecutor } from "../../../api/test-server-executor";
 import { Execution } from "../../../api/execution";
 import { KARMA_PORT_ENV_VAR, KARMA_SOCKET_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "../karma-constants";
 
-export type ServerProcessLogger = (data: string, serverPort: number) => void;
-
 export interface KarmaCommandLineTestServerExecutorOptions {
   environment: { [key: string]: string | undefined };
   karmaProcessCommand?: string;
-  serverProcessLogger?: ServerProcessLogger;
-  serverProcessErrorLogger?: ServerProcessLogger;
+  serverProcessLog?: CommandLineProcessLog
 }
 
 export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
@@ -76,13 +73,12 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       `--no-single-run`
     ];
 
-    const karmaServerProcess = new CommandlineProcessHandler(
-      this.logger, 
-      command, 
-      processArguments, 
-      spawnOptions,
-      (data: string) => this.options.serverProcessLogger?.(data, karmaPort),
-      (data: string) => this.options.serverProcessErrorLogger?.(data, karmaPort));
+    const karmaServerProcess = new CommandLineProcessHandler(
+      command,
+      processArguments,
+      this.logger,
+      this.options.serverProcessLog,
+      spawnOptions);
 
     const serverStopper: ServerStopExecutor = {
       executeServerStop: async () => karmaServerProcess.stop()
