@@ -77,9 +77,9 @@ export class KarmaTestRunner implements TestRunner {
       testList = this.toRunnableTests(tests);
       this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
   
-      const testPatterns: string[] = testList
-        .filter(test => !!test.fullName)
-        .map(test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`);
+      const testPatterns: string[] = testList.map(
+        test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
+      );
 
       if (testPatterns.length === 0) {
         throw new Error(`No tests to run`);

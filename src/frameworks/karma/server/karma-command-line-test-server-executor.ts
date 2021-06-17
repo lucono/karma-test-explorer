@@ -68,9 +68,9 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       ...processArguments,
       "start",
       this.baseKarmaConfigFile,
-      // `--port=${karmaPort}`,
-      `--no-auto-watch`,
-      `--no-single-run`
+      `--no-single-run`,
+      // `--no-auto-watch`,
+      // `--port=${karmaPort}`
     ];
 
     const karmaServerProcess = new CommandLineProcessHandler(

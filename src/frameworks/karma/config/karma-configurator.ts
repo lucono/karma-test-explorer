@@ -3,7 +3,8 @@ import { instance as customReporterInstance, name as customReporterName } from "
 import { dirname, resolve } from "path";
 import { KARMA_PORT_ENV_VAR } from "../karma-constants";
 
-const CHROME_CUSTOM_LAUNCHER = "ChromeTestExplorer";
+const CHROME_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
+const AUTO_WATCH_BATCH_DELAY = 5_000;  // FIXME: Read from config
 
 export class KarmaConfigurator {
   constructor() {}
@@ -14,17 +15,19 @@ export class KarmaConfigurator {
 
     config.port = parseInt(process.env[KARMA_PORT_ENV_VAR]!, 10); // FIXME Use shared constants for all environment variable exchange
     config.logLevel = config.LOG_INFO;
-    config.autoWatch = false;
-    config.autoWatchBatchDelay = 0;
+    
+    config.singleRun = false;
+    config.autoWatch = true;
+    config.autoWatchBatchDelay = AUTO_WATCH_BATCH_DELAY;
 
     config.client ??= {};
     config.client.clearContext = true;
 
-    config.browsers = [ CHROME_CUSTOM_LAUNCHER ];
+    config.browsers = [ CHROME_CUSTOM_LAUNCHER_NAME ];
     config.browserNoActivityTimeout = undefined;
-    config.singleRun = false;
+
     config.customLaunchers = {
-      [CHROME_CUSTOM_LAUNCHER]: {
+      [CHROME_CUSTOM_LAUNCHER_NAME]: {
         base: "ChromeHeadless",
         debug: true,
         flags: [
