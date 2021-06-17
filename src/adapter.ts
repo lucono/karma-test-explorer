@@ -121,7 +121,9 @@ export class Adapter implements TestAdapter {
       resolveTestSuite: (testSuiteId: string): TestSuiteInfo | undefined => {
         const testSuite = this.loadedTestsById.get(testSuiteId);
         return testSuite?.type === TestType.Suite ? testSuite : undefined;
-      }
+      },
+
+      resolveRootSuite: () => this.loadedRootSuite
     };
 
     this.testManager = this.factory.createTestManager(this.testRunEmitter, specLocationResolver, testResolver);
