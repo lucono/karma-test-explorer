@@ -3,7 +3,7 @@ import { ExtensionConfig } from "./extension-config";
 import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
-import { EventEmitter, window, workspace, WorkspaceFolder } from "vscode";
+import { EventEmitter, OutputChannel, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
 import { TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
@@ -31,6 +31,7 @@ export class MainFactory {
   constructor(
     workspaceFolder: WorkspaceFolder,
     configPrefix: string,
+    private readonly testServerOutputChannel: OutputChannel,
     private readonly log: Log)
   {
     this.config = this.createConfig(workspaceFolder, configPrefix);
@@ -80,8 +81,7 @@ export class MainFactory {
 
     let testManager: DefaultTestManager;
     // const serverProcessLogger = createLogger(`KarmaServerProcessLogger`);
-    const karmaServerOutputChannel = window.createOutputChannel(`Karma Server`);
-    const karmaServerProcessLog: CommandLineProcessLog = new KarmaServerProcessLog(karmaServerOutputChannel);
+    const karmaServerProcessLog: CommandLineProcessLog = new KarmaServerProcessLog(this.testServerOutputChannel);
 
     const prioritizedTestFactories: Partial<TestFactory>[] = [];
 

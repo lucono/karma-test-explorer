@@ -15,7 +15,7 @@ import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
 import { SpecLocation, SpecLocator } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
-import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder } from "vscode";
+import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder, window, OutputChannel } from "vscode";
 import { TestType } from "./api/test-infos";
 import { TestLoadEvent, TestRunEvent } from "./api/test-events";
 import { TestManager } from "./api/test-manager";
@@ -32,6 +32,8 @@ export class Adapter implements TestAdapter {
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
   private disposables: Disposable[] = [];
+  private initDisposables: Disposable[] = [];
+  private readonly testServerOutputChannel: OutputChannel;
 
   private readonly retireEmitter = new EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
@@ -47,45 +49,64 @@ export class Adapter implements TestAdapter {
   // private configFactory: ExtensionConfigFactory;
   // private testManagerFactory: TestManagerFactory;
 
+  constructor(
+    public readonly workspaceFolder: WorkspaceFolder,
+    private readonly configPrefix: string,
+    private readonly log: Log)
+  {
+    this.testServerOutputChannel = window.createOutputChannel(`Karma Server`);
+
+    this.disposables.push(
+      this.testLoadEmitter,
+      this.testRunEmitter,
+      this.autorunEmitter,
+      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
+      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this)
+    );
+
+    this.init();
+  }
+
   public async dispose(): Promise<void> {
     // this.testManager.dispose();
     this.disposables.forEach(disposable => disposable?.dispose());
     this.disposables = [];
   }
 
-  private preInitFinalize() {
-    this.factory.dispose();
-    this.logger.dispose();
-    this.debugger.dispose();
-    this.config.dispose();
-    this.specLocator?.dispose();
-    this.testManager.dispose();
-  }
-
-  constructor(
-    public readonly workspaceFolder: WorkspaceFolder,
-    private readonly configPrefix: string,
-    private readonly log: Log)
-  {
-    this.disposables.push(
-      this.testLoadEmitter,
-      this.testRunEmitter,
-      this.autorunEmitter,
-      workspace.onDidSaveTextDocument(this.handleDocumentSaved, this),
-      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this));
-
-    this.init();
-  }
+  // private preInitFinalize() {
+  //   this.factory.dispose();
+  //   this.logger.dispose();
+  //   this.debugger.dispose();
+  //   this.config.dispose();
+  //   this.specLocator?.dispose();
+  //   this.testManager.dispose();
+  // }
 
   private init() {
-    this.factory = new MainFactory(this.workspaceFolder, this.configPrefix, this.log);
+    this.initDisposables.forEach(disposable => disposable.dispose());
+    this.initDisposables = [];
+
+    this.factory = new MainFactory(
+      this.workspaceFolder,
+      this.configPrefix,
+      this.testServerOutputChannel,
+      this.log
+    );
+    this.initDisposables.push(this.factory);
+
     this.config = this.factory.getExtensionConfig();
+    this.initDisposables.push(this.config);
+
     this.logger = new Logger(this.log, Adapter.name, this.config.debugLevelLoggingEnabled);
+    this.initDisposables.push(this.logger);
 
     this.logger.info(`Initializing adapter`);
 
     this.specLocator = this.factory.fetchTestInfo();
+    this.initDisposables.push(this.specLocator);
+
     this.debugger = new Debugger(this.logger);
+    this.initDisposables.push(this.debugger);
 
     const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
       return this.specLocator?.getSpecLocation(suite, description) ?? [];
@@ -104,6 +125,7 @@ export class Adapter implements TestAdapter {
     };
 
     this.testManager = this.factory.createTestManager(this.testRunEmitter, specLocationResolver, testResolver);
+    this.initDisposables.push(this.testManager);
   }
 
   public async load(): Promise<void> {
@@ -263,7 +285,7 @@ export class Adapter implements TestAdapter {
   // }
 
   private async reset() {
-    this.preInitFinalize();
+    // this.preInitFinalize();
     this.init();
     await this.reload();
   }

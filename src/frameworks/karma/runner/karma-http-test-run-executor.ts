@@ -27,6 +27,9 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
       const karmaRequestData = {
         args: clientArgs,
         refresh: defaultRunOptions.refresh
+        // changedFiles: `${changedFiles}`,
+        // removedFiles: `${removedFiles}`,
+        // addedFiles: `${addedFiles}`,
       };
   
       const httpRequestOptions: RequestOptions = {

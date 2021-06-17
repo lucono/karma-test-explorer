@@ -1,8 +1,8 @@
 import { readFileSync } from "fs";
-import { sync } from "glob";
 import { resolve } from 'path';
 import { Disposable } from "../api/disposable";
 import { Logger } from "../core/logger";
+import * as glob from "glob";
 
 enum TestNodeType {
   Describe = "describe",
@@ -26,7 +26,7 @@ export interface SpecFileInfo {
   specCount: number
 }
 
-export interface SpecLocatorOptions {
+export interface SpecLocatorOptions extends Partial<glob.IOptions> {
   cwd?: string,
   ignore?: string[],
   fileEncoding?: string
@@ -44,24 +44,31 @@ export class SpecLocator implements Disposable {
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly cwd: string;
 
-  public constructor(filePatterns: string[], private readonly logger: Logger, options: SpecLocatorOptions = {}) {
-    this.cwd = options.cwd ?? process.cwd();
-    const fileEncoding = options.fileEncoding ?? DEFAULT_FILE_ENCODING;
+  public constructor(
+    private readonly filePatterns: string[],
+    private readonly logger: Logger,
+    private readonly specLocatorOptions: SpecLocatorOptions = {})
+  {
+    this.cwd = specLocatorOptions.cwd ?? process.cwd();
+    const fileEncoding = specLocatorOptions.fileEncoding ?? DEFAULT_FILE_ENCODING;
     let loadedFileCount: number = 0;
 
-    filePatterns
-      .map(patternString => sync(patternString, options))
-      .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
-      .forEach(filePath => {
-        this.processFile(filePath, fileEncoding);
-        loadedFileCount++;
-      });
+    this.getAbsoluteFilesForGlobs(filePatterns).forEach(filePath => {
+      this.processFile(filePath, fileEncoding);
+      loadedFileCount++;
+    });
 
     this.logger.info(`Spec locator loaded ${loadedFileCount} spec files`);
   }
 
-  private processFile(filePath: string, fileEncoding?: string) {
-    const fileAbsolutePath = resolve(this.cwd, filePath);
+  private getAbsoluteFilesForGlobs(fileGlobs: string[]): string[] {
+    return fileGlobs
+      .map(patternString => glob.sync(patternString, this.specLocatorOptions))
+      .reduce((consolidatedPaths = [], morePaths) => [...consolidatedPaths, ...morePaths])
+      .map(filePath => resolve(this.cwd, filePath))
+  }
+
+  private processFile(fileAbsolutePath: string, fileEncoding?: string) {
     const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
     this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
 
@@ -102,7 +109,8 @@ export class SpecLocator implements Disposable {
 
   public isSpecFile(filePath: string): boolean {
     const fileAbsolutePath = resolve(this.cwd, filePath);
-    return this.fileInfoMap.has(fileAbsolutePath);
+    const specFileAbsolutePaths = this.getAbsoluteFilesForGlobs(this.filePatterns);
+    return specFileAbsolutePaths.includes(fileAbsolutePath);
   }
 
   // public getSpecFileInfo(filePath: string): SpecFileInfo | undefined {
