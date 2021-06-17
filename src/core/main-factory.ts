@@ -71,8 +71,28 @@ export class MainFactory {
       return new Logger(this.log, loggerName, this.config.debugLevelLoggingEnabled);
     };
 
+    const testSuiteOrganizer = new TestSuiteOrganizer(createLogger(TestSuiteOrganizer.name));
+    const testSuiteTreeProcessor = new TestSuiteTreeProcessor(createLogger(TestSuiteTreeProcessor.name));
+
+    const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
+      testRunEventEmitter,
+      testResolver,
+      testSuiteTreeProcessor,
+      createLogger(SuiteAggregateTestResultProcessor.name)
+    );
+
+    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
+      specLocationResolver,
+      createLogger(SpecResponseToTestSuiteInfoMapper.name)
+    );
+    
     const testRunEventProcessor = new KarmaTestRunEventProcessor(
       testRunEventEmitter,
+      specToTestSuiteMapper,
+      testSuiteOrganizer,
+      suiteTestResultProcessor,
+      this.config.testGrouping,
+      this.config.projectRootPath,
       testResolver,
       createLogger(KarmaTestRunEventProcessor.name
     ));
@@ -100,27 +120,11 @@ export class MainFactory {
     }
 
     const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, createLogger(CascadingTestFactory.name));
-
-    const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
-      specLocationResolver,
-      createLogger(SpecResponseToTestSuiteInfoMapper.name)
-    );
     const karmaEventListener = new KarmaEventListener(testRunEventProcessor, createLogger(KarmaEventListener.name));
     const testServerExecutor = testFactory.createTestServerExecutor();
     const testRunExecutor = testFactory.createTestRunExecutor();
     const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
     const testServer = testFactory.createTestServer(testServerExecutor);
-
-    const testSuiteTreeProcessor = new TestSuiteTreeProcessor(createLogger(TestSuiteTreeProcessor.name));
-
-    const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
-      testRunEventEmitter,
-      testResolver,
-      testSuiteTreeProcessor,
-      createLogger(SuiteAggregateTestResultProcessor.name)
-    );
-
-    const testSuiteOrganizer = new TestSuiteOrganizer(createLogger(TestSuiteOrganizer.name));
 
     testManager = new DefaultTestManager(
       testServer,

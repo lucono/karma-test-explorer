@@ -214,7 +214,7 @@ export class Adapter implements TestAdapter {
 
     this.logger.info(`Starting test run Id: ${testRunId}`);
 
-    this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId });
+    // this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId });
     let runError: string | undefined;
 
     try {
@@ -223,7 +223,7 @@ export class Adapter implements TestAdapter {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
 
-    this.testRunEmitter.fire({ type: "finished", testRunId });
+    // this.testRunEmitter.fire({ type: "finished", testRunId });
 
     if (runError) {
       this.logger.error(runError);

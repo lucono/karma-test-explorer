@@ -11,6 +11,7 @@ import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
 import { TestResults } from "../../../api/test-results";
+import { TestIdentification } from "./karma-test-run-event-processor";
 
 export class KarmaTestRunner implements TestRunner {
   public constructor(
@@ -96,8 +97,11 @@ export class KarmaTestRunner implements TestRunner {
       ended: () => testRunEndedDeferred.promise()
     };
 
-    const testNames: string[] = testList.map(test => test.fullName);
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testNames);
+    const testIdentifications: TestIdentification[] = testList.map(test => ({
+      testId: test.id,
+      testName: test.fullName
+    }));
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testIdentifications);
 
     testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();

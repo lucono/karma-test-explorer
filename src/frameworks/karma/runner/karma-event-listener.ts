@@ -10,28 +10,29 @@ import { TestStatus } from "../../../api/test-status";
 import { Disposable } from "../../../api/disposable";
 import { DeferredPromise } from "../../../util/deferred-promise";
 import * as express from "express"
-import { KarmaTestRunEventProcessor } from "./karma-test-run-event-processor";
+import { KarmaTestRunEventProcessor, TestIdentification } from "./karma-test-run-event-processor";
 
-// const DEFAULT_SOCKET_PORT = 9999;
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
-// export type TestCapture = { [key in TestStatus]: SpecCompleteResponse[] };
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaEventListener implements Disposable {
-  private isListening: boolean = false;
+  // private isListening: boolean = false;
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
 
-  private currentSpecs: string[] = [];
-  // private failedSpecs: Map<string, SpecCompleteResponse> = new Map();
-  // private passedSpecs: Map<string, SpecCompleteResponse> = new Map();
-  // private skippedSpecs: Map<string, SpecCompleteResponse> = new Map();
+  // private currentSpecs: TestIdentification[] = [];
+  private disposables: Disposable[] = [];
 
   public constructor(
     private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
-    private readonly logger: Logger
-  ) {}
+    private readonly logger: Logger)
+  {
+    this.disposables.push(
+      testRunEventProcessor,
+      logger
+    );
+  }
 
   public receiveKarmaConnection(socketPort: number): Execution {
     const connectionClosedDeferred: DeferredPromise = new DeferredPromise();
@@ -56,12 +57,7 @@ export class KarmaEventListener implements Disposable {
       } as ServerOptions;
   
       const io = new SocketIOServer(server, socketServerOptions);
-      // const socketPort = socketPort !== 0 ? socketPort : DEFAULT_SOCKET_PORT;
-  
-      // if (socketPort !== socketPort) {
-      //   this.logger.info(`Invalid socket port specified '${socketPort}' - Using '${socketPort}' instead`);
-      // }
-      
+
       this.logger.info(`Waiting on port ${socketPort} for Karma to connect...`);
       let connectTimeoutId: ReturnType<typeof setTimeout>;
 
@@ -77,24 +73,47 @@ export class KarmaEventListener implements Disposable {
           resolve();
         });
 
-        socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
-          this.logger.info(`Karma Event Listener: Got browser error: ${JSON.stringify(event.results)}`);
+        socket.on(KarmaEventName.RunStart, (browsers) => {
+          this.logger.info(
+            `Karma Event Listener: Test run started:` +
+            `  browsers: ${JSON.stringify(browsers)}`);
         });
 
-        socket.on(KarmaEventName.BrowserStart, () => {
-          this.logger.info(`Karma Event Listener: Browser started`);
-          // this.clearCapturedSpecs();
-          this.testRunEventProcessor.beginProcessing();
+        socket.on(KarmaEventName.BrowserStart, (browser, runInfo) => {
+          this.logger.info(
+            `Karma Event Listener: Browser started:` +
+            `  browser: ${browser}` +
+            `  runInfo: ${JSON.stringify(runInfo)}`);
+          
+          // this.testRunEventProcessor.beginProcessing([]);
         });
 
-        socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
-          this.logger.info(`Karma Event Listener: Test run completed: ${JSON.stringify(event)}`);
-          // this.runCompleteEvent = event;
+        socket.on(KarmaEventName.BrowserError, (browser, error) => {
+          this.logger.warn(
+            `Karma Event Listener: Browser errored:` +
+            `  browser: ${browser}` +
+            `  runInfo: ${JSON.stringify(error)}`);
         });
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
           this.logger.debug(() => `Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
           this.onSpecComplete(event);
+        });
+
+        socket.on(KarmaEventName.BrowserComplete, (browser, result) => {
+          this.logger.info(
+            `Karma Event Listener: Browser completed:` +
+            `  browser: ${browser}` +
+            `  runInfo: ${JSON.stringify(result)}`);
+          
+          // this.testRunEventProcessor.concludeProcessing();
+        });
+
+        socket.on(KarmaEventName.RunComplete, (browsers, results) => {
+          this.logger.info(
+            `Karma Event Listener: Test run completed:` +
+            `  browser: ${JSON.stringify(browsers)}` +
+            `  runInfo: ${JSON.stringify(results)}`);
         });
 
         socket.on("disconnect", (reason: string) => {
@@ -129,13 +148,12 @@ export class KarmaEventListener implements Disposable {
     return karmaConnection;
   }
 
-  public async listenForTests(testExecution: Execution, specs: string[] = []): Promise<TestCapture> {
+  public async listenForTests(testExecution: Execution, tests: TestIdentification[] = []): Promise<TestCapture> {
     try {
-      // this.clearCapturedSpecs();
-      this.currentSpecs = specs;
-      this.isListening = true;
+      // this.currentSpecs = tests;
+      // this.isListening = true;
 
-      this.testRunEventProcessor.beginProcessing();
+      this.testRunEventProcessor.beginProcessing(tests);
       await testExecution.ended();
       this.testRunEventProcessor.concludeProcessing();
 
@@ -145,14 +163,9 @@ export class KarmaEventListener implements Disposable {
         [TestStatus.Skipped]: []
       };
 
-      const processedSpecs: SpecCompleteResponse[] = this.testRunEventProcessor.getProcessedEvents();
-      processedSpecs.forEach(processedSpec => capturedTests[processedSpec.status].push(processedSpec));
-
-      // const capturedTests: TestCapture = {
-      //   [TestStatus.Failed]: Array.from(this.failedSpecs.values()),
-      //   [TestStatus.Success]: Array.from(this.passedSpecs.values()),
-      //   [TestStatus.Skipped]: Array.from(this.skippedSpecs.values())
-      // };
+      this.testRunEventProcessor.getProcessedEvents().forEach(
+        processedSpec => capturedTests[processedSpec.status].push(processedSpec)
+      );
 
       return capturedTests;
 
@@ -160,57 +173,47 @@ export class KarmaEventListener implements Disposable {
       this.logger.error(`Could not listen for Karma events - Test execution failed: ${error.message ?? error}`);
       throw new Error(error.message ?? error);
 
-    } finally {
-      this.isListening = false;
-      this.currentSpecs = [];
-      // this.clearCapturedSpecs();
     }
+    // finally {
+    //   this.isListening = false;
+    //   // this.currentSpecs = [];
+    // }
   }
 
-  private isIncludedSpec(specResult: SpecCompleteResponse): boolean {
-    const acceptAllSpecs = this.currentSpecs.length === 0;
+  // private isIncludedSpec(specResult: SpecCompleteResponse): boolean {
+  //   const acceptAllSpecs = this.currentSpecs.length === 0;
 
-    return acceptAllSpecs || this.currentSpecs.some(includedSpecName => {
-      return specResult.fullName === includedSpecName || specResult.fullName.startsWith(includedSpecName);
-    });
-  }
+  //   return acceptAllSpecs || this.currentSpecs.some(includedSpecName => {
+  //     return specResult.fullName === includedSpecName || specResult.fullName.startsWith(includedSpecName);
+  //   });
+  // }
 
   private onSpecComplete(event: KarmaEvent) {
-    if (!this.isListening) {
-      return;
-    }
+    // if (!this.isListening) {
+    //   return;
+    // }
     const results: LightSpecCompleteResponse = event.results;
     const fullName: string = [ ...results.suite, results.description ].join(" ");
     const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
     const specResults: SpecCompleteResponse = { ...results, id: testId, fullName };
-    const isIncludedSpec = this.isIncludedSpec(specResults);
+    // const isIncludedSpec = this.isIncludedSpec(specResults);
 
-    if (!isIncludedSpec) {
-      this.logger.debug(() =>
-        `Karma Event Listener: Skipping spec id '${specResults.id}' - ` +
-        `Not part of current test run`);
+    // if (!isIncludedSpec) {
+    //   this.logger.debug(() =>
+    //     `Karma Event Listener: Skipping spec id '${specResults.id}' - ` +
+    //     `Not part of current test run`);
 
-      return;
-    }
-    const testStatus: TestStatus = specResults.status;
+    //   return;
+    // }
+    // const testStatus: TestStatus = specResults.status;
 
-    if (!Object.values(TestStatus).includes(testStatus)) {
-      this.logger.warn(`Skipping captured spec with unknown result value: ${testStatus}`);
-      this.logger.debug(() => `Skipped captured spec with unknown result '${testStatus}': ${specResults}`);
-      return;
-    }
-
-    // this.testRunEventProcessor.processTestStateEvent(testId, TestState.Running); // FIXME: why emit consecutive running and result event
-    this.testRunEventProcessor.processTestResultEvent(testId, specResults);
-
-    // if (testStatus === TestStatus.Success) {
-    //   this.passedSpecs.set(testId, specResults);
-    // } else if (testStatus === TestStatus.Failed) {
-    //   this.failedSpecs.set(testId, specResults);
-    // } else if (testStatus === TestStatus.Skipped) {
-    //   this.skippedSpecs.set(testId, specResults);
+    // if (!Object.values(TestStatus).includes(testStatus)) {
+    //   this.logger.warn(`Skipping captured spec with unknown result value: ${testStatus}`);
+    //   this.logger.debug(() => `Skipped captured spec with unknown result '${testStatus}': ${specResults}`);
+    //   return;
     // }
 
+    this.testRunEventProcessor.processTestResultEvent(testId, specResults);
     this.logger.status(specResults.status);
   }
 
@@ -237,12 +240,6 @@ export class KarmaEventListener implements Disposable {
     });
   }
 
-  // private clearCapturedSpecs() {
-  //   this.passedSpecs.clear();
-  //   this.failedSpecs.clear();
-  //   this.skippedSpecs.clear();
-  // }
-
   private cleanupConnections() {
     this.logger.info(`Karma Event Listener: Cleaning up connections`);
     try {
@@ -252,7 +249,6 @@ export class KarmaEventListener implements Disposable {
       });
       
       this.sockets.clear();
-      // this.clearCapturedSpecs();
 
     } catch (error) {
       this.logger.error(`Failure closing connection with karma: ${error}`);
@@ -264,6 +260,6 @@ export class KarmaEventListener implements Disposable {
   }
   
   public dispose(): void {
-    // FIXME: Pending impl
+    this.disposables.forEach(disposable => disposable.dispose());
   }
 }

@@ -1,4 +1,4 @@
-import { TestEvent, TestDecoration, TestInfo } from "vscode-test-adapter-api";
+import { TestEvent, TestDecoration, TestInfo, TestSuiteInfo, TestRunStartedEvent, TestRunFinishedEvent } from "vscode-test-adapter-api";
 import { TestState } from "../../../core/test-state";
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { TestStatus } from "../../../api/test-status";
@@ -8,49 +8,118 @@ import { EventEmitter } from "vscode";
 import { TestResolver } from "../../../core/test-resolver";
 // import { Execution } from "../../../api/execution";
 import { Logger } from "../../../core/logger";
+import { Disposable } from "../../../api/disposable";
+import { TestCapture } from "./karma-event-listener";
+import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
+import { TestResults } from "../../../api/test-results";
+import { TestGrouping } from "../../../api/test-grouping";
+import { SuiteAggregateTestResultProcessor } from "../../../core/suite-aggregate-test-result-processor";
+import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
+import { TestEventProcessor } from "./test-event-processor";
+// import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
 export interface TestEventProcessingOptions {
   bufferSkippedTestEvents?: boolean
 }
 
-export class KarmaTestRunEventProcessor {
+export interface TestIdentification {
+  testId: string,
+  testName: string
+}
+
+export class KarmaTestRunEventProcessor implements TestEventProcessor {
   private readonly processedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
   private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
-  // private isProcessingEvents: boolean = false;
+
+  private currentTests?: TestIdentification[];
+  private isProcessingEvents: boolean = false;
+  private disposables: Disposable[] = [];
   // private activeTestRunId?: string;
 
   public constructor(
     private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
+
+    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    private readonly testSuiteOrganizer: TestSuiteOrganizer,
+    // private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
+    private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
+    private readonly testGrouping: TestGrouping,
+    private readonly projectRootPath: string,
+
     private readonly testResolver: TestResolver,
     private readonly logger: Logger,
-    private readonly options: TestEventProcessingOptions = {}
-  ) {}
+    private readonly options: TestEventProcessingOptions = {})
+  {
+    this.disposables.push(
+      logger,
+      eventEmitterInterface);
+  }
 
-  // public async processTestRun(testRunExecution: Execution): Promise<void> {
-  //   this.logger.debug(() => `Processing new test run`);
+  public beginProcessing(tests: TestIdentification[]) {
+    if (this.isProcessingEvents) {
+      this.concludeProcessing();
+    }
+    this.processedTestResultEvents.clear();
+    this.bufferedTestResultEvents.clear();
+    
+    const rootSuite = this.testResolver.resolveRootSuite();
 
-  //   try {
-  //     this.processedTestResultEvents.clear();
-  //     this.bufferedTestResultEvents.clear();
-  //     this.isProcessingEvents = true;
+    const testsToProcess = tests.length > 0 ? tests.map(testIdInfo => testIdInfo.testId)
+      : rootSuite ? [rootSuite.id]
+      : [];
+
+    const testRunStartedEvent: TestRunStartedEvent = { type: `started`, tests: testsToProcess };
+    this.eventEmitterInterface.fire(testRunStartedEvent);
+
+    this.currentTests = tests;
+    this.isProcessingEvents = true;
+  }
+
+  public concludeProcessing(): void {
+    if (!this.isProcessingEvents) {
+      return;
+    }
+    if (this.bufferedTestResultEvents.size > 0) {
+      this.logger.debug(() => `Processing ${this.bufferedTestResultEvents.size} buffered events`);
   
-  //     // await testRunExecution.started();  // FIXME
-  //     // this.activeTestRunId = activeTestRunId;
-  
-  //     await testRunExecution.ended();
-  //     this.processBufferedEvents();
+      this.bufferedTestResultEvents.forEach((testResult, testId) => {
+        this.emitTestResultEvent(testId, testResult);
+        this.processedTestResultEvents.set(testId, testResult);
+      });
+      this.bufferedTestResultEvents.clear();
+      this.processTestSuiteEvents();
 
-  //     this.logger.debug(() => `Done processing test run`);
+      const testRunFinishedEvent: TestRunFinishedEvent = { type: `finished` };
+      this.eventEmitterInterface.fire(testRunFinishedEvent);
+    }
+    this.isProcessingEvents = false;
+  }
 
-  //   } catch (error) {
-  //     this.logger.error(`Failed while processing test run: ${error.message ?? error}`);
-
-  //   } finally {
-  //     this.isProcessingEvents = false;
-  //   }
-  // }
+  public getProcessedEvents(): SpecCompleteResponse[] {  // FIXME: Remove for test run processor
+    this.concludeProcessing();
+    return Array.from(this.processedTestResultEvents.values());
+  }
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+    if (!this.isProcessingEvents) {
+      return;
+    }
+
+    if (!this.isIncludedTest(testResult)) {
+      this.logger.debug(() => `Skipping spec id '${testId}' - Not included in current test run`);
+      return;
+    }
+    // const testStatus: TestStatus = testResult.status;
+
+    // if (!Object.values(TestStatus).includes(testStatus)) {  // FIXME: Not sure if scenario will ever happen
+    //   this.logger.warn(`Skipping spec result with unknown test status: ${testStatus}`);
+
+    //   this.logger.debug(() => 
+    //     `Skipped spec result with unknown test status '${testStatus}': ` +
+    //     `${JSON.stringify(testResult)}`);
+
+    //   return;
+    // }
     const processedTest = this.processedTestResultEvents.get(testId);
 
     if (processedTest && processedTest.status !== TestStatus.Skipped) {
@@ -77,6 +146,50 @@ export class KarmaTestRunEventProcessor {
 
     this.processedTestResultEvents.set(testId, testResult);
     this.bufferedTestResultEvents.delete(testId);
+  }
+
+  private isIncludedTest(testResult: SpecCompleteResponse) {
+    if (!this.currentTests) {
+      return false;
+    }
+    const includeAll = this.currentTests.length === 0;
+
+    return includeAll || this.currentTests.map(testIdInfo => testIdInfo.testName).some(
+      includedSpecName => testResult.fullName.startsWith(includedSpecName)
+    );
+  }
+
+  private processTestSuiteEvents() {  // FIXME: Remove for test load processor
+    this.concludeProcessing();
+    
+    const capturedTests: TestCapture = {
+      [TestStatus.Failed]: [],
+      [TestStatus.Success]: [],
+      [TestStatus.Skipped]: []
+    };
+
+    Array.from(this.processedTestResultEvents.values()).forEach(
+      processedSpec => capturedTests[processedSpec.status].push(processedSpec)
+    );
+
+    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Failed]);
+    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Success]);
+    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Skipped]);
+
+    const testResults: TestResults = {
+      [TestStatus.Failed]: failedTests,
+      [TestStatus.Success]: passedTests,
+      [TestStatus.Skipped]: skippedTests
+    };
+
+    const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
+      Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
+      Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
+      Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
+    };
+
+    this.suiteTestResultEmitter.processTestResults(organizedTestResults);
+    // return organizedTestResults;
   }
 
   private emitTestRunningEvent(testId: string) {
@@ -124,6 +237,10 @@ export class KarmaTestRunEventProcessor {
       }
     }
 
+    if (test) {
+      this.updateTestWithResultData(test, testResult);
+    }
+
     const testEvent: TestEvent = {
       type: TestType.Test,
       test: test ?? testId,
@@ -137,27 +254,11 @@ export class KarmaTestRunEventProcessor {
     this.eventEmitterInterface.fire(testEvent);
   }
 
-  public concludeProcessing(): void {
-    if (this.bufferedTestResultEvents.size === 0) {
-      return;
-    }
-    this.logger.debug(() => `Processing ${this.bufferedTestResultEvents.size} buffered events`);
-
-    this.bufferedTestResultEvents.forEach((testResult, testId) => {
-      this.emitTestResultEvent(testId, testResult);
-      this.processedTestResultEvents.set(testId, testResult);
-    });
-    this.bufferedTestResultEvents.clear();
-  }
-
-  public beginProcessing() {
-    this.processedTestResultEvents.clear();
-    this.bufferedTestResultEvents.clear();
-  }
-
-  public getProcessedEvents(): SpecCompleteResponse[] {
-    this.concludeProcessing();
-    return Array.from(this.processedTestResultEvents.values());
+  private updateTestWithResultData(test: TestInfo, testResult: SpecCompleteResponse) {
+    test.label = testResult.description || test.label;
+    test.fullName = testResult.fullName || test.fullName;
+    test.file = testResult.filePath || test.file;
+    test.line = testResult.line || test.line;
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {
@@ -214,5 +315,9 @@ export class KarmaTestRunEventProcessor {
     } catch (error) {
       return undefined;
     }
+  }
+
+  public dispose() {
+    this.disposables.forEach(disposable => disposable.dispose());
   }
 }
