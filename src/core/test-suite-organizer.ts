@@ -116,14 +116,14 @@ export class TestSuiteOrganizer {
     const computeSuiteRank = (test: AnyTestInfo): number =>
       'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 0
         : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 1
-        : test.type === TestType.Suite ? 2
-        : 3;
+        // : test.type === TestType.Suite ? 2
+        : 2;
 
     const suite1Rank = computeSuiteRank(test1);
     const suite2Rank = computeSuiteRank(test2);
 
     return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
-      : test1.type === TestType.Test && test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
+      : test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
       : test1.label.toLocaleLowerCase() < test2.label.toLocaleLowerCase() ? -1
       : 1;
   }
