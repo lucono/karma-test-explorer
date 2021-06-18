@@ -7,6 +7,7 @@ import { TestStatus } from "../../../api/test-status";
 // import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
 import { DeferredPromise } from "../../../util/deferred-promise";
+import { KarmaAmbientTestEventProcessor } from "./karma-ambient-test-event-processor";
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { KarmaTestEventProcessor } from "./karma-test-event-processor";
@@ -27,6 +28,7 @@ export class KarmaTestEventListener implements Disposable {
 
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
+    private readonly ambientTestEventProcessor: KarmaAmbientTestEventProcessor,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -83,7 +85,9 @@ export class KarmaTestEventListener implements Disposable {
             `  browser: ${browser}` +
             `  runInfo: ${JSON.stringify(runInfo)}`);
           
-          // this.testRunEventProcessor.beginProcessing([]);
+          if (!this.testEventProcessor.isProcessing()) {
+            this.ambientTestEventProcessor.beginProcessing();
+          }
         });
 
         socket.on(KarmaEventName.BrowserError, (browser, error) => {
@@ -95,7 +99,12 @@ export class KarmaTestEventListener implements Disposable {
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
           this.logger.debug(() => `Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
-          this.onSpecComplete(event);
+
+          const eventProcessor = this.testEventProcessor.isProcessing() ? this.testEventProcessor
+            : this.ambientTestEventProcessor.isProcessing() ? this.ambientTestEventProcessor
+            : undefined;
+            
+          this.onSpecComplete(event, eventProcessor);
         });
 
         socket.on(KarmaEventName.BrowserComplete, (browser, result) => {
@@ -112,6 +121,10 @@ export class KarmaTestEventListener implements Disposable {
             `Karma Event Listener: Test run completed:` +
             `  browser: ${JSON.stringify(browsers)}` +
             `  runInfo: ${JSON.stringify(results)}`);
+          
+          if (this.ambientTestEventProcessor.isProcessing()) {
+            this.ambientTestEventProcessor.concludeProcessing();
+          }
         });
 
         socket.on("disconnect", (reason: string) => {
@@ -165,6 +178,8 @@ export class KarmaTestEventListener implements Disposable {
       // this.isListening = true;
       // this.testEventProcessor = testEventProcessor;
 
+      this.ambientTestEventProcessor.concludeProcessing();
+      
       this.testEventProcessor.beginProcessing(testNames, { emitEvents });
       await testExecution.ended();
       this.testEventProcessor.concludeProcessing();
@@ -201,8 +216,11 @@ export class KarmaTestEventListener implements Disposable {
   //   });
   // }
 
-  private onSpecComplete(event: KarmaEvent) {
-    if (!this.testEventProcessor.isProcessing()) {  // FIXME: Remove if adding ambient event processor
+  private onSpecComplete(
+    event: KarmaEvent,
+    testEventProcessor?: KarmaTestEventProcessor | KarmaAmbientTestEventProcessor)
+  {
+    if (!testEventProcessor?.isProcessing()) {
       return;
     }
     const results: LightSpecCompleteResponse = event.results;

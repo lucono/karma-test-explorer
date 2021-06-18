@@ -10,12 +10,23 @@ import {
   TestSuiteInfo,
   RetireEvent
 } from "vscode-test-adapter-api";
+
+import {
+  Event,
+  EventEmitter,
+  workspace,
+  ConfigurationChangeEvent,
+  TextDocument,
+  WorkspaceFolder,
+  window,
+  OutputChannel
+} from "vscode";
+
 import { Logger } from "./core/logger";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
 import { SpecLocation, SpecLocator } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
-import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder, window, OutputChannel } from "vscode";
 import { TestType } from "./api/test-infos";
 import { TestLoadEvent, TestRunEvent, TestResultEvent } from "./api/test-events";
 import { TestManager } from "./api/test-manager";
@@ -128,7 +139,7 @@ export class Adapter implements TestAdapter {
     };
 
     this.testManager = this.factory.createTestManager(
-      // this.testLoadEmitter,
+      this.testRunEmitter as EventEmitter<TestRunEvent>,
       this.testRunEmitter as EventEmitter<TestResultEvent>,
       specLocationResolver,
       testResolver

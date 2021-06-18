@@ -5,7 +5,7 @@ import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../fram
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, OutputChannel, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
-import { TestResultEvent } from "../api/test-events";
+import { TestResultEvent, TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
 import { Logger } from "./logger";
@@ -21,6 +21,7 @@ import { Log } from "./log";
 import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-process-log";
 import { CommandLineProcessLog } from "../util/commandline-process-handler";
 import { KarmaTestEventProcessor } from "../frameworks/karma/runner/karma-test-event-processor";
+import { KarmaAmbientTestEventProcessor } from "../frameworks/karma/runner/karma-ambient-test-event-processor";
 // import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
 export class MainFactory {
@@ -65,6 +66,7 @@ export class MainFactory {
 
   public createTestManager(
     // testLoadEventEmitter: EventEmitter<TestLoadEvent>,
+    testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver): DefaultTestManager
@@ -93,7 +95,7 @@ export class MainFactory {
     //   emitEvents: true
     // };
 
-    const testEventProcessor = new KarmaTestEventProcessor(
+    const testRunEventProcessor = new KarmaTestEventProcessor(
       testResultEventEmitter,
       specToTestSuiteMapper,
       testSuiteOrganizer,
@@ -102,6 +104,23 @@ export class MainFactory {
       this.config.projectRootPath,
       testResolver,
       createLogger(KarmaTestEventProcessor.name)
+    );
+
+    const ambientDelegateTestEventProcessor = new KarmaTestEventProcessor(
+      testResultEventEmitter,
+      specToTestSuiteMapper,
+      testSuiteOrganizer,
+      suiteTestResultProcessor,
+      this.config.testGrouping,
+      this.config.projectRootPath,
+      testResolver,
+      createLogger(`${KarmaTestEventProcessor.name} (Ambient)`)
+    );
+
+    const ambientTestEventProcessor = new KarmaAmbientTestEventProcessor(
+      ambientDelegateTestEventProcessor,
+      testRunEventEmitter,
+      createLogger(KarmaAmbientTestEventProcessor.name)
     );
 
     // const testLoadEventProcessor: TestEventProcessor = new KarmaTestLoadEventProcessor(
@@ -140,7 +159,8 @@ export class MainFactory {
     }
 
     const karmaEventListener = new KarmaTestEventListener(
-      testEventProcessor,
+      testRunEventProcessor,
+      ambientTestEventProcessor,
       createLogger(KarmaTestEventListener.name)
     );
 
