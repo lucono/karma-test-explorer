@@ -39,7 +39,7 @@ export class MainFactory {
   {
     this.config = this.createConfig(workspaceFolder, configPrefix);
     this.logger = new Logger(log, MainFactory.name, this.config.debugLevelLoggingEnabled);
-    this.disposables.push(this.log);
+    // this.disposables.push(this.log);
   }
 
   public getExtensionConfig() {

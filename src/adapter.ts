@@ -79,21 +79,6 @@ export class Adapter implements TestAdapter {
     this.init();
   }
 
-  public async dispose(): Promise<void> {
-    // this.testManager.dispose();
-    this.disposables.forEach(disposable => disposable?.dispose());
-    this.disposables = [];
-  }
-
-  // private preInitFinalize() {
-  //   this.factory.dispose();
-  //   this.logger.dispose();
-  //   this.debugger.dispose();
-  //   this.config.dispose();
-  //   this.specLocator?.dispose();
-  //   this.testManager.dispose();
-  // }
-
   private init() {
     this.initDisposables.forEach(disposable => disposable.dispose());
     this.initDisposables = [];
@@ -368,6 +353,12 @@ export class Adapter implements TestAdapter {
     //   //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
     //   // }
     // }
+  }
+
+  public async dispose(): Promise<void> {
+    // this.testManager.dispose();
+    this.disposables.forEach(disposable => disposable?.dispose());
+    this.disposables = [];
   }
 
   get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
