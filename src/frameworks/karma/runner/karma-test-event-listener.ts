@@ -244,7 +244,7 @@ export class KarmaTestEventListener implements Disposable {
     //   return;
     // }
 
-    this.testEventProcessor.processTestResultEvent(testId, specResults);
+    testEventProcessor.processTestResultEvent(testId, specResults);
     this.logger.status(specResults.status);
   }
 

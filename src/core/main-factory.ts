@@ -22,6 +22,7 @@ import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-p
 import { CommandLineProcessLog } from "../util/commandline-process-handler";
 import { KarmaTestEventProcessor } from "../frameworks/karma/runner/karma-test-event-processor";
 import { KarmaAmbientTestEventProcessor } from "../frameworks/karma/runner/karma-ambient-test-event-processor";
+import { RetireEvent } from "vscode-test-adapter-api";
 // import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
 export class MainFactory {
@@ -68,6 +69,7 @@ export class MainFactory {
     // testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
+    testRetireEventEmitter: EventEmitter<RetireEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver): DefaultTestManager
   {
@@ -114,12 +116,13 @@ export class MainFactory {
       this.config.testGrouping,
       this.config.projectRootPath,
       testResolver,
-      createLogger(`${KarmaTestEventProcessor.name} (Ambient)`)
+      createLogger(`${KarmaTestEventProcessor.name}_Ambient`)
     );
 
     const ambientTestEventProcessor = new KarmaAmbientTestEventProcessor(
       ambientDelegateTestEventProcessor,
       testRunEventEmitter,
+      testRetireEventEmitter,
       createLogger(KarmaAmbientTestEventProcessor.name)
     );
 

@@ -141,6 +141,7 @@ export class Adapter implements TestAdapter {
     this.testManager = this.factory.createTestManager(
       this.testRunEmitter as EventEmitter<TestRunEvent>,
       this.testRunEmitter as EventEmitter<TestResultEvent>,
+      this.retireEmitter,
       specLocationResolver,
       testResolver
     );

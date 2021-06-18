@@ -5,7 +5,7 @@ import { KarmaTestEventProcessor } from "./karma-test-event-processor";
 import { TestStatus } from "../../../api/test-status";
 import { TestRunEvent } from "../../../api/test-events";
 import { EventEmitter } from "vscode";
-import { TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
+import { RetireEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
 
 export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
 
@@ -14,6 +14,7 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
     private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
+    private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -21,6 +22,7 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
 
   public beginProcessing() {
     this.logger.debug(() => `Beginning ambient test event processing`);
+    this.concludeProcessing();
 
     const testRunStartedEvent: TestRunStartedEvent = { type: "started", tests: [] };
     this.testRunEventEmitter.fire(testRunStartedEvent);
@@ -29,7 +31,10 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
   }
 
   public concludeProcessing(): void {
-    this.logger.debug(() => `Concluding test load event processing`);
+    if (!this.testEventProcessor.isProcessing()) {
+      return;
+    }
+    this.logger.debug(() => `Concluding ambient test event processing`);
     this.testEventProcessor.concludeProcessing();
     
     const testRunFinishedEvent: TestRunFinishedEvent = { type: "finished" };
@@ -44,9 +49,15 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
   // }
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    if (testResult.status !== TestStatus.Skipped) {
-      this.testEventProcessor.processTestResultEvent(testId, testResult);
+    if (testResult.status === TestStatus.Skipped) {
+      this.logger.debug(() => `Retiring skipped ambient test result event for test id: ${testId}`);
+      
+      const testRetireEvent: RetireEvent = { tests: [testId] };
+      this.testRetireEventEmitter.fire(testRetireEvent);
+      return;
     }
+    this.logger.debug(() => `Processing ambient test result event for test id: ${testId}`);
+    this.testEventProcessor.processTestResultEvent(testId, testResult);
   }
 
   public isProcessing(): boolean {

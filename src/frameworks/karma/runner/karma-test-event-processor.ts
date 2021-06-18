@@ -218,8 +218,13 @@ export class KarmaTestEventProcessor {
 
   private emitTestRunningEvent(testId: string) {
     if (!this.eventProcessingOptions?.emitEvents) {
+      this.logger.debug(() =>
+        `Emit events not enabled - ` +
+        `skipping test running event for test id: ${testId}`
+      );
       return;
     }
+    this.logger.debug(() => `Emitting test running event for test id: ${testId}`);
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
     // if (!test) {
@@ -236,8 +241,14 @@ export class KarmaTestEventProcessor {
 
   private emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     if (!this.eventProcessingOptions?.emitEvents) {
+      this.logger.debug(() =>
+        `Emit events not enabled - ` +
+        `skipping test result event for test id: ${testId}`
+      );
       return;
     }
+    this.logger.debug(() => `Emitting test result event for test id: ${testId}`);
+    
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
     // if (!test) {
