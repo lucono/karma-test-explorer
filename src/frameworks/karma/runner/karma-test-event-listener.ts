@@ -151,7 +151,7 @@ export class KarmaTestEventListener implements Disposable {
   }
 
   public async listenForTestRun(testRunExecution: Execution, testNames?: string[]) {
-    return this.listenForTests(testRunExecution, true);
+    return this.listenForTests(testRunExecution, true, testNames);
   }
 
   private async listenForTests(

@@ -185,7 +185,6 @@ export class KarmaTestRunEventProcessor {
     if (!this.eventProcessingOptions?.emitEvents) {
       return;
     }
-    this.concludeProcessing();
     
     const capturedTests: TestCapture = {
       [TestStatus.Failed]: [],
