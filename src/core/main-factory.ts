@@ -20,7 +20,7 @@ import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Log } from "./log";
 import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-process-log";
 import { CommandLineProcessLog } from "../util/commandline-process-handler";
-import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
+import { KarmaTestEventProcessor } from "../frameworks/karma/runner/karma-test-event-processor";
 // import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
 export class MainFactory {
@@ -93,7 +93,7 @@ export class MainFactory {
     //   emitEvents: true
     // };
 
-    const testRunEventProcessor = new KarmaTestRunEventProcessor(
+    const testEventProcessor = new KarmaTestEventProcessor(
       testResultEventEmitter,
       specToTestSuiteMapper,
       testSuiteOrganizer,
@@ -101,7 +101,7 @@ export class MainFactory {
       this.config.testGrouping,
       this.config.projectRootPath,
       testResolver,
-      createLogger(KarmaTestRunEventProcessor.name)
+      createLogger(KarmaTestEventProcessor.name)
     );
 
     // const testLoadEventProcessor: TestEventProcessor = new KarmaTestLoadEventProcessor(
@@ -140,7 +140,7 @@ export class MainFactory {
     }
 
     const karmaEventListener = new KarmaTestEventListener(
-      testRunEventProcessor,
+      testEventProcessor,
       createLogger(KarmaTestEventListener.name)
     );
 

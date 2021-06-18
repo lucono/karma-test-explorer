@@ -4,14 +4,14 @@ import { Disposable } from "../../../api/disposable";
 import { TestLoadEvent } from "../../../api/test-events";
 import { Logger } from "../../../core/logger";
 import { SpecCompleteResponse } from "./spec-complete-response";
-import { KarmaTestRunEventProcessor } from "./karma-test-run-event-processor";
+import { KarmaTestEventProcessor } from "./karma-test-event-processor";
 
 export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
 
   private disposables: Disposable[] = [];
 
   public constructor(
-    private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
+    private readonly testEventProcessor: KarmaTestEventProcessor,
     private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     private readonly logger: Logger)
   {
@@ -21,33 +21,33 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
   public beginProcessing() {
     this.logger.debug(() => `Beginning test load event processing`);
 
-    this.testRunEventProcessor.concludeProcessing();
+    this.testEventProcessor.concludeProcessing();
 
     const testLoadStartedEvent: TestLoadStartedEvent = { type: `started` };
     this.testLoadEventEmitter.fire(testLoadStartedEvent);
 
-    this.testRunEventProcessor.beginProcessing([], { emitEvents: false });
+    this.testEventProcessor.beginProcessing([], { emitEvents: false });
   }
 
   public concludeProcessing(): void {
     this.logger.debug(() => `Concluding test load event processing`);
 
-    this.testRunEventProcessor.concludeProcessing();
+    this.testEventProcessor.concludeProcessing();
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: `finished` };
     this.testLoadEventEmitter.fire(testLoadFinishedEvent);
   }
 
   public getProcessedEvents(): SpecCompleteResponse[] {
     this.concludeProcessing();
-    return this.testRunEventProcessor.getProcessedEvents();
+    return this.testEventProcessor.getProcessedEvents();
   }
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    this.testRunEventProcessor.processTestResultEvent(testId, testResult);
+    this.testEventProcessor.processTestResultEvent(testId, testResult);
   }
 
   public isProcessing(): boolean {
-    return this.testRunEventProcessor.isProcessing();
+    return this.testEventProcessor.isProcessing();
   }
 
   public dispose() {

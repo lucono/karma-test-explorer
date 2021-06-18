@@ -9,7 +9,7 @@ import { Logger } from "../../../core/logger";
 import { DeferredPromise } from "../../../util/deferred-promise";
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
-import { KarmaTestRunEventProcessor } from "./karma-test-run-event-processor";
+import { KarmaTestEventProcessor } from "./karma-test-event-processor";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
@@ -26,7 +26,7 @@ export class KarmaTestEventListener implements Disposable {
   private disposables: Disposable[] = [];
 
   public constructor(
-    private readonly testEventProcessor: KarmaTestRunEventProcessor,
+    private readonly testEventProcessor: KarmaTestEventProcessor,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);

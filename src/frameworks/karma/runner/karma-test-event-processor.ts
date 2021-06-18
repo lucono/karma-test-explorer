@@ -32,7 +32,7 @@ export interface TestEventProcessingOptions {
   // bufferSkippedTestEvents?: boolean;
 }
 
-export class KarmaTestRunEventProcessor {
+export class KarmaTestEventProcessor {
   private readonly processedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
   // private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
   private eventProcessingOptions?: TestEventProcessingOptions;
