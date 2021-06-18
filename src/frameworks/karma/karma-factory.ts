@@ -5,7 +5,7 @@ import { TestServerExecutor } from "../../api/test-server-executor";
 import { KarmaCommandLineTestRunExecutor } from "./runner/karma-command-line-test-run-executor";
 import { KarmaHttpTestRunExecutor } from "./runner/karma-http-test-run-executor";
 import { TestRunner } from "../../api/test-runner";
-import { KarmaEventListener } from "./runner/karma-event-listener";
+import { KarmaTestEventListener } from "./runner/karma-test-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "./runner/spec-response-to-test-suite-info-mapper";
 import { KarmaTestRunner } from "./runner/karma-test-runner";
 import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions } from "./server/karma-command-line-test-server-executor";
@@ -33,12 +33,24 @@ export class KarmaFactory implements TestFactory {
   }
 
   public createTestRunner(
-    karmaEventListener: KarmaEventListener,
+    karmaEventListener: KarmaTestEventListener,
+    // testEventProcessor: TestEventProcessor,
+    // testLoadEventProcessor: TestEventProcessor,
+    // testRunEventProcessor: TestEventProcessor,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     testRunExecutor?: TestRunExecutor): TestRunner
   {
     const runExecutor = testRunExecutor ?? this.createTestRunExecutor();
-    return new KarmaTestRunner(runExecutor, karmaEventListener, specToTestSuiteMapper, this.logger); // FIXME: Create new properly named logger
+
+    return new KarmaTestRunner(
+      runExecutor,
+      karmaEventListener,
+      // testEventProcessor,
+      // testLoadEventProcessor,
+      // testRunEventProcessor,
+      specToTestSuiteMapper,
+      this.logger  // FIXME: Create new properly named logger
+    );
   }
 
   public createTestServerExecutor(): TestServerExecutor {

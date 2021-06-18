@@ -1,5 +1,5 @@
 import { TestRunner } from "../api/test-runner";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
+import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Execution } from "../api/execution";
@@ -21,7 +21,7 @@ export class DefaultTestManager implements TestManager {
   public constructor(
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
-    private readonly karmaEventListener: KarmaEventListener,
+    private readonly karmaEventListener: KarmaTestEventListener,
     private readonly portManager: PortAcquisitionManager,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,

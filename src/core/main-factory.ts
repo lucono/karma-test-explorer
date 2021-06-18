@@ -1,11 +1,11 @@
 import { DefaultTestManager } from "./default-test-manager";
 import { ExtensionConfig } from "./extension-config";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
+import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
 import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, OutputChannel, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
-import { TestRunEvent } from "../api/test-events";
+import { TestResultEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
 import { Logger } from "./logger";
@@ -18,9 +18,10 @@ import { AngularFactory } from "../frameworks/angular/angular-factory";
 import { CascadingTestFactory } from "./cascading-test-factory";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Log } from "./log";
-import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
 import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-process-log";
 import { CommandLineProcessLog } from "../util/commandline-process-handler";
+import { KarmaTestRunEventProcessor } from "../frameworks/karma/runner/karma-test-run-event-processor";
+// import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
 export class MainFactory {
 
@@ -63,7 +64,8 @@ export class MainFactory {
   }
 
   public createTestManager(
-    testRunEventEmitter: EventEmitter<TestRunEvent>,
+    // testLoadEventEmitter: EventEmitter<TestLoadEvent>,
+    testResultEventEmitter: EventEmitter<TestResultEvent>,
     specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver): DefaultTestManager
   {
@@ -75,7 +77,7 @@ export class MainFactory {
     const testSuiteTreeProcessor = new TestSuiteTreeProcessor(createLogger(TestSuiteTreeProcessor.name));
 
     const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
-      testRunEventEmitter,
+      testResultEventEmitter,
       testResolver,
       testSuiteTreeProcessor,
       createLogger(SuiteAggregateTestResultProcessor.name)
@@ -85,17 +87,35 @@ export class MainFactory {
       specLocationResolver,
       createLogger(SpecResponseToTestSuiteInfoMapper.name)
     );
-    
+
+    // const testEventProcessingOptions: TestEventProcessingOptions = {
+    //   // bufferSkippedTestEvents: false,
+    //   emitEvents: true
+    // };
+
     const testRunEventProcessor = new KarmaTestRunEventProcessor(
-      testRunEventEmitter,
+      testResultEventEmitter,
       specToTestSuiteMapper,
       testSuiteOrganizer,
       suiteTestResultProcessor,
       this.config.testGrouping,
       this.config.projectRootPath,
       testResolver,
-      createLogger(KarmaTestRunEventProcessor.name
-    ));
+      createLogger(KarmaTestRunEventProcessor.name)
+    );
+
+    // const testLoadEventProcessor: TestEventProcessor = new KarmaTestLoadEventProcessor(
+    //   simpleTestEventProcessor,
+    //   testLoadEventEmitter,
+    //   createLogger(KarmaTestLoadEventProcessor.name)
+    // );
+
+    // const testRunEventProcessor: TestEventProcessor = new KarmaTestRunEventProcessor(
+    //   simpleTestEventProcessor,
+    //   testResultEventEmitter,
+    //   testResolver,
+    //   createLogger(KarmaTestRunEventProcessor.name)
+    // );
 
     const portManager = new PortAcquisitionManager(createLogger(PortAcquisitionManager.name));
 
@@ -119,11 +139,23 @@ export class MainFactory {
       ));
     }
 
+    const karmaEventListener = new KarmaTestEventListener(
+      testRunEventProcessor,
+      createLogger(KarmaTestEventListener.name)
+    );
+
     const testFactory: TestFactory = new CascadingTestFactory(prioritizedTestFactories, createLogger(CascadingTestFactory.name));
-    const karmaEventListener = new KarmaEventListener(testRunEventProcessor, createLogger(KarmaEventListener.name));
     const testServerExecutor = testFactory.createTestServerExecutor();
     const testRunExecutor = testFactory.createTestRunExecutor();
-    const testRunner = testFactory.createTestRunner(karmaEventListener, specToTestSuiteMapper, testRunExecutor);
+
+    const testRunner = testFactory.createTestRunner(
+      karmaEventListener,
+      // testLoadEventProcessor,
+      // testRunEventProcessor,
+      specToTestSuiteMapper,
+      testRunExecutor
+    );
+
     const testServer = testFactory.createTestServer(testServerExecutor);
 
     testManager = new DefaultTestManager(

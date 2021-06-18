@@ -1,20 +1,20 @@
 import { EventEmitter } from "vscode";
 import { TestSuiteEvent, TestSuiteInfo } from "vscode-test-adapter-api";
-import { TestRunEvent } from "../api/test-events";
+import { TestResultEvent } from "../api/test-events";
 import { AnyTestInfo, TestType } from "../api/test-infos";
+import { TestResults } from "../api/test-results";
 import { TestStatus } from "../api/test-status";
-import { TestResolver } from "./test-resolver";
+import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
 import { Logger } from "./logger";
+import { TestResolver } from "./test-resolver";
 // import { TestCountProcessor } from "../util/test-count-processor";
 import { TestSuiteState } from "./test-suite-state";
-import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
-import { TestResults } from "../api/test-results";
 
 
 export class SuiteAggregateTestResultProcessor {
 
   public constructor(
-    private readonly eventEmitterInterface: EventEmitter<TestRunEvent>,
+    private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testResolver: TestResolver,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly logger: Logger)
@@ -86,7 +86,7 @@ export class SuiteAggregateTestResultProcessor {
         tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
       };
 
-      this.eventEmitterInterface.fire(testEvent);
+      this.testResultEventEmitter.fire(testEvent);
     }
   }
 

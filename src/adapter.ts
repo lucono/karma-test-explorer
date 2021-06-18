@@ -17,7 +17,7 @@ import { SpecLocation, SpecLocator } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
 import { Event, EventEmitter, workspace, ConfigurationChangeEvent, TextDocument, WorkspaceFolder, window, OutputChannel } from "vscode";
 import { TestType } from "./api/test-infos";
-import { TestLoadEvent, TestRunEvent } from "./api/test-events";
+import { TestLoadEvent, TestRunEvent, TestResultEvent } from "./api/test-events";
 import { TestManager } from "./api/test-manager";
 import { Disposable } from "./api/disposable";
 import { MainFactory } from "./core/main-factory";
@@ -37,7 +37,8 @@ export class Adapter implements TestAdapter {
 
   private readonly retireEmitter = new EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
-  private readonly testRunEmitter = new EventEmitter<TestRunEvent>();
+  private readonly testRunEmitter = new EventEmitter<TestRunEvent | TestResultEvent>();
+  private readonly testResultEmitter = this.testRunEmitter as EventEmitter<TestResultEvent>;
   private readonly autorunEmitter = new EventEmitter<void>();
 
   private factory!: MainFactory;
@@ -126,7 +127,13 @@ export class Adapter implements TestAdapter {
       resolveRootSuite: () => this.loadedRootSuite
     };
 
-    this.testManager = this.factory.createTestManager(this.testRunEmitter, specLocationResolver, testResolver);
+    this.testManager = this.factory.createTestManager(
+      // this.testLoadEmitter,
+      this.testResultEmitter,
+      specLocationResolver,
+      testResolver
+    );
+
     this.initDisposables.push(this.testManager);
   }
 
@@ -214,7 +221,9 @@ export class Adapter implements TestAdapter {
 
     this.logger.info(`Starting test run Id: ${testRunId}`);
 
-    // this.testRunEmitter.fire({ type: "started", tests: testIds, testRunId });
+    const testRunStartedEvent: TestRunStartedEvent = { type: "started", tests: testIds, testRunId };
+    this.testRunEmitter.fire(testRunStartedEvent);
+    
     let runError: string | undefined;
 
     try {
@@ -223,7 +232,8 @@ export class Adapter implements TestAdapter {
       runError = `Failed to run tests: ${error?.message ?? error}`;;
     }
 
-    // this.testRunEmitter.fire({ type: "finished", testRunId });
+    const testRunFinishedEvent: TestRunFinishedEvent = { type: 'finished', testRunId };
+    this.testRunEmitter.fire(testRunFinishedEvent);
 
     if (runError) {
       this.logger.error(runError);

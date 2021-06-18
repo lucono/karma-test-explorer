@@ -8,6 +8,8 @@ import {
 } from "vscode-test-adapter-api";
 
 
-export type TestRunEvent = TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent;
-
 export type TestLoadEvent = TestLoadStartedEvent | TestLoadFinishedEvent;
+
+export type TestRunEvent = TestRunStartedEvent | TestRunFinishedEvent; // | TestSuiteEvent | TestEvent;
+
+export type TestResultEvent = TestEvent | TestSuiteEvent;

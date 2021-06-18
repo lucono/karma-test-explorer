@@ -1,5 +1,5 @@
 import { Logger } from "../../../core/logger";
-import { KarmaEventListener, TestCapture } from "./karma-event-listener";
+import { KarmaTestEventListener, TestCapture } from "./karma-test-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "../../../api/test-runner";
 import { SpecCompleteResponse } from "./spec-complete-response";
@@ -11,12 +11,14 @@ import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
 import { TestResults } from "../../../api/test-results";
-import { TestIdentification } from "./karma-test-run-event-processor";
 
 export class KarmaTestRunner implements TestRunner {
+
   public constructor(
     private readonly testRunExecutor: TestRunExecutor,
-    private readonly karmaEventListener: KarmaEventListener,  // FIXME: Should not receive but own its own listener
+    private readonly karmaEventListener: KarmaTestEventListener,  // FIXME: Should not receive but own its own listener
+    // private readonly testEventProcessor: TestEventProcessor,
+    // private readonly testRunEventProcessor: TestEventProcessor,
     private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly logger: Logger
   ) {}
@@ -30,7 +32,12 @@ export class KarmaTestRunner implements TestRunner {
       started: () => testLoadStartedDeferred.promise(),
       ended: () => testLoadEndedDeferred.promise()
     };
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testLoadOperation);
+
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestLoad(
+      testLoadOperation,
+      // this.testEventProcessor
+    );
+    
     const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
 
     testLoadStartedDeferred.resolve();
@@ -97,11 +104,13 @@ export class KarmaTestRunner implements TestRunner {
       ended: () => testRunEndedDeferred.promise()
     };
 
-    const testIdentifications: TestIdentification[] = testList.map(test => ({
-      testId: test.id,
-      testName: test.fullName
-    }));
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTests(testRunOperation, testIdentifications);
+    const testNames: string[] = testList.map(test =>test.fullName);
+
+    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestRun(
+      testRunOperation,
+      // this.testEventProcessor,
+      testNames
+    );
 
     testRunStartedDeferred.resolve();
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();

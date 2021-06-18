@@ -1,37 +1,35 @@
-import { KarmaEvent } from "./karma-event";
-import { KarmaEventName } from "./karma-event-name";
-// import { TestState } from "../../../core/test-state";
-import { Logger } from "../../../core/logger";
-import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
-import { Server as HttpServer, createServer} from "http"
-import { Server as SocketIOServer, ServerOptions, Socket} from "socket.io"
+import * as express from "express";
+import { createServer, Server as HttpServer } from "http";
+import { Server as SocketIOServer, ServerOptions, Socket } from "socket.io";
+import { Disposable } from "../../../api/disposable";
 import { Execution } from "../../../api/execution";
 import { TestStatus } from "../../../api/test-status";
-import { Disposable } from "../../../api/disposable";
+// import { TestState } from "../../../core/test-state";
+import { Logger } from "../../../core/logger";
 import { DeferredPromise } from "../../../util/deferred-promise";
-import * as express from "express"
-import { KarmaTestRunEventProcessor, TestIdentification } from "./karma-test-run-event-processor";
+import { KarmaEvent } from "./karma-event";
+import { KarmaEventName } from "./karma-event-name";
+import { KarmaTestRunEventProcessor } from "./karma-test-run-event-processor";
+import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
 
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
-export class KarmaEventListener implements Disposable {
+export class KarmaTestEventListener implements Disposable {
   // private isListening: boolean = false;
   private server: HttpServer | undefined;
   private readonly sockets: Set<Socket> = new Set();
 
   // private currentSpecs: TestIdentification[] = [];
+  // private testEventProcessor?: TestEventProcessor;
   private disposables: Disposable[] = [];
 
   public constructor(
-    private readonly testRunEventProcessor: KarmaTestRunEventProcessor,
+    private readonly testEventProcessor: KarmaTestRunEventProcessor,
     private readonly logger: Logger)
   {
-    this.disposables.push(
-      testRunEventProcessor,
-      logger
-    );
+    this.disposables.push(logger);
   }
 
   public receiveKarmaConnection(socketPort: number): Execution {
@@ -148,14 +146,28 @@ export class KarmaEventListener implements Disposable {
     return karmaConnection;
   }
 
-  public async listenForTests(testExecution: Execution, tests: TestIdentification[] = []): Promise<TestCapture> {
+  public async listenForTestLoad(testLoadExecution: Execution) {
+    return this.listenForTests(testLoadExecution, false);
+  }
+
+  public async listenForTestRun(testRunExecution: Execution, testNames?: string[]) {
+    return this.listenForTests(testRunExecution, true);
+  }
+
+  private async listenForTests(
+    testExecution: Execution,
+    emitEvents: boolean,
+    // testEventProcessor: TestEventProcessor,
+    testNames: string[] = []): Promise<TestCapture>
+  {
     try {
       // this.currentSpecs = tests;
       // this.isListening = true;
+      // this.testEventProcessor = testEventProcessor;
 
-      this.testRunEventProcessor.beginProcessing(tests);
+      this.testEventProcessor.beginProcessing(testNames, { emitEvents });
       await testExecution.ended();
-      this.testRunEventProcessor.concludeProcessing();
+      this.testEventProcessor.concludeProcessing();
 
       const capturedTests: TestCapture = {
         [TestStatus.Failed]: [],
@@ -163,7 +175,7 @@ export class KarmaEventListener implements Disposable {
         [TestStatus.Skipped]: []
       };
 
-      this.testRunEventProcessor.getProcessedEvents().forEach(
+      this.testEventProcessor.getProcessedEvents().forEach(
         processedSpec => capturedTests[processedSpec.status].push(processedSpec)
       );
 
@@ -175,7 +187,8 @@ export class KarmaEventListener implements Disposable {
 
     }
     // finally {
-    //   this.isListening = false;
+    //   this.testEventProcessor = undefined;
+    //   // this.isListening = false;
     //   // this.currentSpecs = [];
     // }
   }
@@ -189,9 +202,9 @@ export class KarmaEventListener implements Disposable {
   // }
 
   private onSpecComplete(event: KarmaEvent) {
-    // if (!this.isListening) {
-    //   return;
-    // }
+    if (!this.testEventProcessor.isProcessing()) {  // FIXME: Remove if adding ambient event processor
+      return;
+    }
     const results: LightSpecCompleteResponse = event.results;
     const fullName: string = [ ...results.suite, results.description ].join(" ");
     const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
@@ -213,7 +226,7 @@ export class KarmaEventListener implements Disposable {
     //   return;
     // }
 
-    this.testRunEventProcessor.processTestResultEvent(testId, specResults);
+    this.testEventProcessor.processTestResultEvent(testId, specResults);
     this.logger.status(specResults.status);
   }
 

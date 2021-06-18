@@ -3,7 +3,7 @@ import { TestRunExecutor } from "../api/test-run-executor";
 import { TestRunner } from "../api/test-runner";
 import { TestServer } from "../api/test-server";
 import { TestServerExecutor } from "../api/test-server-executor";
-import { KarmaEventListener } from "../frameworks/karma/runner/karma-event-listener";
+import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
 import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { Logger } from "./logger";
 
@@ -26,7 +26,10 @@ export class CascadingTestFactory implements TestFactory {
   }
 
   public createTestRunner(
-    karmaEventListener: KarmaEventListener,
+    karmaEventListener: KarmaTestEventListener,
+    // testEventProcessor: TestEventProcessor,
+    // testLoadEventProcessor: TestEventProcessor,
+    // testRunEventProcessor: TestEventProcessor,
     specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     testRunExecutor?: TestRunExecutor): TestRunner
   {
@@ -39,6 +42,9 @@ export class CascadingTestFactory implements TestFactory {
     }
     return delegateFactory.createTestRunner!(
       karmaEventListener,
+      // testEventProcessor,
+      // testLoadEventProcessor,
+      // testRunEventProcessor,
       specToTestSuiteMapper,
       testRunExecutor ?? this.createTestRunExecutor());
   }
