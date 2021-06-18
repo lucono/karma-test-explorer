@@ -9,6 +9,7 @@ import { RetireEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-t
 
 export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
 
+  private skippedSpecIds?: string[];
   private disposables: Disposable[] = [];
 
   public constructor(
@@ -27,6 +28,7 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
     const testRunStartedEvent: TestRunStartedEvent = { type: "started", tests: [] };
     this.testRunEventEmitter.fire(testRunStartedEvent);
 
+    this.skippedSpecIds = [];
     this.testEventProcessor.beginProcessing([], { emitEvents: true });
   }
 
@@ -36,11 +38,25 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
     }
     this.logger.debug(() => `Concluding ambient test event processing`);
     this.testEventProcessor.concludeProcessing();
+
+    this.logger.debug(() => `Retiring skipped ambient test ids: ${JSON.stringify(this.skippedSpecIds)}`);
+    this.emitRetireEvent(this.skippedSpecIds);
     
     const testRunFinishedEvent: TestRunFinishedEvent = { type: "finished" };
     this.testRunEventEmitter.fire(testRunFinishedEvent);
 
+    this.skippedSpecIds = undefined;
+
     // FIXME: Retrieve and process captured test events
+  }
+
+  private emitRetireEvent(testIds?: string[]) {
+    if (!testIds?.length) {
+      return;
+    }
+    
+    const testRetireEvent: RetireEvent = { tests: testIds };
+    this.testRetireEventEmitter.fire(testRetireEvent);
   }
 
   // public getProcessedEvents(): SpecCompleteResponse[] {
@@ -50,10 +66,7 @@ export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
 
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     if (testResult.status === TestStatus.Skipped) {
-      this.logger.debug(() => `Retiring skipped ambient test result event for test id: ${testId}`);
-      
-      const testRetireEvent: RetireEvent = { tests: [testId] };
-      this.testRetireEventEmitter.fire(testRetireEvent);
+      this.skippedSpecIds?.push(testId);
       return;
     }
     this.logger.debug(() => `Processing ambient test result event for test id: ${testId}`);

@@ -107,7 +107,7 @@ export class SpecLocator implements Disposable {
     return specLocations;
   }
 
-  public isSpecFile(filePath: string): boolean {
+  public isSpecFile(filePath: string): boolean {  // FIXME: Not currently used?
     const fileAbsolutePath = resolve(this.cwd, filePath);
     const specFileAbsolutePaths = this.getAbsoluteFilesForGlobs(this.filePatterns);
     return specFileAbsolutePaths.includes(fileAbsolutePath);

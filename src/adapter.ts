@@ -357,16 +357,17 @@ export class Adapter implements TestAdapter {
       this.logger.info(`Resetting - monitored file changed: ${savedFile}`);
       await this.reset();
 
-    } else if (this.specLocator?.isSpecFile(savedFile)) {
-      this.logger.info(`Refreshing - spec file changed: ${savedFile}`);
-      // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
-      await this.refresh();
-
-      // if (savedSpecFileInfo) {
-      //   this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
-      //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
-      // }
     }
+    // else if (this.specLocator?.isSpecFile(savedFile)) {
+    //   this.logger.info(`Refreshing - spec file changed: ${savedFile}`);
+    //   // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
+    //   await this.refresh();
+
+    //   // if (savedSpecFileInfo) {
+    //   //   this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
+    //   //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
+    //   // }
+    // }
   }
 
   get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
