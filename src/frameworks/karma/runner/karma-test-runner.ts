@@ -10,7 +10,7 @@ import { TestStatus } from "../../../api/test-status";
 import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
-import { TestResults } from "../../../api/test-results";
+// import { TestResults } from "../../../api/test-results";
 
 export class KarmaTestRunner implements TestRunner {
 
@@ -23,8 +23,7 @@ export class KarmaTestRunner implements TestRunner {
     private readonly logger: Logger
   ) {}
 
-  public async loadTests(karmaPort: number): Promise<TestSuiteInfo>
-  {
+  public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
     const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
     const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
@@ -64,7 +63,7 @@ export class KarmaTestRunner implements TestRunner {
 
   public async runTests(
     karmaPort: number,
-    tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults>
+    tests: (TestInfo | TestSuiteInfo)[]): Promise<void>
   {
     this.logger.info(
       `Requested ${tests.length} tests to run having Ids: ${JSON.stringify(tests.map(test => test.id))}`,
@@ -106,7 +105,8 @@ export class KarmaTestRunner implements TestRunner {
 
     const testNames: string[] = testList.map(test =>test.fullName);
 
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestRun(
+    // const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestRun(
+    this.karmaEventListener.listenForTestRun(
       testRunOperation,
       // this.testEventProcessor,
       testNames
@@ -116,18 +116,18 @@ export class KarmaTestRunner implements TestRunner {
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
     testRunEndedDeferred.resolve();
     
-    const capturedSpecs: TestCapture = await testCapture;
-    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Failed]);
-    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Success]);
-    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Skipped]);
+    // const capturedSpecs: TestCapture = await testCapture;
+    // const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Failed]);
+    // const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Success]);
+    // const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Skipped]);
 
-    const testResults: TestResults = {
-      [TestStatus.Failed]: failedTests,
-      [TestStatus.Success]: passedTests,
-      [TestStatus.Skipped]: skippedTests
-    };
+    // const testResults: TestResults = {
+    //   [TestStatus.Failed]: failedTests,
+    //   [TestStatus.Success]: passedTests,
+    //   [TestStatus.Skipped]: skippedTests
+    // };
 
-    return testResults;
+    // return testResults;
   }
 
   private toRunnableTests(tests: AnyTestInfo[]): (TestInfo | TestSuiteInfo)[] {

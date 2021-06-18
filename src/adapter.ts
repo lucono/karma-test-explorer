@@ -38,7 +38,7 @@ export class Adapter implements TestAdapter {
   private readonly retireEmitter = new EventEmitter<RetireEvent>();
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
   private readonly testRunEmitter = new EventEmitter<TestRunEvent | TestResultEvent>();
-  private readonly testResultEmitter = this.testRunEmitter as EventEmitter<TestResultEvent>;
+  // private readonly testResultEmitter = this.testRunEmitter as EventEmitter<TestResultEvent>;
   private readonly autorunEmitter = new EventEmitter<void>();
 
   private factory!: MainFactory;
@@ -129,7 +129,7 @@ export class Adapter implements TestAdapter {
 
     this.testManager = this.factory.createTestManager(
       // this.testLoadEmitter,
-      this.testResultEmitter,
+      this.testRunEmitter as EventEmitter<TestResultEvent>,
       specLocationResolver,
       testResolver
     );
@@ -223,7 +223,7 @@ export class Adapter implements TestAdapter {
 
     const testRunStartedEvent: TestRunStartedEvent = { type: "started", tests: testIds, testRunId };
     this.testRunEmitter.fire(testRunStartedEvent);
-    
+
     let runError: string | undefined;
 
     try {

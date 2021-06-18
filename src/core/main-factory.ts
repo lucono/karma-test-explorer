@@ -165,7 +165,7 @@ export class MainFactory {
       portManager,
       testSuiteOrganizer,
       testSuiteTreeProcessor,
-      suiteTestResultProcessor,
+      // suiteTestResultProcessor,
       this.config.testGrouping,
       this.config.projectRootPath,
       this.config.karmaPort,

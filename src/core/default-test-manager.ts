@@ -8,11 +8,12 @@ import { TestManager } from "../api/test-manager";
 import { TestServer } from "../api/test-server";
 import { PortAcquisitionManager } from "../util/port-acquisition-manager";
 import { DeferredPromise } from "../util/deferred-promise";
-import { TestResults } from "../api/test-results";
+// import { TestResults } from "../api/test-results";
 import { TestGrouping } from "../api/test-grouping";
-import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
-import { TestSuiteOrganizer } from "./test-suite-organizer";
+// import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
+// import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { TestSuiteTreeProcessor } from "../util/test-suite-tree-processor";
+import { TestSuiteOrganizer } from "./test-suite-organizer";
 
 export class DefaultTestManager implements TestManager {
   private disposables: { dispose: () => void }[] = [];
@@ -25,7 +26,7 @@ export class DefaultTestManager implements TestManager {
     private readonly portManager: PortAcquisitionManager,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
-    private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
+    // private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
     private readonly defaultKarmaPort: number,
@@ -153,7 +154,7 @@ export class DefaultTestManager implements TestManager {
     }
   }
 
-  public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults> {
+  public async runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<void> {
     try {
       if (!this.isSystemsRunning()) {
         this.logger.info(`Request to run tests - ` +
@@ -169,16 +170,16 @@ export class DefaultTestManager implements TestManager {
       this.testRunning = true;
       const karmaPort: number = this.testServer.getServerPort()!;
       const uniqueTests = this.removeTestOverlaps(tests);
-      const testResults: TestResults = await this.testRunner.runTests(karmaPort, uniqueTests);
+      await this.testRunner.runTests(karmaPort, uniqueTests);
 
-      const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
-        Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
-        Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
-        Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
-      };
+      // const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
+      //   Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
+      //   Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
+      //   Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
+      // };
 
-      this.suiteTestResultEmitter.processTestResults(organizedTestResults);
-      return organizedTestResults;
+      // this.suiteTestResultEmitter.processTestResults(organizedTestResults);
+      // return organizedTestResults;
 
     } finally {
       this.testRunning = false;

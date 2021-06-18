@@ -1,6 +1,6 @@
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { Disposable } from "./disposable";
-import { TestResults } from "./test-results";
+// import { TestResults } from "./test-results";
 
 export interface TestManager extends Disposable {
     
@@ -8,7 +8,7 @@ export interface TestManager extends Disposable {
 
   loadTests(): Promise<TestSuiteInfo>;
 
-  runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<TestResults>;
+  runTests(tests: (TestInfo | TestSuiteInfo)[]): Promise<void>; // <TestResults>;
 
   stopCurrentRun(): Promise<void>;
 
