@@ -14,6 +14,7 @@ import { KarmaServer } from "./server/karma-test-server";
 import { TestFactory } from "../../api/test-factory";
 import { Disposable } from "../../api/disposable";
 import { CommandLineProcessLog } from "../../util/commandline-process-handler";
+import { KarmaEnvironmentVariable } from "./karma-environment-variable";
 
 export class KarmaFactory implements TestFactory {
 
@@ -92,7 +93,8 @@ export class KarmaFactory implements TestFactory {
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env
+      ...this.config.env,
+      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,

@@ -6,6 +6,7 @@ import { getDefaultAngularProject } from "../angular/angular-config-loader";
 import { TestFactory } from "../../api/test-factory";
 import { KarmaCommandLineTestServerExecutorOptions } from "../karma/server/karma-command-line-test-server-executor";
 import { CommandLineProcessLog } from "../../util/commandline-process-handler";
+import { KarmaEnvironmentVariable } from "../karma/karma-environment-variable";
 
 export class AngularFactory implements Partial<TestFactory> {
 
@@ -24,7 +25,8 @@ export class AngularFactory implements Partial<TestFactory> {
     const environment: { [key: string]: string | undefined } = {
       ...process.env,
       ...this.config.envFileEnvironment,
-      ...this.config.env
+      ...this.config.env,
+      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`
     };
 
     const options: KarmaCommandLineTestServerExecutorOptions = {
