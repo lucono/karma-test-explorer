@@ -178,7 +178,7 @@ export class KarmaTestEventListener implements Disposable {
       // this.isListening = true;
       // this.testEventProcessor = testEventProcessor;
 
-      this.watchModeTestEventProcessor?.concludeProcessing();
+      this.watchModeTestEventProcessor?.abortProcessing();
       
       this.testEventProcessor.beginProcessing(testNames, { emitEvents });
       await testExecution.ended();

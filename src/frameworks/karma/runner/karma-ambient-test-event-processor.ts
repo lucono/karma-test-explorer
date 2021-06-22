@@ -3,9 +3,10 @@ import { Logger } from "../../../core/logger";
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { KarmaTestEventProcessor } from "./karma-test-event-processor";
 import { TestStatus } from "../../../api/test-status";
-import { TestRunEvent } from "../../../api/test-events";
+import { TestLoadEvent, TestRunEvent } from "../../../api/test-events";
 import { EventEmitter } from "vscode";
-import { RetireEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
+import { RetireEvent, TestLoadFinishedEvent, TestLoadStartedEvent, TestRunFinishedEvent, TestRunStartedEvent, TestSuiteInfo } from "vscode-test-adapter-api";
+import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
 
 export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
 
@@ -14,8 +15,10 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
 
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
+    private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
+    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -32,10 +35,37 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     this.testEventProcessor.beginProcessing([], { emitEvents: true });
   }
 
+  public abortProcessing(): void {
+    if (!this.testEventProcessor.isProcessing()) {
+      return;
+    }
+    this.concludeCurrentProcessing();
+  }
+
   public concludeProcessing(): void {
     if (!this.testEventProcessor.isProcessing()) {
       return;
     }
+    this.concludeCurrentProcessing();
+
+    const ProcessedSpecs = this.testEventProcessor.getProcessedEvents();
+    const allCapturedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(ProcessedSpecs);
+
+    this.logger.debug(() =>
+      `Loading ${allCapturedTests.children.length} suites ` +
+      `from concluded watch mode test processing`);
+
+    const testLoadStartedEvent: TestLoadStartedEvent = { type: `started` };
+    this.testLoadEventEmitter.fire(testLoadStartedEvent);
+    
+    const testLoadFinishedEvent: TestLoadFinishedEvent = { type: `finished`, suite: allCapturedTests };
+    this.testLoadEventEmitter.fire(testLoadFinishedEvent);
+  }
+
+  private concludeCurrentProcessing(): void {
+    // if (!this.testEventProcessor.isProcessing()) {
+    //   return;
+    // }
     this.logger.debug(() => `Concluding ambient test event processing`);
     this.testEventProcessor.concludeProcessing();
 

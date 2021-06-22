@@ -5,7 +5,7 @@ import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../fram
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, OutputChannel, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
-import { TestResultEvent, TestRunEvent } from "../api/test-events";
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from "../api/test-events";
 import { TestResolver } from "./test-resolver";
 import { SuiteAggregateTestResultProcessor } from "./suite-aggregate-test-result-processor";
 import { Logger } from "./logger";
@@ -66,7 +66,7 @@ export class MainFactory {
   }
 
   public createTestManager(
-    // testLoadEventEmitter: EventEmitter<TestLoadEvent>,
+    testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
     testRetireEventEmitter: EventEmitter<RetireEvent>,
@@ -122,8 +122,10 @@ export class MainFactory {
     const watchModeTestEventProcessor = this.config.autoWatchEnabled
       ? new KarmaWatchModeTestEventProcessor(
           ambientDelegateTestEventProcessor,
+          testLoadEventEmitter,
           testRunEventEmitter,
           testRetireEventEmitter,
+          specToTestSuiteMapper,
           createLogger(KarmaWatchModeTestEventProcessor.name))
       : undefined;
 
