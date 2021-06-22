@@ -1,24 +1,30 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
 import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/jasmine-reporter";
 import { dirname, resolve } from "path";
-import { KARMA_PORT_ENV_VAR } from "../karma-constants";
+import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
 const CHROME_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
-const AUTO_WATCH_BATCH_DELAY = 5_000;  // FIXME: Read from config
+const AUTO_WATCH_BATCH_DELAY = 250;  // FIXME: Read from config
 
 export class KarmaConfigurator {
-  constructor() {}
+  private readonly karmaPort: number;
+  private readonly autoWatchEnabled: boolean;
+
+  constructor() {
+    this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
+    this.autoWatchEnabled = (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+  }
 
   public setMandatoryOptions(config:  KarmaConfig) {
     // remove 'logLevel' changing
     // https://github.com/karma-runner/karma/issues/614 is ready
 
-    config.port = parseInt(process.env[KARMA_PORT_ENV_VAR]!, 10); // FIXME Use shared constants for all environment variable exchange
+    config.port = this.karmaPort; // FIXME Use shared constants for all environment variable exchange
     config.logLevel = config.LOG_INFO;
     
     config.singleRun = false;
-    config.autoWatch = true;
-    config.autoWatchBatchDelay = AUTO_WATCH_BATCH_DELAY;
+    config.autoWatch = this.autoWatchEnabled;
+    config.autoWatchBatchDelay = this.autoWatchEnabled ? AUTO_WATCH_BATCH_DELAY : 0;
 
     config.client ??= {};
     config.client.clearContext = true;

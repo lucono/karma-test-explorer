@@ -140,9 +140,9 @@ export class KarmaTestEventProcessor {
     // }
     const processedTest = this.processedTestResultEvents.get(testId);
 
-    if (processedTest && processedTest.status !== TestStatus.Skipped) {
+    if (processedTest && testResult.status === TestStatus.Skipped) {
       this.logger.debug(() => 
-        `Ignoring duplicate previously processed test result. ` +
+        `Ignoring skipped update for previously processed test result. ` +
         `Processed test: id='${testId}', status='${testResult.status}'. ` +
         `Duplicate test: id='${processedTest.id}', status='${processedTest.status}'`);
 

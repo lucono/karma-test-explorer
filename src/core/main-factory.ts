@@ -21,7 +21,7 @@ import { Log } from "./log";
 import { KarmaServerProcessLog } from "../frameworks/karma/server/karma-server-process-log";
 import { CommandLineProcessLog } from "../util/commandline-process-handler";
 import { KarmaTestEventProcessor } from "../frameworks/karma/runner/karma-test-event-processor";
-import { KarmaAmbientTestEventProcessor } from "../frameworks/karma/runner/karma-ambient-test-event-processor";
+import { KarmaWatchModeTestEventProcessor } from "../frameworks/karma/runner/karma-ambient-test-event-processor";
 import { RetireEvent } from "vscode-test-adapter-api";
 // import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
@@ -119,12 +119,13 @@ export class MainFactory {
       createLogger(`${KarmaTestEventProcessor.name}_Ambient`)
     );
 
-    const ambientTestEventProcessor = new KarmaAmbientTestEventProcessor(
-      ambientDelegateTestEventProcessor,
-      testRunEventEmitter,
-      testRetireEventEmitter,
-      createLogger(KarmaAmbientTestEventProcessor.name)
-    );
+    const watchModeTestEventProcessor = this.config.autoWatchEnabled
+      ? new KarmaWatchModeTestEventProcessor(
+          ambientDelegateTestEventProcessor,
+          testRunEventEmitter,
+          testRetireEventEmitter,
+          createLogger(KarmaWatchModeTestEventProcessor.name))
+      : undefined;
 
     // const testLoadEventProcessor: TestEventProcessor = new KarmaTestLoadEventProcessor(
     //   simpleTestEventProcessor,
@@ -163,7 +164,7 @@ export class MainFactory {
 
     const karmaEventListener = new KarmaTestEventListener(
       testRunEventProcessor,
-      ambientTestEventProcessor,
+      watchModeTestEventProcessor,
       createLogger(KarmaTestEventListener.name)
     );
 

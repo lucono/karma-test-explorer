@@ -7,7 +7,7 @@ import { Logger } from "../../../core/logger";
 import { CommandLineProcessHandler, CommandLineProcessLog } from "../../../util/commandline-process-handler";
 import { Execution } from "../../../api/execution";
 import { TestRunExecutor } from "../../../api/test-run-executor";
-import { KARMA_PORT_ENV_VAR, USER_KARMA_CONFIG_PATH_ENV_VAR } from "../karma-constants";
+import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: { [key: string]: string | undefined };
@@ -31,8 +31,8 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
   {
     const environment: { [key: string]: string } = {
       ...this.options.environment,
-      [KARMA_PORT_ENV_VAR]: `${karmaPort}`,
-      [USER_KARMA_CONFIG_PATH_ENV_VAR]: this.userKarmaConfigFile
+      [KarmaEnvironmentVariable.KarmaPort]: `${karmaPort}`,
+      [KarmaEnvironmentVariable.UserKarmaConfigPath]: this.userKarmaConfigFile
     };
 
     const spawnOptions: SpawnOptions = {

@@ -7,7 +7,7 @@ import { TestStatus } from "../../../api/test-status";
 // import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
 import { DeferredPromise } from "../../../util/deferred-promise";
-import { KarmaAmbientTestEventProcessor } from "./karma-ambient-test-event-processor";
+import { KarmaWatchModeTestEventProcessor } from "./karma-ambient-test-event-processor";
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { KarmaTestEventProcessor } from "./karma-test-event-processor";
@@ -28,7 +28,7 @@ export class KarmaTestEventListener implements Disposable {
 
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
-    private readonly ambientTestEventProcessor: KarmaAmbientTestEventProcessor,
+    private readonly watchModeTestEventProcessor: KarmaWatchModeTestEventProcessor | undefined,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -86,7 +86,7 @@ export class KarmaTestEventListener implements Disposable {
             `  runInfo: ${JSON.stringify(runInfo)}`);
           
           if (!this.testEventProcessor.isProcessing()) {
-            this.ambientTestEventProcessor.beginProcessing();
+            this.watchModeTestEventProcessor?.beginProcessing();
           }
         });
 
@@ -101,7 +101,7 @@ export class KarmaTestEventListener implements Disposable {
           this.logger.debug(() => `Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
 
           const eventProcessor = this.testEventProcessor.isProcessing() ? this.testEventProcessor
-            : this.ambientTestEventProcessor.isProcessing() ? this.ambientTestEventProcessor
+            : this.watchModeTestEventProcessor?.isProcessing() ? this.watchModeTestEventProcessor
             : undefined;
             
           this.onSpecComplete(event, eventProcessor);
@@ -122,8 +122,8 @@ export class KarmaTestEventListener implements Disposable {
             `  browser: ${JSON.stringify(browsers)}` +
             `  runInfo: ${JSON.stringify(results)}`);
           
-          if (this.ambientTestEventProcessor.isProcessing()) {
-            this.ambientTestEventProcessor.concludeProcessing();
+          if (this.watchModeTestEventProcessor?.isProcessing()) {
+            this.watchModeTestEventProcessor?.concludeProcessing();
           }
         });
 
@@ -178,7 +178,7 @@ export class KarmaTestEventListener implements Disposable {
       // this.isListening = true;
       // this.testEventProcessor = testEventProcessor;
 
-      this.ambientTestEventProcessor.concludeProcessing();
+      this.watchModeTestEventProcessor?.concludeProcessing();
       
       this.testEventProcessor.beginProcessing(testNames, { emitEvents });
       await testExecution.ended();
@@ -218,7 +218,7 @@ export class KarmaTestEventListener implements Disposable {
 
   private onSpecComplete(
     event: KarmaEvent,
-    testEventProcessor?: KarmaTestEventProcessor | KarmaAmbientTestEventProcessor)
+    testEventProcessor?: KarmaTestEventProcessor | KarmaWatchModeTestEventProcessor)
   {
     if (!testEventProcessor?.isProcessing()) {
       return;

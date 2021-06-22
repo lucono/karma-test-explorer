@@ -1,6 +1,5 @@
 import { Server as SocketIOServer} from "socket.io"
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from "karma";
-import { KARMA_SOCKET_PORT_ENV_VAR } from "../karma/karma-constants";
 import { EventEmitter } from "events";
 import { KarmaEventName } from "../karma/runner/karma-event-name";
 import { Worker } from "worker_threads";
@@ -9,6 +8,7 @@ import { LightSpecCompleteResponse } from "../karma/runner/spec-complete-respons
 import { TestRunStatus } from "./test-run-status";
 import { resolve } from "path";
 import { TestResultEmitterWorkerData } from "../karma/runner/test-result-emitter-worker-data";
+import { KarmaEnvironmentVariable } from "../karma/karma-environment-variable";
 // import { resolve } from "path";
 
 const pingTimeout = 24 * 60 * 60 * 1000;
@@ -30,7 +30,7 @@ function TestExplorerJasmineReporter(
   self.emitter = emitter;
   // self.adapters = [];
 
-  const socketPort = Number.parseInt(process.env[KARMA_SOCKET_PORT_ENV_VAR]!, 10);
+  const socketPort = Number.parseInt(process.env[KarmaEnvironmentVariable.KarmaSocketPort]!, 10);
 
   const workerData: TestResultEmitterWorkerData = {
     socketPort,

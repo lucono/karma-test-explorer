@@ -14,5 +14,6 @@ export enum ConfigSetting {
   EnvFile = "envFile",
   LogPanel = "logpanel",
   LogFile = "logfile",
-  TestGrouping = "testGrouping"
+  TestGrouping = "testGrouping",
+  AutoWatchEnabled = "autoWatchEnabled"
 }

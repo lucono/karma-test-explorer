@@ -171,6 +171,12 @@
 					"scope": "resource",
 					"default": false
 				},
+				"karmaTestExplorer.autoWatchEnabled": {
+					"description": "Enables automatic re-run of tests when the files change",
+					"type": "boolean",
+					"scope": "resource",
+					"default": false
+				},
 				"karmaTestExplorer.defaultSocketConnectionPort": {
 					"description": "This is the port that will be used to connect Karma with the test explorer",
 					"type": "number",

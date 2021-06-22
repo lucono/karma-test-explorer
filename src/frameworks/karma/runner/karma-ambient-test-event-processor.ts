@@ -7,7 +7,7 @@ import { TestRunEvent } from "../../../api/test-events";
 import { EventEmitter } from "vscode";
 import { RetireEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
 
-export class KarmaAmbientTestEventProcessor {  // FIXME: Not currently used
+export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
 
   private skippedSpecIds?: string[];
   private disposables: Disposable[] = [];
