@@ -34,7 +34,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     this.testRunEventEmitter.fire(testRunStartedEvent);
 
     this.skippedSpecIds = [];
-    this.testEventProcessor.beginProcessing([], { emitEvents: true });
+    this.testEventProcessor.beginProcessing([], { emitEvents: [TestStatus.Success, TestStatus.Failed] });
   }
 
   public abortProcessing(): void {
@@ -51,7 +51,13 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     this.concludeCurrentProcessing();
 
     const processedSpecs = this.testEventProcessor.getProcessedEvents();
+
+    // ------------------
+    // FIXME: Duplicate processing - Test load processor does
+    // testInfo mapping  which is already done internally by
+    // the delegate karma test event processor in this class
     const capturedTests = this.testLoadProcessor.processTests(processedSpecs);
+
     // const capturedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(ProcessedSpecs);
 
     // this.logger.debug(() =>
@@ -97,13 +103,15 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
   //   return this.testEventProcessor.getProcessedEvents();
   // }
 
-  public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+  public processTestResultEvent(testResult: SpecCompleteResponse) {
+    const testId = testResult.id;
+
     if (testResult.status === TestStatus.Skipped) {
       this.skippedSpecIds?.push(testId);
       // return;
     }
     this.logger.debug(() => `Processing ambient test result event for test id: ${testId}`);
-    this.testEventProcessor.processTestResultEvent(testId, testResult);
+    this.testEventProcessor.processTestResultEvent(testResult);
   }
 
   public isProcessing(): boolean {

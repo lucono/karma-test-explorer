@@ -19,7 +19,7 @@ import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
 // import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
 const DEFAULT_EVENT_PROCESSING_OPTIONS: TestEventProcessingOptions = {
-  emitEvents: true
+  emitEvents: Object.values(TestStatus)
 };
 
 // export interface TestIdentification {
@@ -28,7 +28,7 @@ const DEFAULT_EVENT_PROCESSING_OPTIONS: TestEventProcessingOptions = {
 // }
 
 export interface TestEventProcessingOptions {
-  emitEvents?: boolean;
+  emitEvents?: TestStatus[];
   // bufferSkippedTestEvents?: boolean;
 }
 
@@ -118,10 +118,11 @@ export class KarmaTestEventProcessor {
     return Array.from(this.processedTestResultEvents.values());
   }
 
-  public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
+  public processTestResultEvent(testResult: SpecCompleteResponse) {
     if (!this.isProcessingEvents) {
       return;
     }
+    const testId = testResult.id;
 
     if (!this.isIncludedTest(testResult)) {
       this.logger.debug(() => `Skipping spec id '${testId}' - Not included in current test run`);
@@ -149,7 +150,7 @@ export class KarmaTestEventProcessor {
       return;
     }
     
-    this.emitTestRunningEvent(testId);
+    this.emitTestRunningEvent(testResult);
 
     // if (this.eventProcessingOptions.bufferSkippedTestEvents && testResult.status === TestStatus.Skipped) {
     //   this.logger.debug(() => 
@@ -160,7 +161,7 @@ export class KarmaTestEventProcessor {
     //   return;
     // }
 
-    this.emitTestResultEvent(testId, testResult);
+    this.emitTestResultEvent(testResult);
 
     this.processedTestResultEvents.set(testId, testResult);
     // this.bufferedTestResultEvents.delete(testId);
@@ -181,8 +182,10 @@ export class KarmaTestEventProcessor {
     );
   }
 
-  private emitTestRunningEvent(testId: string) {
-    if (!this.eventProcessingOptions?.emitEvents) {
+  private emitTestRunningEvent(testResult: SpecCompleteResponse) {
+    const testId = testResult.id;
+
+    if (!this.eventProcessingOptions?.emitEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
         `Emit events not enabled - ` +
         `skipping test running event for test id: ${testId}`
@@ -190,6 +193,7 @@ export class KarmaTestEventProcessor {
       return;
     }
     this.logger.debug(() => `Emitting test running event for test id: ${testId}`);
+
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
     // if (!test) {
@@ -204,8 +208,10 @@ export class KarmaTestEventProcessor {
     this.testResultEventEmitter.fire(testEvent);
   }
 
-  private emitTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
-    if (!this.eventProcessingOptions?.emitEvents) {
+  private emitTestResultEvent(testResult: SpecCompleteResponse) {
+    const testId = testResult.id;
+
+    if (!this.eventProcessingOptions?.emitEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
         `Emit events not enabled - ` +
         `skipping test result event for test id: ${testId}`

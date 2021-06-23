@@ -18,6 +18,7 @@ export class TestLoadProcessor {
   ) {}
 
   public processTests(loadedSpecs: SpecCompleteResponse[]): TestSuiteInfo {
+    this.specToTestSuiteMapper.refresh();
     let loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
     if (this.testGrouping === TestGrouping.Folder) {

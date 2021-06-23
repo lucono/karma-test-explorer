@@ -7,6 +7,14 @@ import { TestType } from "../../../api/test-infos";
 // FIXME: Move to interface in spec-locator module
 // export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
 
+// const defaultSpecResponseMappingOptions: SpecResponseMappingOptions = {
+//   refresh: false
+// }
+
+// export interface SpecResponseMappingOptions {
+//   refresh?: boolean
+// }
+
 export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thread candidate
   public constructor(
     // private readonly specLocationResolver: SpecLocationResolver,
@@ -14,8 +22,18 @@ export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thre
     private readonly logger: Logger)
   {}
 
-  public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
+  public refresh() {
     this.specLocator.reload();
+  }
+
+  public map(
+    specs: SpecCompleteResponse[],
+    // options: SpecResponseMappingOptions = defaultSpecResponseMappingOptions
+  ): TestSuiteInfo
+  {
+    // if (options.refresh) {
+    //   this.specLocator.reload();
+    // }
 
     const rootTestSuite: TestSuiteInfo = this.createRootSuite();
     const unreferencedDuplicateSpecFilesBySpec: Map<string, string[]> = new Map();
