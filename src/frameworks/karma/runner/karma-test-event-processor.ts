@@ -20,7 +20,7 @@ import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
 
 const defaultEventProcessingOptions: TestEventProcessingOptions = {
   emitTestEvents: Object.values(TestStatus),
-  emitTestSuiteEvents: true
+  emitTestStats: true
 };
 
 // export interface TestIdentification {
@@ -30,7 +30,7 @@ const defaultEventProcessingOptions: TestEventProcessingOptions = {
 
 export interface TestEventProcessingOptions {
   emitTestEvents?: TestStatus[];
-  emitTestSuiteEvents?: boolean;
+  emitTestStats?: boolean;
   // bufferSkippedTestEvents?: boolean;
 }
 
@@ -271,17 +271,22 @@ export class KarmaTestEventProcessor {
       type: TestType.Test,
       test: test ?? testId,
       state: testState,
-      description: `(${testTimeDescription})`,
-      tooltip: `${testResult.fullName}  (${resultDescription})`,
+      // description: `(${testTimeDescription})`,
+      tooltip: `${testResult.fullName}`,
       message,
       decorations
     };
+    
+    if (this.eventProcessingOptions?.emitTestStats) {
+      testEvent.description = `(${testTimeDescription})`;
+      testEvent.tooltip += `  (${resultDescription})`;
+    }
 
     this.testResultEventEmitter.fire(testEvent);
   }
 
   private emitTestSuiteEvents() {  // FIXME: Remove for test load processor
-    if (!this.eventProcessingOptions?.emitTestSuiteEvents) {
+    if (!this.eventProcessingOptions?.emitTestStats) {
       return;
     }
     
