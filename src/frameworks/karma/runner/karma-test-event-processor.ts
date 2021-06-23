@@ -18,8 +18,9 @@ import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
 // import { TestEventProcessor, TestIdentification } from "./test-event-processor";
 // import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
-const DEFAULT_EVENT_PROCESSING_OPTIONS: TestEventProcessingOptions = {
-  emitEvents: Object.values(TestStatus)
+const defaultEventProcessingOptions: TestEventProcessingOptions = {
+  emitTestEvents: Object.values(TestStatus),
+  emitTestSuiteEvents: true
 };
 
 // export interface TestIdentification {
@@ -28,7 +29,8 @@ const DEFAULT_EVENT_PROCESSING_OPTIONS: TestEventProcessingOptions = {
 // }
 
 export interface TestEventProcessingOptions {
-  emitEvents?: TestStatus[];
+  emitTestEvents?: TestStatus[];
+  emitTestSuiteEvents?: boolean;
   // bufferSkippedTestEvents?: boolean;
 }
 
@@ -62,7 +64,7 @@ export class KarmaTestEventProcessor {
 
   public beginProcessing(
     testNames: string[] = [],
-    eventProcessingOptions: TestEventProcessingOptions = DEFAULT_EVENT_PROCESSING_OPTIONS)
+    eventProcessingOptions: TestEventProcessingOptions = defaultEventProcessingOptions)
   {
     if (this.isProcessingEvents) {
       this.concludeProcessing();
@@ -185,7 +187,7 @@ export class KarmaTestEventProcessor {
   private emitTestRunningEvent(testResult: SpecCompleteResponse) {
     const testId = testResult.id;
 
-    if (!this.eventProcessingOptions?.emitEvents?.includes(testResult.status)) {
+    if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
         `Emit events not enabled - ` +
         `skipping test running event for test id: ${testId}`
@@ -211,7 +213,7 @@ export class KarmaTestEventProcessor {
   private emitTestResultEvent(testResult: SpecCompleteResponse) {
     const testId = testResult.id;
 
-    if (!this.eventProcessingOptions?.emitEvents?.includes(testResult.status)) {
+    if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
         `Emit events not enabled - ` +
         `skipping test result event for test id: ${testId}`
@@ -279,7 +281,7 @@ export class KarmaTestEventProcessor {
   }
 
   private emitTestSuiteEvents() {  // FIXME: Remove for test load processor
-    if (!this.eventProcessingOptions?.emitEvents) {
+    if (!this.eventProcessingOptions?.emitTestSuiteEvents) {
       return;
     }
     

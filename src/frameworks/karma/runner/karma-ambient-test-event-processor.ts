@@ -34,7 +34,10 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     this.testRunEventEmitter.fire(testRunStartedEvent);
 
     this.skippedSpecIds = [];
-    this.testEventProcessor.beginProcessing([], { emitEvents: [TestStatus.Success, TestStatus.Failed] });
+    this.testEventProcessor.beginProcessing([], {
+      emitTestEvents: [TestStatus.Success, TestStatus.Failed],
+      emitTestSuiteEvents: false
+    });
   }
 
   public abortProcessing(): void {
