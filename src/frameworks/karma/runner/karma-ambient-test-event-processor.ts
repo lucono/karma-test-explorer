@@ -100,7 +100,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
   public processTestResultEvent(testId: string, testResult: SpecCompleteResponse) {
     if (testResult.status === TestStatus.Skipped) {
       this.skippedSpecIds?.push(testId);
-      return;
+      // return;
     }
     this.logger.debug(() => `Processing ambient test result event for test id: ${testId}`);
     this.testEventProcessor.processTestResultEvent(testId, testResult);

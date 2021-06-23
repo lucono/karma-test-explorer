@@ -50,10 +50,17 @@ export class SpecLocator implements Disposable {
     private readonly specLocatorOptions: SpecLocatorOptions = {})
   {
     this.cwd = specLocatorOptions.cwd ?? process.cwd();
-    const fileEncoding = specLocatorOptions.fileEncoding ?? DEFAULT_FILE_ENCODING;
+    this.reload();
+  }
+
+  public reload() {
+    this.fileInfoMap.clear();
+    this.specFilesBySuite.clear();
+
+    const fileEncoding = this.specLocatorOptions.fileEncoding ?? DEFAULT_FILE_ENCODING;
     let loadedFileCount: number = 0;
 
-    this.getAbsoluteFilesForGlobs(filePatterns).forEach(filePath => {
+    this.getAbsoluteFilesForGlobs(this.filePatterns).forEach(filePath => {
       this.processFile(filePath, fileEncoding);
       loadedFileCount++;
     });

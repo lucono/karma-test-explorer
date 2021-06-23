@@ -1,19 +1,22 @@
 import { SpecCompleteResponse } from "./spec-complete-response";
-import { SpecLocation } from "../../../util/spec-locator";
+import { SpecLocator } from "../../../util/spec-locator";
 import { TestSuiteInfo, TestInfo } from "vscode-test-adapter-api";
 import { Logger } from "../../../core/logger";
 import { TestType } from "../../../api/test-infos";
 
 // FIXME: Move to interface in spec-locator module
-export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
+// export type SpecLocationResolver = (specSuite: string[], specDescription?: string) => SpecLocation[];
 
 export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thread candidate
   public constructor(
-    private readonly specLocationResolver: SpecLocationResolver,
+    // private readonly specLocationResolver: SpecLocationResolver,
+    private readonly specLocator: SpecLocator,
     private readonly logger: Logger)
   {}
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
+    this.specLocator.reload();
+
     const rootTestSuite: TestSuiteInfo = this.createRootSuite();
     const unreferencedDuplicateSpecFilesBySpec: Map<string, string[]> = new Map();
     
@@ -21,7 +24,7 @@ export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thre
 
     specs.forEach(rawSpec => {
       const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
-      const matchingSpecLocations = this.specLocationResolver(spec.suite, spec.description);
+      const matchingSpecLocations = this.specLocator.getSpecLocation(spec.suite, spec.description);
       let specFile: string | undefined = spec.filePath; // FIXME: Convert to absolute path
 
       if (matchingSpecLocations.length === 1) {
@@ -95,7 +98,7 @@ export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thre
     suitePath: string[], 
     suiteFile: string): TestSuiteInfo
   {
-    const allMatchingSuiteLocations = this.specLocationResolver(suitePath);
+    const allMatchingSuiteLocations = this.specLocator.getSpecLocation(suitePath);
     const suiteLocation = allMatchingSuiteLocations.find(loc => loc.file === suiteFile);
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(" ");
@@ -141,7 +144,7 @@ export class SpecResponseToTestSuiteInfoMapper {  // TODO: Potential worker thre
     spec: SpecCompleteResponse,
     specFile: string): TestInfo
   {
-    const allMatchingSpecLocations = this.specLocationResolver(spec.suite, spec.description);
+    const allMatchingSpecLocations = this.specLocator.getSpecLocation(spec.suite, spec.description);
     const specLocation = allMatchingSpecLocations.find(loc => loc.file === specFile);
 
     const runFailureMessage = spec.failureMessages?.join("\n");

@@ -1,7 +1,7 @@
 import { DefaultTestManager } from "./default-test-manager";
 import { ExtensionConfig } from "./extension-config";
 import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
-import { SpecLocationResolver, SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { TestSuiteOrganizer } from "./test-suite-organizer";
 import { EventEmitter, OutputChannel, workspace, WorkspaceFolder } from "vscode";
 import { KarmaFactory } from "../frameworks/karma/karma-factory";
@@ -71,7 +71,7 @@ export class MainFactory {
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
     testRetireEventEmitter: EventEmitter<RetireEvent>,
-    specLocationResolver: SpecLocationResolver,
+    // specLocationResolver: SpecLocationResolver,
     testResolver: TestResolver): DefaultTestManager
   {
     const createLogger = (loggerName: string): Logger => {
@@ -88,8 +88,10 @@ export class MainFactory {
       createLogger(SuiteAggregateTestResultProcessor.name)
     );
 
+    const specLocator = this.fetchTestInfo();
+
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
-      specLocationResolver,
+      specLocator,
       createLogger(SpecResponseToTestSuiteInfoMapper.name)
     );
 

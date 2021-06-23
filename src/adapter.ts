@@ -25,7 +25,7 @@ import {
 import { Logger } from "./core/logger";
 import { ExtensionConfig } from "./core/extension-config";
 import { Debugger } from "./core/debugger";
-import { SpecLocation, SpecLocator } from './util/spec-locator';
+import { SpecLocator } from './util/spec-locator';
 import { ConfigSetting } from "./core/config-setting"
 import { TestType } from "./api/test-infos";
 import { TestLoadEvent, TestRunEvent, TestResultEvent } from "./api/test-events";
@@ -33,7 +33,7 @@ import { TestManager } from "./api/test-manager";
 import { Disposable } from "./api/disposable";
 import { MainFactory } from "./core/main-factory";
 import { TestResolver } from "./core/test-resolver";
-import { SpecLocationResolver } from "./frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+// import { SpecLocationResolver } from "./frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
 import { Log } from "./core/log";
 
 export class Adapter implements TestAdapter {
@@ -105,9 +105,9 @@ export class Adapter implements TestAdapter {
     this.debugger = new Debugger(this.logger);
     this.initDisposables.push(this.debugger);
 
-    const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
-      return this.specLocator?.getSpecLocation(suite, description) ?? [];
-    };
+    // const specLocationResolver: SpecLocationResolver = (suite: string[], description?: string): SpecLocation[] => {
+    //   return this.specLocator?.getSpecLocation(suite, description) ?? [];
+    // };
 
     const testResolver: TestResolver = {
       resolveTest: (testId: string): TestInfo | undefined => {
@@ -128,7 +128,7 @@ export class Adapter implements TestAdapter {
       this.testRunEmitter as EventEmitter<TestRunEvent>,
       this.testRunEmitter as EventEmitter<TestResultEvent>,
       this.retireEmitter,
-      specLocationResolver,
+      // specLocationResolver,
       testResolver
     );
 
