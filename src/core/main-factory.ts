@@ -23,6 +23,7 @@ import { CommandLineProcessLog } from "../util/commandline-process-handler";
 import { KarmaTestEventProcessor } from "../frameworks/karma/runner/karma-test-event-processor";
 import { KarmaWatchModeTestEventProcessor } from "../frameworks/karma/runner/karma-ambient-test-event-processor";
 import { RetireEvent } from "vscode-test-adapter-api";
+import { TestLoadProcessor } from "../frameworks/karma/runner/test-load-processor";
 // import { KarmaTestLoadEventProcessor } from "../frameworks/karma/runner/karma-test-load-event-processor";
 
 export class MainFactory {
@@ -92,6 +93,15 @@ export class MainFactory {
       createLogger(SpecResponseToTestSuiteInfoMapper.name)
     );
 
+    const testLoadProcessor = new TestLoadProcessor(
+      specToTestSuiteMapper,
+      testSuiteOrganizer,
+      testSuiteTreeProcessor,
+      this.config.testGrouping,
+      this.config.projectRootPath,
+      createLogger(TestLoadProcessor.name)
+    );
+
     // const testEventProcessingOptions: TestEventProcessingOptions = {
     //   // bufferSkippedTestEvents: false,
     //   emitEvents: true
@@ -125,7 +135,8 @@ export class MainFactory {
           testLoadEventEmitter,
           testRunEventEmitter,
           testRetireEventEmitter,
-          specToTestSuiteMapper,
+          // specToTestSuiteMapper,
+          testLoadProcessor,
           createLogger(KarmaWatchModeTestEventProcessor.name))
       : undefined;
 
@@ -178,7 +189,8 @@ export class MainFactory {
       karmaEventListener,
       // testLoadEventProcessor,
       // testRunEventProcessor,
-      specToTestSuiteMapper,
+      // specToTestSuiteMapper,
+      testLoadProcessor,
       testRunExecutor
     );
 
@@ -189,11 +201,11 @@ export class MainFactory {
       testRunner,
       karmaEventListener,
       portManager,
-      testSuiteOrganizer,
-      testSuiteTreeProcessor,
-      // suiteTestResultProcessor,
-      this.config.testGrouping,
-      this.config.projectRootPath,
+      // testSuiteOrganizer,
+      // testSuiteTreeProcessor,
+      // // suiteTestResultProcessor,
+      // this.config.testGrouping,
+      // this.config.projectRootPath,
       this.config.karmaPort,
       this.config.defaultSocketConnectionPort,
       createLogger(DefaultTestManager.name)

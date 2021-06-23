@@ -6,7 +6,6 @@ import { KarmaCommandLineTestRunExecutor } from "./runner/karma-command-line-tes
 import { KarmaHttpTestRunExecutor } from "./runner/karma-http-test-run-executor";
 import { TestRunner } from "../../api/test-runner";
 import { KarmaTestEventListener } from "./runner/karma-test-event-listener";
-import { SpecResponseToTestSuiteInfoMapper } from "./runner/spec-response-to-test-suite-info-mapper";
 import { KarmaTestRunner } from "./runner/karma-test-runner";
 import { KarmaCommandLineTestServerExecutor, KarmaCommandLineTestServerExecutorOptions } from "./server/karma-command-line-test-server-executor";
 import { TestServer } from "../../api/test-server";
@@ -15,6 +14,7 @@ import { TestFactory } from "../../api/test-factory";
 import { Disposable } from "../../api/disposable";
 import { CommandLineProcessLog } from "../../util/commandline-process-handler";
 import { KarmaEnvironmentVariable } from "./karma-environment-variable";
+import { TestLoadProcessor } from "./runner/test-load-processor";
 
 export class KarmaFactory implements TestFactory {
 
@@ -38,7 +38,8 @@ export class KarmaFactory implements TestFactory {
     // testEventProcessor: TestEventProcessor,
     // testLoadEventProcessor: TestEventProcessor,
     // testRunEventProcessor: TestEventProcessor,
-    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    // specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    testLoadProcessor: TestLoadProcessor,
     testRunExecutor?: TestRunExecutor): TestRunner
   {
     const runExecutor = testRunExecutor ?? this.createTestRunExecutor();
@@ -49,7 +50,8 @@ export class KarmaFactory implements TestFactory {
       // testEventProcessor,
       // testLoadEventProcessor,
       // testRunEventProcessor,
-      specToTestSuiteMapper,
+      // specToTestSuiteMapper,
+      testLoadProcessor,
       this.logger  // FIXME: Create new properly named logger
     );
   }

@@ -159,19 +159,29 @@ export class KarmaTestEventListener implements Disposable {
     return karmaConnection;
   }
 
-  public async listenForTestLoad(testLoadExecution: Execution) {
+  public async listenForTestLoad(testLoadExecution: Execution): Promise<SpecCompleteResponse[]> {
     return this.listenForTests(testLoadExecution, false);
   }
 
-  public async listenForTestRun(testRunExecution: Execution, testNames?: string[]) {
-    return this.listenForTests(testRunExecution, true, testNames);
+  public async listenForTestRun(testRunExecution: Execution, testNames?: string[]): Promise<TestCapture> {
+    const capturedSpecs = await this.listenForTests(testRunExecution, true, testNames);
+
+    const capturedTests: TestCapture = {
+      [TestStatus.Failed]: [],
+      [TestStatus.Success]: [],
+      [TestStatus.Skipped]: []
+    };
+
+    capturedSpecs.forEach(processedSpec => capturedTests[processedSpec.status].push(processedSpec));
+
+    return capturedTests;
   }
 
   private async listenForTests(
     testExecution: Execution,
     emitEvents: boolean,
     // testEventProcessor: TestEventProcessor,
-    testNames: string[] = []): Promise<TestCapture>
+    testNames: string[] = []): Promise<SpecCompleteResponse[]>
   {
     try {
       // this.currentSpecs = tests;
@@ -184,17 +194,17 @@ export class KarmaTestEventListener implements Disposable {
       await testExecution.ended();
       this.testEventProcessor.concludeProcessing();
 
-      const capturedTests: TestCapture = {
-        [TestStatus.Failed]: [],
-        [TestStatus.Success]: [],
-        [TestStatus.Skipped]: []
-      };
+      // const capturedTests: TestCapture = {
+      //   [TestStatus.Failed]: [],
+      //   [TestStatus.Success]: [],
+      //   [TestStatus.Skipped]: []
+      // };
 
-      this.testEventProcessor.getProcessedEvents().forEach(
-        processedSpec => capturedTests[processedSpec.status].push(processedSpec)
-      );
+      // this.testEventProcessor.getProcessedEvents().forEach(
+      //   processedSpec => capturedTests[processedSpec.status].push(processedSpec)
+      // );
 
-      return capturedTests;
+      return this.testEventProcessor.getProcessedEvents();
 
     } catch (error) {
       this.logger.error(`Could not listen for Karma events - Test execution failed: ${error.message ?? error}`);

@@ -1,15 +1,14 @@
 import { Logger } from "../../../core/logger";
-import { KarmaTestEventListener, TestCapture } from "./karma-test-event-listener";
+import { KarmaTestEventListener } from "./karma-test-event-listener";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestRunner } from "../../../api/test-runner";
 import { SpecCompleteResponse } from "./spec-complete-response";
-import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
 import { DeferredPromise } from "../../../util/deferred-promise";
 import { Execution } from "../../../api/execution";
-import { TestStatus } from "../../../api/test-status";
 import { TestRunExecutor } from "../../../api/test-run-executor";
 import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
 import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
+import { TestLoadProcessor } from "./test-load-processor";
 // import { TestResults } from "../../../api/test-results";
 
 export class KarmaTestRunner implements TestRunner {
@@ -19,7 +18,8 @@ export class KarmaTestRunner implements TestRunner {
     private readonly karmaEventListener: KarmaTestEventListener,  // FIXME: Should not receive but own its own listener
     // private readonly testEventProcessor: TestEventProcessor,
     // private readonly testRunEventProcessor: TestEventProcessor,
-    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    // private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    private readonly testLoadProcessor: TestLoadProcessor,
     private readonly logger: Logger
   ) {}
 
@@ -32,7 +32,7 @@ export class KarmaTestRunner implements TestRunner {
       ended: () => testLoadEndedDeferred.promise()
     };
 
-    const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestLoad(
+    const testCapture: Promise<SpecCompleteResponse[]> = this.karmaEventListener.listenForTestLoad(
       testLoadOperation,
       // this.testEventProcessor
     );
@@ -43,20 +43,22 @@ export class KarmaTestRunner implements TestRunner {
     await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
     testLoadEndedDeferred.resolve();
 
-    const capturedSpecs: TestCapture = await testCapture;
+    const loadedSpecs: SpecCompleteResponse[] = await testCapture;
 
-    const loadedSpecs: SpecCompleteResponse[] = [
-      ...capturedSpecs[TestStatus.Skipped],
-      ...capturedSpecs[TestStatus.Success],
-      ...capturedSpecs[TestStatus.Failed]
-    ];
+    // const loadedSpecs: SpecCompleteResponse[] = [
+    //   ...capturedSpecs[TestStatus.Skipped],
+    //   ...capturedSpecs[TestStatus.Success],
+    //   ...capturedSpecs[TestStatus.Failed]
+    // ];
 
-    this.logger.info(`Load tests captured ` +
-      `${capturedSpecs[TestStatus.Skipped].length} skipped specs, ` +
-      `${capturedSpecs[TestStatus.Success].length} passed specs, ` +
-      `${capturedSpecs[TestStatus.Failed].length} failed specs`);
+    const loadedTests: TestSuiteInfo = this.testLoadProcessor.processTests(loadedSpecs);
 
-    const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
+    // this.logger.info(`Load tests captured ` +
+    //   `${capturedSpecs[TestStatus.Skipped].length} skipped specs, ` +
+    //   `${capturedSpecs[TestStatus.Success].length} passed specs, ` +
+    //   `${capturedSpecs[TestStatus.Failed].length} failed specs`);
+
+    // const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
     return loadedTests;
   }

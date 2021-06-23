@@ -4,7 +4,7 @@ import { TestRunner } from "../api/test-runner";
 import { TestServer } from "../api/test-server";
 import { TestServerExecutor } from "../api/test-server-executor";
 import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
-import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { TestLoadProcessor } from "../frameworks/karma/runner/test-load-processor";
 import { Logger } from "./logger";
 
 export class CascadingTestFactory implements TestFactory {
@@ -30,7 +30,8 @@ export class CascadingTestFactory implements TestFactory {
     // testEventProcessor: TestEventProcessor,
     // testLoadEventProcessor: TestEventProcessor,
     // testRunEventProcessor: TestEventProcessor,
-    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    // specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    testLoadProcessor: TestLoadProcessor,
     testRunExecutor?: TestRunExecutor): TestRunner
   {
     const delegateFactory = this.delegateTestFactories.find(factory => 'createTestRunner' in factory);
@@ -45,7 +46,8 @@ export class CascadingTestFactory implements TestFactory {
       // testEventProcessor,
       // testLoadEventProcessor,
       // testRunEventProcessor,
-      specToTestSuiteMapper,
+      // specToTestSuiteMapper,
+      testLoadProcessor,
       testRunExecutor ?? this.createTestRunExecutor());
   }
 

@@ -1,5 +1,6 @@
 import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
-import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+// import { SpecResponseToTestSuiteInfoMapper } from "../frameworks/karma/runner/spec-response-to-test-suite-info-mapper";
+import { TestLoadProcessor } from "../frameworks/karma/runner/test-load-processor";
 import { Disposable } from "./disposable";
 import { TestRunExecutor } from "./test-run-executor";
 // import { TestRunExecutor } from "./test-run-executor";
@@ -17,7 +18,8 @@ export interface TestFactory extends Disposable {
     // testEventProcessor: TestEventProcessor,
     // testLoadEventProcessor: TestEventProcessor,
     // testRunEventProcessor: TestEventProcessor,
-    specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    // specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    testLoadProcessor: TestLoadProcessor,
     testRunExecutor?: TestRunExecutor): TestRunner;
 
   createTestServerExecutor(): TestServerExecutor;

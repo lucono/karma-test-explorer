@@ -181,41 +181,6 @@ export class KarmaTestEventProcessor {
     );
   }
 
-  private emitTestSuiteEvents() {  // FIXME: Remove for test load processor
-    if (!this.eventProcessingOptions?.emitEvents) {
-      return;
-    }
-    
-    const capturedTests: TestCapture = {
-      [TestStatus.Failed]: [],
-      [TestStatus.Success]: [],
-      [TestStatus.Skipped]: []
-    };
-
-    Array.from(this.processedTestResultEvents.values()).forEach(
-      processedSpec => capturedTests[processedSpec.status].push(processedSpec)
-    );
-
-    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Failed]);
-    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Success]);
-    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Skipped]);
-
-    const testResults: TestResults = {
-      [TestStatus.Failed]: failedTests,
-      [TestStatus.Success]: passedTests,
-      [TestStatus.Skipped]: skippedTests
-    };
-
-    const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
-      Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
-      Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
-      Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
-    };
-
-    this.suiteTestResultEmitter.processTestResults(organizedTestResults);
-    // return organizedTestResults;
-  }
-
   private emitTestRunningEvent(testId: string) {
     if (!this.eventProcessingOptions?.emitEvents) {
       this.logger.debug(() =>
@@ -305,6 +270,41 @@ export class KarmaTestEventProcessor {
     };
 
     this.testResultEventEmitter.fire(testEvent);
+  }
+
+  private emitTestSuiteEvents() {  // FIXME: Remove for test load processor
+    if (!this.eventProcessingOptions?.emitEvents) {
+      return;
+    }
+    
+    const capturedTests: TestCapture = {
+      [TestStatus.Failed]: [],
+      [TestStatus.Success]: [],
+      [TestStatus.Skipped]: []
+    };
+
+    Array.from(this.processedTestResultEvents.values()).forEach(
+      processedSpec => capturedTests[processedSpec.status].push(processedSpec)
+    );
+
+    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Failed]);
+    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Success]);
+    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Skipped]);
+
+    const testResults: TestResults = {
+      [TestStatus.Failed]: failedTests,
+      [TestStatus.Success]: passedTests,
+      [TestStatus.Skipped]: skippedTests
+    };
+
+    const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
+      Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
+      Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
+      Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
+    };
+
+    this.suiteTestResultEmitter.processTestResults(organizedTestResults);
+    // return organizedTestResults;
   }
 
   private updateTestWithResultData(test: TestInfo, testResult: SpecCompleteResponse) {
