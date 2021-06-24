@@ -140,6 +140,7 @@ export class MainFactory {
           testRetireEventEmitter,
           // specToTestSuiteMapper,
           testLoadProcessor,
+          testResolver,
           createLogger(KarmaWatchModeTestEventProcessor.name))
       : undefined;
 

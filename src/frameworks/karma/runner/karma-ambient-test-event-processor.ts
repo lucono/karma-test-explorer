@@ -7,6 +7,7 @@ import { TestLoadEvent, TestResultEvent, TestRunEvent } from "../../../api/test-
 import { EventEmitter } from "vscode";
 import { RetireEvent, TestEvent, TestInfo, TestLoadFinishedEvent, TestLoadStartedEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
 import { TestLoadProcessor } from "./test-load-processor";
+import { TestResolver } from "../../../core/test-resolver";
 // import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
 
 export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
@@ -22,6 +23,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     // private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly testLoadProcessor: TestLoadProcessor,
+    private readonly testResolver: TestResolver,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -55,7 +57,20 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     }
     this.concludeCurrentProcessing();
 
+    this.emitTestLoadEvents();
+    this.emitFailedTestEvents();
+  }
+
+  private emitTestLoadEvents() {
     const processedSpecs: SpecCompleteResponse[] = this.testEventProcessor.getProcessedSpecs();
+    const currentLoadedTestSuite = this.testResolver.resolveRootSuite();
+
+    const hasTestChanges = processedSpecs.length !== currentLoadedTestSuite?.testCount
+      || processedSpecs.some(spec => spec.fullName !== this.testResolver.resolveTest(spec.id)?.fullName);
+
+    if (!hasTestChanges) {
+      return;
+    }
 
     // ------------------
     // FIXME: Duplicate processing - Test load processor does
@@ -74,7 +89,9 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: `finished`, suite: capturedTests };
     this.testLoadEventEmitter.fire(testLoadFinishedEvent);
+  }
 
+  private emitFailedTestEvents() {
     const filteredFailedEvents: TestEvent[] = this.testEventProcessor.getFilteredEvents();
     const failedTestIds: string[] = filteredFailedEvents.map(event => (event.test as TestInfo).id ?? event.test);
 

@@ -4,7 +4,7 @@ import { dirname, resolve } from "path";
 import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
 const CHROME_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
-const AUTO_WATCH_BATCH_DELAY = 250;  // FIXME: Read from config
+const AUTO_WATCH_BATCH_DELAY = 2_500;  // FIXME: Read from config
 
 export class KarmaConfigurator {
   private readonly karmaPort: number;
