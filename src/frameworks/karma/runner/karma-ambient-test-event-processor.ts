@@ -3,9 +3,9 @@ import { Logger } from "../../../core/logger";
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { KarmaTestEventProcessor } from "./karma-test-event-processor";
 import { TestStatus } from "../../../api/test-status";
-import { TestLoadEvent, TestRunEvent } from "../../../api/test-events";
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from "../../../api/test-events";
 import { EventEmitter } from "vscode";
-import { RetireEvent, TestLoadFinishedEvent, TestLoadStartedEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
+import { RetireEvent, TestEvent, TestInfo, TestLoadFinishedEvent, TestLoadStartedEvent, TestRunFinishedEvent, TestRunStartedEvent } from "vscode-test-adapter-api";
 import { TestLoadProcessor } from "./test-load-processor";
 // import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
 
@@ -18,6 +18,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     private readonly testEventProcessor: KarmaTestEventProcessor,
     private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
+    private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     // private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly testLoadProcessor: TestLoadProcessor,
@@ -36,6 +37,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     this.skippedSpecIds = [];
     this.testEventProcessor.beginProcessing([], {
       emitTestEvents: [TestStatus.Success, TestStatus.Failed],
+      filterTestEvents: [TestStatus.Failed],
       emitTestStats: false
     });
   }
@@ -53,7 +55,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     }
     this.concludeCurrentProcessing();
 
-    const processedSpecs = this.testEventProcessor.getProcessedEvents();
+    const processedSpecs: SpecCompleteResponse[] = this.testEventProcessor.getProcessedSpecs();
 
     // ------------------
     // FIXME: Duplicate processing - Test load processor does
@@ -72,6 +74,17 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: `finished`, suite: capturedTests };
     this.testLoadEventEmitter.fire(testLoadFinishedEvent);
+
+    const filteredFailedEvents: TestEvent[] = this.testEventProcessor.getFilteredEvents();
+    const failedTestIds: string[] = filteredFailedEvents.map(event => (event.test as TestInfo).id ?? event.test);
+
+    const testRunStartedEvent: TestRunStartedEvent = { type: `started`, tests: failedTestIds };
+    this.testRunEventEmitter.fire(testRunStartedEvent);
+
+    filteredFailedEvents.forEach(testEvent => this.testResultEventEmitter.fire(testEvent));
+    
+    const testRunFinishedEvent: TestRunFinishedEvent = { type: `finished` };
+    this.testLoadEventEmitter.fire(testRunFinishedEvent);
   }
 
   private concludeCurrentProcessing(): void {

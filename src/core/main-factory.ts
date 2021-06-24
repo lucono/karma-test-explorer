@@ -136,6 +136,7 @@ export class MainFactory {
           ambientDelegateTestEventProcessor,
           testLoadEventEmitter,
           testRunEventEmitter,
+          testResultEventEmitter,
           testRetireEventEmitter,
           // specToTestSuiteMapper,
           testLoadProcessor,

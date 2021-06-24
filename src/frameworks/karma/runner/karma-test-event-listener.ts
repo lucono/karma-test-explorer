@@ -204,7 +204,7 @@ export class KarmaTestEventListener implements Disposable {
       //   processedSpec => capturedTests[processedSpec.status].push(processedSpec)
       // );
 
-      return this.testEventProcessor.getProcessedEvents();
+      return this.testEventProcessor.getProcessedSpecs();
 
     } catch (error) {
       this.logger.error(`Could not listen for Karma events - Test execution failed: ${error.message ?? error}`);

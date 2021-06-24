@@ -19,6 +19,7 @@ import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
 // import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
 const defaultEventProcessingOptions: TestEventProcessingOptions = {
+  filterTestEvents: [],
   emitTestEvents: Object.values(TestStatus),
   emitTestStats: true
 };
@@ -29,14 +30,14 @@ const defaultEventProcessingOptions: TestEventProcessingOptions = {
 // }
 
 export interface TestEventProcessingOptions {
+  filterTestEvents?: TestStatus[];
   emitTestEvents?: TestStatus[];
   emitTestStats?: boolean;
-  // bufferSkippedTestEvents?: boolean;
 }
 
 export class KarmaTestEventProcessor {
-  private readonly processedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
-  // private readonly bufferedTestResultEvents: Map<string, SpecCompleteResponse> = new Map();
+  private readonly processedTestResults: Map<string, SpecCompleteResponse> = new Map();
+  private readonly filteredTestResultEvents: Map<string, TestEvent> = new Map();
   private eventProcessingOptions?: TestEventProcessingOptions;
 
   private currentTestNames?: string[];
@@ -69,8 +70,8 @@ export class KarmaTestEventProcessor {
     if (this.isProcessingEvents) {
       this.concludeProcessing();
     }
-    this.processedTestResultEvents.clear();
-    // this.bufferedTestResultEvents.clear();
+    this.processedTestResults.clear();
+    this.filteredTestResultEvents.clear();
     
     // const rootSuite = this.testResolver.resolveRootSuite();
 
@@ -115,9 +116,13 @@ export class KarmaTestEventProcessor {
     this.isProcessingEvents = false;
   }
 
-  public getProcessedEvents(): SpecCompleteResponse[] {  // FIXME: Remove for test run processor
+  public getProcessedSpecs(): SpecCompleteResponse[] {  // FIXME: Remove for test run processor
     this.concludeProcessing();
-    return Array.from(this.processedTestResultEvents.values());
+    return Array.from(this.processedTestResults.values());
+  }
+
+  public getFilteredEvents(): TestEvent[] {
+    return Array.from(this.filteredTestResultEvents.values());
   }
 
   public processTestResultEvent(testResult: SpecCompleteResponse) {
@@ -141,7 +146,7 @@ export class KarmaTestEventProcessor {
 
     //   return;
     // }
-    const processedTest = this.processedTestResultEvents.get(testId);
+    const processedTest = this.processedTestResults.get(testId);
 
     if (processedTest && testResult.status === TestStatus.Skipped) {
       this.logger.debug(() => 
@@ -165,7 +170,7 @@ export class KarmaTestEventProcessor {
 
     this.emitTestResultEvent(testResult);
 
-    this.processedTestResultEvents.set(testId, testResult);
+    this.processedTestResults.set(testId, testResult);
     // this.bufferedTestResultEvents.delete(testId);
   }
 
@@ -215,12 +220,12 @@ export class KarmaTestEventProcessor {
 
     if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
-        `Emit events not enabled - ` +
-        `skipping test result event for test id: ${testId}`
-      );
+        `Emit events not enabled for test status ${testResult.status} - ` +
+        `skipping test result event for test id: ${testId}`);
+
       return;
     }
-    this.logger.debug(() => `Emitting test result event for test id: ${testId}`);
+    this.logger.debug(() => `Processing test result event for test id: ${testId}`);
     
     const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
@@ -282,6 +287,15 @@ export class KarmaTestEventProcessor {
       testEvent.tooltip += `  (${resultDescription})`;
     }
 
+    if (this.eventProcessingOptions.filterTestEvents?.includes(testResult.status)) {
+      this.logger.debug(() =>
+        `Filtering ${testResult.status} test result event ` +
+        `for test id: ${testId}`);
+
+      this.filteredTestResultEvents.set(testResult.id, testEvent);
+      return;
+    }
+
     this.testResultEventEmitter.fire(testEvent);
   }
 
@@ -296,7 +310,7 @@ export class KarmaTestEventProcessor {
       [TestStatus.Skipped]: []
     };
 
-    Array.from(this.processedTestResultEvents.values()).forEach(
+    Array.from(this.processedTestResults.values()).forEach(
       processedSpec => capturedTests[processedSpec.status].push(processedSpec)
     );
 
