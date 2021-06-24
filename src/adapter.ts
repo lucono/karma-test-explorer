@@ -344,16 +344,19 @@ export class Adapter implements TestAdapter {
       await this.reset();
 
     }
-    // else if (this.specLocator?.isSpecFile(savedFile)) {
-    //   this.logger.info(`Refreshing - spec file changed: ${savedFile}`);
-    //   // const savedSpecFileInfo = this.specLocator.getSpecFileInfo(savedFile);
-    //   await this.refresh();
+    else if (this.specLocator?.isSpecFile(savedFile) && !this.config.autoWatchEnabled) {
+      const savedFileTestIds: string[] = Array.from(this.loadedTestsById.values())
+        .filter(loadedTest => loadedTest.file === savedFile)
+        .map(savedTest => savedTest.id);
 
-    //   // if (savedSpecFileInfo) {
-    //   //   this.logger.info(`Retiring ${savedSpecFileInfo.specCount} tests from updated spec file: ${savedFile}`);
-    //   //   this.retireEmitter.fire({ tests: [ savedSpecFileInfo.suiteName ] });
-    //   // }
-    // }
+      if (savedFileTestIds.length > 0) {
+        this.logger.debug(() =>
+          `Retiring ${savedFileTestIds.length} tests ` +
+          `from updated spec file: ${savedFile}`
+        );
+        this.retireEmitter.fire({ tests: savedFileTestIds });
+      }
+    }
   }
 
   public async dispose(): Promise<void> {

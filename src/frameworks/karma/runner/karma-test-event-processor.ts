@@ -157,7 +157,7 @@ export class KarmaTestEventProcessor {
       return;
     }
     
-    this.emitTestRunningEvent(testResult);
+    // this.emitTestRunningEvent(testResult);
 
     // if (this.eventProcessingOptions.bufferSkippedTestEvents && testResult.status === TestStatus.Skipped) {
     //   this.logger.debug(() => 
@@ -189,31 +189,31 @@ export class KarmaTestEventProcessor {
     );
   }
 
-  private emitTestRunningEvent(testResult: SpecCompleteResponse) {
-    const testId = testResult.id;
+  // private emitTestRunningEvent(testResult: SpecCompleteResponse) {
+  //   const testId = testResult.id;
 
-    if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
-      this.logger.debug(() =>
-        `Emit events not enabled - ` +
-        `skipping test running event for test id: ${testId}`
-      );
-      return;
-    }
-    this.logger.debug(() => `Emitting test running event for test id: ${testId}`);
+  //   if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
+  //     this.logger.debug(() =>
+  //       `Emit events not enabled - ` +
+  //       `skipping test running event for test id: ${testId}`
+  //     );
+  //     return;
+  //   }
+  //   this.logger.debug(() => `Emitting test running event for test id: ${testId}`);
 
-    const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
+  //   const test: TestInfo | undefined = this.testResolver.resolveTest(testId);
 
-    // if (!test) {
-    //   return;
-    // }
+  //   // if (!test) {
+  //   //   return;
+  //   // }
 
-    const testEvent: TestEvent = {
-      type: TestType.Test,
-      test: test ?? testId,
-      state: TestState.Running
-    };
-    this.testResultEventEmitter.fire(testEvent);
-  }
+  //   const testEvent: TestEvent = {
+  //     type: TestType.Test,
+  //     test: test ?? testId,
+  //     state: TestState.Running
+  //   };
+  //   this.testResultEventEmitter.fire(testEvent);
+  // }
 
   private emitTestResultEvent(testResult: SpecCompleteResponse) {
     const testId = testResult.id;
@@ -272,7 +272,7 @@ export class KarmaTestEventProcessor {
       this.updateTestWithResultData(test, testResult);
     }
 
-    const testEvent: TestEvent = {
+    const testResultEvent: TestEvent = {
       type: TestType.Test,
       test: test ?? testId,
       state: testState,
@@ -283,20 +283,26 @@ export class KarmaTestEventProcessor {
     };
     
     if (this.eventProcessingOptions?.emitTestStats) {
-      testEvent.description = `(${testTimeDescription})`;
-      testEvent.tooltip += `  (${resultDescription})`;
+      testResultEvent.description = `(${testTimeDescription})`;
+      testResultEvent.tooltip += `  (${resultDescription})`;
     }
 
-    if (this.eventProcessingOptions.filterTestEvents?.includes(testResult.status)) {
+    if (this.eventProcessingOptions?.filterTestEvents?.includes(testResult.status)) {
       this.logger.debug(() =>
         `Filtering ${testResult.status} test result event ` +
         `for test id: ${testId}`);
 
-      this.filteredTestResultEvents.set(testResult.id, testEvent);
+      this.filteredTestResultEvents.set(testResult.id, testResultEvent);
       return;
     }
 
-    this.testResultEventEmitter.fire(testEvent);
+    const testRunningEvent: TestEvent = {
+      type: TestType.Test,
+      test: test ?? testId,
+      state: TestState.Running
+    };
+    this.testResultEventEmitter.fire(testRunningEvent);
+    this.testResultEventEmitter.fire(testResultEvent);
   }
 
   private emitTestSuiteEvents() {  // FIXME: Remove for test load processor

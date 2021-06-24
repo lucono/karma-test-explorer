@@ -7,7 +7,7 @@ import { TestStatus } from "../../../api/test-status";
 // import { TestState } from "../../../core/test-state";
 import { Logger } from "../../../core/logger";
 import { DeferredPromise } from "../../../util/deferred-promise";
-import { KarmaWatchModeTestEventProcessor } from "./karma-ambient-test-event-processor";
+import { KarmaAutoWatchTestEventProcessor } from "./karma-auto-watch-test-event-processor";
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
 import { KarmaTestEventProcessor } from "./karma-test-event-processor";
@@ -28,7 +28,7 @@ export class KarmaTestEventListener implements Disposable {
 
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
-    private readonly watchModeTestEventProcessor: KarmaWatchModeTestEventProcessor | undefined,
+    private readonly watchModeTestEventProcessor: KarmaAutoWatchTestEventProcessor | undefined,
     private readonly logger: Logger)
   {
     this.disposables.push(logger);
@@ -228,7 +228,7 @@ export class KarmaTestEventListener implements Disposable {
 
   private onSpecComplete(
     event: KarmaEvent,
-    testEventProcessor?: KarmaTestEventProcessor | KarmaWatchModeTestEventProcessor)
+    testEventProcessor?: KarmaTestEventProcessor | KarmaAutoWatchTestEventProcessor)
   {
     if (!testEventProcessor?.isProcessing()) {
       return;
