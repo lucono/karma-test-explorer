@@ -84,7 +84,7 @@ export class KarmaWatchModeTestEventProcessor {  // FIXME: Not currently used
     filteredFailedEvents.forEach(testEvent => this.testResultEventEmitter.fire(testEvent));
     
     const testRunFinishedEvent: TestRunFinishedEvent = { type: `finished` };
-    this.testLoadEventEmitter.fire(testRunFinishedEvent);
+    this.testRunEventEmitter.fire(testRunFinishedEvent);
   }
 
   private concludeCurrentProcessing(): void {
