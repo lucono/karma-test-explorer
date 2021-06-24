@@ -25,6 +25,7 @@ export class KarmaConfigurator {
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;
     config.autoWatchBatchDelay = this.autoWatchEnabled ? AUTO_WATCH_BATCH_DELAY : 0;
+    config.restartOnFileChange = true;  // FIXME: Validate this is preferable
 
     config.client ??= {};
     config.client.clearContext = true;
@@ -37,7 +38,7 @@ export class KarmaConfigurator {
         base: "ChromeHeadless",
         debug: true,
         flags: [
-          "--remote-debugging-port=9222"
+          "--remote-debugging-port=9222"  // FIXME: Read port from config and pass via env var
         ],
       },
     };

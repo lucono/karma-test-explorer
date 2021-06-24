@@ -147,7 +147,7 @@
 					},
 					"scope": "resource",
 					"default": [
-						"**/node_modules/*"
+						"**/node_modules/**/*"
 					]
 				},
 				"karmaTestExplorer.reloadWatchedFiles": {
