@@ -6,6 +6,7 @@
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
 	"version": "0.1.0",
+	"preview": true,
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -215,8 +216,26 @@
 						}
 					}
 				},
+				"karmaTestExplorer.browser": {
+					"description": "The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file",
+					"type": "string",
+					"scope": "resource",
+					"default": ""
+				},
+				"karmaTestExplorer.customLauncher": {
+					"description": "Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file. This takes precedence over the `browser` setting",
+					"type": "object",
+					"scope": "resource",
+					"default": {
+						"base": "ChromeHeadless",
+						"debug": true,
+						"flags": [
+						  "--remote-debugging-port=9222"
+						]
+					}
+				},
 				"karmaTestExplorer.env": {
-					"description": "Additional environment variables to be set when running the tests. These take precedence over those from the 'envFile' setting",
+					"description": "Additional environment variables to be set when running the tests. These take precedence over those from the `envFile` setting",
 					"type": "object",
 					"scope": "resource",
 					"default": {}

@@ -1,15 +1,17 @@
-import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions } from "karma";
+import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions, CustomLauncher } from "karma";
 import { instance as customReporterInstance, name as customReporterName } from "../../jasmine/jasmine-reporter";
 import { dirname, resolve } from "path";
 import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
-const DEFAULT_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
+const CUSTOM_LAUNCHER_BROWSER_NAME = "KarmaTestExplorer_ChromeHeadless";
 const DEFAULT_AUTO_WATCH_BATCH_DELAY = 2_500;  // FIXME: Read from config
 
 export class KarmaConfigurator {
   private readonly karmaPort: number;
   private readonly autoWatchEnabled: boolean;
   private readonly autoWatchBatchDelay: number;
+  private readonly browser: string;
+  private readonly customLauncher: CustomLauncher;
 
   constructor() {
     this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
@@ -19,6 +21,18 @@ export class KarmaConfigurator {
     this.autoWatchBatchDelay = !this.autoWatchEnabled ? 0
       : autoWatchBatchDelay >= 0 ? autoWatchBatchDelay
       : DEFAULT_AUTO_WATCH_BATCH_DELAY;
+
+    const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher];
+
+    this.customLauncher = customLauncherString
+      ? JSON.parse(customLauncherString)
+      : undefined;
+
+    const browser = process.env[KarmaEnvironmentVariable.Browser];
+
+    this.browser = this.customLauncher || !browser
+      ? CUSTOM_LAUNCHER_BROWSER_NAME
+      : browser;
   }
 
   public setMandatoryOptions(config:  KarmaConfig) {
@@ -36,18 +50,12 @@ export class KarmaConfigurator {
     config.client ??= {};
     config.client.clearContext = true;
 
-    config.browsers = [ DEFAULT_CUSTOM_LAUNCHER_NAME ];
+    config.browsers = [ this.browser ];
     config.browserNoActivityTimeout = undefined;
 
-    config.customLaunchers = {
-      [DEFAULT_CUSTOM_LAUNCHER_NAME]: {
-        base: "ChromeHeadless",
-        debug: true,
-        flags: [
-          "--remote-debugging-port=9222"  // FIXME: Read port from config and pass via env var
-        ],
-      },
-    };
+    config.customLaunchers = this.customLauncher
+      ? { [this.browser]: this.customLauncher }
+      : config.customLaunchers;
   }
 
   public dontLoadOriginalConfigurationFileIntoBrowser(config:  KarmaConfig, originalConfigPath: string) {
