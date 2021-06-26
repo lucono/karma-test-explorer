@@ -16,5 +16,6 @@ export enum ConfigSetting {
   EnvFile = "envFile",
   LogPanel = "logpanel",
   LogFile = "logfile",
-  AutoWatchEnabled = "autoWatchEnabled"
+  AutoWatchEnabled = "autoWatchEnabled",
+  AutoWatchBatchDelay = "autoWatchBatchDelay"
 }

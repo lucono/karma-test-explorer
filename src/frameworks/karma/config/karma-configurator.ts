@@ -3,16 +3,22 @@ import { instance as customReporterInstance, name as customReporterName } from "
 import { dirname, resolve } from "path";
 import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
-const CHROME_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
-const AUTO_WATCH_BATCH_DELAY = 2_500;  // FIXME: Read from config
+const DEFAULT_CUSTOM_LAUNCHER_NAME = "KarmaTestExplorer_ChromeHeadless";
+const DEFAULT_AUTO_WATCH_BATCH_DELAY = 2_500;  // FIXME: Read from config
 
 export class KarmaConfigurator {
   private readonly karmaPort: number;
   private readonly autoWatchEnabled: boolean;
+  private readonly autoWatchBatchDelay: number;
 
   constructor() {
     this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
     this.autoWatchEnabled = (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+    const autoWatchBatchDelay = parseInt(process.env[KarmaEnvironmentVariable.AutoWatchBatchDelay]!, 10);
+    
+    this.autoWatchBatchDelay = !this.autoWatchEnabled ? 0
+      : autoWatchBatchDelay >= 0 ? autoWatchBatchDelay
+      : DEFAULT_AUTO_WATCH_BATCH_DELAY;
   }
 
   public setMandatoryOptions(config:  KarmaConfig) {
@@ -24,17 +30,17 @@ export class KarmaConfigurator {
     
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;
-    config.autoWatchBatchDelay = this.autoWatchEnabled ? AUTO_WATCH_BATCH_DELAY : 0;
+    config.autoWatchBatchDelay = this.autoWatchBatchDelay;
     config.restartOnFileChange = false;  // FIXME: Validate this is preferable
 
     config.client ??= {};
     config.client.clearContext = true;
 
-    config.browsers = [ CHROME_CUSTOM_LAUNCHER_NAME ];
+    config.browsers = [ DEFAULT_CUSTOM_LAUNCHER_NAME ];
     config.browserNoActivityTimeout = undefined;
 
     config.customLaunchers = {
-      [CHROME_CUSTOM_LAUNCHER_NAME]: {
+      [DEFAULT_CUSTOM_LAUNCHER_NAME]: {
         base: "ChromeHeadless",
         debug: true,
         flags: [

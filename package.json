@@ -177,6 +177,12 @@
 					"scope": "resource",
 					"default": false
 				},
+				"karmaTestExplorer.autoWatchBatchDelay": {
+					"description": "The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as - and overrides - Karma config's `autoWatchBatchDelay` option",
+					"type": "number",
+					"scope": "resource",
+					"default": 250
+				},
 				"karmaTestExplorer.flattenSingleChildFolders": {
 					"description": "Flattens paths consisting of single child folders",
 					"type": "boolean",
