@@ -19,11 +19,12 @@ export class TestLoadProcessor {
 
   public processTests(loadedSpecs: SpecCompleteResponse[]): TestSuiteInfo {
     this.specToTestSuiteMapper.refresh();
-    let loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
+    const mappedTestSuite: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
-    if (this.testGrouping === TestGrouping.Folder) {
-      loadedTests = this.testSuiteOrganizer.groupByFolder(loadedTests, this.projectRootPath);
-    }
+    const loadedTestSuite = this.testSuiteOrganizer.organizeTests(mappedTestSuite, this.projectRootPath, {
+      testGrouping: this.testGrouping,
+      collapseSingleFolders: true
+    });
 
     const addTestCount = (test: AnyTestInfo, testCount: number) => {
       if (test.type === TestType.Suite) {
@@ -33,7 +34,7 @@ export class TestLoadProcessor {
     };
 
     const totalTestCount = this.testSuiteTreeProcessor.processTestSuite<number>(
-      loadedTests, 1, 0, addTestCount,
+      loadedTestSuite, 1, 0, addTestCount,
       (runningTestCount, nextSuiteTestCount) => runningTestCount + nextSuiteTestCount
     );
 
@@ -48,6 +49,6 @@ export class TestLoadProcessor {
 
     this.logger.info(`Aggregate server test load done`);
 
-    return loadedTests;
+    return loadedTestSuite;
   }
 }

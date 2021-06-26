@@ -82,7 +82,7 @@ export class KarmaTestEventListener implements Disposable {
         socket.on(KarmaEventName.BrowserStart, (browser, runInfo) => {
           this.logger.info(
             `Karma Event Listener: Browser started:` +
-            `  browser: ${browser}` +
+            `  browser: ${JSON.stringify(browser)}` +
             `  runInfo: ${JSON.stringify(runInfo)}`);
           
           if (!this.testEventProcessor.isProcessing()) {
@@ -93,7 +93,7 @@ export class KarmaTestEventListener implements Disposable {
         socket.on(KarmaEventName.BrowserError, (browser, error) => {
           this.logger.warn(
             `Karma Event Listener: Browser errored:` +
-            `  browser: ${browser}` +
+            `  browser: ${JSON.stringify(browser)}` +
             `  runInfo: ${JSON.stringify(error)}`);
         });
 
@@ -110,7 +110,7 @@ export class KarmaTestEventListener implements Disposable {
         socket.on(KarmaEventName.BrowserComplete, (browser, result) => {
           this.logger.info(
             `Karma Event Listener: Browser completed:` +
-            `  browser: ${browser}` +
+            `  browser: ${JSON.stringify(browser)}` +
             `  runInfo: ${JSON.stringify(result)}`);
           
           // this.testRunEventProcessor.concludeProcessing();

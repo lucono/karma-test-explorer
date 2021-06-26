@@ -25,7 +25,7 @@ export class KarmaConfigurator {
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;
     config.autoWatchBatchDelay = this.autoWatchEnabled ? AUTO_WATCH_BATCH_DELAY : 0;
-    config.restartOnFileChange = true;  // FIXME: Validate this is preferable
+    config.restartOnFileChange = false;  // FIXME: Validate this is preferable
 
     config.client ??= {};
     config.client.clearContext = true;

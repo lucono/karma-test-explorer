@@ -14,7 +14,7 @@ import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite
 import { TestResults } from "../../../api/test-results";
 import { TestGrouping } from "../../../api/test-grouping";
 import { SuiteAggregateTestResultProcessor } from "../../../core/suite-aggregate-test-result-processor";
-import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
+import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from "../../../core/test-suite-organizer";
 // import { TestEventProcessor, TestIdentification } from "./test-event-processor";
 // import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
@@ -330,10 +330,15 @@ export class KarmaTestEventProcessor {
       [TestStatus.Skipped]: skippedTests
     };
 
-    const organizedTestResults: TestResults = this.testGrouping === TestGrouping.Suite ? testResults : {
-      Failed: this.testSuiteOrganizer.groupByFolder(testResults.Failed, this.projectRootPath, false),
-      Success: this.testSuiteOrganizer.groupByFolder(testResults.Success, this.projectRootPath, false),
-      Skipped: this.testSuiteOrganizer.groupByFolder(testResults.Skipped, this.projectRootPath, false)
+    const testOrganizationOptions: TestSuiteOrganizerOptions = {
+      testGrouping: this.testGrouping,
+      collapseSingleFolders: false
+    };
+
+    const organizedTestResults: TestResults = {
+      Failed: this.testSuiteOrganizer.organizeTests(testResults.Failed, this.projectRootPath, testOrganizationOptions),
+      Success: this.testSuiteOrganizer.organizeTests(testResults.Success, this.projectRootPath, testOrganizationOptions),
+      Skipped: this.testSuiteOrganizer.organizeTests(testResults.Skipped, this.projectRootPath, testOrganizationOptions)
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);

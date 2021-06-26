@@ -2,14 +2,41 @@ import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
 import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
+import { TestGrouping } from "../api/test-grouping";
+
+const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizerOptions> = {
+  collapseSingleFolders: true,
+  testGrouping: TestGrouping.Folder
+};
+
+export interface TestSuiteOrganizerOptions {
+  testGrouping?: TestGrouping;
+  collapseSingleFolders?: boolean;
+}
 
 export class TestSuiteOrganizer {
   public constructor(private readonly logger: Logger) {}
 
-  public groupByFolder(
+  public organizeTests(
     rootSuite: TestSuiteInfo,
     rootPath: string,
-    collapseSingleFolders: boolean = true): TestSuiteInfo
+    options: TestSuiteOrganizerOptions = defaultTestSuiteOrganizerOptions): TestSuiteInfo
+  {
+    const allOptions: Required<TestSuiteOrganizerOptions> = { ...defaultTestSuiteOrganizerOptions, ...options };
+
+    const groupedTestSuite: TestSuiteInfo = allOptions.testGrouping === TestGrouping.Folder
+      ? this.groupByFolder(rootSuite, rootPath, allOptions.collapseSingleFolders)
+      : rootSuite;
+    
+    this.sortTestTree(groupedTestSuite);
+
+    return groupedTestSuite;
+  }
+
+  private groupByFolder(
+    rootSuite: TestSuiteInfo,
+    rootPath: string,
+    collapseSingleFolders: boolean): TestSuiteInfo
   {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
@@ -63,8 +90,6 @@ export class TestSuiteOrganizer {
     });
     
     this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
-
-    this.sortTestTree(rootFolderSuite);
 
     const collapsedFolderSuiteTree: TestFolderSuiteInfo = collapseSingleFolders
       ? this.collapseSingleChildSuites(rootFolderSuite)
@@ -123,6 +148,8 @@ export class TestSuiteOrganizer {
     const suite2Rank = computeSuiteRank(test2);
 
     return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
+      : test1.file && test2.file && test1.file !== test2.file ?
+          (test1.file.toLocaleLowerCase() < test2.file.toLocaleLowerCase() ? -1 : 1)
       : test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
       : test1.label.toLocaleLowerCase() < test2.label.toLocaleLowerCase() ? -1
       : 1;
