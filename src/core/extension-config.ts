@@ -15,6 +15,7 @@ export class ExtensionConfig implements Disposable {
   public readonly baseKarmaConfFilePath: string;
   public readonly karmaProcessExecutable: string;
   public readonly testGrouping: TestGrouping;
+  public readonly flattenSingleChildFolders: boolean;
   public readonly testFiles: string[];
   public readonly excludeFiles: string[];
   public readonly reloadWatchedFiles: string[];
@@ -47,6 +48,7 @@ export class ExtensionConfig implements Disposable {
     this.autoWatchEnabled = config.get(ConfigSetting.AutoWatchEnabled) as boolean;
     this.baseKarmaConfFilePath = resolve(__dirname, "..", "frameworks", "karma", "config", "karma.conf.js");  // FIXME: use updated path
     this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
+    this.flattenSingleChildFolders = config.get(ConfigSetting.FlattenSingleChildFolders) as boolean;
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile)

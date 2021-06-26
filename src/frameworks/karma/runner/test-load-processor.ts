@@ -13,6 +13,7 @@ export class TestLoadProcessor {
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testSuiteTreeProcessor: TestSuiteTreeProcessor,
     private readonly testGrouping: TestGrouping,
+    private readonly flattenSingleChildFolders: boolean,
     private readonly projectRootPath: string,
     private readonly logger: Logger
   ) {}
@@ -23,7 +24,7 @@ export class TestLoadProcessor {
 
     const loadedTestSuite = this.testSuiteOrganizer.organizeTests(mappedTestSuite, this.projectRootPath, {
       testGrouping: this.testGrouping,
-      collapseSingleFolders: true
+      flattenSingleChildFolders: this.flattenSingleChildFolders
     });
 
     const addTestCount = (test: AnyTestInfo, testCount: number) => {

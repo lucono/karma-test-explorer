@@ -5,6 +5,8 @@ export enum ConfigSetting {
   KarmaPort = "karmaPort",
   TestFiles = "testFiles",
   ExcludeFiles = "excludeFiles",
+  TestGrouping = "testGrouping",
+  FlattenSingleChildFolders = "flattenSingleChildFolders",
   ReloadWatchedFiles = "reloadWatchedFiles",
   ReloadOnKarmaConfigurationFileChange = "reloadOnKarmaConfigurationFileChange",
   DefaultSocketConnectionPort = "defaultSocketConnectionPort",
@@ -14,6 +16,5 @@ export enum ConfigSetting {
   EnvFile = "envFile",
   LogPanel = "logpanel",
   LogFile = "logfile",
-  TestGrouping = "testGrouping",
   AutoWatchEnabled = "autoWatchEnabled"
 }

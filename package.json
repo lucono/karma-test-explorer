@@ -177,6 +177,12 @@
 					"scope": "resource",
 					"default": false
 				},
+				"karmaTestExplorer.flattenSingleChildFolders": {
+					"description": "Flattens paths consisting of single child folders",
+					"type": "boolean",
+					"scope": "resource",
+					"default": true
+				},
 				"karmaTestExplorer.defaultSocketConnectionPort": {
 					"description": "This is the port that will be used to connect Karma with the test explorer",
 					"type": "number",

@@ -4,14 +4,19 @@ import { sep as pathSeparator, dirname, basename, normalize, relative, join } fr
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
 import { TestGrouping } from "../api/test-grouping";
 
-const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizerOptions> = {
-  collapseSingleFolders: true,
-  testGrouping: TestGrouping.Folder
+const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizationOptions> = {
+  testGrouping: TestGrouping.Folder,
+  flattenSingleChildFolders: true,
+  flattenSingleSuiteFiles: true
 };
 
-export interface TestSuiteOrganizerOptions {
+interface TestSuiteFolderGroupingOptions {
+  flattenSingleChildFolders: boolean;
+  flattenSingleSuiteFiles: boolean;
+}
+
+export interface TestSuiteOrganizationOptions extends Partial<TestSuiteFolderGroupingOptions> {
   testGrouping?: TestGrouping;
-  collapseSingleFolders?: boolean;
 }
 
 export class TestSuiteOrganizer {
@@ -20,12 +25,15 @@ export class TestSuiteOrganizer {
   public organizeTests(
     rootSuite: TestSuiteInfo,
     rootPath: string,
-    options: TestSuiteOrganizerOptions = defaultTestSuiteOrganizerOptions): TestSuiteInfo
+    options: TestSuiteOrganizationOptions = defaultTestSuiteOrganizerOptions): TestSuiteInfo
   {
-    const allOptions: Required<TestSuiteOrganizerOptions> = { ...defaultTestSuiteOrganizerOptions, ...options };
+    const allOptions: Required<TestSuiteOrganizationOptions> = {
+      ...defaultTestSuiteOrganizerOptions,
+      ...options
+    };
 
     const groupedTestSuite: TestSuiteInfo = allOptions.testGrouping === TestGrouping.Folder
-      ? this.groupByFolder(rootSuite, rootPath, allOptions.collapseSingleFolders)
+      ? this.groupByFolder(rootSuite, rootPath, allOptions)
       : rootSuite;
     
     this.sortTestTree(groupedTestSuite);
@@ -36,7 +44,7 @@ export class TestSuiteOrganizer {
   private groupByFolder(
     rootSuite: TestSuiteInfo,
     rootPath: string,
-    collapseSingleFolders: boolean): TestSuiteInfo
+    groupingOptions: TestSuiteFolderGroupingOptions): TestSuiteInfo
   {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
@@ -91,27 +99,26 @@ export class TestSuiteOrganizer {
     
     this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
 
-    const collapsedFolderSuiteTree: TestFolderSuiteInfo = collapseSingleFolders
-      ? this.collapseSingleChildSuites(rootFolderSuite)
-      : rootFolderSuite;
-      
+    const collapsedFolderSuiteTree: TestFolderSuiteInfo = this.flattenSingChildPaths(rootFolderSuite, groupingOptions);
     const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
     return folderGroupedRootSuite;
   }
 
-  private collapseSingleChildSuites(suite: TestFolderSuiteInfo): TestFolderSuiteInfo {
+  private flattenSingChildPaths(suite: TestFolderSuiteInfo, flattenOptions: TestSuiteFolderGroupingOptions): TestFolderSuiteInfo {
+    if (!flattenOptions.flattenSingleChildFolders && !flattenOptions.flattenSingleSuiteFiles) {
+      return suite;
+    }
+
     suite.children = suite.children.map(childSuite => {
       if (childSuite.suiteType === TestSuiteType.Folder) {
-        return this.collapseSingleChildSuites(childSuite);
+        return this.flattenSingChildPaths(childSuite, flattenOptions);
 
-      } else if (childSuite.suiteType === TestSuiteType.File) {
+      } else if (childSuite.suiteType === TestSuiteType.File && flattenOptions.flattenSingleSuiteFiles) {
         const singleChild = childSuite.children.length === 1 ? childSuite.children[0] : undefined;
-        
-        return !singleChild || singleChild.type !== TestType.Suite ? childSuite : {
-          ...singleChild,
-          suiteType: TestSuiteType.File,
-          file: singleChild.file!
-        };
+
+        return singleChild?.type === TestType.Suite
+          ? { ...singleChild, suiteType: TestSuiteType.File, file: singleChild.file! }
+          : childSuite;
       }
       return childSuite;
     });
@@ -127,7 +134,8 @@ export class TestSuiteOrganizer {
   }
 
   private sortTestTree(test: TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo) {
-    test.children.sort(this.compareTests);
+    const testComparator = this.compareTests.bind(this);
+    test.children.sort(testComparator);
     
     test.children.forEach(childTest => {
       if (childTest.type === TestType.Suite) {
@@ -136,8 +144,7 @@ export class TestSuiteOrganizer {
     });
   }
 
-  private compareTests(test1: AnyTestInfo, test2: AnyTestInfo): number
-  {
+  private compareTests(test1: AnyTestInfo, test2: AnyTestInfo): number {
     const computeSuiteRank = (test: AnyTestInfo): number =>
       'suiteType' in test && test.suiteType === TestSuiteType.Folder ? 0
         : 'suiteType' in test && test.suiteType === TestSuiteType.File && !test.fullName ? 1
@@ -148,9 +155,7 @@ export class TestSuiteOrganizer {
     const suite2Rank = computeSuiteRank(test2);
 
     return suite1Rank !== suite2Rank ? suite1Rank - suite2Rank
-      : test1.file && test2.file && test1.file !== test2.file ?
-          (test1.file.toLocaleLowerCase() < test2.file.toLocaleLowerCase() ? -1 : 1)
-      : test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
+      : test1.file && test1.file === test2.file && test1.line !== undefined && test2.line !== undefined ? test1.line - test2.line
       : test1.label.toLocaleLowerCase() < test2.label.toLocaleLowerCase() ? -1
       : 1;
   }
@@ -194,7 +199,10 @@ export class TestSuiteOrganizer {
     };
   }
 
-  private getDescendantFolderSuite(baseFolderNode: TestFolderSuiteInfo, folderAbsolutePath: string): TestFolderSuiteInfo {
+  private getDescendantFolderSuite(
+    baseFolderNode: TestFolderSuiteInfo,
+    folderAbsolutePath: string): TestFolderSuiteInfo
+  {
     const relativePathFromBase = relative(baseFolderNode.path, folderAbsolutePath);
     const pathSegments = relativePathFromBase.split(pathSeparator);
     const currentFolderPathSegments = [] as string[];

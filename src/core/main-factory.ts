@@ -100,6 +100,7 @@ export class MainFactory {
       testSuiteOrganizer,
       testSuiteTreeProcessor,
       this.config.testGrouping,
+      this.config.flattenSingleChildFolders,
       this.config.projectRootPath,
       createLogger(TestLoadProcessor.name)
     );

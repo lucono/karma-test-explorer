@@ -14,7 +14,7 @@ import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite
 import { TestResults } from "../../../api/test-results";
 import { TestGrouping } from "../../../api/test-grouping";
 import { SuiteAggregateTestResultProcessor } from "../../../core/suite-aggregate-test-result-processor";
-import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from "../../../core/test-suite-organizer";
+import { TestSuiteOrganizer, TestSuiteOrganizationOptions } from "../../../core/test-suite-organizer";
 // import { TestEventProcessor, TestIdentification } from "./test-event-processor";
 // import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 
@@ -330,9 +330,10 @@ export class KarmaTestEventProcessor {
       [TestStatus.Skipped]: skippedTests
     };
 
-    const testOrganizationOptions: TestSuiteOrganizerOptions = {
+    const testOrganizationOptions: TestSuiteOrganizationOptions = {
       testGrouping: this.testGrouping,
-      collapseSingleFolders: false
+      flattenSingleChildFolders: false,
+      flattenSingleSuiteFiles: false
     };
 
     const organizedTestResults: TestResults = {
