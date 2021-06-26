@@ -99,8 +99,13 @@ export class TestSuiteOrganizer {
     
     this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
 
-    const collapsedFolderSuiteTree: TestFolderSuiteInfo = this.flattenSingChildPaths(rootFolderSuite, groupingOptions);
-    const folderGroupedRootSuite = { ...rootSuite, children: [ collapsedFolderSuiteTree ] };
+    const collapsedFolderSuite: TestFolderSuiteInfo = this.flattenSingChildPaths(rootFolderSuite, groupingOptions);
+
+    const rootSuiteChildren = collapsedFolderSuite === rootFolderSuite
+      ? collapsedFolderSuite.children
+      : [ collapsedFolderSuite ];
+
+    const folderGroupedRootSuite: TestSuiteInfo = { ...rootSuite, children: rootSuiteChildren };
     return folderGroupedRootSuite;
   }
 
@@ -123,14 +128,11 @@ export class TestSuiteOrganizer {
       return childSuite;
     });
 
-    let replacementSuite: TestFolderSuiteInfo = suite;
-    
-    if (suite.children.length === 1 && suite.children[0].suiteType === TestSuiteType.Folder) {
-      const singleChildFolderSuite: TestFolderSuiteInfo = suite.children[0];
-      singleChildFolderSuite.label = join(suite.label, singleChildFolderSuite.label);
-      replacementSuite = singleChildFolderSuite;
-    }
-    return replacementSuite;
+    const singleChild = suite.children.length === 1 ? suite.children[0] : undefined;
+
+    return flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
+      ? { ...singleChild, label: join(suite.label, singleChild.label) }
+      : suite;
   }
 
   private sortTestTree(test: TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo) {
@@ -203,6 +205,9 @@ export class TestSuiteOrganizer {
     baseFolderNode: TestFolderSuiteInfo,
     folderAbsolutePath: string): TestFolderSuiteInfo
   {
+    if (baseFolderNode.path === folderAbsolutePath) {
+      return baseFolderNode;
+    }
     const relativePathFromBase = relative(baseFolderNode.path, folderAbsolutePath);
     const pathSegments = relativePathFromBase.split(pathSeparator);
     const currentFolderPathSegments = [] as string[];
