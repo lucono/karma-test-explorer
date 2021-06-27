@@ -20,10 +20,13 @@ export class KarmaConfigurator {
   private readonly autoWatchBatchDelay: number;
   private readonly browser: string;
   private readonly customLauncher?: CustomLauncher;
+  private readonly debugLevelLoggingEnabled: boolean;
 
   constructor() {
-    this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
+    this.debugLevelLoggingEnabled = (process.env[KarmaEnvironmentVariable.DebugLevelLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
     this.autoWatchEnabled = (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+    this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
+
     const autoWatchBatchDelay = parseInt(process.env[KarmaEnvironmentVariable.AutoWatchBatchDelay]!, 10);
     
     this.autoWatchBatchDelay = !this.autoWatchEnabled ? 0
@@ -32,13 +35,6 @@ export class KarmaConfigurator {
 
     const requestedBrowser = process.env[KarmaEnvironmentVariable.Browser];
     const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher];
-    // this.browser = requestedBrowser ?? CUSTOM_LAUNCHER_BROWSER_NAME;
-
-    // const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher];
-
-    // this.customLauncher = requestedBrowser ? undefined
-    //   : customLauncherString ? JSON.parse(customLauncherString)
-    //   : defaultCustomLauncherConfig;
 
     if (requestedBrowser) {
       this.browser = requestedBrowser;
@@ -53,12 +49,12 @@ export class KarmaConfigurator {
     }
   }
 
-  public setMandatoryOptions(config:  KarmaConfig) {
+  public setMandatoryOptions(config: KarmaConfig) {
     // remove 'logLevel' changing
     // https://github.com/karma-runner/karma/issues/614 is ready
 
     config.port = this.karmaPort; // FIXME Use shared constants for all environment variable exchange
-    config.logLevel = config.LOG_INFO;
+    config.logLevel = this.debugLevelLoggingEnabled ? config.LOG_DEBUG : config.LOG_INFO;
     
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;

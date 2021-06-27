@@ -5,5 +5,6 @@ export enum KarmaEnvironmentVariable {
   AutoWatchEnabled = `KarmaTestExplorer_autoWatchEnabled`,
   AutoWatchBatchDelay = `KarmaTestExplorer_autoWatchBatchDelay`,
   Browser = `KarmaTestExplorer_browser`,
-  CustomLauncher = `KarmaTestExplorer_customLauncher`
+  CustomLauncher = `KarmaTestExplorer_customLauncher`,
+  DebugLevelLoggingEnabled = "KarmaTestExplorer_debugLevelLoggingEnabled"
 }
