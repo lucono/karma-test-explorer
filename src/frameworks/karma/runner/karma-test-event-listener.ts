@@ -65,40 +65,33 @@ export class KarmaTestEventListener implements Disposable {
         this.logger.info(`Karma Event Listener: New socket connection from Karma on port ${socketPort}`);
         this.sockets.add(socket);
 
-        socket.on(KarmaEventName.BrowserConnected, () => {
+        socket.on(KarmaEventName.BrowserConnected, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
+
           if (connectTimeoutId !== undefined) {
             clearTimeout(connectTimeoutId);
           }
-          this.logger.info(`Karma Event Listener: Browser connected`);
           resolve();
         });
 
-        socket.on(KarmaEventName.RunStart, (browsers) => {
-          this.logger.info(
-            `Karma Event Listener: Test run started:` +
-            `  browsers: ${JSON.stringify(browsers)}`);
+        socket.on(KarmaEventName.RunStart, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
         });
 
-        socket.on(KarmaEventName.BrowserStart, (browser, runInfo) => {
-          this.logger.info(
-            `Karma Event Listener: Browser started:` +
-            `  browser: ${JSON.stringify(browser)}` +
-            `  runInfo: ${JSON.stringify(runInfo)}`);
+        socket.on(KarmaEventName.BrowserStart, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
           
           if (!this.testEventProcessor.isProcessing()) {
             this.watchModeTestEventProcessor?.beginProcessing();
           }
         });
 
-        socket.on(KarmaEventName.BrowserError, (browser, error) => {
-          this.logger.warn(
-            `Karma Event Listener: Browser errored:` +
-            `  browser: ${JSON.stringify(browser)}` +
-            `  runInfo: ${JSON.stringify(error)}`);
+        socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
         });
 
         socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
-          this.logger.debug(() => `Karma Event Listener: Test completed: ${JSON.stringify(event)}`);
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
 
           const eventProcessor = this.testEventProcessor.isProcessing() ? this.testEventProcessor
             : this.watchModeTestEventProcessor?.isProcessing() ? this.watchModeTestEventProcessor
@@ -107,24 +100,20 @@ export class KarmaTestEventListener implements Disposable {
           this.onSpecComplete(event, eventProcessor);
         });
 
-        socket.on(KarmaEventName.BrowserComplete, (browser, result) => {
-          this.logger.info(
-            `Karma Event Listener: Browser completed:` +
-            `  browser: ${JSON.stringify(browser)}` +
-            `  runInfo: ${JSON.stringify(result)}`);
-          
-          // this.testRunEventProcessor.concludeProcessing();
-        });
-
-        socket.on(KarmaEventName.RunComplete, (browsers, results) => {
-          this.logger.info(
-            `Karma Event Listener: Test run completed:` +
-            `  browser: ${JSON.stringify(browsers)}` +
-            `  runInfo: ${JSON.stringify(results)}`);
+        socket.on(KarmaEventName.BrowserComplete, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
           
           if (this.watchModeTestEventProcessor?.isProcessing()) {
             this.watchModeTestEventProcessor?.concludeProcessing();
           }
+        });
+
+        socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
+          
+          // if (this.watchModeTestEventProcessor?.isProcessing()) {
+          //   this.watchModeTestEventProcessor?.concludeProcessing();
+          // }
         });
 
         socket.on("disconnect", (reason: string) => {

@@ -9,6 +9,7 @@ import { TestRunStatus } from "./test-run-status";
 import { resolve } from "path";
 import { TestResultEmitterWorkerData } from "../karma/runner/test-result-emitter-worker-data";
 import { KarmaEnvironmentVariable } from "../karma/karma-environment-variable";
+import { BrowserInfo, KarmaEvent } from "../karma/runner/karma-event";
 // import { resolve } from "path";
 
 const pingTimeout = 24 * 60 * 60 * 1000;
@@ -48,12 +49,13 @@ function TestExplorerJasmineReporter(
 
   configureTimeouts(injector);
 
-  const sendEvent = (eventName: KarmaEventName, eventResults: any = null) => {
-    worker.postMessage({
-      name: eventName,
-      results: eventResults
-    });
-  };
+  const sendEvent = (event: KarmaEvent) => worker.postMessage({ ...event });
+
+  const getBrowser = (browser: any): BrowserInfo | undefined => !browser ? undefined : {
+    id: browser.id,
+    name: browser.name,
+    fullName: browser.fullName
+  }
 
   self.onSpecComplete = (browser: any, spec: Record<string, any>) => {
     let status: TestStatus;
@@ -83,19 +85,44 @@ function TestExplorerJasmineReporter(
       // filePath,
       // line,
     };
-    sendEvent(KarmaEventName.SpecComplete, specResult);
+    
+    sendEvent({
+      name: KarmaEventName.SpecComplete,
+      browser: getBrowser(browser),
+      results: specResult
+    });
   };
 
-  self.onRunComplete = (browserCollection: any, result: any) => {
-    sendEvent(KarmaEventName.RunComplete, collectRunState(result));
+  self.onRunComplete = (browsers: any, result: any) => {
+    sendEvent({
+      name: KarmaEventName.RunComplete,
+      browsers: browsers.map(getBrowser),
+      results: collectRunState(result)
+    });
   };
 
   self.onBrowserError = (browser: any, error: any) => {
-    sendEvent(KarmaEventName.BrowserError, error);
+    sendEvent({
+      name: KarmaEventName.BrowserError,
+      browser: getBrowser(browser),
+      error
+    });
   };
 
   self.onBrowserStart = (browser: any, info: any) => {
-    sendEvent(KarmaEventName.BrowserStart);
+    sendEvent({
+      name: KarmaEventName.BrowserStart,
+      browser: getBrowser(browser),
+      info
+    });
+  };
+
+  self.onBrowserComplete = (browser: any, results: any) => {
+    sendEvent({
+      name: KarmaEventName.BrowserComplete,
+      browser: getBrowser(browser),
+      results
+    });
   };
 
   self.emitter.on(KarmaEventName.BrowserChange, (capturedBrowsers: any) => {
@@ -106,9 +133,13 @@ function TestExplorerJasmineReporter(
     });
     
     if (browserHasConnected) {
-      sendEvent(KarmaEventName.BrowserConnected);
+      sendEvent({
+        name: KarmaEventName.BrowserConnected
+      });
     }
   });
+
+  // FIXME: Handle more `KarmaEventName` events
 }
 
 function configureTimeouts(injector: any) {
@@ -146,5 +177,5 @@ function collectRunState(runResult: KarmaTestResults): TestRunStatus {
 
 TestExplorerJasmineReporter.$inject = ["baseReporterDecorator", "config", "logger", "emitter", "injector"];
 
-export const name = "KarmaTestExplorerJasmineReporter";
+export const name = TestExplorerJasmineReporter.name;
 export const instance = TestExplorerJasmineReporter;
