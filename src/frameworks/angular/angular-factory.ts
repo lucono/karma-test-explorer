@@ -27,7 +27,9 @@ export class AngularFactory implements Partial<TestFactory> {
       ...this.config.envFileEnvironment,
       ...this.config.env,
       [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
-      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`
+      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
+      [KarmaEnvironmentVariable.Browser]: `${this.config.browser}`,
+      [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher)
     };
 
     const options: KarmaCommandLineTestServerExecutorOptions = {

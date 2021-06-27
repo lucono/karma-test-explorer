@@ -217,13 +217,13 @@
 					}
 				},
 				"karmaTestExplorer.browser": {
-					"description": "The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file",
+					"description": "The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file. This takes precedence over the `customLauncher` setting",
 					"type": "string",
 					"scope": "resource",
 					"default": ""
 				},
 				"karmaTestExplorer.customLauncher": {
-					"description": "Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file. This takes precedence over the `browser` setting",
+					"description": "Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file",
 					"type": "object",
 					"scope": "resource",
 					"default": {

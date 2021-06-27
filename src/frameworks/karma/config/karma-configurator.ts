@@ -3,15 +3,23 @@ import { instance as customReporterInstance, name as customReporterName } from "
 import { dirname, resolve } from "path";
 import { KarmaEnvironmentVariable } from "../karma-environment-variable";
 
-const CUSTOM_LAUNCHER_BROWSER_NAME = "KarmaTestExplorer_ChromeHeadless";
 const DEFAULT_AUTO_WATCH_BATCH_DELAY = 2_500;  // FIXME: Read from config
+const CUSTOM_LAUNCHER_BROWSER_NAME = "KarmaTestExplorer_ChromeHeadless";
+
+const defaultCustomLauncherConfig: CustomLauncher = {
+  "base": "ChromeHeadless",
+  "debug": true,
+  "flags": [
+    "--remote-debugging-port=9222"
+  ]
+};
 
 export class KarmaConfigurator {
   private readonly karmaPort: number;
   private readonly autoWatchEnabled: boolean;
   private readonly autoWatchBatchDelay: number;
   private readonly browser: string;
-  private readonly customLauncher: CustomLauncher;
+  private readonly customLauncher?: CustomLauncher;
 
   constructor() {
     this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
@@ -22,17 +30,27 @@ export class KarmaConfigurator {
       : autoWatchBatchDelay >= 0 ? autoWatchBatchDelay
       : DEFAULT_AUTO_WATCH_BATCH_DELAY;
 
+    const requestedBrowser = process.env[KarmaEnvironmentVariable.Browser];
     const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher];
+    // this.browser = requestedBrowser ?? CUSTOM_LAUNCHER_BROWSER_NAME;
 
-    this.customLauncher = customLauncherString
-      ? JSON.parse(customLauncherString)
-      : undefined;
+    // const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher];
 
-    const browser = process.env[KarmaEnvironmentVariable.Browser];
+    // this.customLauncher = requestedBrowser ? undefined
+    //   : customLauncherString ? JSON.parse(customLauncherString)
+    //   : defaultCustomLauncherConfig;
 
-    this.browser = this.customLauncher || !browser
-      ? CUSTOM_LAUNCHER_BROWSER_NAME
-      : browser;
+    if (requestedBrowser) {
+      this.browser = requestedBrowser;
+      this.customLauncher = undefined;
+
+    } else {
+      this.browser = CUSTOM_LAUNCHER_BROWSER_NAME;
+
+      this.customLauncher = customLauncherString
+        ? JSON.parse(customLauncherString)
+        : defaultCustomLauncherConfig;
+    }
   }
 
   public setMandatoryOptions(config:  KarmaConfig) {
@@ -46,12 +64,12 @@ export class KarmaConfigurator {
     config.autoWatch = this.autoWatchEnabled;
     config.autoWatchBatchDelay = this.autoWatchBatchDelay;
     config.restartOnFileChange = false;  // FIXME: Validate this is preferable
+    config.browserNoActivityTimeout = undefined;
 
     config.client ??= {};
     config.client.clearContext = true;
 
     config.browsers = [ this.browser ];
-    config.browserNoActivityTimeout = undefined;
 
     config.customLaunchers = this.customLauncher
       ? { [this.browser]: this.customLauncher }

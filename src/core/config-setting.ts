@@ -3,6 +3,8 @@ export enum ConfigSetting {
   KarmaConfFilePath = "karmaConfFilePath",
   KarmaProcessExecutable = "karmaProcessExecutable",
   KarmaPort = "karmaPort",
+  Browser = "browser",
+  CustomLauncher = "customLauncher",
   TestFiles = "testFiles",
   ExcludeFiles = "excludeFiles",
   TestGrouping = "testGrouping",

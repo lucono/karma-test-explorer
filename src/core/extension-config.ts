@@ -28,6 +28,8 @@ export class ExtensionConfig implements Disposable {
   public readonly debugLevelLoggingEnabled: boolean;
   public readonly autoWatchEnabled: boolean;
   public readonly autoWatchBatchDelay: number;
+  public readonly browser: string;
+  public readonly customLauncher: object;
 
   public constructor(
     config: WorkspaceConfiguration, 
@@ -52,6 +54,8 @@ export class ExtensionConfig implements Disposable {
     this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
     this.flattenSingleChildFolders = config.get(ConfigSetting.FlattenSingleChildFolders) as boolean;
     this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
+    this.customLauncher = JSON.parse(JSON.stringify(config.get(ConfigSetting.CustomLauncher)));
+    this.browser = config.get(ConfigSetting.Browser) as string;
 
     this.envFile = !this.stringSettingExists(config, ConfigSetting.EnvFile)
       ? undefined
