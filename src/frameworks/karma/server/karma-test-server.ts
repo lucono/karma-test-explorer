@@ -11,6 +11,11 @@ type ServerExecutionInfo = {
   serverPort: number
 };
 
+enum ServerQuitAction {
+  RestartServer = `Restart Server`,
+  Ignore = `Ignore`
+}
+
 export class KarmaServer implements TestServer {
   private serverExecutionInfo?: ServerExecutionInfo;
   private serverCurrentlyTerminating: Promise<void> | undefined;
@@ -73,11 +78,13 @@ export class KarmaServer implements TestServer {
         serverStoppedDeferred.resolve();
 
         if (wasUnexpectedServerTermination) {
-          const message = `The Karma server quit unexpectedly. Restart the server?`;
-          this.logger.error(message);
+          const serverQuitMessage = `The Karma server quit unexpectedly. Restart the server?`;
+          const serverQuitActions: string[] = Object.values(ServerQuitAction);
 
-          window.showWarningMessage(message, 'Restart Server', 'Ignore').then(selection => {
-            if (selection === 'Restart Server') {
+          this.logger.error(serverQuitMessage);
+
+          window.showWarningMessage(serverQuitMessage, ...serverQuitActions).then(selection => {
+            if (selection === ServerQuitAction.RestartServer) {
               this.logger.info(`User chose to restart server`);
               // FIXME: Ports may no longer be available. Perhaps move
               // crash detection and restart upward to the test manager

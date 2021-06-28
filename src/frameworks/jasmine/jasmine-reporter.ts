@@ -47,8 +47,11 @@ function TestExplorerJasmineReporter(
   const workerScriptFile = resolve(__dirname, '..', 'karma', 'runner', 'test-result-emitter-worker.js');
   const worker = new Worker(workerScriptFile, { workerData });
 
-  log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
-  log.debug(() => `Using ping timeout '${pingTimeout}' and ping interval '${pingInterval}'`);
+  log.debug(() => `Reporter execution info: \n` +
+    `Socket port: ${socketPort} \n` +
+    `Ping timeout: '${pingTimeout}' \n` +
+    `Ping interval: '${pingInterval}' \n` +
+    `Karma config: ${JSON.stringify(config, null, 2)}`);
 
   configureTimeouts(injector);
 
@@ -74,7 +77,7 @@ function TestExplorerJasmineReporter(
   }));
 
   self.emitter.on(KarmaEventName.SpecComplete, (browser: any, spec: Record<string, any>) => {
-    log.debug(() => `Spec complete: ${JSON.stringify(spec, null, 2)}`);
+    // log.debug(() => `Spec complete: ${JSON.stringify(spec, null, 2)}`);
 
     const status: TestStatus = spec.skipped ? TestStatus.Skipped
       : spec.success ? TestStatus.Success

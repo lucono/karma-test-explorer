@@ -77,17 +77,13 @@ export class KarmaTestEventListener implements Disposable {
 
         socket.on(KarmaEventName.RunStart, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
-        });
-
-        socket.on(KarmaEventName.BrowserStart, (event: KarmaEvent) => {
-          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
           
           if (!this.testEventProcessor.isProcessing()) {
             this.watchModeTestEventProcessor?.beginProcessing();
           }
         });
 
-        socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
+        socket.on(KarmaEventName.BrowserStart, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
         });
 
@@ -103,18 +99,18 @@ export class KarmaTestEventListener implements Disposable {
 
         socket.on(KarmaEventName.BrowserComplete, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
+        });
+
+        socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
+          this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
           
           if (this.watchModeTestEventProcessor?.isProcessing()) {
             this.watchModeTestEventProcessor?.concludeProcessing();
           }
         });
 
-        socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
+        socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
-          
-          // if (this.watchModeTestEventProcessor?.isProcessing()) {
-          //   this.watchModeTestEventProcessor?.concludeProcessing();
-          // }
         });
 
         socket.on("disconnect", (reason: string) => {
