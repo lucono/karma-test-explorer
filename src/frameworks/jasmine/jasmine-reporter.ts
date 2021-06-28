@@ -47,11 +47,13 @@ function TestExplorerJasmineReporter(
   const workerScriptFile = resolve(__dirname, '..', 'karma', 'runner', 'test-result-emitter-worker.js');
   const worker = new Worker(workerScriptFile, { workerData });
 
-  log.debug(() => `Reporter execution info: \n` +
-    `Socket port: ${socketPort} \n` +
-    `Ping timeout: '${pingTimeout}' \n` +
-    `Ping interval: '${pingInterval}' \n` +
-    `Karma config: ${JSON.stringify(config, null, 2)}`);
+  log.info(`Using socket port from '${KarmaEnvironmentVariable.KarmaSocketPort}' env variable: ${socketPort}`);
+  log.debug(() => `Using ping timeout of '${pingTimeout}' and ping interval of '${pingInterval}'`);
+
+  // log.debug(() => `Reporter execution info: \n` +
+  //   `Socket port: ${socketPort} \n` +
+  //   `Ping timeout: '${pingTimeout}' \n` +
+  //   `Ping interval: '${pingInterval}'`);
 
   configureTimeouts(injector);
 
