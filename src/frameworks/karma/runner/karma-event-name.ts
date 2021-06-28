@@ -1,12 +1,15 @@
 export enum KarmaEventName {
-  BrowserRegister = "browser_register",
-  BrowsersReady = "browsers_ready",
-  BrowserConnected = "browser_connected",
-  BrowserStart = "browser_start",
-  BrowserComplete = "browser_complete",
-  BrowserError = "browser_error",
-  BrowserChange = "browsers_change",
   RunStart = "run_start",
+  BrowserStart = "browser_start",
+  SpecComplete = "spec_complete",
+  BrowserComplete = "browser_complete",
   RunComplete = "run_complete",
-  SpecComplete = "spec_complete"
+
+  BrowserRegister = "browser_register",
+  BrowsersChange = "browsers_change",
+  BrowsersReady = "browsers_ready",
+  BrowserError = "browser_error",
+
+  // Derived event
+  // BrowsersConnected = "browser_connected"
 }

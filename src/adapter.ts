@@ -94,7 +94,7 @@ export class Adapter implements TestAdapter {
     this.config = this.factory.getExtensionConfig();
     this.initDisposables.push(this.config);
 
-    this.logger = new Logger(this.log, Adapter.name, this.config.debugLevelLoggingEnabled);
+    this.logger = new Logger(this.log, Adapter.name, this.config.debugLoggingEnabled);
     this.initDisposables.push(this.logger);
 
     this.logger.info(`Initializing adapter`);

@@ -65,12 +65,13 @@ export class KarmaTestEventListener implements Disposable {
         this.logger.info(`Karma Event Listener: New socket connection from Karma on port ${socketPort}`);
         this.sockets.add(socket);
 
-        socket.on(KarmaEventName.BrowserConnected, (event: KarmaEvent) => {
+        socket.on(KarmaEventName.BrowsersReady, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
 
           if (connectTimeoutId !== undefined) {
             clearTimeout(connectTimeoutId);
           }
+          this.logger.info(`All browsers connected and ready for test execution`);
           resolve();
         });
 

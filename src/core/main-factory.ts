@@ -39,7 +39,7 @@ export class MainFactory {
     private readonly log: Log)
   {
     this.config = this.createConfig(workspaceFolder, configPrefix);
-    this.logger = new Logger(log, MainFactory.name, this.config.debugLevelLoggingEnabled);
+    this.logger = new Logger(log, MainFactory.name, this.config.debugLoggingEnabled);
     // this.disposables.push(this.log);
   }
 
@@ -75,7 +75,7 @@ export class MainFactory {
     testResolver: TestResolver): DefaultTestManager
   {
     const createLogger = (loggerName: string): Logger => {
-      return new Logger(this.log, loggerName, this.config.debugLevelLoggingEnabled);
+      return new Logger(this.log, loggerName, this.config.debugLoggingEnabled);
     };
 
     const testSuiteOrganizer = new TestSuiteOrganizer(createLogger(TestSuiteOrganizer.name));

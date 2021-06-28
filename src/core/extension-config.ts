@@ -25,7 +25,7 @@ export class ExtensionConfig implements Disposable {
   public readonly envFile: string | undefined;
   public readonly envFileEnvironment: { [key: string]: string };
   public readonly debuggerConfig: any;
-  public readonly debugLevelLoggingEnabled: boolean;
+  public readonly debugLoggingEnabled: boolean;
   public readonly autoWatchEnabled: boolean;
   public readonly autoWatchBatchDelay: number;
   public readonly browser: string;
@@ -47,7 +47,7 @@ export class ExtensionConfig implements Disposable {
     this.reloadOnKarmaConfigurationFileChange = config.get(ConfigSetting.ReloadOnKarmaConfigurationFileChange) as boolean;
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
     this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
-    this.debugLevelLoggingEnabled = config.get(ConfigSetting.DebugLevelLoggingEnabled) as boolean;
+    this.debugLoggingEnabled = config.get(ConfigSetting.DebugLoggingEnabled) as boolean;
     this.autoWatchEnabled = config.get(ConfigSetting.AutoWatchEnabled) as boolean;
     this.autoWatchBatchDelay = config.get(ConfigSetting.AutoWatchBatchDelay) as number;
     this.baseKarmaConfFilePath = resolve(__dirname, "..", "frameworks", "karma", "config", "karma.conf.js");  // FIXME: use updated path

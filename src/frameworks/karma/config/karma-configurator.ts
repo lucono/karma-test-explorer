@@ -20,10 +20,10 @@ export class KarmaConfigurator {
   private readonly autoWatchBatchDelay: number;
   private readonly browser: string;
   private readonly customLauncher?: CustomLauncher;
-  private readonly debugLevelLoggingEnabled: boolean;
+  private readonly debugLoggingEnabled: boolean;
 
   constructor() {
-    this.debugLevelLoggingEnabled = (process.env[KarmaEnvironmentVariable.DebugLevelLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+    this.debugLoggingEnabled = (process.env[KarmaEnvironmentVariable.DebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
     this.autoWatchEnabled = (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
     this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
 
@@ -54,7 +54,7 @@ export class KarmaConfigurator {
     // https://github.com/karma-runner/karma/issues/614 is ready
 
     config.port = this.karmaPort; // FIXME Use shared constants for all environment variable exchange
-    config.logLevel = this.debugLevelLoggingEnabled ? config.LOG_DEBUG : config.LOG_INFO;
+    config.logLevel = this.debugLoggingEnabled ? config.LOG_DEBUG : config.LOG_INFO;
     
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;

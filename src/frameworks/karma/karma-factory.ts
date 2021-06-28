@@ -100,7 +100,7 @@ export class KarmaFactory implements TestFactory {
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
       [KarmaEnvironmentVariable.Browser]: `${this.config.browser}`,
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-      [KarmaEnvironmentVariable.DebugLevelLoggingEnabled]: `${this.config.debugLevelLoggingEnabled}`
+      [KarmaEnvironmentVariable.DebugLoggingEnabled]: `${this.config.debugLoggingEnabled}`
     };
     const options: KarmaCommandLineTestServerExecutorOptions = {
         environment,

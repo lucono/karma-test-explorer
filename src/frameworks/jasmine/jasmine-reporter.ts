@@ -10,7 +10,8 @@ import { resolve } from "path";
 import { TestResultEmitterWorkerData } from "../karma/runner/test-result-emitter-worker-data";
 import { KarmaEnvironmentVariable } from "../karma/karma-environment-variable";
 import { BrowserInfo, KarmaEvent } from "../karma/runner/karma-event";
-// import { resolve } from "path";
+import { DebugAwareLog } from "../../util/debug-aware-log";
+import { Log } from "../../core/log";
 
 const pingTimeout = 24 * 60 * 60 * 1000;
 const pingInterval = 24 * 60 * 60 * 1000;
@@ -21,15 +22,19 @@ function TestExplorerJasmineReporter(
   config: KarmaConfigOptions, 
   logger: any, 
   emitter: EventEmitter, 
-  injector: any
-) {
+  injector: any)
+{
   const self = this;
-  const log = logger.create(`reporter:${name}`);
+
+  const debugLoggingEnabled = (process.env[KarmaEnvironmentVariable.DebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+  const karmaLog: Log = logger.create(`reporter:${name}`);
+  const log = new DebugAwareLog(karmaLog, debugLoggingEnabled);
 
   baseReporterDecorator(self);
   self.config = config;
   self.emitter = emitter;
   // self.adapters = [];
+  // self.socket = socket;
 
   const socketPort = Number.parseInt(process.env[KarmaEnvironmentVariable.KarmaSocketPort]!, 10);
 
@@ -43,35 +48,37 @@ function TestExplorerJasmineReporter(
   const worker = new Worker(workerScriptFile, { workerData });
 
   log.info(`Using socket port from 'karmaSocketPort' env variable: ${socketPort}`);
-  log.debug(`Using ping timeout '${pingTimeout}' and ping interval '${pingInterval}'`);
-
-  // self.socket = socket;
+  log.debug(() => `Using ping timeout '${pingTimeout}' and ping interval '${pingInterval}'`);
 
   configureTimeouts(injector);
 
-  const sendEvent = (event: KarmaEvent) => worker.postMessage({ ...event });
-
-  const getBrowser = (browser: any): BrowserInfo | undefined => !browser ? undefined : {
+  const toBrowser = (browser: any): BrowserInfo | undefined => !browser ? undefined : {
     id: browser.id,
     name: browser.name,
     fullName: browser.fullName
   }
 
-  self.onSpecComplete = (browser: any, spec: Record<string, any>) => {
-    let status: TestStatus;
-    // let fullResponse: { [key: string]: any } | undefined;
+  const sendEvent = (event: KarmaEvent) => {
+    worker.postMessage({ ...event });
+  }
 
-    if (spec.skipped) {
-      status = TestStatus.Skipped;
-      self.specSkipped(browser, spec);
+  self.emitter.on(KarmaEventName.RunStart, (browsers: any) => sendEvent({
+    name: KarmaEventName.RunStart,
+    browsers: browsers.map(toBrowser)
+  }));
 
-    } else if (spec.success) {
-      status = TestStatus.Success;
+  self.emitter.on(KarmaEventName.BrowserStart, (browser: any, info: any) => sendEvent({
+    name: KarmaEventName.BrowserStart,
+    browser: toBrowser(browser),
+    info
+  }));
 
-    } else {
-      status = TestStatus.Failed;
-      // fullResponse = spec;
-    }
+  self.emitter.on(KarmaEventName.SpecComplete, (browser: any, spec: Record<string, any>) => {
+    log.debug(() => `Spec complete: ${JSON.stringify(spec, null, 2)}`);
+
+    const status: TestStatus = spec.skipped ? TestStatus.Skipped
+      : spec.success ? TestStatus.Success
+      : TestStatus.Failed;
 
     const specResult: LightSpecCompleteResponse = {
       id: spec.id,
@@ -80,7 +87,6 @@ function TestExplorerJasmineReporter(
       description: spec.description,
       status,
       timeSpentInMilliseconds: spec.time
-      // fullResponse,
       // fullName: spec.fullName,
       // filePath,
       // line,
@@ -88,56 +94,52 @@ function TestExplorerJasmineReporter(
     
     sendEvent({
       name: KarmaEventName.SpecComplete,
-      browser: getBrowser(browser),
+      browser: toBrowser(browser),
       results: specResult
     });
-  };
-
-  self.onRunComplete = (browsers: any, result: any) => {
-    sendEvent({
-      name: KarmaEventName.RunComplete,
-      browsers: browsers.map(getBrowser),
-      results: collectRunState(result)
-    });
-  };
-
-  self.onBrowserError = (browser: any, error: any) => {
-    sendEvent({
-      name: KarmaEventName.BrowserError,
-      browser: getBrowser(browser),
-      error
-    });
-  };
-
-  self.onBrowserStart = (browser: any, info: any) => {
-    sendEvent({
-      name: KarmaEventName.BrowserStart,
-      browser: getBrowser(browser),
-      info
-    });
-  };
-
-  self.onBrowserComplete = (browser: any, results: any) => {
-    sendEvent({
-      name: KarmaEventName.BrowserComplete,
-      browser: getBrowser(browser),
-      results
-    });
-  };
-
-  self.emitter.on(KarmaEventName.BrowserChange, (capturedBrowsers: any) => {
-    let browserHasConnected = true;
-
-    capturedBrowsers.forEach?.((newBrowser: any) => {
-      browserHasConnected &&= newBrowser.id && newBrowser.name && newBrowser.id !== newBrowser.name;
-    });
-    
-    if (browserHasConnected) {
-      sendEvent({
-        name: KarmaEventName.BrowserConnected
-      });
-    }
   });
+
+  self.emitter.on(KarmaEventName.BrowserComplete, (browser: any, results: any) => sendEvent({
+    name: KarmaEventName.BrowserComplete,
+    browser: toBrowser(browser),
+    results
+  }));
+
+  self.emitter.on(KarmaEventName.RunComplete, (browsers: any, result: any) => sendEvent({
+    name: KarmaEventName.RunComplete,
+    browsers: browsers.map(toBrowser),
+    results: collectRunState(result)
+  }));
+
+  self.emitter.on(KarmaEventName.BrowserError, (browser: any, error: any) => sendEvent({
+    name: KarmaEventName.BrowserError,
+    browser: toBrowser(browser),
+    error
+  }));
+
+  self.emitter.on(KarmaEventName.BrowsersReady, () => sendEvent({
+    name: KarmaEventName.BrowsersReady
+  }));
+
+  self.emitter.on(KarmaEventName.BrowsersChange, (browsers: any) => sendEvent({
+    name: KarmaEventName.BrowsersChange,
+    browsers: browsers.map(toBrowser)
+  }));
+
+  // self.emitter.on(KarmaEventName.BrowsersChange, (browsers: any) => {
+  //   let browserHasConnected = true;
+
+  //   browsers.forEach?.((newBrowser: any) => {
+  //     browserHasConnected &&= (newBrowser.id && newBrowser.name && newBrowser.id !== newBrowser.name);
+  //   });
+    
+  //   if (browserHasConnected) {
+  //     sendEvent({
+  //       name: KarmaEventName.BrowsersConnected,
+  //       browsers: browsers.map(getBrowser)
+  //     });
+  //   }
+  // });
 
   // FIXME: Handle more `KarmaEventName` events
 }
