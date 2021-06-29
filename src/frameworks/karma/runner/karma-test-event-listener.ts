@@ -10,7 +10,7 @@ import { DeferredPromise } from "../../../util/deferred-promise";
 import { KarmaAutoWatchTestEventProcessor } from "./karma-auto-watch-test-event-processor";
 import { KarmaEvent } from "./karma-event";
 import { KarmaEventName } from "./karma-event-name";
-import { KarmaTestEventProcessor } from "./karma-test-event-processor";
+import { KarmaTestEventProcessor, TestEventProcessingOptions } from "./karma-test-event-processor";
 import { LightSpecCompleteResponse, SpecCompleteResponse } from "./spec-complete-response";
 
 const KARMA_CONNECT_TIMEOUT = 900_000;  // FIXME Read from config
@@ -111,6 +111,7 @@ export class KarmaTestEventListener implements Disposable {
 
         socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
           this.logger.debug(() => `Received Karma event: ${JSON.stringify(event, null, 2)}`);
+          this.logger.error(`Browser error while listening for test events: ${JSON.stringify(event)}`);
         });
 
         socket.on("disconnect", (reason: string) => {
@@ -146,11 +147,19 @@ export class KarmaTestEventListener implements Disposable {
   }
 
   public async listenForTestLoad(testLoadExecution: Execution): Promise<SpecCompleteResponse[]> {
-    return this.listenForTests(testLoadExecution, false);
+    return this.listenForTests(testLoadExecution, [], {
+      emitTestEvents: [],
+      filterTestEvents: [],
+      emitTestStats: false
+    });
   }
 
-  public async listenForTestRun(testRunExecution: Execution, testNames?: string[]): Promise<TestCapture> {
-    const capturedSpecs = await this.listenForTests(testRunExecution, true, testNames);
+  public async listenForTestRun(testRunExecution: Execution, testNames: string[] = []): Promise<TestCapture> {
+    const capturedSpecs = await this.listenForTests(testRunExecution, testNames, {
+      emitTestEvents: Object.values(TestStatus),
+      filterTestEvents: [],
+      emitTestStats: true
+    });
 
     const capturedTests: TestCapture = {
       [TestStatus.Failed]: [],
@@ -165,9 +174,8 @@ export class KarmaTestEventListener implements Disposable {
 
   private async listenForTests(
     testExecution: Execution,
-    emitEvents: boolean,
-    // testEventProcessor: TestEventProcessor,
-    testNames: string[] = []): Promise<SpecCompleteResponse[]>
+    testNames: string[],
+    eventProcessingOptions: TestEventProcessingOptions): Promise<SpecCompleteResponse[]>
   {
     try {
       // this.currentSpecs = tests;
@@ -176,7 +184,7 @@ export class KarmaTestEventListener implements Disposable {
 
       this.watchModeTestEventProcessor?.abortProcessing();
       
-      this.testEventProcessor.beginProcessing(testNames);
+      this.testEventProcessor.beginProcessing(testNames, eventProcessingOptions);
       await testExecution.ended();
       this.testEventProcessor.concludeProcessing();
 
