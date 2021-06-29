@@ -5,6 +5,7 @@ export enum ConfigSetting {
   KarmaPort = "karmaPort",
   Browser = "browser",
   CustomLauncher = "customLauncher",
+  TestsBasePath = "testsBasePath",
   TestFiles = "testFiles",
   ExcludeFiles = "excludeFiles",
   TestGrouping = "testGrouping",

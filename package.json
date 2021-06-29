@@ -129,6 +129,11 @@
 					"scope": "resource",
 					"default": 9876
 				},
+				"karmaTestExplorer.testsBasePath": {
+					"description": "The base folder containing the test files (absolute path or relative to `projectRootPath`)",
+					"type": "string",
+					"scope": "resource"
+				},
 				"karmaTestExplorer.testFiles": {
 					"description": "The path glob patterns identifying the test files (absolute paths or relative to `projectRootPath`)",
 					"type": "array",

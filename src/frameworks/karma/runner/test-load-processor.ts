@@ -2,7 +2,7 @@ import { TestSuiteInfo } from "vscode-test-adapter-api";
 import { TestGrouping } from "../../../api/test-grouping";
 import { AnyTestInfo, TestType } from "../../../api/test-infos";
 import { Logger } from "../../../core/logger";
-import { TestSuiteOrganizer } from "../../../core/test-suite-organizer";
+import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from "../../../core/test-suite-organizer";
 import { TestSuiteTreeProcessor } from "../../../util/test-suite-tree-processor";
 import { SpecCompleteResponse } from "./spec-complete-response";
 import { SpecResponseToTestSuiteInfoMapper } from "./spec-response-to-test-suite-info-mapper";
@@ -15,6 +15,7 @@ export class TestLoadProcessor {
     private readonly testGrouping: TestGrouping,
     private readonly flattenSingleChildFolders: boolean,
     private readonly projectRootPath: string,
+    private readonly testsBasePath: string,
     private readonly logger: Logger
   ) {}
 
@@ -22,10 +23,17 @@ export class TestLoadProcessor {
     this.specToTestSuiteMapper.refresh();
     const mappedTestSuite: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
 
-    const loadedTestSuite = this.testSuiteOrganizer.organizeTests(mappedTestSuite, this.projectRootPath, {
+    const testOrganizationOptions: TestSuiteOrganizationOptions = {
       testGrouping: this.testGrouping,
       flattenSingleChildFolders: this.flattenSingleChildFolders
-    });
+    };
+
+    const loadedTestSuite = this.testSuiteOrganizer.organizeTests(
+      mappedTestSuite,
+      this.projectRootPath,
+      this.testsBasePath,
+      testOrganizationOptions
+    );
 
     const addTestCount = (test: AnyTestInfo, testCount: number) => {
       if (test.type === TestType.Suite) {

@@ -1,6 +1,6 @@
 import { Logger } from "./logger";
 import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { sep as pathSeparator, dirname, basename, normalize, relative, join } from "path";
+import { sep as pathSeparator, dirname, basename, normalize, relative, join, resolve, isAbsolute } from "path";
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from "../api/test-infos";
 import { TestGrouping } from "../api/test-grouping";
 
@@ -25,6 +25,7 @@ export class TestSuiteOrganizer {
   public organizeTests(
     rootSuite: TestSuiteInfo,
     rootPath: string,
+    testsBasePath: string,
     options: TestSuiteOrganizationOptions = defaultTestSuiteOrganizerOptions): TestSuiteInfo
   {
     const allOptions: Required<TestSuiteOrganizationOptions> = {
@@ -33,7 +34,7 @@ export class TestSuiteOrganizer {
     };
 
     const groupedTestSuite: TestSuiteInfo = allOptions.testGrouping === TestGrouping.Folder
-      ? this.groupByFolder(rootSuite, rootPath, allOptions)
+      ? this.groupByFolder(rootSuite, rootPath, testsBasePath, allOptions)
       : rootSuite;
     
     this.sortTestTree(groupedTestSuite);
@@ -44,6 +45,7 @@ export class TestSuiteOrganizer {
   private groupByFolder(
     rootSuite: TestSuiteInfo,
     rootPath: string,
+    testsBasePath: string,
     groupingOptions: TestSuiteFolderGroupingOptions): TestSuiteInfo
   {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
@@ -99,17 +101,40 @@ export class TestSuiteOrganizer {
     
     this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
 
-    const collapsedFolderSuite: TestFolderSuiteInfo = this.flattenSingChildPaths(rootFolderSuite, groupingOptions);
-
-    const rootSuiteChildren = collapsedFolderSuite === rootFolderSuite
-      ? collapsedFolderSuite.children
-      : [ collapsedFolderSuite ];
+    const topLevelFolderSuite: TestFolderSuiteInfo = this.flattenSingChildPaths(rootFolderSuite, groupingOptions);
+    this.adjustTopLevelSuiteToTestsBasePath(topLevelFolderSuite, testsBasePath, rootPath);
+    
+    const rootSuiteChildren = topLevelFolderSuite === rootFolderSuite
+      ? topLevelFolderSuite.children
+      : [ topLevelFolderSuite ];
 
     const folderGroupedRootSuite: TestSuiteInfo = { ...rootSuite, children: rootSuiteChildren };
     return folderGroupedRootSuite;
   }
 
-  private flattenSingChildPaths(suite: TestFolderSuiteInfo, flattenOptions: TestSuiteFolderGroupingOptions): TestFolderSuiteInfo {
+  public adjustTopLevelSuiteToTestsBasePath(
+    topLevelFolderSuite: TestFolderSuiteInfo,
+    testsBasePath: string,
+    rootPath: string): void
+  {
+    const topLevelSuiteAbsolutePath = resolve(rootPath, topLevelFolderSuite.path);
+    const topLevelSuiteRelativePathFromTestBasePath = relative(testsBasePath, topLevelSuiteAbsolutePath);
+
+    const topLevelSuiteIsTestBasePathSubFolder =
+      !isAbsolute(topLevelSuiteRelativePathFromTestBasePath) &&
+      !topLevelSuiteRelativePathFromTestBasePath.startsWith(`..`);
+
+    topLevelFolderSuite.label = topLevelSuiteIsTestBasePathSubFolder
+      ? topLevelSuiteRelativePathFromTestBasePath
+      : topLevelFolderSuite.label;
+  }
+
+  private flattenSingChildPaths(
+    suite: TestFolderSuiteInfo,
+    // rootPath: string,
+    // testsBasePath: string,
+    flattenOptions: TestSuiteFolderGroupingOptions): TestFolderSuiteInfo
+  {
     if (!flattenOptions.flattenSingleChildFolders && !flattenOptions.flattenSingleSuiteFiles) {
       return suite;
     }
@@ -130,9 +155,22 @@ export class TestSuiteOrganizer {
 
     const singleChild = suite.children.length === 1 ? suite.children[0] : undefined;
 
-    return flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
+    const flattenedTestSuite = flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
       ? { ...singleChild, label: join(suite.label, singleChild.label) }
       : suite;
+
+    // const topLevelTestSuiteAbsolutePath = resolve(rootPath, flattenedTestSuite.path);
+    // const topLevelTestSuiteRelativePathFromTestBasePath = relative(testsBasePath, topLevelTestSuiteAbsolutePath);
+
+    // const topLevelTestSuiteIsTestBasePathSubFolder =
+    //   !isAbsolute(topLevelTestSuiteRelativePathFromTestBasePath) &&
+    //   !topLevelTestSuiteRelativePathFromTestBasePath.startsWith(`..`);
+
+    // flattenedTestSuite.label = topLevelTestSuiteIsTestBasePathSubFolder
+    //   ? topLevelTestSuiteRelativePathFromTestBasePath
+    //   : flattenedTestSuite.label;
+
+    return flattenedTestSuite;
   }
 
   private sortTestTree(test: TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo) {

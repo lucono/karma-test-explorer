@@ -10,6 +10,7 @@ import * as dotenvExpand from "dotenv-expand";
 
 export class ExtensionConfig implements Disposable {
   public readonly projectRootPath: string;
+  public readonly testsBasePath: string;
   public readonly userKarmaConfFilePath: string;
   public readonly karmaPort: number;
   public readonly baseKarmaConfFilePath: string;
@@ -42,6 +43,7 @@ export class ExtensionConfig implements Disposable {
     this.userKarmaConfFilePath = resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath) as string);
     this.karmaPort = config.get(ConfigSetting.KarmaPort) as number;
     this.karmaProcessExecutable = config.get(ConfigSetting.KarmaProcessExecutable) as string;
+    this.testsBasePath = resolve(this.projectRootPath, config.get(ConfigSetting.TestsBasePath) as string);
     this.testFiles = config.get(ConfigSetting.TestFiles) as string[];
     this.excludeFiles = config.get(ConfigSetting.ExcludeFiles) as string[];
     this.reloadOnKarmaConfigurationFileChange = config.get(ConfigSetting.ReloadOnKarmaConfigurationFileChange) as boolean;

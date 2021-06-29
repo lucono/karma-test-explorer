@@ -102,6 +102,7 @@ export class MainFactory {
       this.config.testGrouping,
       this.config.flattenSingleChildFolders,
       this.config.projectRootPath,
+      this.config.testsBasePath,
       createLogger(TestLoadProcessor.name)
     );
 
@@ -117,6 +118,7 @@ export class MainFactory {
       suiteTestResultProcessor,
       this.config.testGrouping,
       this.config.projectRootPath,
+      this.config.testsBasePath,
       testResolver,
       createLogger(KarmaTestEventProcessor.name)
     );
@@ -128,6 +130,7 @@ export class MainFactory {
       suiteTestResultProcessor,
       this.config.testGrouping,
       this.config.projectRootPath,
+      this.config.testsBasePath,
       testResolver,
       createLogger(`${KarmaTestEventProcessor.name}_Ambient`)
     );

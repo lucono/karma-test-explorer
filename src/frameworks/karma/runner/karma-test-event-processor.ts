@@ -54,6 +54,7 @@ export class KarmaTestEventProcessor {
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
+    private readonly testsBasePath: string,
 
     private readonly testResolver: TestResolver,
     private readonly logger: Logger,
@@ -337,9 +338,24 @@ export class KarmaTestEventProcessor {
     };
 
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(testResults.Failed, this.projectRootPath, testOrganizationOptions),
-      Success: this.testSuiteOrganizer.organizeTests(testResults.Success, this.projectRootPath, testOrganizationOptions),
-      Skipped: this.testSuiteOrganizer.organizeTests(testResults.Skipped, this.projectRootPath, testOrganizationOptions)
+      Failed: this.testSuiteOrganizer.organizeTests(
+        testResults.Failed,
+        this.projectRootPath,
+        this.testsBasePath,
+        testOrganizationOptions
+      ),
+      Success: this.testSuiteOrganizer.organizeTests(
+        testResults.Success,
+        this.projectRootPath,
+        this.testsBasePath,
+        testOrganizationOptions
+      ),
+      Skipped: this.testSuiteOrganizer.organizeTests(
+        testResults.Skipped,
+        this.projectRootPath,
+        this.testsBasePath,
+        testOrganizationOptions
+      )
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);
