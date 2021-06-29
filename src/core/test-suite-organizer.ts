@@ -117,15 +117,16 @@ export class TestSuiteOrganizer {
     testsBasePath: string,
     rootPath: string): void
   {
+    if (!this.isChildPath(rootPath, testsBasePath)) {
+      return;
+    }
     const topLevelSuiteAbsolutePath = resolve(rootPath, topLevelFolderSuite.path);
-    const topLevelSuiteRelativePathFromTestBasePath = relative(testsBasePath, topLevelSuiteAbsolutePath);
+    const topLevelSuiteIsUnderTestsBasePath = this.isChildPath(testsBasePath, topLevelSuiteAbsolutePath);
+    const testsBasePathIsUnderTopLevelSuite = this.isChildPath(topLevelSuiteAbsolutePath, testsBasePath);
+    const topLevelSuiteIsSameAsTestsBasePath = topLevelSuiteAbsolutePath === testsBasePath;
 
-    const topLevelSuiteIsTestBasePathSubFolder =
-      !isAbsolute(topLevelSuiteRelativePathFromTestBasePath) &&
-      !topLevelSuiteRelativePathFromTestBasePath.startsWith(`..`);
-
-    topLevelFolderSuite.label = topLevelSuiteIsTestBasePathSubFolder
-      ? topLevelSuiteRelativePathFromTestBasePath
+    topLevelFolderSuite.label = topLevelSuiteIsUnderTestsBasePath ? relative(testsBasePath, topLevelSuiteAbsolutePath)
+      : testsBasePathIsUnderTopLevelSuite || topLevelSuiteIsSameAsTestsBasePath ? basename(topLevelFolderSuite.label)
       : topLevelFolderSuite.label;
   }
 
@@ -268,5 +269,13 @@ export class TestSuiteOrganizer {
       currentFolderNode = nextFolderNode;
     }
     return currentFolderNode;
+  }
+
+  private isChildPath(parentPath: string, childPath: string): boolean {
+    const childFromParentRelativePath = relative(parentPath, childPath);
+
+    return childPath !== parentPath
+      && !isAbsolute(childFromParentRelativePath)
+      && !childFromParentRelativePath.startsWith(`..`);
   }
 }
