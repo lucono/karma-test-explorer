@@ -32,7 +32,7 @@
 		"build": "tsc",
 		"watch": "tsc -w",
 		"rebuild": "npm run clean && npm run build",
-		"prettify": "npx prettier --write '**/*.ts'",
+		"prettify": "npx prettier --write -- 'src/**/*.ts'",
 		"package": "npx vsce package",
 		"publish": "npx vsce publish",
 		"test": "jest -c jest.config.js"

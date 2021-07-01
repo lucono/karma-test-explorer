@@ -1,80 +1,64 @@
-import { TestFactory } from "../api/test-factory";
-import { TestRunExecutor } from "../api/test-run-executor";
-import { TestRunner } from "../api/test-runner";
-import { TestServer } from "../api/test-server";
-import { TestServerExecutor } from "../api/test-server-executor";
-import { KarmaTestEventListener } from "../frameworks/karma/runner/karma-test-event-listener";
-import { TestLoadProcessor } from "../frameworks/karma/runner/test-load-processor";
-import { Logger } from "./logger";
+import { TestFactory } from '../api/test-factory';
+import { TestRunExecutor } from '../api/test-run-executor';
+import { TestRunner } from '../api/test-runner';
+import { TestServer } from '../api/test-server';
+import { TestServerExecutor } from '../api/test-server-executor';
+import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
+import { TestLoadProcessor } from '../frameworks/karma/runner/test-load-processor';
+import { Logger } from './logger';
 
 export class CascadingTestFactory implements TestFactory {
+	public constructor(private readonly delegateTestFactories: Partial<TestFactory>[], private readonly logger: Logger) {}
 
-  public constructor(
-    private readonly delegateTestFactories: Partial<TestFactory>[],
-    private readonly logger: Logger)
-  {}
+	public createTestServer(testServerExecutor?: TestServerExecutor): TestServer {
+		const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServer' in factory);
 
-  public createTestServer(testServerExecutor?: TestServerExecutor): TestServer {
-    const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServer' in factory);
+		if (!delegateFactory) {
+			throw new Error(`There are no delegate test factories able to fulfil ` + `requested action: Create Test Server`);
+		}
+		return delegateFactory.createTestServer!(testServerExecutor ?? this.createTestServerExecutor());
+	}
 
-    if (!delegateFactory) {
-      throw new Error(
-        `There are no delegate test factories able to fulfil ` +
-        `requested action: Create Test Server`);
-    }
-    return delegateFactory.createTestServer!(testServerExecutor ?? this.createTestServerExecutor());
-  }
+	public createTestRunner(
+		karmaEventListener: KarmaTestEventListener,
+		testLoadProcessor: TestLoadProcessor,
+		testRunExecutor?: TestRunExecutor
+	): TestRunner {
+		const delegateFactory = this.delegateTestFactories.find(factory => 'createTestRunner' in factory);
 
-  public createTestRunner(
-    karmaEventListener: KarmaTestEventListener,
-    // testEventProcessor: TestEventProcessor,
-    // testLoadEventProcessor: TestEventProcessor,
-    // testRunEventProcessor: TestEventProcessor,
-    // specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
-    testLoadProcessor: TestLoadProcessor,
-    testRunExecutor?: TestRunExecutor): TestRunner
-  {
-    const delegateFactory = this.delegateTestFactories.find(factory => 'createTestRunner' in factory);
+		if (!delegateFactory) {
+			throw new Error(`There are no delegate test factories able to fulfil ` + `requested action: Create Test Runner`);
+		}
+		return delegateFactory.createTestRunner!(
+			karmaEventListener,
+			testLoadProcessor,
+			testRunExecutor ?? this.createTestRunExecutor()
+		);
+	}
 
-    if (!delegateFactory) {
-      throw new Error(
-        `There are no delegate test factories able to fulfil ` +
-        `requested action: Create Test Runner`);
-    }
-    return delegateFactory.createTestRunner!(
-      karmaEventListener,
-      // testEventProcessor,
-      // testLoadEventProcessor,
-      // testRunEventProcessor,
-      // specToTestSuiteMapper,
-      testLoadProcessor,
-      testRunExecutor ?? this.createTestRunExecutor());
-  }
+	public createTestServerExecutor(): TestServerExecutor {
+		const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServerExecutor' in factory);
 
-  public createTestServerExecutor(): TestServerExecutor
-  {
-    const delegateFactory = this.delegateTestFactories.find(factory => 'createTestServerExecutor' in factory);
+		if (!delegateFactory) {
+			throw new Error(
+				`There are no delegate test factories able to fulfil ` + `requested action: Create Test Server Executor`
+			);
+		}
+		return delegateFactory.createTestServerExecutor!();
+	}
 
-    if (!delegateFactory) {
-      throw new Error(
-        `There are no delegate test factories able to fulfil ` +
-        `requested action: Create Test Server Executor`);
-    }
-    return delegateFactory.createTestServerExecutor!();
-  }
+	public createTestRunExecutor(): TestRunExecutor {
+		const delegateFactory = this.delegateTestFactories.find(factory => 'createTestRunExecutor' in factory);
 
-  public createTestRunExecutor(): TestRunExecutor {
-    const delegateFactory = this.delegateTestFactories.find(factory => 'createTestRunExecutor' in factory);
+		if (!delegateFactory) {
+			throw new Error(
+				`There are no delegate test factories able to fulfil ` + `requested action: Create Test Run Executor`
+			);
+		}
+		return delegateFactory.createTestRunExecutor!();
+	}
 
-    if (!delegateFactory) {
-      throw new Error(
-        `There are no delegate test factories able to fulfil ` +
-        `requested action: Create Test Run Executor`);
-    }
-    return delegateFactory.createTestRunExecutor!();
-  }
-  
-  public dispose(): void {
-    this.logger.dispose();
-  }
+	public dispose(): void {
+		this.logger.dispose();
+	}
 }

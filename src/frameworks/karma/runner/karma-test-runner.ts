@@ -1,170 +1,129 @@
-import { Logger } from "../../../core/logger";
-import { KarmaTestEventListener } from "./karma-test-event-listener";
-import { TestInfo, TestSuiteInfo } from "vscode-test-adapter-api";
-import { TestRunner } from "../../../api/test-runner";
-import { SpecCompleteResponse } from "./spec-complete-response";
-import { DeferredPromise } from "../../../util/deferred-promise";
-import { Execution } from "../../../api/execution";
-import { TestRunExecutor } from "../../../api/test-run-executor";
-import { SKIP_ALL_TESTS_PATTERN } from "../karma-constants";
-import { AnyTestInfo, TestSuiteType, TestType } from "../../../api/test-infos";
-import { TestLoadProcessor } from "./test-load-processor";
-// import { TestResults } from "../../../api/test-results";
+import { Logger } from '../../../core/logger';
+import { KarmaTestEventListener } from './karma-test-event-listener';
+import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
+import { TestRunner } from '../../../api/test-runner';
+import { SpecCompleteResponse } from './spec-complete-response';
+import { DeferredPromise } from '../../../util/deferred-promise';
+import { Execution } from '../../../api/execution';
+import { TestRunExecutor } from '../../../api/test-run-executor';
+import { SKIP_ALL_TESTS_PATTERN } from '../karma-constants';
+import { AnyTestInfo, TestSuiteType, TestType } from '../../../api/test-infos';
+import { TestLoadProcessor } from './test-load-processor';
+import { Disposable } from '../../../api/disposable';
 
 export class KarmaTestRunner implements TestRunner {
+	private disposables: Disposable[] = [];
 
-  public constructor(
-    private readonly testRunExecutor: TestRunExecutor,
-    private readonly karmaEventListener: KarmaTestEventListener,  // FIXME: Should not receive but own its own listener
-    // private readonly testEventProcessor: TestEventProcessor,
-    // private readonly testRunEventProcessor: TestEventProcessor,
-    // private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
-    private readonly testLoadProcessor: TestLoadProcessor,
-    private readonly logger: Logger
-  ) {}
+	public constructor(
+		private readonly testRunExecutor: TestRunExecutor,
+		private readonly karmaEventListener: KarmaTestEventListener,
+		private readonly testLoadProcessor: TestLoadProcessor,
+		private readonly logger: Logger
+	) {
+		this.disposables.push(karmaEventListener, logger);
+	}
 
-  public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
-    const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
-    const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
+	public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
+		const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
+		const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
-    const testLoadOperation: Execution = {
-      started: () => testLoadStartedDeferred.promise(),
-      ended: () => testLoadEndedDeferred.promise()
-    };
+		const testLoadOperation: Execution = {
+			started: () => testLoadStartedDeferred.promise(),
+			ended: () => testLoadEndedDeferred.promise()
+		};
 
-    const testCapture: Promise<SpecCompleteResponse[]> = this.karmaEventListener.listenForTestLoad(
-      testLoadOperation,
-      // this.testEventProcessor
-    );
-    
-    const clientArgs: string[] = [ `--grep=/${SKIP_ALL_TESTS_PATTERN}/` ];
+		const testCapture: Promise<SpecCompleteResponse[]> = this.karmaEventListener.listenForTestLoad(testLoadOperation);
 
-    testLoadStartedDeferred.resolve();
-    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
-    testLoadEndedDeferred.resolve();
+		const clientArgs: string[] = [`--grep=/${SKIP_ALL_TESTS_PATTERN}/`];
 
-    const loadedSpecs: SpecCompleteResponse[] = await testCapture;
+		testLoadStartedDeferred.resolve();
+		await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
+		testLoadEndedDeferred.resolve();
 
-    // const loadedSpecs: SpecCompleteResponse[] = [
-    //   ...capturedSpecs[TestStatus.Skipped],
-    //   ...capturedSpecs[TestStatus.Success],
-    //   ...capturedSpecs[TestStatus.Failed]
-    // ];
+		const loadedSpecs: SpecCompleteResponse[] = await testCapture;
+		const loadedTests: TestSuiteInfo = this.testLoadProcessor.processTests(loadedSpecs);
 
-    const loadedTests: TestSuiteInfo = this.testLoadProcessor.processTests(loadedSpecs);
+		return loadedTests;
+	}
 
-    // this.logger.info(`Load tests captured ` +
-    //   `${capturedSpecs[TestStatus.Skipped].length} skipped specs, ` +
-    //   `${capturedSpecs[TestStatus.Success].length} passed specs, ` +
-    //   `${capturedSpecs[TestStatus.Failed].length} failed specs`);
+	public async runTests(karmaPort: number, tests: (TestInfo | TestSuiteInfo)[]): Promise<void> {
+		this.logger.info(
+			`Requested ${tests.length} tests to run having Ids: ${JSON.stringify(tests.map(test => test.id))}`
+		);
 
-    // const loadedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(loadedSpecs);
+		const runAllTests = tests.length === 0;
+		const clientArgs: string[] = [];
+		let testList: (TestInfo | TestSuiteInfo)[];
 
-    return loadedTests;
-  }
+		if (runAllTests) {
+			this.logger.debug(() => `Received empty test list - Will run all tests`);
 
-  public async runTests(
-    karmaPort: number,
-    tests: (TestInfo | TestSuiteInfo)[]): Promise<void>
-  {
-    this.logger.info(
-      `Requested ${tests.length} tests to run having Ids: ${JSON.stringify(tests.map(test => test.id))}`,
-      { divider: "Karma Logs" });  // FIXME: what's divider?
+			testList = [];
+		} else {
+			testList = this.toRunnableTests(tests);
+			this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
 
-    const runAllTests = tests.length === 0;
-    const clientArgs: string[] = [];
-    let testList: (TestInfo | TestSuiteInfo)[];
-    // let aggregateTestPattern: string = SKIP_ALL_TESTS_PATTERN;
+			const testPatterns: string[] = testList.map(
+				test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
+			);
 
-    if (runAllTests) {
-      this.logger.debug(() => `Received empty test list - Will run all tests`);
+			if (testPatterns.length === 0) {
+				throw new Error(`No tests to run`);
+			}
+			const aggregateTestPattern = `/(${testPatterns.join('|')})/`;
+			clientArgs.push(`--grep=${aggregateTestPattern}`);
+		}
 
-      testList = [];
-      // aggregateTestPattern = RUN_ALL_TESTS_PATTERN;
+		const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
+		const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
-    } else {
-      testList = this.toRunnableTests(tests);
-      this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
-  
-      const testPatterns: string[] = testList.map(
-        test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
-      );
+		const testRunOperation: Execution = {
+			started: () => testRunStartedDeferred.promise(),
+			ended: () => testRunEndedDeferred.promise()
+		};
 
-      if (testPatterns.length === 0) {
-        throw new Error(`No tests to run`);
-      }
-      const aggregateTestPattern = `/(${testPatterns.join("|")})/`;
-      clientArgs.push(`--grep=${aggregateTestPattern}`);
-    }
+		const testNames: string[] = testList.map(test => test.fullName);
 
-    const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
-    const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
+		this.karmaEventListener.listenForTestRun(testRunOperation, testNames);
 
-    const testRunOperation: Execution = {
-      started: () => testRunStartedDeferred.promise(),
-      ended: () => testRunEndedDeferred.promise()
-    };
+		testRunStartedDeferred.resolve();
+		await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
+		testRunEndedDeferred.resolve();
+	}
 
-    const testNames: string[] = testList.map(test =>test.fullName);
+	private toRunnableTests(tests: AnyTestInfo[]): (TestInfo | TestSuiteInfo)[] {
+		const runnableTests: (TestInfo | TestSuiteInfo)[] = [];
 
-    // const testCapture: Promise<TestCapture> = this.karmaEventListener.listenForTestRun(
-    this.karmaEventListener.listenForTestRun(
-      testRunOperation,
-      // this.testEventProcessor,
-      testNames
-    );
+		tests.forEach(test => {
+			// Add all the runnable tests and test suites
+			if (test.fullName) {
+				runnableTests.push(test);
+				return;
+			}
+			// Skip anomalous tests and test suites that lack full name (which shouldn't happen)
+			if (!(test.type === TestType.Suite && 'suiteType' in test)) {
+				return;
+			}
+			// For remaining test files, extract underlying test suites
+			if (test.suiteType === TestSuiteType.File) {
+				runnableTests.push(...test.children);
+				return;
+			}
+			// For remaining test folders, extract underlying test suites
+			if (test.suiteType === TestSuiteType.Folder) {
+				runnableTests.push(...this.toRunnableTests(test.children));
+				return;
+			}
+		});
+		return runnableTests;
+	}
 
-    testRunStartedDeferred.resolve();
-    await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
-    testRunEndedDeferred.resolve();
-    
-    // const capturedSpecs: TestCapture = await testCapture;
-    // const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Failed]);
-    // const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Success]);
-    // const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedSpecs[TestStatus.Skipped]);
+	private escapeForRegExp(stringValue: string) {
+		// Taken from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+		return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
 
-    // const testResults: TestResults = {
-    //   [TestStatus.Failed]: failedTests,
-    //   [TestStatus.Success]: passedTests,
-    //   [TestStatus.Skipped]: skippedTests
-    // };
-
-    // return testResults;
-  }
-
-  private toRunnableTests(tests: AnyTestInfo[]): (TestInfo | TestSuiteInfo)[] {
-    const runnableTests: (TestInfo | TestSuiteInfo)[] = [];
-
-    tests.forEach(test => {
-      // Add all the runnable tests and test suites
-      if (test.fullName) {
-        runnableTests.push(test);
-        return;
-      }
-      // Skip anomalous tests and test suites that lack full name (which shouldn't happen)
-      if (!(test.type === TestType.Suite && 'suiteType' in test)) {
-        return;
-      }
-      // For remaining test files, extract underlying test suites
-      if (test.suiteType === TestSuiteType.File) {
-        runnableTests.push(...test.children);
-        return;
-      }
-      // For remaining test folders, extract underlying test suites
-      if (test.suiteType === TestSuiteType.Folder) {
-        runnableTests.push(...this.toRunnableTests(test.children));
-        return;
-      }
-    });
-    return runnableTests;
-  }
-
-  private escapeForRegExp(stringValue: string) {
-    // Taken from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-    return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-  
-  public dispose(): void {
-    // FIXME: Pending impl
-  }
+	public dispose(): void {
+		this.disposables.forEach(disposable => disposable.dispose());
+	}
 }

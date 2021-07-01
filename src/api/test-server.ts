@@ -1,13 +1,12 @@
-import { Disposable } from "./disposable";
-import { Execution } from "./execution";
+import { Disposable } from './disposable';
+import { Execution } from './execution';
 
 export interface TestServer extends Disposable {
+	start(karmaPort: number, karmaSocketPort: number): Execution;
 
-  start(karmaPort: number, karmaSocketPort: number): Execution;
+	stop(): Promise<void>;
 
-  stop(): Promise<void>;
+	isRunning(): boolean;
 
-  isRunning(): boolean;
-
-  getServerPort(): number | undefined;
+	getServerPort(): number | undefined;
 }

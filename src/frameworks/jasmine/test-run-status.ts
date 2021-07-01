@@ -1,5 +1,5 @@
 export enum TestRunStatus {
-  Timeout = "Timeout",
-  Error = "Error",
-  Complete = "Complete",
+	Timeout = 'Timeout',
+	Error = 'Error',
+	Complete = 'Complete'
 }

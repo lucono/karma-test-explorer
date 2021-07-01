@@ -1,137 +1,135 @@
-import { ChildProcess, SpawnOptions } from "child_process";
-import { Logger } from "../core/logger";
-import * as spawn from "cross-spawn";
-import * as psTree from "ps-tree";
-import { Execution } from "../api/execution";
+import { ChildProcess, SpawnOptions } from 'child_process';
+import { Logger } from '../core/logger';
+import * as spawn from 'cross-spawn';
+import * as psTree from 'ps-tree';
+import { Execution } from '../api/execution';
 
 export interface CommandLineProcessLog {
-  output(data: string): void;
-  error(data: string): void;
+	output(data: string): void;
+	error(data: string): void;
 }
 
 export class CommandLineProcessHandler {
-  private readonly uid: string;
-  private process: ChildProcess | undefined;
-  private processExecution: Execution;
-  private hasExited: boolean;
-  private readonly processLog: CommandLineProcessLog;
+	private readonly uid: string;
+	private process: ChildProcess | undefined;
+	private processExecution: Execution;
+	private hasExited: boolean;
+	private readonly processLog: CommandLineProcessLog;
 
-  public constructor(
-    command: string,
-    processArguments: string[],
-    private readonly logger: Logger,
-    processLog?: CommandLineProcessLog,
-    runOptions?: SpawnOptions,
-    // private readonly processLogger: (data: string) => void = logger.info.bind(logger),
-    // private readonly processErrorLogger: (data: string) => void = logger.error.bind(logger)
-    )
-  {
-    this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
-    this.hasExited = false;
+	public constructor(
+		command: string,
+		processArguments: string[],
+		private readonly logger: Logger,
+		processLog?: CommandLineProcessLog,
+		runOptions?: SpawnOptions
+	) {
+		this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
+		this.hasExited = false;
 
-    this.processLog = processLog ?? {
-      output: logger.info.bind(logger),
-      error: logger.error.bind(logger)
-    };
+		this.processLog = processLog ?? {
+			output: logger.info.bind(logger),
+			error: logger.error.bind(logger)
+		};
 
-    this.logger.debug(() =>
-      `Process ${this.uid}:
+		this.logger.debug(
+			() =>
+				`Process ${this.uid}:
       Executing command: '${command}'
       with args: ${JSON.stringify(processArguments)}
       and options: ${JSON.stringify(runOptions)}`
-    );
+		);
 
-    const process = spawn(command, processArguments, runOptions);
-    const processPid = process.pid;
+		const process = spawn(command, processArguments, runOptions);
+		const processPid = process.pid;
 
-    this.logger.debug(() =>
-      `Process ${this.uid}:
-      PID is ${processPid} for command: '${command}'
-      with args: ${JSON.stringify(processArguments)}`
-    );
+		this.logger.debug(
+			() =>
+				`Process ${this.uid}: \n` +
+				`PID is ${processPid} for command: '${command}' \n` +
+				`with args: ${JSON.stringify(processArguments)}`
+		);
 
-    this.process = process;
-    this.setupProcessOutputs(process);
+		this.process = process;
+		this.setupProcessOutputs(process);
 
-    const futureProcessExit: Promise<void> = new Promise(async resolve => {
-      process.on("exit", (code, signal) => {
-        const processCommand = `${command} ${processArguments.join(" ")}`;
-        this.logger.debug(() =>
-          `Process ${this.uid}:
-          PID ${processPid} exited
-          with code '${code}' and signal '${signal}'
-          for command: ${processCommand}`);
+		const futureProcessExit: Promise<void> = new Promise(async resolve => {
+			process.on('exit', (code, signal) => {
+				const processCommand = `${command} ${processArguments.join(' ')}`;
+				this.logger.debug(
+					() =>
+						`Process ${this.uid}: \n` +
+						`PID ${processPid} exited \n` +
+						`with code '${code}' and signal '${signal}' \n` +
+						`for command: ${processCommand}`
+				);
 
-        this.updateProcessEnded();
-        resolve();
-      });
-    });
+				this.updateProcessEnded();
+				resolve();
+			});
+		});
 
-    const processStartedPromise = Promise.resolve();
+		const processStartedPromise = Promise.resolve();
 
-    const processExecution: Execution = {
-      started: () => processStartedPromise,
-      ended: () => futureProcessExit
-    };
+		const processExecution: Execution = {
+			started: () => processStartedPromise,
+			ended: () => futureProcessExit
+		};
 
-    this.processExecution = processExecution;
-  }
+		this.processExecution = processExecution;
+	}
 
-  public async stop(): Promise<void> {
-    if (!this.isProcessRunning()) {
-      this.logger.info(`Process ${this.uid}: Request to kill process - Process already exited`);
-      return;
-    }
-    
-    const runningProcess = this.process as ChildProcess;
-    this.logger.info(`Process ${this.uid}: Killing process tree of PID: ${runningProcess.pid}`);
+	public async stop(): Promise<void> {
+		if (!this.isProcessRunning()) {
+			this.logger.info(`Process ${this.uid}: Request to kill process - Process already exited`);
+			return;
+		}
 
-    return new Promise<void>((resolve, reject) => {
-      const processPid = runningProcess.pid;
+		const runningProcess = this.process as ChildProcess;
+		this.logger.info(`Process ${this.uid}: Killing process tree of PID: ${runningProcess.pid}`);
 
-      if (!processPid) {
-        resolve();
-        return;
-      }
+		return new Promise<void>((resolve, reject) => {
+			const processPid = runningProcess.pid;
 
-      psTree(processPid, (error, childProcesses) => {
-        if (error) {
-          this.logger.error(`Process ${this.uid}: Failed to kill process tree for PID '${processPid}': ${error}`);
-          reject(error);
-        } else {
-          childProcesses.forEach(childProcess => process.kill(Number(childProcess.PID), 'SIGKILL'));
-          this.logger.info(`Process ${this.uid}: Successfully killed process tree for PID: ${processPid}`);
-          resolve();
-        }
-      });
-    });
-  }
+			if (!processPid) {
+				resolve();
+				return;
+			}
 
-  public execution(): Execution {
-    return this.processExecution;
-  }
+			psTree(processPid, (error, childProcesses) => {
+				if (error) {
+					this.logger.error(`Process ${this.uid}: Failed to kill process tree for PID '${processPid}': ${error}`);
+					reject(error);
+				} else {
+					childProcesses.forEach(childProcess => process.kill(Number(childProcess.PID), 'SIGKILL'));
+					this.logger.info(`Process ${this.uid}: Successfully killed process tree for PID: ${processPid}`);
+					resolve();
+				}
+			});
+		});
+	}
 
-  private isProcessRunning(): boolean {
-    return !this.hasExited;
-  }
+	public execution(): Execution {
+		return this.processExecution;
+	}
 
-  private updateProcessEnded() {
-    this.hasExited = true;
-  }
+	private isProcessRunning(): boolean {
+		return !this.hasExited;
+	}
 
-  private setupProcessOutputs(process: ChildProcess) {
-    process.stdout?.on("data", (data: any) => this.processLog.output(`${data}`));
-    process.stderr?.on(`data`, (data: any) => this.processLog.error(`${data}`));
-    process.on(`error`, (error: any) => this.logger.error(`Process ${this.uid}: Error from child process: ${error}`));
+	private updateProcessEnded() {
+		this.hasExited = true;
+	}
 
-    // Prevent karma server from being an orphan process.
-    // For example, if VSCODE is killed using SIGKILL, karma server will still be alive.
-    // When VSCODE is terminated, karma server's standard input is closed automatically.
-    process.stdin?.on(`close`, async () => {
-      // terminating orphan process
-      if (this.isProcessRunning()) {
-        this.stop();
-      }
-    });
-  }
+	private setupProcessOutputs(process: ChildProcess) {
+		process.stdout?.on('data', (data: any) => this.processLog.output(`${data}`));
+		process.stderr?.on(`data`, (data: any) => this.processLog.error(`${data}`));
+		process.on(`error`, (error: any) => this.logger.error(`Process ${this.uid}: Error from child process: ${error}`));
+
+		// Prevent karma server from being an orphan process if VSCODE is killed using SIGKILL
+		process.stdin?.on(`close`, async () => {
+			if (this.isProcessRunning()) {
+				this.stop();
+			}
+		});
+	}
 }

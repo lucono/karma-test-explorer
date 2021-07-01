@@ -1,5 +1,5 @@
 export enum TestStatus {
-  Success = "Success",
-  Failed = "Failed",
-  Skipped = "Skipped",
+	Success = 'Success',
+	Failed = 'Failed',
+	Skipped = 'Skipped'
 }

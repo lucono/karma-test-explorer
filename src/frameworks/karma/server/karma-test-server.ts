@@ -1,180 +1,174 @@
-import { Logger } from "../../../core/logger";
-import { Execution } from "../../../api/execution";
-import { DeferredPromise } from "../../../util/deferred-promise";
-import { TestServer } from "../../../api/test-server";
-import { window } from "vscode";
-import { ServerStopExecutor, TestServerExecutor } from "../../../api/test-server-executor";
+import { Logger } from '../../../core/logger';
+import { Execution } from '../../../api/execution';
+import { DeferredPromise } from '../../../util/deferred-promise';
+import { TestServer } from '../../../api/test-server';
+import { window } from 'vscode';
+import { ServerStopExecutor, TestServerExecutor } from '../../../api/test-server-executor';
+import { Disposable } from '../../../api/disposable';
 
 type ServerExecutionInfo = {
-  serverExecution: Execution<ServerStopExecutor>,
-  serverStopper: ServerStopExecutor,
-  serverPort: number
+	serverExecution: Execution<ServerStopExecutor>;
+	serverStopper: ServerStopExecutor;
+	serverPort: number;
 };
 
 enum ServerQuitAction {
-  RestartServer = `Restart Server`,
-  Ignore = `Ignore`
+	RestartServer = `Restart Server`,
+	Ignore = `Ignore`
 }
 
 export class KarmaServer implements TestServer {
-  private serverExecutionInfo?: ServerExecutionInfo;
-  private serverCurrentlyTerminating: Promise<void> | undefined;
-  private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
+	private serverExecutionInfo?: ServerExecutionInfo;
+	private serverCurrentlyTerminating: Promise<void> | undefined;
+	private serverRestartTimerId: ReturnType<typeof setTimeout> | undefined;
+	private disposables: Disposable[] = [];
 
-  public constructor(
-    private readonly serverExecutionHandler: TestServerExecutor,
-    private readonly logger: Logger)
-  { }
-  
-  public start(
-    karmaPort: number,
-    karmaSocketPort: number): Execution
-  {
-    const serverStoppedDeferred: DeferredPromise = new DeferredPromise();
+	public constructor(private readonly serverExecutionHandler: TestServerExecutor, private readonly logger: Logger) {
+		this.disposables.push(logger);
+	}
 
-    const serverStartedPromise = new Promise<void>(async (resolve) => {
-      if (this.serverCurrentlyTerminating) {
-        this.logger.info(
-          `Request to start karma server - server is still shutting down. ` +
-          `Waiting for termination to complete before commencing startup`);
+	public start(karmaPort: number, karmaSocketPort: number): Execution {
+		const serverStoppedDeferred: DeferredPromise = new DeferredPromise();
 
-        await this.serverCurrentlyTerminating;
-      }
-      
-      if (this.isRunning()) {
-        this.logger.info(`Request to start karma server - server is already running`);
+		const serverStartedPromise = new Promise<void>(async resolve => {
+			if (this.serverCurrentlyTerminating) {
+				this.logger.info(
+					`Request to start karma server - server is still shutting down. ` +
+						`Waiting for termination to complete before commencing startup`
+				);
 
-        resolve();
-        this.futureServerExit().then(() => serverStoppedDeferred.resolve());
-        return;
-      }
+				await this.serverCurrentlyTerminating;
+			}
 
-      if (this.serverRestartTimerId) {
-        this.cancelScheduledRestart(this.serverRestartTimerId);
-      }
-    
-      this.logger.info(`Starting karma server`);
+			if (this.isRunning()) {
+				this.logger.info(`Request to start karma server - server is already running`);
 
-      const serverExecution = this.serverExecutionHandler.executeServerStart(karmaPort, karmaSocketPort);
-      const serverStopper: ServerStopExecutor = await serverExecution.started();
+				resolve();
+				this.futureServerExit().then(() => serverStoppedDeferred.resolve());
+				return;
+			}
 
-      const serverExecutionInfo: ServerExecutionInfo = {
-        serverExecution,
-        serverStopper,
-        serverPort: karmaPort
-      };
+			if (this.serverRestartTimerId) {
+				this.cancelScheduledRestart(this.serverRestartTimerId);
+			}
 
-      this.setServerInfo(serverExecutionInfo);
+			this.logger.info(`Starting karma server`);
 
-      serverExecution.ended().then(() => {
-        this.clearServerInfo(serverExecutionInfo);
+			const serverExecution = this.serverExecutionHandler.executeServerStart(karmaPort, karmaSocketPort);
+			const serverStopper: ServerStopExecutor = await serverExecution.started();
 
-        const serverWasTerminating = this.serverCurrentlyTerminating;
-        const wasUnexpectedServerTermination = !serverWasTerminating;
-    
-        if (serverWasTerminating) {
-          this.serverCurrentlyTerminating = undefined;
-        }
-        serverStoppedDeferred.resolve();
+			const serverExecutionInfo: ServerExecutionInfo = {
+				serverExecution,
+				serverStopper,
+				serverPort: karmaPort
+			};
 
-        if (wasUnexpectedServerTermination) {
-          const serverQuitMessage = `The Karma server quit unexpectedly. Restart the server?`;
-          const serverQuitActions: string[] = Object.values(ServerQuitAction);
+			this.setServerInfo(serverExecutionInfo);
 
-          this.logger.error(serverQuitMessage);
+			serverExecution.ended().then(() => {
+				this.clearServerInfo(serverExecutionInfo);
 
-          window.showWarningMessage(serverQuitMessage, ...serverQuitActions).then(selection => {
-            if (selection === ServerQuitAction.RestartServer) {
-              this.logger.info(`User chose to restart server`);
-              // FIXME: Ports may no longer be available. Perhaps move
-              // crash detection and restart upward to the test manager
-              // level and acquire new ports for use in the restart
-              this.scheduleFutureStartup(0, karmaPort, karmaSocketPort);
+				const serverWasTerminating = this.serverCurrentlyTerminating;
+				const wasUnexpectedServerTermination = !serverWasTerminating;
 
-            } else {
-              this.logger.info(`User chose not to restart server`);
-            }
-          });
-        }
-      });
-      resolve();
-    });
+				if (serverWasTerminating) {
+					this.serverCurrentlyTerminating = undefined;
+				}
+				serverStoppedDeferred.resolve();
 
-    const karmaServerExecution: Execution = {
-      started: () => serverStartedPromise,
-      ended: () => serverStoppedDeferred.promise()
-    };
+				if (wasUnexpectedServerTermination) {
+					const serverQuitMessage = `The Karma server quit unexpectedly. Restart the server?`;
+					const serverQuitActions: string[] = Object.values(ServerQuitAction);
 
-    return karmaServerExecution;
-  }
+					this.logger.error(serverQuitMessage);
 
-  private cancelScheduledRestart(serverRestartTimerId: NodeJS.Timeout) {
-    if (this.serverRestartTimerId !== undefined && this.serverRestartTimerId === serverRestartTimerId) {
-      clearTimeout(this.serverRestartTimerId);
-      this.serverRestartTimerId = undefined;
-    }
-  }
+					window.showWarningMessage(serverQuitMessage, ...serverQuitActions).then(selection => {
+						if (selection === ServerQuitAction.RestartServer) {
+							this.logger.info(`User chose to restart server`);
+							// FIXME: Ports may no longer be available by time user
+							// chooses to restart. Perhaps move crash detection and
+							// restart upward to the test manager level and acquire
+							// new ports for use in the restart
+							this.scheduleFutureStartup(0, karmaPort, karmaSocketPort);
+						} else {
+							this.logger.info(`User chose not to restart server`);
+						}
+					});
+				}
+			});
+			resolve();
+		});
 
-  private scheduleFutureStartup(
-    startDelaySecs: number, 
-    karmaPort: number,
-    karmaSocketPort: number)
-  {
-    if (this.serverRestartTimerId !== undefined) {
-      this.cancelScheduledRestart(this.serverRestartTimerId);
-    }
-    const startDelayMillis = startDelaySecs * 1000;
-    this.serverRestartTimerId = setTimeout(() => this.start(karmaPort, karmaSocketPort), startDelayMillis);
-  }
+		const karmaServerExecution: Execution = {
+			started: () => serverStartedPromise,
+			ended: () => serverStoppedDeferred.promise()
+		};
 
-  public async stop(): Promise<void> {
-    if (!this.isRunning()) {
-      this.logger.info(`Request to kill karma server - server is not running`);
-      return;
-    }
-    const serverExecutionInfo = this.serverExecutionInfo!;
-    const serverExecution = serverExecutionInfo.serverExecution;
-    const serverStopper = serverExecutionInfo.serverStopper!;
-    const serverPort = serverExecutionInfo.serverPort!;
+		return karmaServerExecution;
+	}
 
-    this.logger.info(`Killing Karma server on port ${serverPort}`);
-    this.clearServerInfo(serverExecutionInfo);
+	private cancelScheduledRestart(serverRestartTimerId: NodeJS.Timeout) {
+		if (this.serverRestartTimerId !== undefined && this.serverRestartTimerId === serverRestartTimerId) {
+			clearTimeout(this.serverRestartTimerId);
+			this.serverRestartTimerId = undefined;
+		}
+	}
 
-    const serverIsTerminatingDeferred: DeferredPromise = new DeferredPromise<void>();
-    const serverIsTerminatingPromise: Promise<void> = serverIsTerminatingDeferred.promise();
-    this.serverCurrentlyTerminating = serverIsTerminatingPromise;
+	private scheduleFutureStartup(startDelaySecs: number, karmaPort: number, karmaSocketPort: number) {
+		if (this.serverRestartTimerId !== undefined) {
+			this.cancelScheduledRestart(this.serverRestartTimerId);
+		}
+		const startDelayMillis = startDelaySecs * 1000;
+		this.serverRestartTimerId = setTimeout(() => this.start(karmaPort, karmaSocketPort), startDelayMillis);
+	}
 
-    await serverStopper.executeServerStop();
-    await serverExecution.ended();
-    
-    this.logger.info(`Karma server on port ${serverPort} killed`);
-    serverIsTerminatingDeferred.resolve();
-  }
+	public async stop(): Promise<void> {
+		if (!this.isRunning()) {
+			this.logger.info(`Request to kill karma server - server is not running`);
+			return;
+		}
+		const serverExecutionInfo = this.serverExecutionInfo!;
+		const serverExecution = serverExecutionInfo.serverExecution;
+		const serverStopper = serverExecutionInfo.serverStopper!;
+		const serverPort = serverExecutionInfo.serverPort!;
 
-  public getServerPort(): number | undefined {
-    return this.serverExecutionInfo?.serverPort;
-  }
+		this.logger.info(`Killing Karma server on port ${serverPort}`);
+		this.clearServerInfo(serverExecutionInfo);
 
-  public isRunning(): boolean {
-    return this.serverExecutionInfo !== undefined;
-  }
+		const serverIsTerminatingDeferred: DeferredPromise = new DeferredPromise<void>();
+		const serverIsTerminatingPromise: Promise<void> = serverIsTerminatingDeferred.promise();
+		this.serverCurrentlyTerminating = serverIsTerminatingPromise;
 
-  private setServerInfo(serverExecutionInfo: ServerExecutionInfo) {
-    this.serverExecutionInfo = serverExecutionInfo;
-  }
+		await serverStopper.executeServerStop();
+		await serverExecution.ended();
 
-  private clearServerInfo(serverExecutionInfo: ServerExecutionInfo) {
-    if (this.serverExecutionInfo && this.serverExecutionInfo === serverExecutionInfo) {
-      this.serverExecutionInfo = undefined;
-    }
-  }
+		this.logger.info(`Karma server on port ${serverPort} killed`);
+		serverIsTerminatingDeferred.resolve();
+	}
 
-  private async futureServerExit(): Promise<void> {
-    return this.serverExecutionInfo?.serverExecution.ended();
-  }
-  
-  public dispose(): void {
-    // FIXME: Pending impl
-  }
+	public getServerPort(): number | undefined {
+		return this.serverExecutionInfo?.serverPort;
+	}
+
+	public isRunning(): boolean {
+		return this.serverExecutionInfo !== undefined;
+	}
+
+	private setServerInfo(serverExecutionInfo: ServerExecutionInfo) {
+		this.serverExecutionInfo = serverExecutionInfo;
+	}
+
+	private clearServerInfo(serverExecutionInfo: ServerExecutionInfo) {
+		if (this.serverExecutionInfo && this.serverExecutionInfo === serverExecutionInfo) {
+			this.serverExecutionInfo = undefined;
+		}
+	}
+
+	private async futureServerExit(): Promise<void> {
+		return this.serverExecutionInfo?.serverExecution.ended();
+	}
+
+	public dispose(): void {
+		this.disposables.forEach(disposable => disposable.dispose());
+	}
 }
-
