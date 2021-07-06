@@ -21,5 +21,6 @@ export enum ConfigSetting {
 	LogFile = 'logfile',
 	AutoWatchEnabled = 'autoWatchEnabled',
 	AutoWatchBatchDelay = 'autoWatchBatchDelay',
-	KarmaReadyTimeout = 'karmaReadyTimeout'
+	KarmaReadyTimeout = 'karmaReadyTimeout',
+	Framework = 'framework'
 }

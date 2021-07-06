@@ -171,6 +171,17 @@
 					"scope": "resource",
 					"default": true
 				},
+				"karmaTestExplorer.framework": {
+					"description": "The testing framework used by the project",
+					"type": "string",
+					"scope": "resource",
+					"default": "jasmine",
+					"enum": [
+						"jasmine",
+						"mocha-bdd",
+						"mocha-tdd"
+					]
+				},
 				"karmaTestExplorer.debugLoggingEnabled": {
 					"description": "Enables detailed logging in the output channel that is helpful for troubleshooting issues with running Karma or the extension",
 					"type": "boolean",

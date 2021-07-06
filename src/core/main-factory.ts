@@ -8,7 +8,6 @@ import { KarmaFactory } from '../frameworks/karma/karma-factory';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from '../api/test-events';
 import { TestResolver } from './test-resolver';
 import { SuiteAggregateTestResultProcessor } from './suite-aggregate-test-result-processor';
-import { Logger } from './logger';
 import { SpecLocator, SpecLocatorOptions } from '../util/spec-locator';
 import { TestFactory } from '../api/test-factory';
 import { PortAcquisitionManager } from '../util/port-acquisition-manager';
@@ -17,18 +16,24 @@ import { existsSync } from 'fs';
 import { AngularFactory } from '../frameworks/angular/angular-factory';
 import { CascadingTestFactory } from './cascading-test-factory';
 import { TestSuiteTreeProcessor } from '../util/test-suite-tree-processor';
-import { Log } from './log';
 import { KarmaServerProcessLog } from '../frameworks/karma/server/karma-server-process-log';
 import { CommandLineProcessLog } from '../util/commandline-process-handler';
 import { KarmaTestEventProcessor } from '../frameworks/karma/runner/karma-test-event-processor';
 import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
 import { RetireEvent } from 'vscode-test-adapter-api';
 import { TestLoadProcessor } from '../frameworks/karma/runner/test-load-processor';
+import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framework';
+import { TestFramework } from '../api/test-framework';
+import { TestFrameworks } from './test-frameworks';
+import { MochaInterfaceStyle, MochaTestFramework } from '../frameworks/mocha/mocha-test-framework';
+import { Logger } from './logger';
+import { Log } from './log';
 
 export class MainFactory {
 	private disposables: { dispose(): void }[] = [];
 	private readonly config: ExtensionConfig;
 	private readonly logger: Logger;
+	private readonly testFramework: TestFramework;
 
 	constructor(
 		workspaceFolder: WorkspaceFolder,
@@ -38,6 +43,7 @@ export class MainFactory {
 	) {
 		this.config = this.createConfig(workspaceFolder, configPrefix);
 		this.logger = new Logger(log, MainFactory.name, this.config.debugLoggingEnabled);
+		this.testFramework = this.getTestFramework();
 	}
 
 	public getExtensionConfig() {
@@ -50,6 +56,16 @@ export class MainFactory {
 		return new ExtensionConfig(config, workspaceFolder.uri.path, configLogger);
 	}
 
+	private getTestFramework(): TestFramework {
+		const selectedFramework: TestFrameworks = this.config.framework;
+
+		return selectedFramework === TestFrameworks.MochaBDD
+			? new MochaTestFramework(MochaInterfaceStyle.BDD)
+			: selectedFramework === TestFrameworks.MochaTDD
+			? new MochaTestFramework(MochaInterfaceStyle.TDD)
+			: new JasmineTestFramework();
+	}
+
 	public fetchTestInfo(): SpecLocator {
 		this.logger.info(`Loading test info from test files`);
 
@@ -57,7 +73,13 @@ export class MainFactory {
 			ignore: this.config.excludeFiles,
 			cwd: this.config.projectRootPath
 		};
-		return new SpecLocator(this.config.testFiles, this.logger, specLocatorOptions);
+
+		return new SpecLocator(
+			this.config.testFiles,
+			this.testFramework.getTestInterface(),
+			new Logger(this.log, SpecLocator.name, this.config.debugLoggingEnabled),
+			specLocatorOptions
+		);
 	}
 
 	public createTestManager(

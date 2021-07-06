@@ -10,6 +10,7 @@ import { SKIP_ALL_TESTS_PATTERN } from '../karma-constants';
 import { AnyTestInfo, TestSuiteType, TestType } from '../../../api/test-infos';
 import { TestLoadProcessor } from './test-load-processor';
 import { Disposable } from '../../../api/disposable';
+import { escapeForRegExp } from '../../../util/utils';
 
 export class KarmaTestRunner implements TestRunner {
 	private disposables: Disposable[] = [];
@@ -64,7 +65,7 @@ export class KarmaTestRunner implements TestRunner {
 			this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
 
 			const testPatterns: string[] = testList.map(
-				test => `^${this.escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
+				test => `^${escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
 			);
 
 			if (testPatterns.length === 0) {
@@ -116,11 +117,6 @@ export class KarmaTestRunner implements TestRunner {
 			}
 		});
 		return runnableTests;
-	}
-
-	private escapeForRegExp(stringValue: string) {
-		// Taken from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-		return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
 
 	public dispose(): void {

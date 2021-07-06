@@ -2,14 +2,16 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { Disposable } from '../api/disposable';
 import { Logger } from '../core/logger';
+import { TestInterface } from '../api/test-framework';
+import { escapeForRegExp } from './utils';
 import * as glob from 'glob';
 
 enum TestNodeType {
-	Suite = 'describe',
-	Test = 'it'
+	Suite = 'Suite',
+	Test = 'Test'
 }
 
-interface TestNodeInfo {
+export interface TestNodeInfo {
 	description: string;
 	lineNumber: number | undefined;
 }
@@ -32,8 +34,6 @@ export interface SpecLocatorOptions extends Partial<glob.IOptions> {
 	fileEncoding?: string;
 }
 
-const DEFAULT_FRAMEWORK_SPEC_REGEX: RegExp =
-	/((^|\n)(\d+)\.)?\s+[xf]?(describe|it)\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5/gis;
 const DEFAULT_FILE_ENCODING = 'utf-8';
 
 export class SpecLocator implements Disposable {
@@ -43,6 +43,7 @@ export class SpecLocator implements Disposable {
 
 	public constructor(
 		private readonly filePatterns: string[],
+		private readonly testInterface: TestInterface,
 		private readonly logger: Logger,
 		private readonly specLocatorOptions: SpecLocatorOptions = {}
 	) {
@@ -239,23 +240,38 @@ export class SpecLocator implements Disposable {
 			[TestNodeType.Test]: []
 		};
 
+		const testInterfaceParserRegex = this.getTestNodeRegex(this.testInterface);
 		let matchResult: RegExpExecArray | null;
 		let activeLineNumber: number | undefined;
 
-		while ((matchResult = DEFAULT_FRAMEWORK_SPEC_REGEX.exec(data)) != null) {
+		while ((matchResult = testInterfaceParserRegex.exec(data)) != null) {
 			activeLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : activeLineNumber;
-			const testType = matchResult[4] as TestNodeType;
+			const nodeType = this.toNodeType(matchResult[4]);
 			const testDescription = matchResult[6]?.replace(/\\(['"`])/g, '$1');
 
-			if (!testType || !testDescription) {
+			if (!nodeType || !testDescription) {
 				continue;
 			}
-			fileInfo[testType].push({
+			fileInfo[nodeType].push({
 				description: testDescription,
 				lineNumber: activeLineNumber
 			});
 		}
 		return fileInfo;
+	}
+
+	private toNodeType(testInterfaceString: string): TestNodeType | undefined {
+		return this.testInterface.suite.includes(testInterfaceString)
+			? TestNodeType.Suite
+			: this.testInterface.test.includes(testInterfaceString)
+			? TestNodeType.Test
+			: undefined;
+	}
+
+	private getTestNodeRegex(testInterface: TestInterface): RegExp {
+		const interfaceStrings = [...testInterface.suite, ...testInterface.test].map(escapeForRegExp).join('|');
+		const pattern = `((^|\n)(\d+)\.)?\s+(${interfaceStrings})\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5`;
+		return new RegExp(pattern, 'gis');
 	}
 
 	private removeComments(data: string): string {
