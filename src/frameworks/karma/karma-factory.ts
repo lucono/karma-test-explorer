@@ -18,6 +18,7 @@ import { Disposable } from '../../api/disposable';
 import { CommandLineProcessLog } from '../../util/commandline-process-handler';
 import { KarmaEnvironmentVariable } from './karma-environment-variable';
 import { TestLoadProcessor } from './runner/test-load-processor';
+import { TestFramework } from '../../api/test-framework';
 import { Log } from '../../core/log';
 
 export class KarmaFactory implements TestFactory {
@@ -25,6 +26,7 @@ export class KarmaFactory implements TestFactory {
 	private readonly logger: Logger;
 
 	public constructor(
+		private readonly testFramework: TestFramework,
 		private readonly config: ExtensionConfig,
 		private readonly serverProcessLog: CommandLineProcessLog,
 		private readonly log: Log
@@ -47,6 +49,7 @@ export class KarmaFactory implements TestFactory {
 
 		return new KarmaTestRunner(
 			runExecutor,
+			this.testFramework,
 			karmaEventListener,
 			testLoadProcessor,
 			new Logger(this.log, KarmaTestRunner.name, this.config.debugLoggingEnabled)

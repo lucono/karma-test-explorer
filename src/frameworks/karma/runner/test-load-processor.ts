@@ -56,7 +56,7 @@ export class TestLoadProcessor {
 				: `Test loading - No tests found`
 		);
 
-		this.logger.info(`Aggregate server test load done`);
+		this.logger.info(`Test load done`);
 
 		return loadedTestSuite;
 	}

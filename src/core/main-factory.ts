@@ -163,7 +163,9 @@ export class MainFactory {
 		const karmaServerProcessLog: CommandLineProcessLog = new KarmaServerProcessLog(this.testServerOutputChannel);
 		const prioritizedTestFactories: Partial<TestFactory>[] = [];
 
-		prioritizedTestFactories.unshift(new KarmaFactory(this.config, karmaServerProcessLog, this.log));
+		prioritizedTestFactories.unshift(
+			new KarmaFactory(this.testFramework, this.config, karmaServerProcessLog, this.log)
+		);
 
 		if (this.isAngularProject()) {
 			prioritizedTestFactories.unshift(

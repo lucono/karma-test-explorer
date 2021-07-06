@@ -3,13 +3,12 @@ import { DeferredPromise } from '../../../util/deferred-promise';
 import { Logger } from '../../../core/logger';
 import { Execution } from '../../../api/execution';
 import { TestRunExecutor } from '../../../api/test-run-executor';
-import { SKIP_ALL_TESTS_PATTERN } from '../karma-constants';
 
 const defaultRunOptions = {
 	refresh: true,
 	urlRoot: '/run',
 	hostname: 'localhost',
-	clientArgs: [`--grep=/${SKIP_ALL_TESTS_PATTERN}/`]
+	clientArgs: []
 };
 
 export class KarmaHttpTestRunExecutor implements TestRunExecutor {

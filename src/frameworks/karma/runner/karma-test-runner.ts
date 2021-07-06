@@ -6,17 +6,17 @@ import { SpecCompleteResponse } from './spec-complete-response';
 import { DeferredPromise } from '../../../util/deferred-promise';
 import { Execution } from '../../../api/execution';
 import { TestRunExecutor } from '../../../api/test-run-executor';
-import { SKIP_ALL_TESTS_PATTERN } from '../karma-constants';
 import { AnyTestInfo, TestSuiteType, TestType } from '../../../api/test-infos';
 import { TestLoadProcessor } from './test-load-processor';
+import { TestFramework, TestSet } from '../../../api/test-framework';
 import { Disposable } from '../../../api/disposable';
-import { escapeForRegExp } from '../../../util/utils';
 
 export class KarmaTestRunner implements TestRunner {
 	private disposables: Disposable[] = [];
 
 	public constructor(
 		private readonly testRunExecutor: TestRunExecutor,
+		private readonly testFramework: TestFramework,
 		private readonly karmaEventListener: KarmaTestEventListener,
 		private readonly testLoadProcessor: TestLoadProcessor,
 		private readonly logger: Logger
@@ -25,6 +25,7 @@ export class KarmaTestRunner implements TestRunner {
 	}
 
 	public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
+		const testDiscoverySelector: string = this.testFramework.getTestDiscoverySelector();
 		const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
 		const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
@@ -35,7 +36,7 @@ export class KarmaTestRunner implements TestRunner {
 
 		const testCapture: Promise<SpecCompleteResponse[]> = this.karmaEventListener.listenForTestLoad(testLoadOperation);
 
-		const clientArgs: string[] = [`--grep=/${SKIP_ALL_TESTS_PATTERN}/`];
+		const clientArgs: string[] = [`--grep=${testDiscoverySelector}`];
 
 		testLoadStartedDeferred.resolve();
 		await this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
@@ -55,25 +56,29 @@ export class KarmaTestRunner implements TestRunner {
 		const runAllTests = tests.length === 0;
 		const clientArgs: string[] = [];
 		let testList: (TestInfo | TestSuiteInfo)[];
+		let aggregateTestPattern: string;
 
 		if (runAllTests) {
 			this.logger.debug(() => `Received empty test list - Will run all tests`);
 
 			testList = [];
+			aggregateTestPattern = this.testFramework.getAllTestsSelector();
 		} else {
-			testList = this.toRunnableTests(tests);
 			this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
 
-			const testPatterns: string[] = testList.map(
-				test => `^${escapeForRegExp(test.fullName)}${test.type === TestType.Suite ? ' ' : '$'}`
-			);
+			testList = this.toRunnableTests(tests);
 
-			if (testPatterns.length === 0) {
+			if (testList.length === 0) {
 				throw new Error(`No tests to run`);
 			}
-			const aggregateTestPattern = `/(${testPatterns.join('|')})/`;
-			clientArgs.push(`--grep=${aggregateTestPattern}`);
+
+			const testSet: TestSet = { testSuites: [], tests: [] };
+			testList.forEach(test => (test.type === TestType.Suite ? testSet.testSuites : testSet.tests).push(test.fullName));
+
+			aggregateTestPattern = this.testFramework.getTestSelector(testSet);
 		}
+
+		clientArgs.push(`--grep=${aggregateTestPattern}`);
 
 		const testRunStartedDeferred: DeferredPromise<void> = new DeferredPromise();
 		const testRunEndedDeferred: DeferredPromise<void> = new DeferredPromise();
