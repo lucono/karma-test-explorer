@@ -33,7 +33,7 @@ export class ExtensionConfig implements Disposable {
 	public readonly browser: string;
 	public readonly customLauncher: object;
 	public readonly karmaReadyTimeout: number;
-	public readonly framework: TestFrameworks;
+	public readonly testFramework: TestFrameworks;
 
 	public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string, private readonly logger: Logger) {
 		const workspacePath = workspaceVSCODEPath.replace(/^\/([A-Za-z]):\//, '$1:/');
@@ -57,7 +57,7 @@ export class ExtensionConfig implements Disposable {
 		this.env = JSON.parse(JSON.stringify(config.get(ConfigSetting.Env)));
 		this.customLauncher = JSON.parse(JSON.stringify(config.get(ConfigSetting.CustomLauncher)));
 		this.browser = config.get(ConfigSetting.Browser) as string;
-		this.framework = config.get(ConfigSetting.Framework) as TestFrameworks;
+		this.testFramework = config.get(ConfigSetting.TestFramework) as TestFrameworks;
 
 		this.reloadOnKarmaConfigurationFileChange = config.get(
 			ConfigSetting.ReloadOnKarmaConfigurationFileChange

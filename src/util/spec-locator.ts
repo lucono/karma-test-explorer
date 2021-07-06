@@ -270,7 +270,8 @@ export class SpecLocator implements Disposable {
 
 	private getTestNodeRegex(testInterface: TestInterface): RegExp {
 		const interfaceStrings = [...testInterface.suite, ...testInterface.test].map(escapeForRegExp).join('|');
-		const pattern = `((^|\n)(\d+)\.)?\s+(${interfaceStrings})\s*\(\s*((?<![\\])[\`\'\"])((?:.(?!(?<![\\])\5))*.?)\5`;
+		const pattern = `((^|\\n)(\\d+)\\.)?\\s+(${interfaceStrings})\\s*\\(\\s*((?<![\\\\])[\\\`\\'\\"])((?:.(?!(?<![\\\\])\\5))*.?)\\5`;
+
 		return new RegExp(pattern, 'gis');
 	}
 

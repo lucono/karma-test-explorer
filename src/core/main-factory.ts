@@ -57,7 +57,7 @@ export class MainFactory {
 	}
 
 	private getTestFramework(): TestFramework {
-		const selectedFramework: TestFrameworks = this.config.framework;
+		const selectedFramework: TestFrameworks = this.config.testFramework;
 
 		return selectedFramework === TestFrameworks.MochaBDD
 			? new MochaTestFramework(MochaInterfaceStyle.BDD)
