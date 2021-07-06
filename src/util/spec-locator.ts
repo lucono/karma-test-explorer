@@ -5,15 +5,16 @@ import { Logger } from '../core/logger';
 import * as glob from 'glob';
 
 enum TestNodeType {
-	Describe = 'describe',
-	It = 'it'
+	Suite = 'describe',
+	Test = 'it'
 }
 
-interface TestSuiteFileInfo {
-	// TODO: Replace both below with <Record, {description: string, lineNumber: number}>
-	descriptions: Record<TestNodeType, string[]>;
-	lineNumbers: Record<TestNodeType, (number | undefined)[]>;
+interface TestNodeInfo {
+	description: string;
+	lineNumber: number | undefined;
 }
+
+type TestSuiteFileInfo = Record<TestNodeType, TestNodeInfo[]>;
 
 export interface SpecLocation {
 	file: string;
@@ -75,10 +76,10 @@ export class SpecLocator implements Disposable {
 		const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
 		this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
 
-		if (fileTestInfo.descriptions.describe.length === 0) {
+		if (fileTestInfo[TestNodeType.Suite].length === 0) {
 			return;
 		}
-		const fileTopSuite = [fileTestInfo.descriptions.describe[0]];
+		const fileTopSuite = [fileTestInfo[TestNodeType.Suite][0].description];
 		this.addSuiteFileToCache(fileTopSuite, fileAbsolutePath);
 	}
 
@@ -149,71 +150,71 @@ export class SpecLocator implements Disposable {
 	}
 
 	private getSpecLineNumber(
-		suiteFileInfo: TestSuiteFileInfo | undefined,
+		testFileNodeList: TestSuiteFileInfo | undefined,
 		specSuite: string[] | undefined,
 		specDescription?: string | undefined
 	): number | undefined {
-		if (!suiteFileInfo || !specSuite) {
+		if (!testFileNodeList || !specSuite) {
 			return undefined;
 		}
 
-		const findSpecIndex = (specType: TestNodeType, description: string, startIndex: number): number => {
-			const specDescriptions = suiteFileInfo.descriptions[specType];
-			let searchIndex = startIndex;
+		const findNode = (
+			nodeType: TestNodeType,
+			nodeDescription: string,
+			startNode?: TestNodeInfo,
+			inclusive: boolean = false
+		): TestNodeInfo | undefined => {
+			const nodeList = testFileNodeList[nodeType];
+			let searchIndex = startNode ? nodeList.indexOf(startNode) + (inclusive ? 0 : 1) : 0;
 
-			while (searchIndex < specDescriptions.length) {
-				if (specDescriptions[searchIndex] === description) {
-					return searchIndex;
+			while (searchIndex < nodeList.length) {
+				const node = nodeList[searchIndex];
+
+				if (node.description === nodeDescription) {
+					return node;
 				}
 				searchIndex++;
 			}
-			return -1;
+			return undefined;
 		};
 
-		const describeSpecsToFind = specSuite ?? [];
-		let describeSearchStartIndex = 0;
-		let lastDescribeFoundIndex = -1;
+		const suiteNamesToFind = specSuite ?? [];
+		let lastSuiteNodeFound: TestNodeInfo | undefined;
 
-		for (const describeSpec of describeSpecsToFind) {
-			lastDescribeFoundIndex = findSpecIndex(TestNodeType.Describe, describeSpec, describeSearchStartIndex);
+		for (const suiteName of suiteNamesToFind) {
+			lastSuiteNodeFound = findNode(TestNodeType.Suite, suiteName);
 
-			if (lastDescribeFoundIndex < 0) {
+			if (!lastSuiteNodeFound) {
 				break;
 			}
-			describeSearchStartIndex = lastDescribeFoundIndex + 1;
 		}
 
-		if (lastDescribeFoundIndex < 0) {
-			return undefined;
-		}
-
-		const lastDescribeFoundLineNumber = suiteFileInfo.lineNumbers[TestNodeType.Describe][lastDescribeFoundIndex];
-
-		if (lastDescribeFoundLineNumber === undefined) {
+		if (lastSuiteNodeFound?.lineNumber === undefined) {
 			return undefined;
 		}
 
 		if (specDescription === undefined) {
-			return lastDescribeFoundLineNumber;
+			return lastSuiteNodeFound.lineNumber;
 		}
 
-		const itSearchStartIndex = suiteFileInfo.lineNumbers[TestNodeType.It]
-			.map((itLineNumber, itIndex) => ({ line: itLineNumber, index: itIndex }))
-			.find(item => item.line !== undefined && item.line > lastDescribeFoundLineNumber)?.index;
+		const itSearchStartNode = testFileNodeList[TestNodeType.Test].find(
+			testNode =>
+				testNode.lineNumber !== undefined &&
+				lastSuiteNodeFound!.lineNumber !== undefined &&
+				testNode.lineNumber > lastSuiteNodeFound!.lineNumber
+		);
 
-		if (itSearchStartIndex === undefined) {
+		if (itSearchStartNode === undefined) {
 			return undefined;
 		}
 
-		const itSpecFoundIndex = findSpecIndex(TestNodeType.It, specDescription, itSearchStartIndex);
+		const itSpecFoundNode = findNode(TestNodeType.Test, specDescription, itSearchStartNode, true);
 
-		if (itSpecFoundIndex < 0) {
+		if (!itSpecFoundNode) {
 			return undefined;
 		}
 
-		const itSpecFoundLineNumber = suiteFileInfo.lineNumbers[TestNodeType.It][itSpecFoundIndex];
-
-		return itSpecFoundLineNumber;
+		return itSpecFoundNode.lineNumber;
 	}
 
 	private getTestFileData(path: string, encoding?: string): string {
@@ -234,8 +235,8 @@ export class SpecLocator implements Disposable {
 	private parseTestSuiteFile(filePath: string, encoding?: string): TestSuiteFileInfo {
 		const data = this.getTestFileData(filePath, encoding);
 		const fileInfo: TestSuiteFileInfo = {
-			descriptions: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] },
-			lineNumbers: { [TestNodeType.Describe]: [], [TestNodeType.It]: [] }
+			[TestNodeType.Suite]: [],
+			[TestNodeType.Test]: []
 		};
 
 		let matchResult: RegExpExecArray | null;
@@ -249,8 +250,10 @@ export class SpecLocator implements Disposable {
 			if (!testType || !testDescription) {
 				continue;
 			}
-			fileInfo.descriptions[testType].push(testDescription);
-			fileInfo.lineNumbers[testType].push(activeLineNumber);
+			fileInfo[testType].push({
+				description: testDescription,
+				lineNumber: activeLineNumber
+			});
 		}
 		return fileInfo;
 	}
