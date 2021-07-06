@@ -28,6 +28,7 @@ import { TestFrameworks } from './test-frameworks';
 import { MochaInterfaceStyle, MochaTestFramework } from '../frameworks/mocha/mocha-test-framework';
 import { Logger } from './logger';
 import { Log } from './log';
+import { ConfigSetting } from './config-setting';
 
 export class MainFactory {
 	private disposables: { dispose(): void }[] = [];
@@ -145,17 +146,25 @@ export class MainFactory {
 			createLogger(`${KarmaTestEventProcessor.name}_Ambient`)
 		);
 
-		const watchModeTestEventProcessor = this.config.autoWatchEnabled
-			? new KarmaAutoWatchTestEventProcessor(
-					ambientDelegateTestEventProcessor,
-					testLoadEventEmitter,
-					testRunEventEmitter,
-					testResultEventEmitter,
-					testRetireEventEmitter,
-					testLoadProcessor,
-					createLogger(KarmaAutoWatchTestEventProcessor.name)
-			  )
-			: undefined;
+		if (this.config.autoWatchEnabled && !this.testFramework.getTestCapabilities().autoWatch) {
+			this.logger.info(
+				`Auto-watch setting '${ConfigSetting.AutoWatchEnabled}' is set but is not supported ` +
+					`for selected test framework '${this.testFramework.framework}'`
+			);
+		}
+
+		const watchModeTestEventProcessor =
+			this.testFramework.getTestCapabilities().autoWatch && this.config.autoWatchEnabled
+				? new KarmaAutoWatchTestEventProcessor(
+						ambientDelegateTestEventProcessor,
+						testLoadEventEmitter,
+						testRunEventEmitter,
+						testResultEventEmitter,
+						testRetireEventEmitter,
+						testLoadProcessor,
+						createLogger(KarmaAutoWatchTestEventProcessor.name)
+				  )
+				: undefined;
 
 		const portManager = new PortAcquisitionManager(createLogger(PortAcquisitionManager.name));
 

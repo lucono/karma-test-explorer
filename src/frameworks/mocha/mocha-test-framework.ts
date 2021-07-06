@@ -1,7 +1,6 @@
-import { TestFramework, TestInterface, TestSet } from '../../api/test-framework';
-import { escapeForRegExp } from '../../util/utils';
-
-const ALL_TESTS_PATTERN = '';
+import { TestCapabilities, TestFramework, TestInterface, TestSelector } from '../../api/test-framework';
+import { TestFrameworks } from '../../core/test-frameworks';
+import { MochaTestSelector } from './mocha-test-selector';
 
 const bddTestInterface: TestInterface = {
 	suite: ['describe', 'describe.only', 'describe.skip'],
@@ -18,28 +17,28 @@ export enum MochaInterfaceStyle {
 	TDD = 'tdd'
 }
 
+const testCapabilities: TestCapabilities = {
+	autoWatch: false
+};
+
 export class MochaTestFramework implements TestFramework {
-	public constructor(private readonly interfaceStyle: MochaInterfaceStyle) {}
+	private readonly testSelector: TestSelector;
+	public readonly framework;
+
+	public constructor(private readonly interfaceStyle: MochaInterfaceStyle) {
+		this.testSelector = new MochaTestSelector();
+		this.framework = interfaceStyle === MochaInterfaceStyle.BDD ? TestFrameworks.MochaBDD : TestFrameworks.MochaTDD;
+	}
 
 	public getTestInterface(): TestInterface {
 		return this.interfaceStyle === MochaInterfaceStyle.BDD ? bddTestInterface : tddTestInterface;
 	}
 
-	public getTestSelector(testSet: TestSet): string {
-		const testSuitePatterns: string[] = testSet.testSuites.map(testFullName => `^${escapeForRegExp(testFullName)} `);
-		const testPatterns: string[] = testSet.tests.map(testFullName => `^${escapeForRegExp(testFullName)}$`);
-
-		const testSelectorPatterns = [...testSuitePatterns, ...testPatterns];
-		const aggregateTestPattern = `(${testSelectorPatterns.join('|')})`;
-
-		return aggregateTestPattern;
+	public getTestSelector(): TestSelector {
+		return this.testSelector;
 	}
 
-	public getAllTestsSelector(): string {
-		return `${ALL_TESTS_PATTERN}`;
-	}
-
-	public getTestDiscoverySelector(): string {
-		return `${ALL_TESTS_PATTERN}`;
+	public getTestCapabilities(): TestCapabilities {
+		return testCapabilities;
 	}
 }

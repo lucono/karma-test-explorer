@@ -115,6 +115,10 @@
 					"enum": [
 						"suite",
 						"folder"
+					],
+					"enumDescriptions": [
+						"Group tests solely by test suite",
+						"Group tests by folder and test suite"
 					]
 				},
 				"karmaTestExplorer.karmaProcessExecutable": {
@@ -172,7 +176,7 @@
 					"default": true
 				},
 				"karmaTestExplorer.testFramework": {
-					"description": "The testing framework used by the project",
+					"description": "The test framework used by the project. Not all capabilities (such as auto-watch mode) are supported for all test frameworks",
 					"type": "string",
 					"scope": "resource",
 					"default": "jasmine",
@@ -180,6 +184,11 @@
 						"jasmine",
 						"mocha-bdd",
 						"mocha-tdd"
+					],
+					"enumDescriptions": [
+						"The Jasmine test framework. All capabilities are supported with this test framework, including auto-watch mode",
+						"The BDD (Behavior Driven Development) interface of the Mocha test framework. Some capabilities, such as auto-watch mode, are not supported with this framework",
+						"The TDD (Test Driven Development) interface of the Mocha test framework. Some capabilities, such as auto-watch mode, are not supported with this framework"
 					]
 				},
 				"karmaTestExplorer.debugLoggingEnabled": {

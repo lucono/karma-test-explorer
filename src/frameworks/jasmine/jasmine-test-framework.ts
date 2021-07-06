@@ -1,34 +1,33 @@
-import { TestFramework, TestInterface, TestSet } from '../../api/test-framework';
-import { escapeForRegExp } from '../../util/utils';
-
-const SKIP_ALL_TESTS_PATTERN = '$^';
-const RUN_ALL_TESTS_PATTERN = '';
+import { TestCapabilities, TestFramework, TestInterface, TestSelector } from '../../api/test-framework';
+import { TestFrameworks } from '../../core/test-frameworks';
+import { JasmineTestSelector } from './jasmine-test-selector';
 
 const testInterface: TestInterface = {
 	suite: ['describe', 'xdescribe', 'fdescribe'],
 	test: ['it', 'xit', 'fit']
 };
 
+const testCapabilities: TestCapabilities = {
+	autoWatch: true
+};
+
 export class JasmineTestFramework implements TestFramework {
+	private testSelector: TestSelector;
+	public readonly framework = TestFrameworks.Jasmine;
+
+	public constructor() {
+		this.testSelector = new JasmineTestSelector();
+	}
+
 	public getTestInterface(): TestInterface {
 		return testInterface;
 	}
 
-	public getTestSelector(testSet: TestSet): string {
-		const testSuitePatterns: string[] = testSet.testSuites.map(testFullName => `^${escapeForRegExp(testFullName)} `);
-		const testPatterns: string[] = testSet.tests.map(testFullName => `^${escapeForRegExp(testFullName)}$`);
-
-		const testSelectorPatterns = [...testSuitePatterns, ...testPatterns];
-		const aggregateTestPattern = `/(${testSelectorPatterns.join('|')})/`;
-
-		return aggregateTestPattern;
+	public getTestSelector(): TestSelector {
+		return this.testSelector;
 	}
 
-	public getAllTestsSelector(): string {
-		return `/${RUN_ALL_TESTS_PATTERN}/`;
-	}
-
-	public getTestDiscoverySelector(): string {
-		return `/${SKIP_ALL_TESTS_PATTERN}/`;
+	public getTestCapabilities(): TestCapabilities {
+		return testCapabilities;
 	}
 }

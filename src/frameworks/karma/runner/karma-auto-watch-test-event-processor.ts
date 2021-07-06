@@ -42,6 +42,7 @@ export class KarmaAutoWatchTestEventProcessor {
 		this.testRunEventEmitter.fire(testRunStartedEvent);
 
 		this.skippedSpecIds = [];
+
 		this.testEventProcessor.beginProcessing([], {
 			emitTestEvents: [TestStatus.Success, TestStatus.Failed],
 			filterTestEvents: [TestStatus.Failed],

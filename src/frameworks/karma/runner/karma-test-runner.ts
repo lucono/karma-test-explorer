@@ -25,7 +25,7 @@ export class KarmaTestRunner implements TestRunner {
 	}
 
 	public async loadTests(karmaPort: number): Promise<TestSuiteInfo> {
-		const testDiscoverySelector: string = this.testFramework.getTestDiscoverySelector();
+		const testDiscoverySelector: string = this.testFramework.getTestSelector().testDiscovery();
 		const testLoadStartedDeferred: DeferredPromise<void> = new DeferredPromise();
 		const testLoadEndedDeferred: DeferredPromise<void> = new DeferredPromise();
 
@@ -62,11 +62,10 @@ export class KarmaTestRunner implements TestRunner {
 			this.logger.debug(() => `Received empty test list - Will run all tests`);
 
 			testList = [];
-			aggregateTestPattern = this.testFramework.getAllTestsSelector();
+			aggregateTestPattern = this.testFramework.getTestSelector().allTests();
 		} else {
-			this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
-
 			testList = this.toRunnableTests(tests);
+			this.logger.debug(() => `Resolved tests to run: ${JSON.stringify(testList.map(test => test.fullName))}`);
 
 			if (testList.length === 0) {
 				throw new Error(`No tests to run`);
@@ -75,7 +74,7 @@ export class KarmaTestRunner implements TestRunner {
 			const testSet: TestSet = { testSuites: [], tests: [] };
 			testList.forEach(test => (test.type === TestType.Suite ? testSet.testSuites : testSet.tests).push(test.fullName));
 
-			aggregateTestPattern = this.testFramework.getTestSelector(testSet);
+			aggregateTestPattern = this.testFramework.getTestSelector().testSet(testSet);
 		}
 
 		clientArgs.push(`--grep=${aggregateTestPattern}`);
