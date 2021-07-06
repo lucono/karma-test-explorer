@@ -31,6 +31,7 @@ export class ExtensionConfig implements Disposable {
 	public readonly autoWatchBatchDelay: number;
 	public readonly browser: string;
 	public readonly customLauncher: object;
+	public readonly karmaReadyTimeout: number;
 
 	public constructor(config: WorkspaceConfiguration, workspaceVSCODEPath: string, private readonly logger: Logger) {
 		const workspacePath = workspaceVSCODEPath.replace(/^\/([A-Za-z]):\//, '$1:/');
@@ -47,6 +48,7 @@ export class ExtensionConfig implements Disposable {
 		this.debugLoggingEnabled = config.get(ConfigSetting.DebugLoggingEnabled) as boolean;
 		this.autoWatchEnabled = config.get(ConfigSetting.AutoWatchEnabled) as boolean;
 		this.autoWatchBatchDelay = config.get(ConfigSetting.AutoWatchBatchDelay) as number;
+		this.karmaReadyTimeout = config.get(ConfigSetting.KarmaReadyTimeout) as number;
 		this.baseKarmaConfFilePath = resolve(__dirname, '..', 'frameworks', 'karma', 'config', 'karma.conf.js');
 		this.testGrouping = config.get(ConfigSetting.TestGrouping) as TestGrouping;
 		this.flattenSingleChildFolders = config.get(ConfigSetting.FlattenSingleChildFolders) as boolean;

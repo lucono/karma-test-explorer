@@ -102,19 +102,19 @@ function TestExplorerJasmineReporter(
 		});
 	});
 
-	self.emitter.on(KarmaEventName.BrowserComplete, (browser: any, results: any) =>
+	self.emitter.on(KarmaEventName.BrowserComplete, (browser: any, runInfo: any) =>
 		sendEvent({
 			name: KarmaEventName.BrowserComplete,
 			browser: toBrowser(browser),
-			results
+			runInfo
 		})
 	);
 
-	self.emitter.on(KarmaEventName.RunComplete, (browsers: any, result: any) =>
+	self.emitter.on(KarmaEventName.RunComplete, (browsers: any, runResult: any) =>
 		sendEvent({
 			name: KarmaEventName.RunComplete,
 			browsers: browsers.map(toBrowser),
-			results: collectRunState(result)
+			runStatus: collectRunState(runResult)
 		})
 	);
 
@@ -138,8 +138,6 @@ function TestExplorerJasmineReporter(
 			browsers: browsers.map(toBrowser)
 		})
 	);
-
-	// FIXME: Handle more `KarmaEventName` events
 }
 
 function configureTimeouts(injector: any) {

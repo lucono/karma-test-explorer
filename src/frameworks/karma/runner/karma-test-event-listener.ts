@@ -12,20 +12,23 @@ import { KarmaEventName } from './karma-event-name';
 import { KarmaTestEventProcessor, TestEventProcessingOptions } from './karma-test-event-processor';
 import { LightSpecCompleteResponse, SpecCompleteResponse } from './spec-complete-response';
 
-const KARMA_CONNECT_TIMEOUT = 900_000; // FIXME Read from config
+const DEFAULT_KARMA_READY_TIMEOUT = 900_000;
 
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaTestEventListener implements Disposable {
 	private server: HttpServer | undefined;
 	private readonly sockets: Set<Socket> = new Set();
+	private readonly karmaReadyTimeout: number;
 	private disposables: Disposable[] = [];
 
 	public constructor(
 		private readonly testEventProcessor: KarmaTestEventProcessor,
 		private readonly watchModeTestEventProcessor: KarmaAutoWatchTestEventProcessor | undefined,
+		karmaReadyTimeout: number,
 		private readonly logger: Logger
 	) {
+		this.karmaReadyTimeout = karmaReadyTimeout > 0 ? karmaReadyTimeout : DEFAULT_KARMA_READY_TIMEOUT;
 		this.disposables.push(logger);
 	}
 
@@ -131,11 +134,10 @@ export class KarmaTestEventListener implements Disposable {
 			});
 
 			connectTimeoutId = setTimeout(() => {
-				this.logger.error(
-					`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect on port ${socketPort}`
-				);
-				reject(`Timeout after waiting ${KARMA_CONNECT_TIMEOUT} ms for Karma to connect`);
-			}, KARMA_CONNECT_TIMEOUT);
+				const timeoutMsg = `Timeout after waiting ${this.karmaReadyTimeout} ms for Karma to connect on port ${socketPort}`;
+				this.logger.error(timeoutMsg);
+				reject(timeoutMsg);
+			}, this.karmaReadyTimeout);
 		});
 
 		const karmaConnection: Execution = {
@@ -198,7 +200,7 @@ export class KarmaTestEventListener implements Disposable {
 		if (!testEventProcessor?.isProcessing()) {
 			return;
 		}
-		const results: LightSpecCompleteResponse = event.results;
+		const results: LightSpecCompleteResponse = event.results!;
 		const fullName: string = [...results.suite, results.description].join(' ');
 		const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
 		const specResults: SpecCompleteResponse = { ...results, id: testId, fullName };

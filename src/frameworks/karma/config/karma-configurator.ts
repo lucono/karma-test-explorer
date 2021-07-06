@@ -3,7 +3,7 @@ import { instance as customReporterInstance, name as customReporterName } from '
 import { dirname, resolve } from 'path';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 
-const DEFAULT_AUTO_WATCH_BATCH_DELAY = 2_500; // FIXME: Read from config
+const DEFAULT_AUTO_WATCH_BATCH_DELAY = 2_500;
 const CUSTOM_LAUNCHER_BROWSER_NAME = 'KarmaTestExplorer_ChromeHeadless';
 
 const defaultCustomLauncherConfig: CustomLauncher = {

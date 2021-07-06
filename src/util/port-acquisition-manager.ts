@@ -32,7 +32,6 @@ export class PortAcquisitionManager implements Disposable {
 					reject(`Failed to get available ports for base port ${basePort}: ${error.message ?? error}`);
 				});
 			});
-			// FIXME: Handle failure to get available ports
 
 			const unassignedPorts = ports.filter(port => !this.assignedPorts.has(port));
 			foundPorts.push(...unassignedPorts);

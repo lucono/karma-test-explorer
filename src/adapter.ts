@@ -34,6 +34,7 @@ import { Disposable } from './api/disposable';
 import { MainFactory } from './core/main-factory';
 import { TestResolver } from './core/test-resolver';
 import { Log } from './core/log';
+import { generateRandomId } from './util/utils';
 
 export class Adapter implements TestAdapter {
 	private specLocator?: SpecLocator;
@@ -198,7 +199,7 @@ export class Adapter implements TestAdapter {
 		)[];
 
 		const runAllTests = this.containsOnlyRootSuite(tests);
-		const testRunId: string = Math.random().toString(36).slice(2);
+		const testRunId: string = generateRandomId();
 
 		this.logger.debug(
 			() =>

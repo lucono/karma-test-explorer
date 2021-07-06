@@ -1,8 +1,9 @@
 import { ChildProcess, SpawnOptions } from 'child_process';
 import { Logger } from '../core/logger';
+import { Execution } from '../api/execution';
+import { generateRandomId } from './utils';
 import * as spawn from 'cross-spawn';
 import * as psTree from 'ps-tree';
-import { Execution } from '../api/execution';
 
 export interface CommandLineProcessLog {
 	output(data: string): void;
@@ -23,7 +24,7 @@ export class CommandLineProcessHandler {
 		processLog?: CommandLineProcessLog,
 		runOptions?: SpawnOptions
 	) {
-		this.uid = Math.random().toString(36).slice(2); // TODO: Extract to utility function
+		this.uid = generateRandomId();
 		this.hasExited = false;
 
 		this.processLog = processLog ?? {

@@ -20,5 +20,6 @@ export enum ConfigSetting {
 	LogPanel = 'logpanel',
 	LogFile = 'logfile',
 	AutoWatchEnabled = 'autoWatchEnabled',
-	AutoWatchBatchDelay = 'autoWatchBatchDelay'
+	AutoWatchBatchDelay = 'autoWatchBatchDelay',
+	KarmaReadyTimeout = 'karmaReadyTimeout'
 }

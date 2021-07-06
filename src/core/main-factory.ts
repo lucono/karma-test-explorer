@@ -152,6 +152,7 @@ export class MainFactory {
 		const karmaEventListener = new KarmaTestEventListener(
 			testRunEventProcessor,
 			watchModeTestEventProcessor,
+			this.config.karmaReadyTimeout,
 			createLogger(KarmaTestEventListener.name)
 		);
 

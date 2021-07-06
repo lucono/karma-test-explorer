@@ -189,6 +189,12 @@
 					"scope": "resource",
 					"default": 250
 				},
+				"karmaTestExplorer.karmaReadyTimeout": {
+					"description": "The duration in milliseconds after which the extension will stop listening if Karma is not started, connected to the extension, and ready for testing",
+					"type": "number",
+					"scope": "resource",
+					"default": 900000
+				},
 				"karmaTestExplorer.flattenSingleChildFolders": {
 					"description": "Flattens paths consisting of single child folders",
 					"type": "boolean",
