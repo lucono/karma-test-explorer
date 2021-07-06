@@ -162,7 +162,7 @@ export class KarmaTestEventProcessor {
 
 			if (decorations.length === 0 && test?.line !== undefined) {
 				const { file, line } = test;
-				const hover = `${testResult.fullName} \n` + `-------- Failure: --------\n` + `${message || 'Failed'}`;
+				const hover = `${testResult.fullName} \n-------- Failure: --------\n${message || 'Failed'}`;
 
 				decorations = [
 					{
@@ -194,7 +194,7 @@ export class KarmaTestEventProcessor {
 		}
 
 		if (this.eventProcessingOptions?.filterTestEvents?.includes(testResult.status)) {
-			this.logger.debug(() => `Filtering ${testResult.status} test result event ` + `for test id: ${testId}`);
+			this.logger.debug(() => `Filtering ${testResult.status} test result event for test id: ${testId}`);
 
 			this.filteredTestResultEvents.set(testResult.id, testResultEvent);
 			return;

@@ -20,7 +20,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 		specs.forEach(rawSpec => {
 			const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
 			const matchingSpecLocations = this.specLocator.getSpecLocation(spec.suite, spec.description);
-			let specFile: string | undefined = spec.filePath; // FIXME: Convert to absolute path
+			let specFile: string | undefined = spec.filePath;
 
 			if (matchingSpecLocations.length === 1) {
 				specFile = specFile ?? matchingSpecLocations[0].file;
@@ -108,7 +108,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 				`This test suite has duplicate definitions which could lead to conflicting test results. \n\n` +
 				`"${suiteFullName}" \n\n` +
 				`---------- \n\n` +
-				(suiteLocation ? `Defined in: \n\n` + `${suiteLocation.file}:${suiteLocation.line} \n\n` : '') +
+				(suiteLocation ? `Defined in: \n\n${suiteLocation.file}:${suiteLocation.line} \n\n` : '') +
 				`Duplicate definitions: \n\n` +
 				`${duplicateSuiteFiles}`;
 		}
@@ -156,7 +156,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 					`This test has duplicate definitions which could lead to conflicting test results. \n\n` +
 					`"${spec.fullName}" \n\n` +
 					`---------- \n\n` +
-					(specLocation ? `Defined in: \n\n` + `${specLocation.file}:${specLocation.line} \n\n` : '') +
+					(specLocation ? `Defined in: \n\n${specLocation.file}:${specLocation.line} \n\n` : '') +
 					`Duplicate definitions: \n\n` +
 					`${duplicateSpecFiles}`;
 			}

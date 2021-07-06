@@ -73,7 +73,7 @@ export class SpecLocator implements Disposable {
 	}
 
 	private processFile(fileAbsolutePath: string, fileEncoding?: string) {
-		const fileTestInfo = this.parseTestSuiteFile(fileAbsolutePath, fileEncoding);
+		const fileTestInfo = this.parseTestFile(fileAbsolutePath, fileEncoding);
 		this.fileInfoMap.set(fileAbsolutePath, fileTestInfo);
 
 		if (fileTestInfo[TestNodeType.Suite].length === 0) {
@@ -232,7 +232,7 @@ export class SpecLocator implements Disposable {
 
 	// TODO: Replace with interface with framework-specific implementations
 	//  that parse the file and provide the required file information
-	private parseTestSuiteFile(filePath: string, encoding?: string): TestSuiteFileInfo {
+	private parseTestFile(filePath: string, encoding?: string): TestSuiteFileInfo {
 		const data = this.getTestFileData(filePath, encoding);
 		const fileInfo: TestSuiteFileInfo = {
 			[TestNodeType.Suite]: [],

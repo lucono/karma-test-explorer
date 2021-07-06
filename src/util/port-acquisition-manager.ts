@@ -45,10 +45,7 @@ export class PortAcquisitionManager implements Disposable {
 			foundPorts.forEach(port => this.assignedPorts.delete(port));
 		});
 
-		this.logger.info(
-			`Request for ${portCount} ports at base port ${basePort} produced: ` + `${JSON.stringify(foundPorts)}`
-		);
-
+		this.logger.info(`Request for ${portCount} ports at base port ${basePort} produced: ${JSON.stringify(foundPorts)}`);
 		this.logger.debug(() => `Current assigned ports: ${JSON.stringify([...this.assignedPorts])}`);
 
 		return foundPorts;

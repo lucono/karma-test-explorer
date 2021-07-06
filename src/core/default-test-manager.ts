@@ -45,7 +45,7 @@ export class DefaultTestManager implements TestManager {
 				deferredListenerSocketPortRelease.promise()
 			);
 
-			this.logger.info(`Using available karma port: ` + `${this.defaultKarmaPort} --> ${serverKarmaPort}`);
+			this.logger.info(`Using available karma port: ${this.defaultKarmaPort} --> ${serverKarmaPort}`);
 
 			this.logger.info(
 				`Using available karma listener socket port: ` +

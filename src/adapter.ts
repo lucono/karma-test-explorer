@@ -202,8 +202,7 @@ export class Adapter implements TestAdapter {
 		const testRunId: string = generateRandomId();
 
 		this.logger.debug(
-			() =>
-				`Requested ${testIds.length} test Ids resolved to ${tests.length} actual tests:` + `${JSON.stringify(tests)}`
+			() => `Requested ${testIds.length} test Ids resolved to ${tests.length} actual tests: ${JSON.stringify(tests)}`
 		);
 
 		this.logger.info(`Starting test run Id: ${testRunId}`);
@@ -319,7 +318,7 @@ export class Adapter implements TestAdapter {
 				.map(savedTest => savedTest.id);
 
 			if (savedFileTestIds.length > 0) {
-				this.logger.debug(() => `Retiring ${savedFileTestIds.length} tests ` + `from updated spec file: ${savedFile}`);
+				this.logger.debug(() => `Retiring ${savedFileTestIds.length} tests from updated spec file: ${savedFile}`);
 				this.retireEmitter.fire({ tests: savedFileTestIds });
 			}
 		}

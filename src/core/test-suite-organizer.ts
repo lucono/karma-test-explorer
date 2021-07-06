@@ -56,9 +56,7 @@ export class TestSuiteOrganizer {
 		tests.forEach(test => {
 			if (test.type === TestType.Test) {
 				// FIXME: Should never be true. Use type system to eliminate need for check
-				this.logger.warn(
-					`Got test with unknown top-level test suite: ` + `${JSON.stringify(test)} - ` + `Test will be ignored`
-				);
+				this.logger.warn(`Got test with unknown top-level test suite: ${JSON.stringify(test)} - Test will be ignored`);
 
 				return;
 			}
