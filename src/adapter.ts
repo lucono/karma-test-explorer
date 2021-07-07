@@ -92,7 +92,7 @@ export class Adapter implements TestAdapter {
 		this.specLocator = this.factory.fetchTestInfo();
 		this.initDisposables.push(this.specLocator);
 
-		this.debugger = new Debugger(this.logger);
+		this.debugger = new Debugger(new Logger(this.log, Debugger.name, this.config.debugLoggingEnabled));
 		this.initDisposables.push(this.debugger);
 
 		const testResolver: TestResolver = {

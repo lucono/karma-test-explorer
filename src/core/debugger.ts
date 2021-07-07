@@ -7,14 +7,14 @@ export class Debugger implements Disposable {
 
 	public async manageVSCodeDebuggingSession(workspace: any, debuggerConfig: any): Promise<void> {
 		if (vscode.debug.activeDebugSession) {
+			this.logger.debug(() => 'Not creating new debug session - Debug session already active');
 			return;
 		}
 
-		let currentSession: vscode.DebugSession | undefined;
+		const currentSession: vscode.DebugSession | undefined = await this.startDebuggingSession(workspace, debuggerConfig);
 
-		currentSession = await this.startDebuggingSession(workspace, currentSession, debuggerConfig);
 		if (!currentSession) {
-			this.logger.error('No active debug session - aborting');
+			this.logger.error('Could not create debug session');
 			return;
 		}
 
@@ -27,16 +27,13 @@ export class Debugger implements Disposable {
 		});
 	}
 
-	private async startDebuggingSession(
-		workspace: any,
-		currentSession: vscode.DebugSession | undefined,
-		debuggerConfig: any
-	) {
+	private async startDebuggingSession(workspace: any, debuggerConfig: any) {
 		const workspaceFolder = vscode.workspace.getWorkspaceFolder(workspace.uri);
 		await vscode.debug.startDebugging(workspaceFolder, debuggerConfig);
 		await new Promise(resolve => setImmediate(resolve)); // workaround for Microsoft/vscode#70125
-		currentSession = vscode.debug.activeDebugSession;
-		return currentSession;
+
+		const debugSession = vscode.debug.activeDebugSession;
+		return debugSession;
 	}
 
 	public dispose() {
