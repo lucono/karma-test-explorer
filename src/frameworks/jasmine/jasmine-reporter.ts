@@ -26,10 +26,14 @@ function TestExplorerJasmineReporter(
 ) {
 	const self = this;
 
-	const debugLoggingEnabled =
-		(process.env[KarmaEnvironmentVariable.DebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+	const extensionDebugLoggingEnabled =
+		(process.env[KarmaEnvironmentVariable.ExtensionDebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+
+	const karmaDebugLoggingEnabled =
+		(process.env[KarmaEnvironmentVariable.KarmaDebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+
 	const karmaLog: Log = logger.create(`reporter:${name}`);
-	const log = new DebugAwareLog(karmaLog, debugLoggingEnabled);
+	const log = new DebugAwareLog(karmaLog, extensionDebugLoggingEnabled || karmaDebugLoggingEnabled);
 
 	baseReporterDecorator(self);
 	self.config = config;

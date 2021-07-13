@@ -43,7 +43,7 @@ export class MainFactory {
 		private readonly log: Log
 	) {
 		this.config = this.createConfig(workspaceFolder, configPrefix);
-		this.logger = new Logger(log, MainFactory.name, this.config.debugLoggingEnabled);
+		this.logger = new Logger(log, MainFactory.name, this.config.extensionDebugLoggingEnabled);
 		this.testFramework = this.getTestFramework();
 	}
 
@@ -78,7 +78,7 @@ export class MainFactory {
 		return new SpecLocator(
 			this.config.testFiles,
 			this.testFramework.getTestInterface(),
-			new Logger(this.log, SpecLocator.name, this.config.debugLoggingEnabled),
+			new Logger(this.log, SpecLocator.name, this.config.extensionDebugLoggingEnabled),
 			specLocatorOptions
 		);
 	}
@@ -91,7 +91,7 @@ export class MainFactory {
 		testResolver: TestResolver
 	): DefaultTestManager {
 		const createLogger = (loggerName: string): Logger => {
-			return new Logger(this.log, loggerName, this.config.debugLoggingEnabled);
+			return new Logger(this.log, loggerName, this.config.extensionDebugLoggingEnabled);
 		};
 
 		const testSuiteOrganizer = new TestSuiteOrganizer(createLogger(TestSuiteOrganizer.name));

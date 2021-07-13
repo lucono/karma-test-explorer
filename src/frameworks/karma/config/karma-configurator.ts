@@ -18,11 +18,11 @@ export class KarmaConfigurator {
 	private readonly autoWatchBatchDelay: number;
 	private readonly browser: string;
 	private readonly customLauncher?: CustomLauncher;
-	private readonly debugLoggingEnabled: boolean;
+	private readonly karmaDebugLoggingEnabled: boolean;
 
 	constructor() {
-		this.debugLoggingEnabled =
-			(process.env[KarmaEnvironmentVariable.DebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+		this.karmaDebugLoggingEnabled =
+			(process.env[KarmaEnvironmentVariable.KarmaDebugLoggingEnabled] ?? 'false').toLocaleLowerCase() === 'true';
 		this.autoWatchEnabled =
 			(process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
 		this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
@@ -50,7 +50,7 @@ export class KarmaConfigurator {
 
 	public setMandatoryOptions(config: KarmaConfig) {
 		config.port = this.karmaPort;
-		config.logLevel = this.debugLoggingEnabled ? config.LOG_DEBUG : config.LOG_INFO;
+		config.logLevel = this.karmaDebugLoggingEnabled ? config.LOG_DEBUG : config.LOG_INFO;
 
 		config.singleRun = false;
 		config.autoWatch = this.autoWatchEnabled;

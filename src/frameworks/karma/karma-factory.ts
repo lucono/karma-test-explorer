@@ -31,13 +31,13 @@ export class KarmaFactory implements TestFactory {
 		private readonly serverProcessLog: CommandLineProcessLog,
 		private readonly log: Log
 	) {
-		this.logger = new Logger(log, KarmaFactory.name, config.debugLoggingEnabled);
+		this.logger = new Logger(log, KarmaFactory.name, config.extensionDebugLoggingEnabled);
 		this.disposables.push(this.logger);
 	}
 
 	public createTestServer(testServerExecutor?: TestServerExecutor): TestServer {
 		const serverExecutor = testServerExecutor ?? this.createTestServerExecutor();
-		return new KarmaServer(serverExecutor, new Logger(this.log, KarmaServer.name, this.config.debugLoggingEnabled));
+		return new KarmaServer(serverExecutor, new Logger(this.log, KarmaServer.name, this.config.extensionDebugLoggingEnabled));
 	}
 
 	public createTestRunner(
@@ -52,7 +52,7 @@ export class KarmaFactory implements TestFactory {
 			this.testFramework,
 			karmaEventListener,
 			testLoadProcessor,
-			new Logger(this.log, KarmaTestRunner.name, this.config.debugLoggingEnabled)
+			new Logger(this.log, KarmaTestRunner.name, this.config.extensionDebugLoggingEnabled)
 		);
 	}
 
@@ -70,7 +70,7 @@ export class KarmaFactory implements TestFactory {
 		this.logger.info(`Creating Karma http test run executor`);
 
 		return new KarmaHttpTestRunExecutor(
-			new Logger(this.log, KarmaHttpTestRunExecutor.name, this.config.debugLoggingEnabled)
+			new Logger(this.log, KarmaHttpTestRunExecutor.name, this.config.extensionDebugLoggingEnabled)
 		);
 	}
 
@@ -87,7 +87,7 @@ export class KarmaFactory implements TestFactory {
 			this.config.baseKarmaConfFilePath,
 			this.config.userKarmaConfFilePath,
 			{ environment },
-			new Logger(this.log, KarmaCommandLineTestRunExecutor.name, this.config.debugLoggingEnabled)
+			new Logger(this.log, KarmaCommandLineTestRunExecutor.name, this.config.extensionDebugLoggingEnabled)
 		);
 	}
 
@@ -102,7 +102,8 @@ export class KarmaFactory implements TestFactory {
 			[KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
 			[KarmaEnvironmentVariable.Browser]: `${this.config.browser}`,
 			[KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-			[KarmaEnvironmentVariable.DebugLoggingEnabled]: `${this.config.debugLoggingEnabled}`
+			[KarmaEnvironmentVariable.ExtensionDebugLoggingEnabled]: `${this.config.extensionDebugLoggingEnabled}`,
+			[KarmaEnvironmentVariable.KarmaDebugLoggingEnabled]: `${this.config.karmaDebugLoggingEnabled}`
 		};
 		const options: KarmaCommandLineTestServerExecutorOptions = {
 			environment,
@@ -114,7 +115,7 @@ export class KarmaFactory implements TestFactory {
 			this.config.baseKarmaConfFilePath,
 			this.config.userKarmaConfFilePath,
 			options,
-			new Logger(this.log, KarmaCommandLineTestServerExecutor.name, this.config.debugLoggingEnabled)
+			new Logger(this.log, KarmaCommandLineTestServerExecutor.name, this.config.extensionDebugLoggingEnabled)
 		);
 	}
 

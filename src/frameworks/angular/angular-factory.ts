@@ -28,7 +28,8 @@ export class AngularFactory implements Partial<TestFactory> {
 			[KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
 			[KarmaEnvironmentVariable.Browser]: `${this.config.browser}`,
 			[KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-			[KarmaEnvironmentVariable.DebugLoggingEnabled]: `${this.config.debugLoggingEnabled}`
+			[KarmaEnvironmentVariable.ExtensionDebugLoggingEnabled]: `${this.config.extensionDebugLoggingEnabled}`,
+			[KarmaEnvironmentVariable.KarmaDebugLoggingEnabled]: `${this.config.karmaDebugLoggingEnabled}`
 		};
 
 		const options: KarmaCommandLineTestServerExecutorOptions = {

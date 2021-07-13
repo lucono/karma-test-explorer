@@ -191,8 +191,14 @@
 						"The TDD (Test Driven Development) interface of the Mocha test framework. Some capabilities, such as auto-watch mode, are not supported with this framework"
 					]
 				},
-				"karmaTestExplorer.debugLoggingEnabled": {
-					"description": "Enables detailed logging in the output channel that is helpful for troubleshooting issues with running Karma or the extension",
+				"karmaTestExplorer.extensionDebugLoggingEnabled": {
+					"description": "Enables detailed logging for the extension in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension",
+					"type": "boolean",
+					"scope": "resource",
+					"default": false
+				},
+				"karmaTestExplorer.karmaDebugLoggingEnabled": {
+					"description": "Enables debug logging for the Karma server in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension",
 					"type": "boolean",
 					"scope": "resource",
 					"default": false

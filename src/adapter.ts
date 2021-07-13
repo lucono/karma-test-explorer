@@ -84,7 +84,7 @@ export class Adapter implements TestAdapter {
 		this.config = this.factory.getExtensionConfig();
 		this.initDisposables.push(this.config);
 
-		this.logger = new Logger(this.log, Adapter.name, this.config.debugLoggingEnabled);
+		this.logger = new Logger(this.log, Adapter.name, this.config.extensionDebugLoggingEnabled);
 		this.initDisposables.push(this.logger);
 
 		this.logger.info(`Initializing adapter`);
@@ -92,7 +92,7 @@ export class Adapter implements TestAdapter {
 		this.specLocator = this.factory.fetchTestInfo();
 		this.initDisposables.push(this.specLocator);
 
-		this.debugger = new Debugger(new Logger(this.log, Debugger.name, this.config.debugLoggingEnabled));
+		this.debugger = new Debugger(new Logger(this.log, Debugger.name, this.config.extensionDebugLoggingEnabled));
 		this.initDisposables.push(this.debugger);
 
 		const testResolver: TestResolver = {

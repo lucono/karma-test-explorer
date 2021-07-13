@@ -27,7 +27,8 @@ export class ExtensionConfig implements Disposable {
 	public readonly envFile: string | undefined;
 	public readonly envFileEnvironment: { [key: string]: string };
 	public readonly debuggerConfig: any;
-	public readonly debugLoggingEnabled: boolean;
+	public readonly extensionDebugLoggingEnabled: boolean;
+	public readonly karmaDebugLoggingEnabled: boolean;
 	public readonly autoWatchEnabled: boolean;
 	public readonly autoWatchBatchDelay: number;
 	public readonly browser: string;
@@ -47,7 +48,8 @@ export class ExtensionConfig implements Disposable {
 		this.excludeFiles = config.get(ConfigSetting.ExcludeFiles) as string[];
 		this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort) as number;
 		this.debuggerConfig = JSON.parse(JSON.stringify(config.get(ConfigSetting.DebuggerConfig)));
-		this.debugLoggingEnabled = config.get(ConfigSetting.DebugLoggingEnabled) as boolean;
+		this.extensionDebugLoggingEnabled = config.get(ConfigSetting.ExtensionDebugLoggingEnabled) as boolean;
+		this.karmaDebugLoggingEnabled = config.get(ConfigSetting.KarmaDebugLoggingEnabled) as boolean;
 		this.autoWatchEnabled = config.get(ConfigSetting.AutoWatchEnabled) as boolean;
 		this.autoWatchBatchDelay = config.get(ConfigSetting.AutoWatchBatchDelay) as number;
 		this.karmaReadyTimeout = config.get(ConfigSetting.KarmaReadyTimeout) as number;
