@@ -1,0 +1,12 @@
+# Ignore all
+*
+*/**
+
+# Include required files
+!dist
+!img
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!.vscodeignore

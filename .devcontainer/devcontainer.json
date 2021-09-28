@@ -1,0 +1,19 @@
+{
+	"name": "Karma Test Explorer",
+	"remoteUser": "developer",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"DEVELOPER_USER": "developer",
+			"WORKSPACE_DIR": "${containerWorkspaceFolder}"
+		}
+	},
+	"postCreateCommand": [
+		"/bin/bash", "${containerWorkspaceFolder}/.devcontainer/project-setup.sh", "${containerWorkspaceFolder}"
+	],
+	"extensions": [
+		"dbaeumer.vscode-eslint",
+		"Orta.vscode-jest",
+		"hbenl.vscode-test-explorer"
+	]
+}

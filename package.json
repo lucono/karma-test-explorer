@@ -1,0 +1,362 @@
+{
+  "name": "karma-test-explorer",
+  "displayName": "Karma Test Explorer",
+  "description": "Run your Karma or Angular project's Jasmine and Mocha tests from the Visual Studio Code sidebar",
+  "icon": "img/extension-icon-128.png",
+  "author": "Lucas Ononiwu",
+  "publisher": "lucono",
+  "version": "0.1.0",
+  "preview": true,
+  "license": "MIT",
+  "homepage": "https://github.com/lucono/karma-test-explorer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucono/karma-test-explorer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lucono/karma-test-explorer/issues"
+  },
+  "categories": [
+    "Testing"
+  ],
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "keywords": [
+    "test",
+    "testing",
+    "karma",
+    "angular",
+    "jasmine",
+    "mocha"
+  ],
+  "main": "dist/main.js",
+  "scripts": {
+    "format": "npx prettier --write -- {src,test}/**/*.ts ./*.{js,json}",
+    "lint": "npx eslint -- {src,test}/**/*.ts",
+    "clean": "rimraf out dist *.vsix",
+    "build": "tsc",
+    "rebuild": "npm run clean && npm run build",
+    "watch": "tsc -w",
+    "test": "jest -c jest.config.js",
+    "bundle": "esbuild $(esbuild-config)",
+    "package": "npx vsce package",
+    "publish": "npx vsce publish",
+    "validate": "npm run format && npm run lint && npm run rebuild && npm run test && npm run bundle && npm run package"
+  },
+  "dependencies": {
+    "bluebird": "^3.7.2",
+    "cross-spawn": "^7.0.0",
+    "dotenv": "^8.2.0",
+    "dotenv-expand": "5.1.0",
+    "escape-string-regexp": "^2.0.0",
+    "express": "^4.17.1",
+    "globby": "11.0.4",
+    "karma": "^6.3.2",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-jasmine": "^2.0.1",
+    "micromatch": "^4.0.4",
+    "node": "^14.16.0",
+    "portfinder": "^1.0.28",
+    "ps-tree": "^1.2.0",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.4",
+    "resolve-global": "^1.0.0",
+    "socket.io": "^4.0.1",
+    "socket.io-client": "^4.0.1",
+    "tree-kill": "^1.2.2",
+    "tslib": "^1.10.0",
+    "vscode-test-adapter-api": "^1.9.0",
+    "vscode-test-adapter-util": "^0.7.1"
+  },
+  "devDependencies": {
+    "@types/bluebird": "^3.5.36",
+    "@types/cross-spawn": "^6.0.2",
+    "@types/express": "~4.17.11",
+    "@types/glob": "^7.1.3",
+    "@types/jest": "^27.0.1",
+    "@types/jest-when": "^2.7.3",
+    "@types/karma": "^6.3.0",
+    "@types/lodash": "^4.14.168",
+    "@types/micromatch": "^4.0.2",
+    "@types/node": "^14.14.31",
+    "@types/ps-tree": "^1.1.0",
+    "@types/semver": "~6.0.2",
+    "@types/vscode": "^1.60.0",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
+    "@typescript-eslint/parser": "^4.31.1",
+    "esbuild": "^0.13.2",
+    "esbuild-config": "^0.2.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-jest": "^24.4.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "jest": "^27.0.6",
+    "jest-mock-extended": "^2.0.2-beta2",
+    "jest-when": "^3.3.1",
+    "lodash": "^4.17.21",
+    "prettier": "2.3.2",
+    "prettier-plugin-organize-imports": "^2.3.3",
+    "ts-jest": "^27.0.5",
+    "typescript": "^4.4.2",
+    "vsce": "^1.100.1"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "extensionDependencies": [
+    "hbenl.vscode-test-explorer"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Karma Test Explorer configuration",
+      "properties": {
+        "karmaTestExplorer.projectRootPath": {
+          "description": "The working directory where the project is located (relative to the root folder)",
+          "type": "string",
+          "scope": "resource"
+        },
+        "karmaTestExplorer.defaultAngularProjectName": {
+          "description": "The default Angular project to be loaded for testing. If not specified, the default project specified in `angular.json` is loaded instead",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        },
+        "karmaTestExplorer.karmaConfFilePath": {
+          "description": "The path where the karma.conf.js file is located (relative to `projectRootPath`)",
+          "type": "string",
+          "scope": "resource",
+          "default": "karma.conf.js"
+        },
+        "karmaTestExplorer.testGrouping": {
+          "description": "How tests should be grouped in the Test view sidebar",
+          "type": "string",
+          "scope": "resource",
+          "default": "folder",
+          "enum": [
+            "suite",
+            "folder"
+          ],
+          "enumDescriptions": [
+            "Group tests solely by test suite",
+            "Group tests by folder and test suite"
+          ]
+        },
+        "karmaTestExplorer.karmaProcessExecutable": {
+          "description": "The path to the executable or command to use for launching Karma. This is useful for using a custom script or version of Karma",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        },
+        "karmaTestExplorer.karmaPort": {
+          "description": "The port to be used for the Karma server in VS Code",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "scope": "resource",
+          "default": 9976
+        },
+        "karmaTestExplorer.testsBasePath": {
+          "description": "The base folder containing the test files (relative to `projectRootPath`)",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        },
+        "karmaTestExplorer.testFiles": {
+          "description": "The path glob patterns identifying the test files (relative to `projectRootPath`)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "scope": "resource",
+          "minItems": 1,
+          "default": [
+            "**/*{.,-,_}{test,spec,unit}.{ts,js}"
+          ]
+        },
+        "karmaTestExplorer.excludeFiles": {
+          "description": "The path glob patterns identifying files to be excluded from `testFiles` (relative to `projectRootPath`)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "scope": "resource",
+          "default": [
+            "**/node_modules/**/*"
+          ]
+        },
+        "karmaTestExplorer.reloadOnChangedFiles": {
+          "description": "A list of files which when modified will trigger a Karma reload",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "scope": "resource",
+          "default": []
+        },
+        "karmaTestExplorer.reloadOnKarmaConfigChange": {
+          "description": "Enables reloading of Karma on changes to the Karma configuration file",
+          "type": "boolean",
+          "scope": "resource",
+          "default": true
+        },
+        "karmaTestExplorer.testFramework": {
+          "description": "The test framework used by the project",
+          "type": "string",
+          "scope": "resource",
+          "default": "jasmine",
+          "enum": [
+            "jasmine",
+            "mocha-bdd",
+            "mocha-tdd"
+          ],
+          "enumDescriptions": [
+            "The Jasmine test framework. All capabilities are supported with this test framework, including auto-watch mode",
+            "The BDD (Behavior Driven Development) interface of the Mocha test framework. Some capabilities, such as auto-watch mode, are not supported with this framework",
+            "The TDD (Test Driven Development) interface of the Mocha test framework. Some capabilities, such as auto-watch mode, are not supported with this framework"
+          ]
+        },
+        "karmaTestExplorer.logLevel": {
+          "description": "Sets the level of logging detail produced in the output panel of the extension. More detailed levels such as the `debug` level can be helpful when troubleshooting issues with running Karma or the extension. Set this to `disable` in order to disable extension logging and not display the Karma Test Explorer output panel at all",
+          "type": "string",
+          "scope": "resource",
+          "default": "info",
+          "enum": [
+            "disable",
+            "error",
+            "warn",
+            "info",
+            "debug",
+            "trace"
+          ],
+          "enumDescriptions": [
+            "Log only errors",
+            "Log only errors and warnings",
+            "Log errors, warnings and info level messages",
+            "More detailed logging which includes debug level information",
+            "Very detailed logging which includes very low level information. This logging level is very verbose"
+          ]
+        },
+        "karmaTestExplorer.karmaLogLevel": {
+          "description": "Sets the level of logging detail for the Karma server in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension. Set this to `disable` in order to disable Karma logging and not display the Karma Server output panel at all",
+          "type": "string",
+          "scope": "resource",
+          "default": "info",
+          "enum": [
+            "disable",
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "enumDescriptions": [
+            "Disable logging",
+            "Log only errors",
+            "Log only errors and warnings",
+            "Log errors, warnings and info level messages",
+            "More detailed logging which includes debug level information",
+            "Very detailed logging which includes very low level information. This logging level is very verbose"
+          ]
+        },
+        "karmaTestExplorer.autoWatchEnabled": {
+          "description": "Enables automatic re-run of tests with changes to test files",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
+        "karmaTestExplorer.autoWatchBatchDelay": {
+          "description": "The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as (and overrides) Karma config's `autoWatchBatchDelay` option",
+          "type": "number",
+          "scope": "resource",
+          "exclusiveMinimum": 0,
+          "default": 5000
+        },
+        "karmaTestExplorer.karmaReadyTimeout": {
+          "description": "The duration in milliseconds after which the extension will stop listening and give up if Karma is not started, connected to the extension, and ready for testing",
+          "type": "number",
+          "scope": "resource",
+          "exclusiveMinimum": 0,
+          "default": 900000
+        },
+        "karmaTestExplorer.flattenSingleChildFolders": {
+          "description": "Flatten test paths consisting of single child folders",
+          "type": "boolean",
+          "scope": "resource",
+          "default": true
+        },
+        "karmaTestExplorer.defaultSocketConnectionPort": {
+          "description": "This is the port that will be used to connect Karma with the test explorer. When not specified, Karma Test Explorer will automatically use the first available port equal to, or higher than, 9999",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "scope": "resource",
+          "default": 9999
+        },
+        "karmaTestExplorer.browser": {
+          "description": "The browser that will be launched by Karma for testing, which can be the name of any valid custom launcher defined or available in the Karma config file. This takes precedence over the `customLauncher` setting",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        },
+        "karmaTestExplorer.customLauncher": {
+          "description": "Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file. The default uses the same debug port as the default `debuggerConfig` setting to attach the debugger to the browser. Therefore, if providing a custom value for `customLauncher`, ensure that both the `customLauncher` and `debuggerConfig` settings use matching debug ports",
+          "type": "object",
+          "scope": "resource",
+          "required": [
+            "base"
+          ],
+          "default": {
+            "base": "ChromeHeadless",
+            "flags": [
+              "--remote-debugging-port=9222"
+            ]
+          }
+        },
+        "karmaTestExplorer.debuggerConfigName": {
+          "description": "The name of the launch configuration that will be used for debugging tests, which can be the name of any launch configuration defined or available in the VS Code `launch.json` file. This takes precedence over the `debuggerConfig` setting",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        },
+        "karmaTestExplorer.debuggerConfig": {
+          "description": "The debugger configuration to be used in debugging the Karma tests in VS Code. This is similar to a VS Code launch configuration entry in the `.vscode/launch.json` file",
+          "type": "object",
+          "scope": "resource",
+          "required": [
+            "name",
+            "type"
+          ],
+          "default": {
+            "name": "Karma Test Explorer Debugging",
+            "type": "pwa-chrome",
+            "request": "attach",
+            "browserAttachLocation": "workspace",
+            "address": "localhost",
+            "port": 9222,
+            "timeout": 60000
+          }
+        },
+        "karmaTestExplorer.containerModeEnabled": {
+          "description": "Enables additional support for easier testing in a container",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
+        "karmaTestExplorer.env": {
+          "description": "Additional environment variables to be set when running the tests. These take precedence over those from the `envFile` setting",
+          "type": "object",
+          "scope": "resource",
+          "default": {}
+        },
+        "karmaTestExplorer.envFile": {
+          "description": "Path to environment file containing environment variables to be set when running the tests",
+          "type": "string",
+          "scope": "resource",
+          "default": ""
+        }
+      }
+    }
+  }
+}
