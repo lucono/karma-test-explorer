@@ -5,7 +5,7 @@ import { TestSuiteType, TestType } from '../../src/core/base/test-infos';
 import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../src/core/test-suite-organizer';
 import '../../src/types/vscode-test-adapter-api';
 import { Logger } from '../../src/util/logging/logger';
-import { testSuiteWindowsToPosixStylePaths } from '../test-util';
+import { asTestSuiteWithUnixStylePaths as withUnixPaths } from '../test-util';
 
 describe('TestSuiteOrganizer', () => {
   let mockLogger: MockProxy<Logger>;
@@ -17,11 +17,8 @@ describe('TestSuiteOrganizer', () => {
 
     const organizeTests = testSuiteOrganizer.organizeTests.bind(testSuiteOrganizer);
 
-    testSuiteOrganizer.organizeTests = (
-      ...args: Parameters<typeof testSuiteOrganizer.organizeTests>
-    ): TestSuiteInfo => {
-      const organizedTests = organizeTests(...args);
-      return process.platform === 'win32' ? testSuiteWindowsToPosixStylePaths(organizedTests) : organizedTests;
+    testSuiteOrganizer.organizeTests = (...args: Parameters<typeof organizeTests>): TestSuiteInfo => {
+      return withUnixPaths(organizeTests(...args));
     };
   });
 

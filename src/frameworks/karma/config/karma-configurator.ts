@@ -8,7 +8,7 @@ import { instance as customReporterInstance, name as customReporterName } from '
 export class KarmaConfigurator {
   private readonly karmaPort: number;
   private readonly autoWatchEnabled: boolean;
-  private readonly autoWatchBatchDelay: number;
+  private readonly autoWatchBatchDelay: number | undefined;
   private readonly browser: string;
   private readonly customLauncher?: CustomLauncher;
   private readonly karmaLogLevel: KarmaLogLevel;
@@ -17,7 +17,7 @@ export class KarmaConfigurator {
     this.karmaLogLevel = (process.env[KarmaEnvironmentVariable.KarmaLogLevel]! as KarmaLogLevel) ?? 'INFO';
 
     this.autoWatchEnabled =
-      (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLocaleLowerCase() === 'true';
+      (process.env[KarmaEnvironmentVariable.AutoWatchEnabled] ?? 'false').toLowerCase() === 'true';
 
     this.karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
 
@@ -25,7 +25,11 @@ export class KarmaConfigurator {
     const debugPort: number | undefined = debugPortString ? parseInt(debugPortString, 10) : undefined;
 
     const autoWatchBatchDelay = parseInt(process.env[KarmaEnvironmentVariable.AutoWatchBatchDelay]!, 10);
-    this.autoWatchBatchDelay = !this.autoWatchEnabled ? 0 : autoWatchBatchDelay;
+    this.autoWatchBatchDelay = !this.autoWatchEnabled
+      ? 0
+      : !Number.isNaN(autoWatchBatchDelay)
+      ? autoWatchBatchDelay
+      : undefined;
 
     const requestedBrowser = process.env[KarmaEnvironmentVariable.Browser];
     const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher]!;
@@ -55,14 +59,10 @@ export class KarmaConfigurator {
     config.logLevel = (config as any)[`LOG_${this.karmaLogLevel.toUpperCase()}`] ?? config.LOG_INFO;
     config.singleRun = false;
     config.autoWatch = this.autoWatchEnabled;
-    config.autoWatchBatchDelay = this.autoWatchBatchDelay;
+    config.autoWatchBatchDelay = this.autoWatchBatchDelay ?? config.autoWatchBatchDelay;
     config.restartOnFileChange = false;
     config.browsers = [this.browser];
-
-    if (this.customLauncher) {
-      config.customLaunchers = { [this.browser]: this.customLauncher };
-    }
-
+    config.customLaunchers = this.customLauncher ? { [this.browser]: this.customLauncher } : config.customLaunchers;
     config.browserNoActivityTimeout = 1_000 * 60 * 60 * 24;
     config.browserDisconnectTimeout = 30_000;
     config.pingTimeout = 1_000 * 60 * 60 * 24;

@@ -100,7 +100,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
       const duplicateSuiteFiles = allMatchingSuiteLocations
         .sort((loc1, loc2) => (loc1.file === suiteFile ? -1 : loc2.file === suiteFile ? 1 : 0))
-        .map(location => `${++duplicateSuiteCounter}. ${location.file}:${location.line}`)
+        .map(location => `${++duplicateSuiteCounter}. ${location.file}:${location.line + 1}`)
         .join('\n');
 
       message =
@@ -148,7 +148,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
         const duplicateSpecFiles = allMatchingSpecLocations
           .sort((loc1, loc2) => (loc1.file === specFile ? -1 : loc2.file === specFile ? 1 : 0))
-          .map(location => `${++duplicateSpecCounter}. ${location.file}:${location.line}`)
+          .map(location => `${++duplicateSpecCounter}. ${location.file}:${location.line + 1}`)
           .join('\n');
 
         loadFailureMessage =

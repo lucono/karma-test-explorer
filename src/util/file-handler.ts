@@ -1,4 +1,4 @@
-import { readFile } from 'fs';
+import { readFile, readFileSync } from 'fs';
 import globby from 'globby';
 import { DEFAULT_FILE_ENCODING } from '../constants';
 import { Disposable } from './disposable/disposable';
@@ -37,9 +37,21 @@ export class FileHandler implements Disposable {
     };
   }
 
+  public readFileSync(filePath: string, encoding?: BufferEncoding): string | undefined {
+    this.logger.debug(() => `Reading file synchronously: ${filePath}`);
+    let fileContents: string | undefined;
+
+    try {
+      fileContents = readFileSync(filePath, encoding ?? this.fileEncoding);
+    } catch (error) {
+      this.logger.error(() => `Failed reading file ${filePath}: ${error}`);
+    }
+    return fileContents;
+  }
+
   public async readFile(filePath: string, encoding?: BufferEncoding): Promise<string> {
+    this.logger.debug(() => `Reading file async: ${filePath}`);
     const deferredFileContents = new DeferredPromise<string>();
-    this.logger.debug(() => `Reading file: ${filePath}`);
 
     readFile(filePath, encoding ?? this.fileEncoding, (error, data) => {
       if (error) {
@@ -57,13 +69,13 @@ export class FileHandler implements Disposable {
     const searchOptions = { ...DEFAULT_GLOB_OPTIONS, ...this.fileHandlerOptions, ...globOptions };
     const files = await globby(filePatterns, searchOptions);
 
-    this.logger.debug(
-      () =>
-        `Resolved ${files.length} file(s) from file patterns (${filePatterns}) ` +
-        `using options: ${JSON.stringify(searchOptions)}`
-    );
+    this.logger.debug(() => `Resolved ${files.length} file(s) from file patterns: ${JSON.stringify(filePatterns)}`);
+
     this.logger.trace(
-      () => `List of resolved files from file patterns (${filePatterns}) are: ${JSON.stringify(files, null, 2)}`
+      () =>
+        `List of resolved files from file patterns: ${JSON.stringify(filePatterns)} ` +
+        `using options: ${JSON.stringify(searchOptions, null, 2)} ` +
+        `are: ${JSON.stringify(files, null, 2)}`
     );
     return files;
   }

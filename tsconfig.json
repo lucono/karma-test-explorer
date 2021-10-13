@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": ["ES2021"],
+    "target": "ES6",
+    "lib": ["ES6"],
     "module": "CommonJS",
     "moduleResolution": "Node",
     "resolveJsonModule": true,

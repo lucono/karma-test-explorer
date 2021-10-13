@@ -37,23 +37,47 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
       headers: { 'Content-Type': 'application/json' }
     };
 
-    const request = httpRequest(httpRequestOptions);
+    const request = httpRequest(httpRequestOptions, responseMessage => {
+      responseMessage.resume();
+
+      responseMessage.on('end', () => {
+        if (!responseMessage.complete) {
+          this.logger.error(() => `Test run http connection was terminated before receiving the full response`);
+        }
+      });
+    });
 
     request.on('error', err => {
+      let errorMsg = `Karma http request error: ${err}`;
+
       if ((err as any).code === 'ECONNREFUSED') {
-        deferredTestRunExecution.fail(`Test runner: No karma server listening on port ${httpRequestOptions.port}`);
+        errorMsg = `No karma server listening on port ${httpRequestOptions.port}`;
       }
+
+      this.logger.error(() => errorMsg);
+      deferredTestRunExecution.fail(errorMsg);
     });
-    request.on('close', () => deferredTestRunExecution.end());
+
+    request.on('close', () => {
+      this.logger.debug(() => 'Karma http request closed');
+
+      // FIXME: Request sometimes is done while server is still
+      // running the requested tests so that deferredTestRunExecution
+      // is ended prematurely and subsequent test results are not
+      // collected or reported in the extension
+      deferredTestRunExecution.end();
+    });
 
     const karmaRequestContent = JSON.stringify(karmaRequestData);
 
-    this.logger.debug(() => 'Sending karma request');
-    this.logger.trace(() => `Karma request data to be sent: ${karmaRequestContent}`);
-
-    request.end(karmaRequestContent);
+    this.logger.debug(() => 'Sending karma run http request');
+    this.logger.trace(() => `Karma http request data to be sent: ${karmaRequestContent}`);
 
     deferredTestRunExecution.start();
+
+    request.end(karmaRequestContent, () => {
+      this.logger.debug(() => 'Finished sending http test run request');
+    });
 
     // TODO: Consider adding auto-fail timeout for when http request taking too long
 

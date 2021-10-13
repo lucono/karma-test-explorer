@@ -7,26 +7,29 @@ assignees: ''
 
 ---
 
-**Describe the bug**
+**Describe the Bug**
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+**To Reproduce:**
 Steps to reproduce the behavior:
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
+**Expected Behavior:**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Debug Logs:**
+With the `karmaTestExplorer.logLevel` set to `debug`, please capture and attach the logs from the `Karma Test Explorer` Output panel.
 
-**Please complete the following information:**
+**Screenshots:**
+If applicable, add screenshots to help explain the issue you are having.
+
+**Please Provide the Following Information:**
  - OS: [e.g. macOS]
  - Environment [e.g. DevContainer Guest OS and version]
  - Version [e.g. 22]
 
-**Additional context**
+**Additional Context:**
 Add any other context about the problem here.

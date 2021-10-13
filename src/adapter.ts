@@ -1,4 +1,5 @@
 import { resolve } from 'path';
+import { debounce } from 'throttle-debounce';
 import {
   commands,
   ConfigurationChangeEvent,
@@ -25,11 +26,20 @@ import {
   TestSuiteInfo
 } from 'vscode-test-adapter-api';
 import { ServerStartInfo, TestManager } from './api/test-manager';
-import { DEBUG_SESSION_START_TIMEOUT, EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
+import {
+  CONFIG_FILE_CHANGE_BATCH_DELAY,
+  DEBUG_SESSION_START_TIMEOUT,
+  EXTENSION_CONFIG_PREFIX,
+  EXTENSION_NAME,
+  EXTENSION_OUTPUT_CHANNEL_NAME,
+  WATCHED_FILE_CHANGE_BATCH_DELAY
+} from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
 import { TestType } from './core/base/test-infos';
 import { TestResolver } from './core/base/test-resolver';
+import { CancellationRequestedError } from './core/cancellation-requested-error';
 import { ConfigSetting } from './core/config/config-setting';
+import { ConfigStore } from './core/config/config-store';
 import { ExtensionConfig } from './core/config/extension-config';
 import { Debugger } from './core/debugger';
 import { MainFactory } from './core/main-factory';
@@ -42,13 +52,14 @@ import { Disposer } from './util/disposable/disposer';
 import { DeferredPromise } from './util/future/deferred-promise';
 import { Execution } from './util/future/execution';
 import { SimpleLogger } from './util/logging/simple-logger';
-import { toPosixPath } from './util/utils';
+import { getCircularReferenceReplacer, toPosixPath } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
   private specLocator?: SpecLocator;
   private isTestProcessRunning: boolean = false;
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
+  private hasPendingConfigUpdates: boolean = false;
 
   private readonly initDisposables: Disposable[] = [];
   private readonly disposables: Disposable[] = [];
@@ -71,12 +82,18 @@ export class Adapter implements TestAdapter, Disposable {
 
     this.init();
 
+    const debouncedConfigChangeHandler = debounce(
+      CONFIG_FILE_CHANGE_BATCH_DELAY,
+      true,
+      this.handleConfigurationChange.bind(this)
+    );
+
     this.disposables.push(
       this.extensionOutputChannelLog,
       this.testLoadEmitter,
       this.testRunEmitter,
       this.autorunEmitter,
-      workspace.onDidChangeConfiguration(this.handleConfigurationChange, this),
+      workspace.onDidChangeConfiguration(debouncedConfigChangeHandler),
       commands.registerCommand(`${ExtensionCommands.ShowLog}`, () => this.extensionOutputChannelLog.show()),
       commands.registerCommand(`${ExtensionCommands.Reload}`, () => this.reload()),
       commands.registerCommand(`${ExtensionCommands.ExecuteFunction}`, (fn: () => void) => fn())
@@ -96,9 +113,9 @@ export class Adapter implements TestAdapter, Disposable {
     this.initDisposables.push(this.logger);
     this.logger.info(() => 'Initializing adapter');
 
-    this.logger.debug(() => 'Creating file watchers');
-    const fileWatchers = this.createFileWatchers();
-    this.initDisposables.push(...fileWatchers);
+    this.logger.debug(
+      () => `Using extension configuration: ${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
+    );
 
     this.logger.debug(() => 'Creating status bar display');
     this.notifications = new Notifications(new SimpleLogger(this.logger, Notifications.name));
@@ -107,6 +124,10 @@ export class Adapter implements TestAdapter, Disposable {
     this.logger.debug(() => 'Creating main factory');
     this.factory = new MainFactory(this.config, this.notifications, new SimpleLogger(this.logger, MainFactory.name));
     this.initDisposables.push(this.factory);
+
+    this.logger.debug(() => 'Creating file watchers');
+    const fileWatchers = this.createFileWatchers();
+    this.initDisposables.push(...fileWatchers);
 
     this.logger.debug(() => 'Getting spec locator');
     this.specLocator = this.factory.getSpecLocator();
@@ -141,7 +162,7 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   public async run(testIds: string[], isDebug: boolean = false): Promise<void> {
-    if (!isDebug && !this.verifyNoTestProcessCurrentlyRunning('New test run request ignored')) {
+    if (!isDebug && !this.verifyNoTestProcessCurrentlyRunning('Cannot run new test')) {
       return;
     }
 
@@ -188,12 +209,12 @@ export class Adapter implements TestAdapter, Disposable {
       }
 
       if (runError) {
-        const errorMessage = `Failed while ${isDebug ? 'debugging' : 'running'} requested tests: ${runError}`;
+        const errorMessage = `Failed while ${isDebug ? 'debugging' : 'running'} requested tests - ${runError}`;
         this.logger.error(() => errorMessage);
         this.retireEmitter.fire({ tests: testIds });
 
         this.notifications.notify(MessageType.Error, errorMessage, [
-          { label: 'Rerun Tests', handler: () => (isDebug ? this.debug(testIds) : this.run(testIds)) }
+          { label: 'Retry Test Run', handler: () => (isDebug ? this.debug(testIds) : this.run(testIds)) }
         ]);
       }
 
@@ -308,16 +329,14 @@ export class Adapter implements TestAdapter, Disposable {
     this.logger.debug(() => `Test ${isForcedRefresh ? 'hard ' : ''}refresh started`);
 
     const refreshStartTime = Date.now();
-    this.testLoadEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
-
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: 'finished' };
-
     let discoveredTests: TestSuiteInfo | undefined;
     let testDiscoveryError: string | undefined;
 
-    this.specLocator?.refreshFiles();
-
     try {
+      this.testLoadEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
+      this.specLocator?.refreshFiles();
+
       if (!this.testManager.isStarted()) {
         this.logger.debug(() => 'Refresh request - Test manager is not started - Starting it');
         await this.testManager.start();
@@ -330,13 +349,16 @@ export class Adapter implements TestAdapter, Disposable {
 
       this.logger.debug(() => `Test discovery got ${discoveredTests?.testCount ?? 0} tests`);
     } catch (error) {
-      testDiscoveryError = `Failed to load tests: ${(error as Error).message ?? error}`;
-      testLoadFinishedEvent.errorMessage = testDiscoveryError;
-      this.logger.error(() => testDiscoveryError!);
+      if (!(error instanceof CancellationRequestedError)) {
+        testDiscoveryError = `Failed to load tests - ${(error as Error).message ?? error}`;
+        testLoadFinishedEvent.errorMessage = testDiscoveryError;
 
-      this.notifications.notify(MessageType.Error, testDiscoveryError, [
-        { label: 'Retry Test Load', handler: () => this.reload() }
-      ]);
+        this.logger.error(() => testDiscoveryError!);
+
+        this.notifications.notify(MessageType.Error, testDiscoveryError, [
+          { label: 'Retry Test Load', handler: () => this.reload() }
+        ]);
+      }
     } finally {
       this.storeLoadedTests(discoveredTests);
       this.testLoadEmitter.fire(testLoadFinishedEvent);
@@ -353,14 +375,19 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   public async cancel(): Promise<void> {
-    this.logger.debug(() => 'Aborting any currently running test operation');
+    this.logger.debug(() => 'Test operation cancellation requested - Aborting any currently running test operation');
     await this.testManager.stop();
     this.isTestProcessRunning = false;
   }
 
-  private async reset() {
+  private async reset(): Promise<void> {
+    this.logger.debug(() => 'Adapter reset started');
+
+    if (this.isTestProcessRunning) {
+      await this.cancel();
+    }
     await this.reinit();
-    await this.reload();
+    await this.load();
   }
 
   private storeLoadedTests(rootSuite?: TestSuiteInfo) {
@@ -383,7 +410,7 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   private createConfig(): ExtensionConfig {
-    const config = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, this.workspaceFolder.uri);
+    const config: ConfigStore = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, this.workspaceFolder.uri);
     const configLogger = new SimpleLogger(this.logger, ExtensionConfig.name);
     return new ExtensionConfig(config, this.workspaceFolder.uri.path, configLogger);
   }
@@ -399,11 +426,14 @@ export class Adapter implements TestAdapter, Disposable {
       reloadTriggerFiles.push(this.config.envFile);
     }
 
-    const reloadTriggerFilesWatchers = this.registerFileHandler(reloadTriggerFiles, async fileUri => {
-      const filePath = fileUri.fsPath;
-      this.logger.info(() => `Resetting - monitored file changed: ${filePath}`);
-      await this.reset();
-    });
+    const reloadTriggerFilesWatchers = this.registerFileHandler(
+      reloadTriggerFiles,
+      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, fileUri => {
+        const filePath = fileUri.fsPath;
+        this.logger.info(() => `Requesting adapter reset - monitored file changed: ${filePath}`);
+        this.reset();
+      })
+    );
 
     this.logger.debug(() => 'Creating file watchers for test file changes');
 
@@ -415,7 +445,7 @@ export class Adapter implements TestAdapter, Disposable {
       }
       this.logger.debug(() => `Changed file is spec file: ${changedTestFile}`);
 
-      if (this.config.autoWatchEnabled) {
+      if (this.factory.getTestFramework().getTestCapabilities().watchModeSupport) {
         await (changeType === FileChangeType.Deleted
           ? this.specLocator.removeFiles([changedTestFile])
           : this.specLocator.refreshFiles([changedTestFile]));
@@ -465,6 +495,11 @@ export class Adapter implements TestAdapter, Disposable {
   private async handleConfigurationChange(configChangeEvent: ConfigurationChangeEvent): Promise<void> {
     this.logger.info(() => 'Configuration changed');
 
+    if (this.hasPendingConfigUpdates) {
+      this.logger.debug(() => 'Ignoring new configuration changes - Refresh already pending for previous changes');
+      return;
+    }
+
     const hasRelevantSettingsChange = Object.values(ConfigSetting).some(setting => {
       const settingChanged = configChangeEvent.affectsConfiguration(
         `${EXTENSION_CONFIG_PREFIX}.${setting}`,
@@ -480,9 +515,20 @@ export class Adapter implements TestAdapter, Disposable {
       this.logger.info(() => 'No relevant configuration change');
       return;
     }
-    this.logger.info(() => 'Reloading tests with updated configuration');
+    this.hasPendingConfigUpdates = true;
 
-    await this.reset();
+    const applyUpdatedSettingsHandler = async () => {
+      this.logger.info(() => 'Resetting adapter with updated configuration');
+      await this.reset();
+      this.hasPendingConfigUpdates = false;
+    };
+
+    this.notifications.notify(
+      MessageType.Warning,
+      `${EXTENSION_NAME} settings changed. Apply the changes?`,
+      [{ label: 'Apply Settings', handler: applyUpdatedSettingsHandler }],
+      { dismissAction: true }
+    );
   }
 
   private verifyNoTestProcessCurrentlyRunning(message: string): boolean {

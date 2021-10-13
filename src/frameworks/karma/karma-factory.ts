@@ -4,13 +4,16 @@ import { TestRunner } from '../../api/test-runner';
 import { TestServer } from '../../api/test-server';
 import { TestServerExecutor } from '../../api/test-server-executor';
 import { TestFramework } from '../../core/base/test-framework';
-import { ExtensionConfig } from '../../core/config/extension-config';
+import { ExtensionConfig, TestTriggerMethod } from '../../core/config/extension-config';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { SimpleLogger } from '../../util/logging/simple-logger';
 import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
 import { KarmaEnvironmentVariable } from './karma-environment-variable';
-import { KarmaCommandLineTestRunExecutor } from './runner/karma-command-line-test-run-executor';
+import {
+  KarmaCommandLineTestRunExecutor,
+  KarmaCommandLineTestRunExecutorOptions
+} from './runner/karma-command-line-test-run-executor';
 import { KarmaHttpTestRunExecutor } from './runner/karma-http-test-run-executor';
 import { KarmaTestEventListener } from './runner/karma-test-event-listener';
 import { KarmaTestRunner } from './runner/karma-test-runner';
@@ -21,12 +24,28 @@ import {
 } from './server/karma-command-line-test-server-executor';
 import { KarmaTestServer } from './server/karma-test-server';
 
+export type KarmaFactoryConfig = Pick<
+  ExtensionConfig,
+  | 'autoWatchBatchDelay'
+  | 'autoWatchEnabled'
+  | 'baseKarmaConfFilePath'
+  | 'browser'
+  | 'customLauncher'
+  | 'environment'
+  | 'failOnStandardError'
+  | 'karmaLogLevel'
+  | 'karmaProcessCommand'
+  | 'projectRootPath'
+  | 'testTriggerMethod'
+  | 'userKarmaConfFilePath'
+>;
+
 export class KarmaFactory implements TestFactory, Disposable {
   private disposables: Disposable[] = [];
 
   public constructor(
     private readonly testFramework: TestFramework,
-    private readonly config: ExtensionConfig,
+    private readonly factoryConfig: KarmaFactoryConfig,
     private readonly serverProcessLog: CommandLineProcessLog,
     private readonly logger: SimpleLogger
   ) {
@@ -64,8 +83,8 @@ export class KarmaFactory implements TestFactory, Disposable {
   }
 
   public createTestRunExecutor(): TestRunExecutor {
-    return this.config.karmaProcessExecutable
-      ? this.createKarmaCommandLineTestRunExecutor(this.config.karmaProcessExecutable)
+    return this.factoryConfig.testTriggerMethod === TestTriggerMethod.Cli
+      ? this.createKarmaCommandLineTestRunExecutor()
       : this.createKarmaHttpTestRunExecutor();
   }
 
@@ -77,19 +96,23 @@ export class KarmaFactory implements TestFactory, Disposable {
     return testRunExecutor;
   }
 
-  private createKarmaCommandLineTestRunExecutor(karmaProcessCommand: string): KarmaCommandLineTestRunExecutor {
+  private createKarmaCommandLineTestRunExecutor(): KarmaCommandLineTestRunExecutor {
     this.logger.debug(() => 'Creating Karma command line test run executor');
 
     const environment: Record<string, string | undefined> = {
       ...process.env,
-      ...this.config.environment
+      ...this.factoryConfig.environment
+    };
+
+    const options: KarmaCommandLineTestRunExecutorOptions = {
+      environment,
+      karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
+      failOnStandardError: this.factoryConfig.failOnStandardError
     };
 
     const testRunExecutor = new KarmaCommandLineTestRunExecutor(
-      this.config.projectRootPath,
-      this.config.baseKarmaConfFilePath,
-      this.config.userKarmaConfFilePath,
-      { karmaProcessCommand, environment },
+      this.factoryConfig.projectRootPath,
+      options,
       this.createLogger(KarmaCommandLineTestRunExecutor.name)
     );
     this.disposables.push(testRunExecutor);
@@ -101,23 +124,25 @@ export class KarmaFactory implements TestFactory, Disposable {
 
     const environment: Record<string, string | undefined> = {
       ...process.env,
-      ...this.config.environment,
-      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
-      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
-      [KarmaEnvironmentVariable.Browser]: `${this.config.browser}`,
-      [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`
+      ...this.factoryConfig.environment,
+      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.factoryConfig.autoWatchEnabled}`,
+      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.factoryConfig.autoWatchBatchDelay ?? ''}`,
+      [KarmaEnvironmentVariable.Browser]: this.factoryConfig.browser ?? '',
+      [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.factoryConfig.customLauncher),
+      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.factoryConfig.karmaLogLevel}`
     };
 
     const options: KarmaCommandLineTestServerExecutorOptions = {
       environment,
-      serverProcessLog: this.serverProcessLog
+      serverProcessLog: this.serverProcessLog,
+      karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
+      failOnStandardError: this.factoryConfig.failOnStandardError
     };
 
     const testServerExecutor = new KarmaCommandLineTestServerExecutor(
-      this.config.projectRootPath,
-      this.config.baseKarmaConfFilePath,
-      this.config.userKarmaConfFilePath,
+      this.factoryConfig.projectRootPath,
+      this.factoryConfig.baseKarmaConfFilePath,
+      this.factoryConfig.userKarmaConfFilePath,
       options,
       this.createLogger(KarmaCommandLineTestServerExecutor.name)
     );

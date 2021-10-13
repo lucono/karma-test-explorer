@@ -18,7 +18,7 @@ enum MochaInterfaceStyle {
 }
 
 const testCapabilities: TestCapabilities = {
-  autoWatch: false
+  watchModeSupport: false
 };
 
 class MochaFramework implements TestFramework {

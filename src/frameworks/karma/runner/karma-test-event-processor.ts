@@ -79,6 +79,8 @@ export class KarmaTestEventProcessor {
       }
     });
 
+    testExecution.failed().then(reason => this.processTestErrorEvent(reason));
+
     return deferredProcessingResults.promise();
   }
 
@@ -100,7 +102,10 @@ export class KarmaTestEventProcessor {
   }
 
   public processTestErrorEvent(message: string) {
+    this.logger.debug(() => `Request to process test error event with message: ${message}`);
+
     if (!this.isProcessing()) {
+      this.logger.debug(() => `Ignoring test error event - Processor not currently processing`);
       return;
     }
     this.deferredProcessingResults!.reject(message);

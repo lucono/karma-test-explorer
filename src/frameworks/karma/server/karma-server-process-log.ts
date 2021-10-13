@@ -9,7 +9,7 @@ export class KarmaServerProcessLog implements CommandLineProcessLog {
   }
 
   public error(data: () => string) {
-    this.logOutput.append(`stderr: ${this.formatMessage(data())}`);
+    this.logOutput.append(`[stderr]: ${this.formatMessage(data())}`);
   }
 
   private formatMessage(data: string): string {
