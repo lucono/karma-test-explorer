@@ -1,4 +1,3 @@
-import { SpawnOptions } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { silent } from 'resolve-global';
@@ -8,7 +7,10 @@ import { Disposer } from '../../util/disposable/disposer';
 import { DeferredExecution } from '../../util/future/deferred-execution';
 import { Execution } from '../../util/future/execution';
 import { SimpleLogger } from '../../util/logging/simple-logger';
-import { CommandLineProcessHandler } from '../../util/process/command-line-process-handler';
+import {
+  CommandLineProcessHandler,
+  CommandLineProcessHandlerOptions
+} from '../../util/process/command-line-process-handler';
 import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
 import { AngularProject } from './angular-project';
@@ -17,6 +19,7 @@ export interface AngularTestServerExecutorOptions {
   environment?: Record<string, string | undefined>;
   angularProcessCommand?: string;
   serverProcessLog?: CommandLineProcessLog;
+  failOnStandardError?: boolean;
 }
 
 export class AngularTestServerExecutor implements TestServerExecutor {
@@ -52,10 +55,11 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       environment[KarmaEnvironmentVariable.DebugPort] = `${debugPort}`;
     }
 
-    const spawnOptions: SpawnOptions = {
+    const runOptions: CommandLineProcessHandlerOptions = {
       cwd: this.angularProject.rootPath,
-      shell: true,
-      env: environment
+      shell: false,
+      env: environment,
+      failOnStandardError: this.options.failOnStandardError
     };
 
     const angularProcessCommand = this.options.angularProcessCommand;
@@ -89,12 +93,17 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       '--no-watch'
     ];
 
+    const commandLineProcessLogger = new SimpleLogger(
+      this.logger,
+      `${AngularTestServerExecutor.name}:${CommandLineProcessHandler.name}`
+    );
+
     const angularProcess = new CommandLineProcessHandler(
       command,
       processArguments,
-      new SimpleLogger(this.logger, CommandLineProcessHandler.name),
+      commandLineProcessLogger,
       this.options.serverProcessLog,
-      spawnOptions
+      runOptions
     );
     this.disposables.push(angularProcess);
 
@@ -111,6 +120,11 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       .execution()
       .ended()
       .then(() => deferredServerExecution.end());
+
+    angularProcess
+      .execution()
+      .failed()
+      .then(reason => deferredServerExecution.fail(reason));
 
     return deferredServerExecution.execution();
   }

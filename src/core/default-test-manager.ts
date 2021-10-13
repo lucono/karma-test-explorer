@@ -11,6 +11,7 @@ import { Execution } from '../util/future/execution';
 import { Logger } from '../util/logging/logger';
 import { PortAcquisitionManager } from '../util/port-acquisition-manager';
 import { TestType } from './base/test-infos';
+import { CancellationRequestedError } from './cancellation-requested-error';
 import { ExtensionCommands } from './vscode/extension-commands';
 import { MessageType, Notifications, StatusType } from './vscode/notifications';
 
@@ -19,6 +20,7 @@ export class DefaultTestManager implements TestManager {
   private actionIsRunning: boolean = false;
   private currentServerStartInfo?: ServerStartInfo;
   private systemCurrentlyStopping: Promise<void> | undefined;
+  private systemFailure: Promise<void> | undefined;
 
   public constructor(
     private readonly testServer: TestServer,
@@ -114,6 +116,7 @@ export class DefaultTestManager implements TestManager {
       // --- Start system (Karma server and listener) ---
 
       const karmaServerConnection: Execution = this.karmaEventListener.receiveKarmaConnection(karmerListenerSocketPort);
+
       const karmaServerExecution: Execution = this.testServer.start(
         serverKarmaPort,
         karmerListenerSocketPort,
@@ -124,9 +127,7 @@ export class DefaultTestManager implements TestManager {
 
       // --- Handle Karma server events ---
 
-      let isTerminationHandled = false;
-
-      karmaServerExecution.done().then(exitReason => {
+      const serverExecutionFailure = karmaServerExecution.done().then(exitReason => {
         let errorMsg = 'Karma server quit unexpectedly' + (exitReason ? `: ${exitReason}` : '');
 
         if (karmaServerExecution.started().isRejected()) {
@@ -135,51 +136,74 @@ export class DefaultTestManager implements TestManager {
           errorMsg = 'Karma server failed to start' + (failureMsg ? `: ${failureMsg}` : '');
         }
 
-        deferredReadyForTesting.reject(errorMsg);
         deferredKarmaPortRelease.fulfill();
         deferredDebugPortRelease.fulfill();
 
-        if (!isTerminationHandled) {
-          isTerminationHandled = true;
-
-          this.handleSystemComponentTermination(
-            'Karma server quit unexpectedly',
-            errorMsg,
-            karmaServerExecution,
-            karmaServerConnection
-          );
-        }
+        throw errorMsg;
       });
 
       // --- Handle Karma listener events ---
 
-      karmaServerConnection
-        .started()
-        .then(() => deferredReadyForTesting.fulfill())
-        .catch(failureReason => deferredReadyForTesting.reject(`${failureReason}`));
+      karmaServerConnection.started().then(() => deferredReadyForTesting.fulfill());
 
-      karmaServerConnection.done().then(disconnectReason => {
+      const karmaConnectionFailure = karmaServerConnection.done().then(disconnectReason => {
         let errorMsg = 'Karma disconnected unexpectedly' + (disconnectReason ? `: ${disconnectReason}` : '');
 
-        if (karmaServerConnection.isFailed()) {
-          const connectionFailureReason = karmaServerConnection.failed().reason();
-          errorMsg =
-            'Karma disconnected unexpectedly' + (connectionFailureReason ? `: ${connectionFailureReason}` : '');
+        if (karmaServerConnection.started().isRejected()) {
+          const connectionFailureReason = karmaServerConnection.started().reason();
+          const failureMsg = (connectionFailureReason as Error).message ?? connectionFailureReason ?? '';
+          errorMsg = 'Karma server failed to connect' + (failureMsg ? `: ${failureMsg}` : '');
         }
 
-        deferredReadyForTesting.reject(disconnectReason);
         deferredListenerSocketPortRelease.fulfill();
+        throw errorMsg;
+      });
 
-        if (!isTerminationHandled) {
-          isTerminationHandled = true;
+      const systemFailure = RichPromise.race([serverExecutionFailure, karmaConnectionFailure]);
 
-          this.handleSystemComponentTermination(
-            'Karma disconnected unexpectedly',
-            errorMsg,
-            karmaServerExecution,
-            karmaServerConnection
+      systemFailure.catch(async failureMsg => {
+        const actionWasRunning = this.actionIsRunning;
+        const wasOperationCancelled = !!this.systemCurrentlyStopping;
+        const rejectionMsg = wasOperationCancelled ? 'Test operation was cancelled' : failureMsg;
+
+        deferredReadyForTesting.reject(
+          wasOperationCancelled ? new CancellationRequestedError(rejectionMsg) : new Error(rejectionMsg)
+        );
+
+        if (this.systemCurrentlyStopping) {
+          this.logger.debug(() => 'System stop was requested - Waiting for all components to stop');
+          await RichPromise.allSettled([karmaServerExecution.done(), karmaServerConnection.done()]);
+          this.logger.debug(() => 'All components are done stopping');
+        } else {
+          this.logger.error(() => `System component terminated with message: ${failureMsg}`);
+
+          this.logger.debug(
+            () =>
+              `${actionWasRunning ? 'Test action' : 'No test action'} in progress ` +
+              `(System stop was not requested) - Initiating system stop`
           );
+
+          await this.stop();
+          this.logger.debug(() => 'System is done stopping');
+
+          if (!actionWasRunning) {
+            const showMessageAndOptions = () => {
+              this.notifications.notify(MessageType.Warning, rejectionMsg, [
+                { label: 'Restart Karma', handler: { command: ExtensionCommands.Reload } }
+              ]);
+            };
+
+            this.notifications.notifyStatus(StatusType.Warning, rejectionMsg, undefined, {
+              label: 'More Options',
+              description: 'Click for more options',
+              handler: showMessageAndOptions.bind(this)
+            });
+          }
         }
+
+        this.currentServerStartInfo = undefined;
+        this.systemFailure = undefined;
+        this.systemCurrentlyStopping = undefined;
       });
 
       // --- Wait for system ready (Karma server up and listener connected) ---
@@ -192,8 +216,10 @@ export class DefaultTestManager implements TestManager {
         debugPort
       };
 
+      this.systemFailure = systemFailure;
+
       return this.currentServerStartInfo;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(() => `${error}`);
       await this.stop();
       throw error;
@@ -227,7 +253,11 @@ export class DefaultTestManager implements TestManager {
       );
 
       const karmaPort = this.testServer.getServerPort()!;
-      const testSuiteInfo: TestSuiteInfo = await this.testRunner.discoverTests(karmaPort);
+      const futureTestDiscovery = this.testRunner.discoverTests(karmaPort);
+
+      await RichPromise.race<TestSuiteInfo | void>([futureTestDiscovery, this.systemFailure]);
+
+      const testSuiteInfo: TestSuiteInfo = await futureTestDiscovery;
       const testCount = testSuiteInfo.testCount;
 
       this.logger.info(() => `Discovered ${testCount} total tests`);
@@ -273,7 +303,8 @@ export class DefaultTestManager implements TestManager {
       const karmaPort: number = this.testServer.getServerPort()!;
       const uniqueTests = this.removeTestOverlaps(tests);
 
-      await this.testRunner.runTests(karmaPort, uniqueTests);
+      const futureTestRunCompletion = this.testRunner.runTests(karmaPort, uniqueTests);
+      await RichPromise.race([futureTestRunCompletion, this.systemFailure]);
 
       this.notifications.notifyStatus(StatusType.Done, 'Done running tests');
     } finally {
@@ -314,39 +345,6 @@ export class DefaultTestManager implements TestManager {
 
   public isActionRunning(): boolean {
     return this.actionIsRunning;
-  }
-
-  private async handleSystemComponentTermination(
-    simpleMessage: string,
-    detailedMessage: string,
-    ...componentExecutions: Execution[]
-  ) {
-    this.logger.debug(() => `Handling system component termination with message: ${simpleMessage ?? '<No message>'}`);
-
-    if (this.systemCurrentlyStopping) {
-      this.logger.debug(() => 'System stop was requested - Waiting for all components to stop');
-      await RichPromise.allSettled(componentExecutions.map(execution => execution.ended()));
-
-      this.currentServerStartInfo = undefined;
-      this.systemCurrentlyStopping = undefined;
-    } else if (!this.actionIsRunning) {
-      this.logger.error(
-        () =>
-          `System stop was not requested - Showing status bar message with message: ${simpleMessage ?? '<No message>'}`
-      );
-
-      const showMessageAndOptions = () => {
-        this.notifications.notify(MessageType.Warning, detailedMessage, [
-          { label: 'Restart Karma', handler: { command: ExtensionCommands.Reload } }
-        ]);
-      };
-
-      this.notifications.notifyStatus(StatusType.Warning, simpleMessage, undefined, {
-        label: 'More Options',
-        description: 'Click for more options',
-        handler: showMessageAndOptions.bind(this)
-      });
-    }
   }
 
   private removeTestOverlaps(tests: (TestInfo | TestSuiteInfo)[]): (TestInfo | TestSuiteInfo)[] {

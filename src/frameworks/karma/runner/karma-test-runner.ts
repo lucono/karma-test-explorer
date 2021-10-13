@@ -37,10 +37,9 @@ export class KarmaTestRunner implements TestRunner {
     deferredTestDiscoveryExecution.start();
     const futureTestDiscoveryCompletion = this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
 
-    futureTestDiscoveryCompletion.then(
-      () => deferredTestDiscoveryExecution.end(),
-      reason => deferredTestDiscoveryExecution.fail(`Test discovery failed with error: ${reason}`)
-    );
+    futureTestDiscoveryCompletion
+      .then(() => deferredTestDiscoveryExecution.end())
+      .catch(reason => deferredTestDiscoveryExecution.fail(reason));
 
     const discoveredSpecs: SpecCompleteResponse[] = await discoveredTestCapture;
 

@@ -157,7 +157,7 @@ export class KarmaTestEventListener implements Disposable {
 
   private processTestErrorEvent(errorMsg: string) {
     if (this.testEventProcessor?.isProcessing()) {
-      this.testEventProcessor?.processTestErrorEvent(errorMsg);
+      this.testEventProcessor.processTestErrorEvent(errorMsg);
     }
     if (this.watchModeTestEventProcessor?.isProcessing()) {
       this.watchModeTestEventProcessor?.processTestErrorEvent(errorMsg);
@@ -248,8 +248,23 @@ export class KarmaTestEventListener implements Disposable {
       new MultiEventHandler(new SimpleLogger(this.logger, MultiEventHandler.name));
 
     karmaEventHandler.setDefaultHandler(event => {
-      this.logger.debug(() => `Ignoring received karma event: ${event.name}`);
-      this.logger.trace(() => `Data for ignored event '${event.name}': ${JSON.stringify(event, null, 2)}`);
+      const isErrorEvent = event.name?.toLowerCase().includes('error');
+
+      if (isErrorEvent) {
+        this.logger.debug(() => `Received unregistered error event: ${event.name}`);
+        this.logger.trace(
+          () => `Data for received unregistered error event '${event.name}': ${JSON.stringify(event, null, 2)}`
+        );
+
+        this.processTestErrorEvent(`Error event: ${event.name}`);
+
+        if (this.watchModeTestEventProcessor?.isProcessing()) {
+          this.watchModeTestEventProcessor?.concludeProcessing();
+        }
+      } else {
+        this.logger.debug(() => `Ignoring received karma event: ${event.name}`);
+        this.logger.trace(() => `Data for ignored event '${event.name}': ${JSON.stringify(event, null, 2)}`);
+      }
     });
 
     karmaEventHandler.setErrorHandler((eventName: KarmaEventName, error: Error, event: KarmaEvent) => {
@@ -296,14 +311,26 @@ export class KarmaTestEventListener implements Disposable {
         : undefined;
 
       if (!eventProcessor?.isProcessing()) {
+        this.logger.debug(
+          () =>
+            `Not processing received spec id '${event.results?.id}' - ` +
+            `Neither the test run nor watch mode test processors are currently active`
+        );
         return;
       }
+
       const results: LightSpecCompleteResponse = event.results!;
       const fullName: string = [...results.suite, results.description].join(' ');
       const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
       const specResults: SpecCompleteResponse = { ...results, id: testId, fullName };
       const testStatus: TestStatus = specResults.status;
       const browserName = `${event.browser?.name ?? '(Unknwon browser)'}`;
+
+      this.logger.debug(
+        () =>
+          `Processing received spec id '${event.results?.id}' ` +
+          `with test processor: ${eventProcessor.constructor.name}`
+      );
 
       eventProcessor.processTestResultEvent(specResults);
 

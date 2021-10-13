@@ -17,6 +17,12 @@ module.exports = {
   },
   overrides: [
     {
+      files: '**/*.js',
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off'
+      }
+    },
+    {
       files: 'test/**/*.test.ts',
       rules: {
         '@typescript-eslint/no-var-requires': 'off',

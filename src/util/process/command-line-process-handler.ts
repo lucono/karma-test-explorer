@@ -9,27 +9,62 @@ import { Logger } from '../logging/logger';
 import { generateRandomId } from '../utils';
 import { CommandLineProcessLog } from './command-line-process-log';
 
+export enum CommandLineProcessLogOutput {
+  Parent = 'Parent',
+  None = 'None'
+}
+
+export interface CommandLineProcessHandlerOptions extends SpawnOptions {
+  failOnStandardError?: boolean;
+}
+
+const DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS: CommandLineProcessHandlerOptions = {
+  windowsHide: true,
+  failOnStandardError: false
+};
+
 export class CommandLineProcessHandler implements Disposable {
   private readonly uid: string;
   private childProcess: ChildProcess | undefined;
   private processExecution: Execution;
   private isRunning: boolean = false;
+  private processCurrentlyStopping: Promise<void> | undefined;
   private disposables: Disposable[] = [];
+
+  // FIXME: Don't automatically run on instantiation. Use immutable UID that is
+  // created on instantiation for the life of the object. Use start() method that
+  // will execute the process and return a promise of successful start, which if
+  // resolves successfully, returns a handle to an object for stopping the process.
+  // Remove the stop method from the actual handler object, which is replaced by
+  // the return value of the resolved call to the start() method. The methods
+  // should probably not be start and stop, but run() and terminate() instead.
 
   public constructor(
     command: string,
     processArguments: string[],
     private readonly logger: Logger,
-    processLog?: CommandLineProcessLog,
-    runOptions?: SpawnOptions
+    processLog: CommandLineProcessLog | CommandLineProcessLogOutput = CommandLineProcessLogOutput.Parent,
+    options?: CommandLineProcessHandlerOptions
   ) {
     this.uid = generateRandomId();
+    const deferredProcessExecution = new DeferredExecution();
     const commandWithArgs = `${command} ${processArguments.join(' ')}`;
 
-    const childProcessLog = processLog ?? {
-      output: logger.info.bind(logger),
-      error: logger.error.bind(logger)
+    const runOptions: CommandLineProcessHandlerOptions = {
+      ...DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS,
+      ...options
     };
+    const parentProcessLog: CommandLineProcessLog = {
+      output: data => logger.info(() => `[Process ${this.uid}][stdout]: ${data()}`),
+      error: data => logger.error(() => `[Process ${this.uid}][stderr]: ${data()}`)
+    };
+
+    const childProcessLog =
+      processLog === CommandLineProcessLogOutput.Parent
+        ? parentProcessLog
+        : processLog === CommandLineProcessLogOutput.None
+        ? undefined
+        : processLog;
 
     this.logger.debug(
       () =>
@@ -40,30 +75,48 @@ export class CommandLineProcessHandler implements Disposable {
 
     this.logger.trace(() => `Process ${this.uid} options: \n${JSON.stringify(runOptions)}`);
 
-    const deferredProcessExecution = new DeferredExecution();
     this.processExecution = deferredProcessExecution.execution();
 
     const childProcess = spawn(command, processArguments, runOptions);
     this.childProcess = childProcess;
     const processPid = childProcess.pid;
 
-    deferredProcessExecution.start();
+    if (processPid) {
+      this.updateProcessRunning(true);
+      deferredProcessExecution.start();
 
-    this.logger.debug(
-      () => `Process ${this.uid} - process spawned successfully with PID ${processPid} for command: ${commandWithArgs}`
-    );
+      this.logger.debug(
+        () =>
+          `Process ${this.uid} - process spawned successfully ` +
+          `with PID ${processPid} for command: ${commandWithArgs}`
+      );
+    }
 
-    this.updateProcessRunning(true);
+    if (childProcessLog) {
+      childProcess.stdout?.on('data', (data: unknown) => childProcessLog.output(() => `${data}`));
+      childProcess.stderr?.on('data', (data: unknown) => childProcessLog.error(() => `${data}`));
+    }
 
-    childProcess.stdout?.on('data', (data: unknown) => childProcessLog.output(() => `${data}`));
-    childProcess.stderr?.on('data', (data: unknown) => childProcessLog.error(() => `${data}`));
+    if (runOptions.failOnStandardError) {
+      childProcess.stderr?.on('data', (data: unknown) => {
+        const errorContent = 'Error: ' + `${data}`;
+        deferredProcessExecution.fail(errorContent);
+      });
+    }
 
     childProcess.on('error', error => {
       this.logger.error(
         () => `Process ${this.uid} - Error from child process: '${error}' - for command: ${commandWithArgs}`
       );
       this.updateProcessRunning(false);
-      deferredProcessExecution.fail(error);
+
+      if (this.processCurrentlyStopping) {
+        this.logger.debug(() => 'Process is currently stopping - ending process execution');
+        deferredProcessExecution.end();
+      } else {
+        this.logger.debug(() => 'Process is not currently stopping - failing process execution');
+        deferredProcessExecution.fail(error);
+      }
     });
 
     childProcess.on('exit', (exitCode, signal) => {
@@ -97,10 +150,19 @@ export class CommandLineProcessHandler implements Disposable {
       return;
     }
 
+    if (this.processCurrentlyStopping) {
+      this.logger.info(
+        () =>
+          `Process ${this.uid} - Request to kill process - ` +
+          `Process is already terminating - Joining existing termination operation`
+      );
+      return this.processCurrentlyStopping;
+    }
+
     const runningProcess = this.childProcess!;
     this.logger.info(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
-    return new Promise<void>((resolve, reject) => {
+    const futureProcessTermination = new Promise<void>((resolve, reject) => {
       const processPid = runningProcess.pid;
 
       if (!processPid) {
@@ -120,6 +182,9 @@ export class CommandLineProcessHandler implements Disposable {
         }
       });
     });
+
+    this.processCurrentlyStopping = futureProcessTermination;
+    return futureProcessTermination;
   }
 
   public execution(): Execution {
@@ -132,6 +197,10 @@ export class CommandLineProcessHandler implements Disposable {
 
   private updateProcessRunning(isRunning: boolean) {
     this.isRunning = isRunning;
+
+    if (!isRunning) {
+      this.processCurrentlyStopping = undefined;
+    }
   }
 
   public async dispose() {

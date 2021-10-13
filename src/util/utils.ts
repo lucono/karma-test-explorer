@@ -2,6 +2,27 @@ import path = require('path');
 
 export const generateRandomId = () => Math.random().toString(36).slice(2);
 
+export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T): string | undefined => {
+  return Object.keys(object).find(key => object[key] === propValue);
+};
+
+export const toSingleUniqueArray = <T>(...arrays: (T[] | undefined)[]): T[] => {
+  const combinedArray = arrays.reduce((arr1: T[] | undefined = [], arr2: T[] | undefined = []) => [...arr1, ...arr2]);
+  return [...new Set(combinedArray)];
+};
+
+export const asNonBlankStringOrUndefined = (value?: string): string | undefined => {
+  return (value ?? '').trim().length > 0 ? value : undefined;
+};
+
+export const stripJsComments = (content: string): string => {
+  // Regex from: https://stackoverflow.com/a/28974757/4307522
+  return content.replace(
+    /((?:(?:^[ \t]*)?(?:\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\/(?:[ \t]*\r?\n(?=[ \t]*(?:\r?\n|\/\*|\/\/)))?|\/\/(?:[^\\]|\\(?:\r?\n)?)*?(?:\r?\n(?=[ \t]*(?:\r?\n|\/\*|\/\/))|(?=\r?\n))))+)|("(?:\\[\S\s]|[^"\\])*"|'(?:\\[\S\s]|[^'\\])*'|(?:\r?\n|[\S\s])[^\/"'\\\s]*)/gm,
+    '$2'
+  );
+};
+
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
 export const escapeForRegExp = (stringValue: string) => stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

@@ -1,5 +1,7 @@
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep as pathSeparator } from 'path';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
+import { Disposable } from '../util/disposable/disposable';
+import { Disposer } from '../util/disposable/disposer';
 import { Logger } from '../util/logging/logger';
 import { TestGrouping } from './base/test-grouping';
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from './base/test-infos';
@@ -19,8 +21,12 @@ export interface TestSuiteOrganizationOptions extends Partial<TestSuiteFolderGro
   testGrouping?: TestGrouping;
 }
 
-export class TestSuiteOrganizer {
-  public constructor(private readonly logger: Logger) {}
+export class TestSuiteOrganizer implements Disposable {
+  private readonly disposables: Disposable[] = [];
+
+  public constructor(private readonly logger: Logger) {
+    this.disposables.push(logger);
+  }
 
   public organizeTests(
     rootSuite: TestSuiteInfo,
@@ -249,5 +255,9 @@ export class TestSuiteOrganizer {
       !isAbsolute(childFromParentRelativePath) &&
       !childFromParentRelativePath.startsWith('..')
     );
+  }
+
+  public async dispose() {
+    await Disposer.dispose(this.disposables);
   }
 }

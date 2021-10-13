@@ -19,7 +19,7 @@ export interface TestSelector {
 }
 
 export interface TestCapabilities {
-  autoWatch?: boolean;
+  watchModeSupport?: boolean;
 }
 
 export interface TestFramework {

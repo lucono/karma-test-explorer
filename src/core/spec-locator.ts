@@ -51,17 +51,16 @@ export class SpecLocator implements Disposable {
   }
 
   public async refreshFiles(files?: string[]): Promise<void> {
+    const filesDescriptionList = JSON.stringify(files ?? this.filePatterns);
+
     this.logger.debug(
-      () =>
-        `Received request to refresh ${files ? files.length : 'all'} spec file(s): ` + `${files ?? this.filePatterns}`
+      () => `Received request to refresh ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`
     );
     const deferredRefreshCompletion = new DeferredPromise();
     const futureRefreshCompletion = deferredRefreshCompletion.promise();
 
     const doRefresh = async () => {
-      this.logger.debug(
-        () => `Refreshing ${files ? files.length : 'all'} spec file(s): ` + `${files ?? this.filePatterns}`
-      );
+      this.logger.debug(() => `Refreshing ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`);
       this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(files)}`);
 
       const reloadStartTime = Date.now();
@@ -82,20 +81,22 @@ export class SpecLocator implements Disposable {
       const reloadSecs = (Date.now() - reloadStartTime) / 1000;
 
       this.logger.debug(
-        () => `Refreshed ${loadedFileCount} spec files in ${reloadSecs.toFixed(2)} secs: ${files ?? this.filePatterns}`
+        () =>
+          `Refreshed ${loadedFileCount} spec ${files ? 'files' : 'globs'} ` +
+          `in ${reloadSecs.toFixed(2)} secs: ${filesDescriptionList}`
       );
     };
 
     if (this.refreshInProgress) {
       this.logger.debug(
-        () => `Prior refresh still in progress - queing subsequent refresh for files: ${JSON.stringify(files)}`
+        () => `Prior refresh still in progress - queing subsequent refresh for files: ${filesDescriptionList}`
       );
 
       this.refreshInProgress.then(async () => await doRefresh());
       this.refreshInProgress = futureRefreshCompletion;
     } else {
       this.logger.debug(
-        () => `No refresh currently in progress - will commence new refresh for files: ${JSON.stringify(files)}`
+        () => `No refresh currently in progress - will commence new refresh for files: ${filesDescriptionList}`
       );
 
       this.refreshInProgress = futureRefreshCompletion;
@@ -199,7 +200,7 @@ export class SpecLocator implements Disposable {
     });
 
     this.logger.debug(
-      () => `File is determined to ${isSpecFilePath ? 'be' : 'not be'} a sepc file: ${absoluteFilePath}`
+      () => `File is determined to ${isSpecFilePath ? 'be' : 'not be'} a spec file: ${absoluteFilePath}`
     );
     return isSpecFilePath;
   }

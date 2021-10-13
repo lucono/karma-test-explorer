@@ -4,9 +4,10 @@
 
 # Include required files
 !dist
-!img
+!docs
 !package.json
 !README.md
 !CHANGELOG.md
+!CONTRIBUTING.md
 !LICENSE
 !.vscodeignore

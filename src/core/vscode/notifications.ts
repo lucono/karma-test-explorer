@@ -4,6 +4,7 @@ import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { DeferredPromise } from '../../util/future/deferred-promise';
 import { Logger } from '../../util/logging/logger';
+import { getPropertyWithValue } from '../../util/utils';
 import { ExtensionCommands } from './extension-commands';
 
 export enum MessageType {
@@ -21,15 +22,17 @@ export enum StatusType {
   Error = 'error'
 }
 
+type NotificationActionHandler = (() => any) | { command: string; arguments?: any[] };
+
 export interface NotificationAction {
   label: string;
   description?: string;
-  handler: (() => any) | { command: string; arguments?: any[] };
+  handler: NotificationActionHandler;
 }
 
 export interface NotifyOptions {
-  showLogAction: boolean;
-  dismissAction: boolean;
+  showLogAction?: boolean;
+  dismissAction?: boolean;
 }
 
 const SHOW_LOG_NOTIFICATION_ACTION: NotificationAction = {
@@ -85,16 +88,20 @@ export class Notifications implements Disposable {
 
     const actionLabels = allActions.map(action => action.label);
 
+    this.logger.debug(
+      () => `Showing '${type}' notification with actions ${JSON.stringify(actions)} and message: ${message}`
+    );
+
     notifier(message, ...actionLabels).then(selectedActionLabel => {
       const selectedAction = allActions.find(action => action.label === selectedActionLabel);
 
       if (selectedAction) {
         this.logger.debug(
           () =>
-            `User selected: ${selectedAction.label}` +
+            `User selected '${selectedAction.label}' for '${type}' notification: ${message}` +
             (selectedAction.description ? ` (${selectedAction.description})` : '')
         );
-        this.executeAction(selectedAction);
+        this.executeAction(selectedAction.handler);
       }
     });
   }
@@ -105,23 +112,32 @@ export class Notifications implements Disposable {
     dismiss?: Thenable<any>,
     action: NotificationAction = SHOW_LOG_NOTIFICATION_ACTION
   ) {
-    const statusName = Object.keys(StatusType).find(
-      nameOfStatus => StatusType[nameOfStatus as keyof typeof StatusType] === statusType
-    );
+    const statusName = getPropertyWithValue(StatusType, statusType);
     const tooltip = action.description ?? action.label;
 
-    this.logger.debug(() => `Setting status type '${statusName}' with message '${message}' and tooltip: ${tooltip}`);
+    this.logger.trace(() => `Setting '${statusName}' status with message '${message}' and tooltip: ${tooltip}`);
 
     this.deferredStatus?.reject();
     this.statusBar.hide();
     this.statusBar.text = `$(${statusType}) ${EXTENSION_NAME} - ${message}`;
+    this.statusBar.tooltip = tooltip;
 
-    this.statusBar.command =
+    const clickCommand =
       'command' in action.handler
         ? { title: action.label, ...action.handler }
         : { title: 'Click', command: ExtensionCommands.ExecuteFunction, arguments: [action.handler] };
 
-    this.statusBar.tooltip = tooltip;
+    const clickHandler = () => {
+      this.logger.debug(() => `User clicked status: ${message} (${tooltip})`);
+      this.executeAction(clickCommand);
+    };
+
+    this.statusBar.command = {
+      title: clickCommand.title,
+      command: ExtensionCommands.ExecuteFunction,
+      arguments: [clickHandler]
+    };
+
     this.statusBar.show();
 
     const deferredStatus = new DeferredPromise();
@@ -130,15 +146,18 @@ export class Notifications implements Disposable {
     const statusResolver = deferredStatus.fulfill.bind(deferredStatus);
     dismiss?.then(statusResolver, statusResolver);
 
-    deferredStatus.promise().then(() => this.statusBar.hide());
+    deferredStatus.promise().then(() => {
+      this.logger.trace(() => `Dismissing '${statusName}' status with message '${message}' and tooltip: ${tooltip}`);
+      this.statusBar.hide();
+    });
     this.deferredStatus = deferredStatus;
   }
 
-  private executeAction(action: NotificationAction) {
-    if ('command' in action.handler) {
-      commands.executeCommand(action.handler.command, ...(action.handler.arguments ?? []));
+  private executeAction(handler: NotificationActionHandler) {
+    if ('command' in handler) {
+      commands.executeCommand(handler.command, ...(handler.arguments ?? []));
     } else {
-      setImmediate(action.handler);
+      setImmediate(handler);
     }
   }
 

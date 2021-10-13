@@ -1,7 +1,7 @@
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { Logger } from '../util/logging/logger';
-import { escapeForRegExp, generateRandomId } from '../util/utils';
+import { escapeForRegExp, generateRandomId, stripJsComments } from '../util/utils';
 import { TestInterface } from './base/test-framework';
 import { TestFileParser, TestNodeType, TestSuiteFileInfo } from './test-file-parser';
 
@@ -14,7 +14,7 @@ export class DefaultTestFileParser implements TestFileParser {
 
   public parseFileText(fileText: string): TestSuiteFileInfo {
     const parseId = generateRandomId();
-    this.logger.trace(() => `Parse operation ${parseId}: Parsing file text ${fileText}`);
+    this.logger.trace(() => `Parse operation ${parseId}: Parsing file text: \n${fileText}`);
 
     const data = this.getTestFileData(fileText);
     const fileInfo: TestSuiteFileInfo = {
@@ -22,7 +22,7 @@ export class DefaultTestFileParser implements TestFileParser {
       [TestNodeType.Test]: []
     };
 
-    const testInterfaceParserRegex = this.getTestNodeRegex(this.testInterface);
+    const testInterfaceParserRegex = this.getTestNodeRegex(this.testInterface); // TODO: Switch to AST parser
     let matchResult: RegExpExecArray | null;
     let activeLineNumber: number | undefined;
 
@@ -53,7 +53,7 @@ export class DefaultTestFileParser implements TestFileParser {
       .map((lineText, lineNumber) => `${lineNumber}. ${lineText}`)
       .join('\n');
 
-    return this.removeComments(numberedFileText);
+    return stripJsComments(numberedFileText);
   }
 
   private toNodeType(testInterfaceString: string): TestNodeType | undefined {
@@ -69,10 +69,6 @@ export class DefaultTestFileParser implements TestFileParser {
     const pattern = `((^|\\n)(\\d+)\\.)?\\s+(${interfaceStrings})\\s*\\(\\s*((?<![\\\\])[\\\`\\'\\"])((?:.(?!(?<![\\\\])\\5))*.?)\\5`;
 
     return new RegExp(pattern, 'gis');
-  }
-
-  private removeComments(data: string): string {
-    return data.replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, '');
   }
 
   public async dispose() {

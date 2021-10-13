@@ -73,6 +73,13 @@ function KarmaTestExplorerReporter(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   karmaEventHandler.setDefaultHandler((eventName: string, ...args: any[]) => {
     karmaLogger.debug(() => `No specific handler for event: ${eventName}`);
+    const isErrorEvent = eventName.toLowerCase().includes('error');
+
+    if (isErrorEvent) {
+      karmaLogger.debug(
+        () => `No specific handler for received error event '${eventName}' with data: ${JSON.stringify(args, null, 2)}`
+      );
+    }
     sendEvent({ name: eventName as KarmaEventName });
   });
 
@@ -91,6 +98,9 @@ function KarmaTestExplorerReporter(
   });
 
   karmaEventHandler.setEventHandler(KarmaEventName.RunStart, (name: KarmaEventName, browsers: any) => {
+    const clientArgs = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args;
+    karmaLogger.debug(() => `Client args for test run: ${JSON.stringify(clientArgs ?? '<Not found>', null, 2)}`);
+
     sendEvent({
       name,
       browsers: browsers.map(getBrowserInfo)

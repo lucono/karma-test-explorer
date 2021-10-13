@@ -21,12 +21,6 @@ export const getDefaultAngularProject = (
   return defaultProject;
 };
 
-export const hasAngularProject = (workspaceRootPath: string): boolean => {
-  const angularJsonPath = getAngularJsonConfigPath(workspaceRootPath);
-  const angularCliJsonPath = getAngularCliJsonConfigPath(workspaceRootPath);
-  return !!(angularJsonPath || angularCliJsonPath);
-};
-
 const getAngularJsonConfigPath = (workspaceRootPath: string): string | undefined => {
   const angularJsonConfigPath = join(workspaceRootPath, 'angular.json');
   return existsSync(angularJsonConfigPath) ? angularJsonConfigPath : undefined;

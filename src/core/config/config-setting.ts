@@ -1,8 +1,11 @@
 export enum ConfigSetting {
   ProjectRootPath = 'projectRootPath',
   KarmaConfFilePath = 'karmaConfFilePath',
-  KarmaProcessExecutable = 'karmaProcessExecutable',
   KarmaPort = 'karmaPort',
+  KarmaProcessCommand = 'karmaProcessCommand',
+  AngularProcessCommand = 'angularProcessCommand',
+  DefaultAngularProjectName = 'defaultAngularProjectName',
+  TestTriggerMethod = 'testTriggerMethod',
   Browser = 'browser',
   CustomLauncher = 'customLauncher',
   TestsBasePath = 'testsBasePath',
@@ -23,6 +26,6 @@ export enum ConfigSetting {
   AutoWatchBatchDelay = 'autoWatchBatchDelay',
   KarmaReadyTimeout = 'karmaReadyTimeout',
   TestFramework = 'testFramework',
-  DefaultAngularProjectName = 'defaultAngularProjectName',
-  ContainerModeEnabled = 'containerModeEnabled'
+  ContainerMode = 'containerMode',
+  FailOnStandardError = 'failOnStandardError'
 }

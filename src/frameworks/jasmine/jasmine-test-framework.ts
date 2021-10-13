@@ -8,7 +8,7 @@ const testInterface: TestInterface = {
 };
 
 const testCapabilities: TestCapabilities = {
-  autoWatch: true
+  watchModeSupport: true
 };
 
 class JasmineFramework implements TestFramework {

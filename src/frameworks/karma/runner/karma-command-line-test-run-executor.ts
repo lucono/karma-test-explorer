@@ -1,4 +1,3 @@
-import { SpawnOptions } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { silent } from 'resolve-global';
@@ -6,15 +5,17 @@ import { TestRunExecutor } from '../../../api/test-run-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Execution } from '../../../util/future/execution';
-import { Logger } from '../../../util/logging/logger';
-import { CommandLineProcessHandler } from '../../../util/process/command-line-process-handler';
-import { CommandLineProcessLog } from '../../../util/process/command-line-process-log';
-import { KarmaEnvironmentVariable } from '../karma-environment-variable';
+import { SimpleLogger } from '../../../util/logging/simple-logger';
+import {
+  CommandLineProcessHandler,
+  CommandLineProcessHandlerOptions,
+  CommandLineProcessLogOutput
+} from '../../../util/process/command-line-process-handler';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: Record<string, string | undefined>;
   karmaProcessCommand?: string;
-  serverProcessLog?: CommandLineProcessLog;
+  failOnStandardError?: boolean;
 }
 
 export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
@@ -22,23 +23,16 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
 
   public constructor(
     private readonly projectRootPath: string,
-    private readonly baseKarmaConfigFile: string,
-    private readonly userKarmaConfigFile: string,
     private readonly options: KarmaCommandLineTestRunExecutorOptions,
-    private readonly logger: Logger
+    private readonly logger: SimpleLogger
   ) {}
 
   public executeTestRun(karmaPort: number, clientArgs: string[]): Execution {
-    const environment: Record<string, string> = {
-      ...this.options.environment,
-      [KarmaEnvironmentVariable.KarmaPort]: `${karmaPort}`,
-      [KarmaEnvironmentVariable.UserKarmaConfigPath]: this.userKarmaConfigFile
-    };
-
-    const spawnOptions: SpawnOptions = {
+    const runOptions: CommandLineProcessHandlerOptions = {
       cwd: this.projectRootPath,
-      shell: true,
-      env: environment
+      shell: false,
+      env: this.options.environment,
+      failOnStandardError: this.options.failOnStandardError
     };
 
     const localKarmaPath = join(this.projectRootPath, 'node_modules', 'karma', 'bin', 'karma');
@@ -60,14 +54,19 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
     }
 
     const escapedClientArgs: string[] = clientArgs.map(arg => this.shellEscape(arg));
-    processArguments = [...processArguments, 'run', this.baseKarmaConfigFile, '--', ...escapedClientArgs];
+    processArguments = [...processArguments, 'run', '--port', `${karmaPort}`, '--', ...escapedClientArgs];
+
+    const commandLineProcessLogger = new SimpleLogger(
+      this.logger,
+      `${KarmaCommandLineTestRunExecutor.name}:${CommandLineProcessHandler.name}`
+    );
 
     const karmaServerProcess = new CommandLineProcessHandler(
       command,
       processArguments,
-      this.logger,
-      this.options.serverProcessLog,
-      spawnOptions
+      commandLineProcessLogger,
+      CommandLineProcessLogOutput.None,
+      runOptions
     );
 
     return karmaServerProcess.execution();
