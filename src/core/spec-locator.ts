@@ -41,7 +41,7 @@ export class SpecLocator implements Disposable {
     specLocatorOptions: SpecLocatorOptions = {}
   ) {
     this.disposables.push(logger, fileHandler);
-    this.cwd = specLocatorOptions.cwd ?? process.cwd();
+    this.cwd = toPosixPath(specLocatorOptions.cwd ?? process.cwd());
     this.specLocatorOptions = { ...specLocatorOptions, cwd: this.cwd };
     this.refreshFiles();
   }
@@ -206,10 +206,11 @@ export class SpecLocator implements Disposable {
   }
 
   private async getAbsoluteFilesForGlobs(fileGlobs: string[]): Promise<string[]> {
-    return await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions);
+    return (await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions)).map(path => toPosixPath(path));
   }
 
   private addSuiteFileToCache(suite: string[], filePath: string) {
+    this.logger.debug(() => `Adding spec file to cache: ${filePath}`);
     let suiteKey = '';
 
     for (const suiteAncestor of suite) {
