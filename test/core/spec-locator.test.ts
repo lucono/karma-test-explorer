@@ -5,7 +5,13 @@ import { FileHandler } from '../../src/util/file-handler';
 import { Logger } from '../../src/util/logging/logger';
 
 describe('SpecLocator', () => {
-  const testFilePatterns: string[] = [];
+  const testFiles = [
+    'C:\\windows\\test\\path\\abc.test.ts',
+    'C:\\windows\\test\\path\\def.test.ts',
+    'C:\\windows\\test\\path\\geh.test.ts'
+  ];
+  const testFilePatterns: string[] = ['**/*.test.ts'];
+
   let mockTestFileParser: MockProxy<TestFileParser>;
   let mockFileHandler: MockProxy<FileHandler>;
   let mockLogger: MockProxy<Logger>;
@@ -20,23 +26,55 @@ describe('SpecLocator', () => {
     });
 
     mockFileHandler = mock<FileHandler>();
-    mockFileHandler.resolveFileGlobs.mockReturnValue(Promise.resolve(['C:\\windows\\test\\path\\xyz.test.ts']));
+
+    mockFileHandler.resolveFileGlobs.mockReturnValue(Promise.resolve(testFiles));
 
     mockLogger = mock<Logger>();
 
     specLocator = new SpecLocator(testFilePatterns, mockTestFileParser, mockFileHandler, mockLogger);
   });
 
-  it('should build spec locator', () => {
-    expect(specLocator).not.toBeUndefined();
-    expect(specLocator).not.toBeNull();
+  describe('constructor', () => {
+    it('should build spec locator', () => {
+      expect(specLocator).not.toBeUndefined();
+      expect(specLocator).not.toBeNull();
+    });
+
+    it('should populate cache', async () => {
+      await specLocator.ready();
+
+      expect(specLocator['specFilesBySuite'].size).toEqual(1);
+      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(3);
+    });
   });
 
   describe('getSpecLocation method', () => {
     it('should return unix file paths', () => {
-      const specLocations = specLocator.getSpecLocation(['SuiteName'], 'TestName');
+      const specLocations = specLocator.getSpecLocation(['SuiteName']);
 
-      expect(specLocations.every(loc => !loc.file.includes('\\'))).toBeTruthy();
+      expect(specLocations.every(s => !s.file.includes('\\'))).toBeTruthy();
+    });
+  });
+
+  describe('isSpecLocation method', () => {
+    it('should return true when matching pattern', () => {
+      const result = specLocator.isSpecFile('abc.test.ts');
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should return false when not matching pattern', () => {
+      const result = specLocator.isSpecFile('abc-spec.js');
+
+      expect(result).toBeFalsy();
+    });
+  });
+
+  describe('refreshFiles method', () => {
+    it('should use unix file paths in cache entries', async () => {
+      await specLocator.refreshFiles(testFiles);
+
+      expect(specLocator['specFilesBySuite'].get('SuiteName')?.every(s => !s.includes('\\'))).toBeTruthy();
     });
   });
 });
