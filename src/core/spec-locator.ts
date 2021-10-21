@@ -51,6 +51,7 @@ export class SpecLocator implements Disposable {
   }
 
   public async refreshFiles(files?: string[]): Promise<void> {
+    files = files?.map(f => toPosixPath(f));
     const filesDescriptionList = JSON.stringify(files ?? this.filePatterns);
 
     this.logger.debug(
