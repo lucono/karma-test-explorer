@@ -52,7 +52,7 @@ import { Disposer } from './util/disposable/disposer';
 import { DeferredPromise } from './util/future/deferred-promise';
 import { Execution } from './util/future/execution';
 import { SimpleLogger } from './util/logging/simple-logger';
-import { getCircularReferenceReplacer, toPosixPath } from './util/utils';
+import { getCircularReferenceReplacer, normalizePath } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
   private specLocator?: SpecLocator;
@@ -473,7 +473,7 @@ export class Adapter implements TestAdapter, Disposable {
     this.logger.debug(() => `Registering file handler for files: ${filePatterns}`);
 
     for (const fileOrPattern of filePatterns) {
-      const absoluteFileOrPattern = toPosixPath(resolve(this.config.projectRootPath, fileOrPattern));
+      const absoluteFileOrPattern = normalizePath(resolve(this.config.projectRootPath, fileOrPattern));
       const fileWatcher = workspace.createFileSystemWatcher(absoluteFileOrPattern);
       fileWatchers.push(fileWatcher);
 

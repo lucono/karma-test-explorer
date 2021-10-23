@@ -6,7 +6,7 @@ import { Disposer } from '../util/disposable/disposer';
 import { FileHandler } from '../util/file-handler';
 import { DeferredPromise } from '../util/future/deferred-promise';
 import { Logger } from '../util/logging/logger';
-import { toPosixPath } from '../util/utils';
+import { normalizePath } from '../util/utils';
 import { TestFileParser, TestNodeInfo, TestNodeType, TestSuiteFileInfo } from './test-file-parser';
 
 export interface SpecLocation {
@@ -41,7 +41,7 @@ export class SpecLocator implements Disposable {
     specLocatorOptions: SpecLocatorOptions = {}
   ) {
     this.disposables.push(logger, fileHandler);
-    this.cwd = toPosixPath(specLocatorOptions.cwd ?? process.cwd());
+    this.cwd = normalizePath(specLocatorOptions.cwd ?? process.cwd());
     this.specLocatorOptions = { ...specLocatorOptions, cwd: this.cwd };
     this.refreshFiles();
   }
@@ -51,7 +51,7 @@ export class SpecLocator implements Disposable {
   }
 
   public async refreshFiles(files?: string[]): Promise<void> {
-    const posixPaths = files?.map(f => toPosixPath(f));
+    const posixPaths = files?.map(f => normalizePath(f));
     const filesDescriptionList = JSON.stringify(posixPaths ?? this.filePatterns);
 
     this.logger.debug(
@@ -111,7 +111,7 @@ export class SpecLocator implements Disposable {
   }
 
   public removeFiles(absoluteFilePaths: string[]) {
-    const posixFilePaths = absoluteFilePaths.map(path => toPosixPath(path));
+    const posixFilePaths = absoluteFilePaths.map(path => normalizePath(path));
     this.purgeFiles(posixFilePaths);
   }
 
@@ -198,7 +198,7 @@ export class SpecLocator implements Disposable {
 
   public isSpecFile(filePath: string): boolean {
     const absoluteFilePath = resolve(this.cwd, filePath);
-    const absoluteFilePatterns = this.filePatterns.map(pattern => toPosixPath(join(this.cwd, pattern)));
+    const absoluteFilePatterns = this.filePatterns.map(pattern => normalizePath(join(this.cwd, pattern)));
 
     const isSpecFilePath = isMatch(absoluteFilePath, absoluteFilePatterns, {
       cwd: this.cwd,
@@ -212,7 +212,9 @@ export class SpecLocator implements Disposable {
   }
 
   private async getAbsoluteFilesForGlobs(fileGlobs: string[]): Promise<string[]> {
-    return (await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions)).map(path => toPosixPath(path));
+    const filePaths = await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions);
+    const normalizedPaths = filePaths.map(path => normalizePath(path));
+    return normalizedPaths;
   }
 
   private addSuiteFileToCache(suite: string[], filePath: string) {

@@ -3,107 +3,108 @@ import { SpecLocator } from '../../src/core/spec-locator';
 import { TestFileParser, TestSuiteFileInfo } from '../../src/core/test-file-parser';
 import { FileHandler } from '../../src/util/file-handler';
 import { Logger } from '../../src/util/logging/logger';
+import { withUnixStyleSeparator } from '../test-util';
+
+type FilePathTestData = { filePathStyle: string; mockTestFiles: string[] }[];
+type FileGlobTestData = { globPathStyle: string; mockFileGlobs: string[] }[];
 
 describe('SpecLocator', () => {
-  const testFiles = [
-    'C:\\test\\path\\abc.test.ts',
-    'C:\\test\\path\\def.test.ts',
-    'C:\\test\\path\\geh.test.ts',
-    'C:/test/path/abc.test.ts',
-    'C:/test/path/def.test.ts',
-    'C:/test/path/geh.test.ts'
+  const windowsBackSlashTestFiles = ['D:\\test\\path\\abc.test.ts', 'd:\\test\\path\\def.test.ts'];
+  const windowsForwardSlashTestFiles = ['D:/test/path/abc.test.ts', 'd:/test/path/def.test.ts'];
+  const unixStyleTestFiles = ['/test/path/abc.test.ts', '/test/path/def.test.ts'];
+
+  const windowsBackSlashFileGlobs = ['**\\*.test.ts'];
+  const unixStyleFileGlobs = ['**/*.test.ts'];
+
+  const windowsPathsTestData: FilePathTestData = [
+    { filePathStyle: 'Windows back slash', mockTestFiles: windowsBackSlashTestFiles },
+    { filePathStyle: 'Windows forward slash', mockTestFiles: windowsForwardSlashTestFiles }
   ];
-  const unixFilePatterns: string[] = ['**/*.test.ts'];
-  const windowsFilePatterns: string[] = ['**\\*.test.ts'];
+  const unixPathsTestData: FilePathTestData = [{ filePathStyle: 'Unix', mockTestFiles: unixStyleTestFiles }];
+  const filePathTestData = process.platform === 'win32' ? windowsPathsTestData : unixPathsTestData;
+
+  const fileGlobTestData: FileGlobTestData =
+    process.platform === 'win32'
+      ? [{ globPathStyle: 'Windows back slash', mockFileGlobs: windowsBackSlashFileGlobs }]
+      : [{ globPathStyle: 'Unix', mockFileGlobs: unixStyleFileGlobs }];
 
   let mockTestFileParser: MockProxy<TestFileParser>;
   let mockFileHandler: MockProxy<FileHandler>;
   let mockLogger: MockProxy<Logger>;
-
-  let specLocator: SpecLocator;
+  let mockResolvedGlobFiles: string[];
 
   beforeEach(() => {
+    mockResolvedGlobFiles = [];
+    mockLogger = mock<Logger>();
+    mockFileHandler = mock<FileHandler>();
+    mockFileHandler.resolveFileGlobs.mockImplementation(() => Promise.resolve(mockResolvedGlobFiles));
     mockTestFileParser = mock<TestFileParser>();
+
     mockTestFileParser.parseFileText.mockReturnValue(<TestSuiteFileInfo>{
       Suite: [{ description: 'SuiteName', lineNumber: 1 }],
       Test: [{ description: 'TestName', lineNumber: 2 }]
     });
-
-    mockFileHandler = mock<FileHandler>();
-
-    mockFileHandler.resolveFileGlobs.mockReturnValue(Promise.resolve(testFiles));
-
-    mockLogger = mock<Logger>();
-
-    specLocator = new SpecLocator(
-      [...unixFilePatterns, ...windowsFilePatterns],
-      mockTestFileParser,
-      mockFileHandler,
-      mockLogger
-    );
   });
 
-  describe('constructor', () => {
-    it('should build spec locator', () => {
-      expect(specLocator).not.toBeUndefined();
-      expect(specLocator).not.toBeNull();
+  describe.each(filePathTestData)('using $filePathStyle style paths', ({ mockTestFiles }) => {
+    beforeEach(() => {
+      mockResolvedGlobFiles = mockTestFiles;
     });
 
-    it('should populate cache', async () => {
-      await specLocator.ready();
+    describe.each(fileGlobTestData)('and $globPathStyle style globs', ({ mockFileGlobs }) => {
+      let specLocator: SpecLocator;
 
-      expect(specLocator['specFilesBySuite'].size).toEqual(1);
-      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(3);
-    });
-  });
+      beforeEach(() => {
+        specLocator = new SpecLocator(mockFileGlobs, mockTestFileParser, mockFileHandler, mockLogger);
+      });
 
-  describe('getSpecLocation method', () => {
-    it('should return paths with unix-style path separators', () => {
-      const specLocations = specLocator.getSpecLocation(['SuiteName']);
+      describe('the getSpecLocation method', () => {
+        it('should return the spec locations with normalized file paths', () => {
+          const specLocations = specLocator.getSpecLocation(['SuiteName']);
 
-      expect(specLocations.every(s => !s.file.includes('\\'))).toBeTruthy();
-    });
-  });
+          const expectedNormalizedTestFiles = [
+            withUnixStyleSeparator(mockTestFiles[0]).replace(/^d:/, 'D:'),
+            withUnixStyleSeparator(mockTestFiles[1]).replace(/^d:/, 'D:')
+          ];
 
-  describe('isSpecFile method', () => {
-    it('should return true for files matching the designated test file patterns', () => {
-      const result = specLocator.isSpecFile('abc.test.ts');
+          expect(specLocations).toEqual([
+            expect.objectContaining({ file: expectedNormalizedTestFiles[0] }),
+            expect.objectContaining({ file: expectedNormalizedTestFiles[1] })
+          ]);
+        });
+      });
 
-      expect(result).toBeTruthy();
-    });
+      describe('isSpecFile method', () => {
+        it('should return true for files matching the designated test file patterns', () => {
+          const result = specLocator.isSpecFile('test/abc.test.ts');
+          expect(result).toBe(true);
+        });
 
-    it('should return false for files not matching the designated test file patterns', () => {
-      const result = specLocator.isSpecFile('abc.spec.ts');
+        it('should return false for files not matching the designated test file patterns', () => {
+          const result = specLocator.isSpecFile('abc-spec.js');
+          expect(result).toBe(false);
+        });
+      });
 
-      expect(result).toBeFalsy();
-    });
-  });
+      describe('refreshFiles method', () => {
+        it('should load the specified files into the cache', async () => {
+          await specLocator.refreshFiles(['xyz.test.ts']);
+          expect(specLocator['specFilesBySuite'].get('SuiteName')).toEqual(expect.arrayContaining(['xyz.test.ts']));
+        });
+      });
 
-  describe('refreshFiles method', () => {
-    it('should use unix-style path separators in cache entries', async () => {
-      await specLocator.refreshFiles(testFiles);
+      describe('removeFiles method', () => {
+        it('should remove matching files from the cache', () => {
+          expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
+          specLocator.removeFiles([mockTestFiles[0]]);
+          expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(1);
+        });
 
-      expect(specLocator['specFilesBySuite'].get('SuiteName')?.every(s => !s.includes('\\'))).toBeTruthy();
-    });
-  });
-
-  describe('removeFiles method', () => {
-    it('should remove matching files from cache using windows-style path separators', () => {
-      specLocator.removeFiles(['C:\\test\\path\\abc.test.ts']);
-
-      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
-    });
-
-    it('should remove matching files from cache using unix-style path separators', () => {
-      specLocator.removeFiles(['C:/test/path/abc.test.ts']);
-
-      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
-    });
-
-    it('should not remove any files from cache for empty array', () => {
-      specLocator.removeFiles([]);
-
-      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(3);
+        it('should not remove any files from cache for empty array', () => {
+          specLocator.removeFiles([]);
+          expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
+        });
+      });
     });
   });
 });
