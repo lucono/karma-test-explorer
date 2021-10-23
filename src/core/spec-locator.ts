@@ -51,23 +51,27 @@ export class SpecLocator implements Disposable {
   }
 
   public async refreshFiles(files?: string[]): Promise<void> {
-    files = files?.map(f => toPosixPath(f));
-    const filesDescriptionList = JSON.stringify(files ?? this.filePatterns);
+    const posixPaths = files?.map(f => toPosixPath(f));
+    const filesDescriptionList = JSON.stringify(posixPaths ?? this.filePatterns);
 
     this.logger.debug(
-      () => `Received request to refresh ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`
+      () =>
+        `Received request to refresh ${posixPaths ? posixPaths.length : 'all'} spec file(s): ` +
+        `${filesDescriptionList}`
     );
     const deferredRefreshCompletion = new DeferredPromise();
     const futureRefreshCompletion = deferredRefreshCompletion.promise();
 
     const doRefresh = async () => {
-      this.logger.debug(() => `Refreshing ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`);
-      this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(files)}`);
+      this.logger.debug(
+        () => `Refreshing ${posixPaths ? posixPaths.length : 'all'} spec file(s): ` + `${filesDescriptionList}`
+      );
+      this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(posixPaths)}`);
 
       const reloadStartTime = Date.now();
-      this.purgeFiles(files ?? undefined);
+      this.purgeFiles(posixPaths ?? undefined);
 
-      const filesToRefresh = files ?? (await this.getAbsoluteFilesForGlobs(this.filePatterns));
+      const filesToRefresh = posixPaths ?? (await this.getAbsoluteFilesForGlobs(this.filePatterns));
       let loadedFileCount: number = 0;
 
       for (const file of filesToRefresh) {
@@ -83,7 +87,7 @@ export class SpecLocator implements Disposable {
 
       this.logger.debug(
         () =>
-          `Refreshed ${loadedFileCount} spec ${files ? 'files' : 'globs'} ` +
+          `Refreshed ${loadedFileCount} spec ${posixPaths ? 'files' : 'globs'} ` +
           `in ${reloadSecs.toFixed(2)} secs: ${filesDescriptionList}`
       );
     };
@@ -107,7 +111,8 @@ export class SpecLocator implements Disposable {
   }
 
   public removeFiles(absoluteFilePaths: string[]) {
-    this.purgeFiles(absoluteFilePaths);
+    const posixFilePaths = absoluteFilePaths.map(path => toPosixPath(path));
+    this.purgeFiles(posixFilePaths);
   }
 
   private purgeFiles(absoluteFilePaths?: string[]) {

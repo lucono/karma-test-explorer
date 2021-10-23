@@ -6,11 +6,15 @@ import { Logger } from '../../src/util/logging/logger';
 
 describe('SpecLocator', () => {
   const testFiles = [
-    'C:\\windows\\test\\path\\abc.test.ts',
-    'C:\\windows\\test\\path\\def.test.ts',
-    'C:\\windows\\test\\path\\geh.test.ts'
+    'C:\\test\\path\\abc.test.ts',
+    'C:\\test\\path\\def.test.ts',
+    'C:\\test\\path\\geh.test.ts',
+    'C:/test/path/abc.test.ts',
+    'C:/test/path/def.test.ts',
+    'C:/test/path/geh.test.ts'
   ];
-  const testFilePatterns: string[] = ['**/*.test.ts'];
+  const unixFilePatterns: string[] = ['**/*.test.ts'];
+  const windowsFilePatterns: string[] = ['**\\*.test.ts'];
 
   let mockTestFileParser: MockProxy<TestFileParser>;
   let mockFileHandler: MockProxy<FileHandler>;
@@ -31,7 +35,12 @@ describe('SpecLocator', () => {
 
     mockLogger = mock<Logger>();
 
-    specLocator = new SpecLocator(testFilePatterns, mockTestFileParser, mockFileHandler, mockLogger);
+    specLocator = new SpecLocator(
+      [...unixFilePatterns, ...windowsFilePatterns],
+      mockTestFileParser,
+      mockFileHandler,
+      mockLogger
+    );
   });
 
   describe('constructor', () => {
@@ -49,32 +58,52 @@ describe('SpecLocator', () => {
   });
 
   describe('getSpecLocation method', () => {
-    it('should return unix file paths', () => {
+    it('should return paths with unix-style path separators', () => {
       const specLocations = specLocator.getSpecLocation(['SuiteName']);
 
       expect(specLocations.every(s => !s.file.includes('\\'))).toBeTruthy();
     });
   });
 
-  describe('isSpecLocation method', () => {
-    it('should return true when matching pattern', () => {
+  describe('isSpecFile method', () => {
+    it('should return true for files matching the designated test file patterns', () => {
       const result = specLocator.isSpecFile('abc.test.ts');
 
       expect(result).toBeTruthy();
     });
 
-    it('should return false when not matching pattern', () => {
-      const result = specLocator.isSpecFile('abc-spec.js');
+    it('should return false for files not matching the designated test file patterns', () => {
+      const result = specLocator.isSpecFile('abc.spec.ts');
 
       expect(result).toBeFalsy();
     });
   });
 
   describe('refreshFiles method', () => {
-    it('should use unix file paths in cache entries', async () => {
+    it('should use unix-style path separators in cache entries', async () => {
       await specLocator.refreshFiles(testFiles);
 
       expect(specLocator['specFilesBySuite'].get('SuiteName')?.every(s => !s.includes('\\'))).toBeTruthy();
+    });
+  });
+
+  describe('removeFiles method', () => {
+    it('should remove matching files from cache using windows-style path separators', () => {
+      specLocator.removeFiles(['C:\\test\\path\\abc.test.ts']);
+
+      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
+    });
+
+    it('should remove matching files from cache using unix-style path separators', () => {
+      specLocator.removeFiles(['C:/test/path/abc.test.ts']);
+
+      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(2);
+    });
+
+    it('should not remove any files from cache for empty array', () => {
+      specLocator.removeFiles([]);
+
+      expect(specLocator['specFilesBySuite'].get('SuiteName')?.length).toEqual(3);
     });
   });
 });
