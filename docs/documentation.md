@@ -2,7 +2,7 @@
 
 ## Contents
 
-- [Getting Started](#getting-started)
+- [Setup](#setup)
 - [Project Types](#project-types)
 - [Test Frameworks](#test-frameworks)
 - [Configuration](#configuration)
@@ -13,33 +13,40 @@
 - [Known Issues and Limitations](#known-issues-and-limitations)
 - [See Also](#see-also)
 
-## Getting Started
+---
 
-### Install Prerequisites
+## Setup
 
-Prerequisite | Description
--------------|------------
-Test&nbsp;Browser | Karma Test Explorer requires a browser for running tests, which by default is the Chrome browser, though you can provide a custom launcher which uses a different browser. Whichever browser is used must be installed on the computer or container where VS Code will be running your project's tests
-Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, some of Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc, all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` would ensure they are all installed
-Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container, then the extension's installation mode in VS Code should be in the remote workspace
+### 1. Install Prerequisites
 
-### Configure Extension
+|Prerequisite | Description|
+|:-------------|------------|
+|Test&nbsp;Browser | Karma Test Explorer requires a browser for running tests, which by default is the Chrome browser, though you can provide a custom launcher which uses a different browser. Whichever browser is used must be installed on the computer or container where VS Code will be running your project's tests|
+|Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, some of Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc, all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` would ensure they are all installed|
+|Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container, then the extension's installation mode in VS Code should be in the remote workspace|
 
-Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Only&nbsp;Required | Config&nbsp;Setting
--------|---------------|----------------
-Specify project root path relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace root folder | `karmaTestExplorer.projectRootPath`
-Specify `karma.conf.js` file path relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
-Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
-Provide any other relevant [settings](#configuration) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#configuration) to further customize it to the needs of your project and team| [Config Settings](#configuration)
+### 2. Configure Extension
 
-When done updating the settings, select the Karma Test Explorer prompt to __Apply Settings__ and wait a moment while it refreshes. You can also reload VS Code to apply the changes if you don't see the prompt.
+|Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | When&nbsp;Required | Config&nbsp;Setting
+|:-------|---------------|----------------
+|Specify project root path relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace root folder | `karmaTestExplorer.projectRootPath`
+|Specify `karma.conf.js` file path relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
+|Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
+|Provide any other relevant [settings](#configuration) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#configuration) to further customize it to the needs of your project and team| See [all settings](#configuration)
+
+### 3. Run Your Tests
+
+When done configuring the extension, select the Karma Test Explorer prompt to __Apply Settings__ and wait a moment while it refreshes. You can also simply reload VS Code to apply the changes if you don't see the prompt.
+
+After Karma Test Explorer is done refreshing with the updated settings, your tests should show up in the Test View, as well as code lenses above each test in the code editor, either of which can be used to run and debug the tests.
+  
+---
+
+Note that Karma Test Explorer will briefly display updates (using available space if any) on the VS Code status bar, showing the current status of test operations. You can click on the status bar message to display additional options or show the extension log.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
-### Run Your Tests
-
-- After Karma Test Explorer is done refreshing with the updated settings, your tests should show up in the Test View, as well as code lenses above each test in the code editor, either of which can be used to run and debug the tests
-- Note that Karma Test Explorer will briefly display updates (using available space if any) on the VS Code status bar, showing the current status of the test operations. You can click on the status bar message to display additional options or show the extension log.
+---
 
 ## Project Types
 
@@ -51,6 +58,8 @@ By default, any project with an `angular.json` or `.angular-cli.json` file in th
 Projects without an `angular.json` or `.angular-cli.json` file in the project root are treated as plain Karma projects. Use the various [extension options](#configuration) where necessary to customize Karma Test Explorer's behavior to the specific needs of your project and team.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
 
 ## Test Frameworks
 
@@ -65,11 +74,11 @@ If your project uses the Jasmine test framework and it is not automatically dete
 If your project uses the Mocha test framework and it - or the right Mocha interface style - is not automatically detected by Karma Test Explorer, use the `karmaTestExplorer.testFramework` config option to specify which Mocha testing interface style (BDD or TDD) is used by your tests.
 
 ---
-_Note that watch mode is currently not supported for the Mocha test framework._
-
----
+Note that watch mode is currently not supported for the Mocha test framework.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
 
 ## Configuration
 
@@ -108,6 +117,8 @@ Setting                                       | Description
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
+---
+
 ## Specifying Test Files
 
 By default, Karma Test Explorer searches for test files in every path under the project root directory (excluding `node_modules` directories). However, by explicitly specifying the location of your test files via the `karmaTestExplorer.testFiles` setting, you can reduce the amount of file scanning that's required to find your tests by limiting it to only the folders and files that actually contain the tests, which can significantly speed up discovery of your tests and improve the overall performance of your testing with the Karma Test Explorer.
@@ -141,6 +152,8 @@ For example:
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
+---
+
 ## Specifying a Test Framework
 
 By default, when no test framework is specified (ie, the `karmaTestExplorer.testFramework` config option is not set), Karma Test Explorer will try to auto-detect the test framework that is used by your project by looking at its `karma.conf.js` file. If it detects the Mocha framework, it will by default assume the BDD style for the project. If your project uses Mocha with the TDD style instead, or if your project's test framework is not correctly detected for any other reason, you can explicitly specify the right framework by setting the `karmaTestExplorer.testFramework` config option, whicn can have one of the following values:
@@ -155,11 +168,13 @@ Most times however, you will not need to set this config option at all as Karma 
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
+---
+
 ## Testing in a Development Container
 
 With VS Code's Development Container feature, you can develop and run your project's Karma tests inside a container, using browsers installed in that container. However, launching Chrome and other Chromium browsers in a container environment often requires additional browser flags and other adjustments. Therefore, to fully support DevContainer-based setups and workflows, Karma Test Explorer provides a number of options to help make development and testing smoother and more seamless in those scenarios.
 
-### Using `karmaTestExplorer.containerMode`
+### Use `karmaTestExplorer.containerMode`
 
 By default, Karma Test Explorer will automatically detect whether you are testing in a container environment, in which case it will activate `containerMode` which makes all necessary customizations required for smoother container-based development and testing. You can also manually enable this mode by setting the `karmaTestExplorer.containerMode` config setting to `enabled`. Because its default value when not set is `auto`, it should mostly not be necessary to manually set this option at all, unless in a situation where you are running in a container environment and find that Karma Test Explorer is not able to automatically detect it.
 
@@ -217,7 +232,11 @@ For more elaborate or highly custom project or environment setups that require a
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
+---
+
 ## Output Panels
+
+Karma Test Explorer adds the output channels described below to the Output panel of VS Code. Some or all of these channels can be disabled by setting their corresponding `logLevel` config option to `disable` in cases where this option is available.
 
 Name | Description
 -----|-------------
@@ -225,6 +244,8 @@ Karma&nbsp;Test&nbsp;Explorer | This output panel shows the logs of the Karma Te
 Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTestExplorer.karmaLogLevel` can be used to set the level of logging detail desired from the Karma server.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
 
 ## Known Issues and Limitations
 
@@ -244,6 +265,7 @@ Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTest
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
 ---
+
 ## See Also
 
 - [Readme](https://github.com/lucono/karma-test-explorer/blob/master/README.md#karma-test-explorer-for-visual-studio-code)

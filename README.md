@@ -51,14 +51,14 @@ To quickly get started:
 
 - Ensure the required dependencies are installed - Chrome browser on the computer or container, and the project dependencies (such as Karma, Angular, Jasmine, Mocha, etc)
 - Install the Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
-- If the project root path is not same as the VS Code workspace path, specify its path using the `karmaTestExplorer.projectRootPath` setting
+- If the project root path is not same as the VS Code workspace root, specify its path using the `karmaTestExplorer.projectRootPath` setting
 - If the `karma.conf.js` file is not at the project root folder, specify its path using the `karmaTestExplorer.karmaConfFilePath` setting
 - Specify your project's test files using the `karmaTestExplorer.testFiles` setting
-- Select the Karma Test Explorer prompt to apply the updated settings and wait a moment while it refreshes
+- Apply the updated settings and wait a moment while it refreshes, or simply restart VS Code
 - When done, you should see your tests in the Test View, and code lenses above each test in the editor, either of which can be used to run and debug the tests
 
 ---
-_Also use the many other [extension options](https://github.com/lucono/karma-test-explorer/blob/master/docs/guide.md#configuration) to further customize it to the needs of your project and team, and if you run into any issues with setup or usage, please see the more detailed [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer)._
+Also explore the many other [extension settings](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#configuration) to further customize it to the needs of your project and team, and if you run into any issues with setup or usage, please see the more detailed [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer) for help.
 
 ---
 
@@ -72,7 +72,7 @@ For a more detailed guide on how to setup Karma Test Explorer to work with your 
 
 ## Why this Extension
 
-The Karma Test Explorer extension was initially created out of [need for additional features](https://github.com/Raagh/angular-karma_test-explorer/issues?q=is%3Aissue+author%3Alucono) from the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension at a time when that project seemed not to be accepting contributions anymore, and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#010---sep-2021)). 
+The Karma Test Explorer extension was initially created out of [need for additional features](https://github.com/Raagh/angular-karma_test-explorer/issues?q=is%3Aissue+author%3Alucono) from the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension at a time when that project seemed not to be accepting contributions anymore, and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#010---sep-28-2021)). 
 
 This extension's core focus is on better and robust support for:
 
@@ -91,7 +91,6 @@ Special thanks to the [author](https://github.com/Raagh) and contributors of the
 
 If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new).
 
----
 ## See Also
 
 - [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer)

@@ -91,6 +91,19 @@ describe('SpecLocator', () => {
           await specLocator.refreshFiles(['xyz.test.ts']);
           expect(specLocator['specFilesBySuite'].get('SuiteName')).toEqual(expect.arrayContaining(['xyz.test.ts']));
         });
+
+        it('should clear and reload cache using the file globs if no files specified', async () => {
+          const modifiedGlobFiles = ['file1.test.ts', 'file2.test.ts', 'file3.test.ts'];
+
+          expect(specLocator['specFilesBySuite'].get('SuiteName')).not.toEqual(
+            expect.arrayContaining(modifiedGlobFiles)
+          );
+
+          mockResolvedGlobFiles = modifiedGlobFiles;
+          await specLocator.refreshFiles();
+
+          expect(specLocator['specFilesBySuite'].get('SuiteName')).toEqual(expect.arrayContaining(modifiedGlobFiles));
+        });
       });
 
       describe('removeFiles method', () => {

@@ -29,7 +29,7 @@ export const escapeForRegExp = (stringValue: string) => stringValue.replace(/[.*
 export const normalizePath = (filePath: string): string => {
   return process.platform === 'win32'
     ? filePath
-        .replace(/^([a-zA-Z]):/, driveLetter => driveLetter.toUpperCase())
+        .replace(/^[\/]?([A-Za-z]:)/, (_, drive) => drive.toUpperCase())
         .split(path.sep)
         .join(path.posix.sep)
     : filePath;

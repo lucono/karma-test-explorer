@@ -3,10 +3,11 @@ import { TestRunStatus } from './test-run-status';
 
 export interface KarmaEvent {
   readonly name: KarmaEventName;
-  readonly port?: number;
-  readonly results?: LightSpecCompleteResponse;
+  readonly runId?: string;
   readonly runStatus?: TestRunStatus;
   readonly runInfo?: Record<string, unknown>;
+  readonly port?: number;
+  readonly results?: LightSpecCompleteResponse;
   readonly browser?: BrowserInfo;
   readonly browsers?: BrowserInfo[];
   readonly info?: Record<string, unknown>;

@@ -18,6 +18,10 @@ describe('ExtensionConfig', () => {
     mockConfigValues = new Map();
     mockConfigDefaults = new Map();
 
+    mockConfigValues.set(ConfigSetting.TestFiles, []);
+    mockConfigValues.set(ConfigSetting.ExcludeFiles, []);
+    mockConfigValues.set(ConfigSetting.ReloadOnChangedFiles, []);
+
     mockConfigStore = {
       has: mockConfigValues.has,
       get: key => (mockConfigValues.has(key) ? mockConfigValues.get(key) : ''),

@@ -60,11 +60,6 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
 
     request.on('close', () => {
       this.logger.debug(() => 'Karma http request closed');
-
-      // FIXME: Request sometimes is done while server is still
-      // running the requested tests so that deferredTestRunExecution
-      // is ended prematurely and subsequent test results are not
-      // collected or reported in the extension
       deferredTestRunExecution.end();
     });
 

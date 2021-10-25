@@ -69,7 +69,9 @@ export class TestSuiteOrganizer implements Disposable {
         return;
       }
       if (!test.file) {
-        this.logger.warn(() => `Got test with unknown file: ${JSON.stringify(test)}`);
+        this.logger.warn(() => `Got test with unknown file - Test Id is: ${test.id}`);
+        this.logger.trace(() => `Test with unknown file: ${JSON.stringify(test)}`);
+
         fileLessSpecsSuite.push(test);
         return;
       }

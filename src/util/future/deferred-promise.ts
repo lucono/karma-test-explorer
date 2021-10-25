@@ -8,6 +8,9 @@ export class DeferredPromise<T = void> {
   private readonly fulfiller: PromiseResolver<T>;
   private readonly rejector: PromiseRejector;
 
+  private autoFulfillTimer?: NodeJS.Timeout;
+  private autoRejectTimer?: NodeJS.Timeout;
+
   public constructor() {
     let promiseFulfiller: PromiseResolver<T> | undefined;
     let promiseRejector: PromiseRejector | undefined;
@@ -34,14 +37,28 @@ export class DeferredPromise<T = void> {
   }
 
   public autoFulfill(delay: number, value: T): void {
-    if (!this.promiseInstance.isResolved()) {
-      setTimeout(() => this.fulfill(value), delay);
+    if (this.promiseInstance.isResolved()) {
+      return;
     }
+    if (this.autoFulfillTimer) {
+      clearTimeout(this.autoFulfillTimer);
+    }
+    this.autoFulfillTimer = setTimeout(() => {
+      this.fulfill(value);
+      this.autoFulfillTimer = undefined;
+    }, delay);
   }
 
   public autoReject(delay: number, reason?: any): void {
-    if (!this.promiseInstance.isResolved()) {
-      setTimeout(() => this.reject(reason), delay);
+    if (this.promiseInstance.isResolved()) {
+      return;
     }
+    if (this.autoRejectTimer) {
+      clearTimeout(this.autoRejectTimer);
+    }
+    this.autoRejectTimer = setTimeout(() => {
+      this.reject(reason);
+      this.autoRejectTimer = undefined;
+    }, delay);
   }
 }

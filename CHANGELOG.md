@@ -7,13 +7,25 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
-  - [0.2.0 - Oct 2021](#020---oct-2021)
-  - [0.1.0 - Sep 2021](#010---sep-2021)
+  - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
+  - [0.2.0 - Oct 13, 2021](#020---oct-13-2021)
+  - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
 
 ---
-## [0.2.0] - Oct 2021
+## [0.2.1] - Oct 24, 2021
+
+### Changed
+
+- Test duplication is only now reported for tests but no longer reported for test suites because test suites are simply containers for tests, so that duplicated test suites are themselves not an indication that actual tests have also been duplicated
+
+### Fixed
+- Fixed an issue where test duplicate detection was producing false-positives on Windows (thanks [@nwash57](https://github.com/nwash57)!)
+- Fixed an issue where some tests may not always be discovered on Windows
+
+---
+## [0.2.0] - Oct 13, 2021
 
 ### Added
 
@@ -37,7 +49,8 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 - Fixed [an issue](https://github.com/lucono/karma-test-explorer/issues/2) (#2) where spaces in the user's home directory or the extension installation path caused the extension to fail for Windows users
 - Fixed issue where line numbers shown in warning messages for detected duplicate test definitions were off by one line
 
-## [0.1.0] - Sep 2021
+---
+## [0.1.0] - Sep 28, 2021
 
 ### Added
 

@@ -287,7 +287,7 @@ export class MainFactory {
         this.config.projectRootPath,
         this.config.testsBasePath,
         testResolver,
-        this.createLogger(`${KarmaTestEventProcessor.name}_Ambient`)
+        this.createLogger(`${KarmaAutoWatchTestEventProcessor.name}:${KarmaTestEventProcessor.name}`)
       );
 
       watchModeTestEventProcessor = new KarmaAutoWatchTestEventProcessor(

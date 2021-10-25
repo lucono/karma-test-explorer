@@ -3,7 +3,7 @@ import { Server as HttpServer } from 'http';
 import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from 'karma';
 import { resolve } from 'path';
 import { Worker } from 'worker_threads';
-import { KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT } from '../../../constants';
+import { KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT, KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
 import { TestStatus } from '../../../core/base/test-status';
 import { BasicLog } from '../../../util/logging/basic-log';
 import { LogLevel } from '../../../util/logging/log-level';
@@ -98,11 +98,23 @@ function KarmaTestExplorerReporter(
   });
 
   karmaEventHandler.setEventHandler(KarmaEventName.RunStart, (name: KarmaEventName, browsers: any) => {
-    const clientArgs = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args;
-    karmaLogger.debug(() => `Client args for test run: ${JSON.stringify(clientArgs ?? '<Not found>', null, 2)}`);
+    const clientArgs: string[] = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args ?? [];
+    let runId: string | undefined;
+
+    karmaLogger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
+
+    if (clientArgs) {
+      const runIdArg = clientArgs.find(clientArg => clientArg.startsWith(KARMA_TEST_RUN_ID_FLAG));
+
+      if (runIdArg) {
+        runId = runIdArg.split('=')[1];
+        karmaLogger.debug(() => `Karma event '${name}' has runId: ${runId}`);
+      }
+    }
 
     sendEvent({
       name,
+      runId,
       browsers: browsers.map(getBrowserInfo)
     });
   });
@@ -155,6 +167,20 @@ function KarmaTestExplorerReporter(
   karmaEventHandler.setEventHandler(
     KarmaEventName.RunComplete,
     (name: KarmaEventName, browsers: any, runResult: KarmaTestResults) => {
+      const clientArgs: string[] = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args ?? [];
+      let runId: string | undefined;
+
+      karmaLogger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
+
+      if (clientArgs) {
+        const runIdArg = clientArgs.find(clientArg => clientArg.startsWith(KARMA_TEST_RUN_ID_FLAG));
+
+        if (runIdArg) {
+          runId = runIdArg.split('=')[1];
+          karmaLogger.debug(() => `Karma event '${name}' has runId: ${runId}`);
+        }
+      }
+
       const runStatus = runResult.disconnected
         ? TestRunStatus.Timeout
         : runResult.error
@@ -163,6 +189,7 @@ function KarmaTestExplorerReporter(
 
       sendEvent({
         name,
+        runId,
         browsers: browsers.map(getBrowserInfo),
         runStatus
       });

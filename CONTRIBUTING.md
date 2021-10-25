@@ -48,7 +48,6 @@ For linting and building the code, and running unit tests, you can use the follo
 
 <a href="#contents"><img align="right" height="24" src="docs/img/back-to-top.png"></a>
 
----
 ## See Also
 
 - [Readme](https://github.com/lucono/karma-test-explorer/blob/master/README.md#karma-test-explorer-for-visual-studio-code)
