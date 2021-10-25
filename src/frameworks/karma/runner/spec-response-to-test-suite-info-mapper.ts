@@ -92,25 +92,6 @@ export class SpecResponseToTestSuiteInfoMapper {
     const suiteFullName = suitePath.join(' ');
     const suiteId = `${suiteFile}:${suiteFullName}`;
 
-    const hasDuplicates = allMatchingSuiteLocations.length > 1;
-    let message: string | undefined;
-
-    if (hasDuplicates) {
-      let duplicateSuiteCounter = 0;
-
-      const duplicateSuiteFiles = allMatchingSuiteLocations
-        .sort((loc1, loc2) => (loc1.file === suiteFile ? -1 : loc2.file === suiteFile ? 1 : 0))
-        .map(location => `${++duplicateSuiteCounter}. ${location.file}:${location.line + 1}`)
-        .join('\n');
-
-      message =
-        `"${suiteFullName}" \n\n` +
-        '---------- \n\n' +
-        'The above test suite has duplicate definitions in the following files ' +
-        'in your project which could lead to conflicting test results: \n\n' +
-        `${duplicateSuiteFiles}`;
-    }
-
     const suiteNode: TestSuiteInfo = {
       type: TestType.Suite,
       id: suiteId,
@@ -120,8 +101,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       children: [],
       testCount: 0,
       file: suiteLocation?.file,
-      line: suiteLocation?.line,
-      message
+      line: suiteLocation?.line
     };
     return suiteNode;
   }

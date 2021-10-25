@@ -1,7 +1,12 @@
 import express from 'express';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as SocketIOServer, ServerOptions, Socket } from 'socket.io';
-import { KARMA_READY_DEFAULT_TIMEOUT, KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT } from '../../../constants';
+import {
+  KARMA_READY_DEFAULT_TIMEOUT,
+  KARMA_SOCKET_PING_INTERVAL,
+  KARMA_SOCKET_PING_TIMEOUT,
+  KARMA_TEST_EVENT_INTERVAL_TIMEOUT
+} from '../../../constants';
 import { TestStatus } from '../../../core/base/test-status';
 import { Notifications, StatusType } from '../../../core/vscode/notifications';
 import { Disposable } from '../../../util/disposable/disposable';
@@ -28,6 +33,14 @@ interface KarmaEventResult {
   error?: string;
 }
 
+interface TestCaptureSession {
+  readonly testRunId: string;
+  readonly testNames: string[];
+  readonly testEventProcessingOptions: TestEventProcessingOptions;
+  readonly testRunStarted: (testRunId?: string) => void;
+  readonly testRunEnded: (testRunId?: string) => void;
+}
+
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaTestEventListener implements Disposable {
@@ -35,6 +48,7 @@ export class KarmaTestEventListener implements Disposable {
   private readonly sockets: Set<Socket> = new Set();
   private listenerCurrentlyStopping: Promise<void> | undefined;
   private readonly karmaReadyTimeout: number;
+  private currentTestCaptureSession?: TestCaptureSession;
   private disposables: Disposable[] = [];
 
   public constructor(
@@ -156,57 +170,137 @@ export class KarmaTestEventListener implements Disposable {
   }
 
   private processTestErrorEvent(errorMsg: string) {
+    this.logger.debug(() => `Test error processing requested with message: ${errorMsg}`);
+
     if (this.testEventProcessor?.isProcessing()) {
+      this.logger.debug(() => `Sending test error event to test event processor with message: ${errorMsg}`);
       this.testEventProcessor.processTestErrorEvent(errorMsg);
     }
     if (this.watchModeTestEventProcessor?.isProcessing()) {
+      this.logger.debug(() => `Sending test error event to watch mode test event processor with message: ${errorMsg}`);
       this.watchModeTestEventProcessor?.processTestErrorEvent(errorMsg);
     }
   }
 
-  public async listenForTestDiscovery(testDiscoveryExecution: Execution): Promise<SpecCompleteResponse[]> {
-    return this.listenForTests(testDiscoveryExecution, [], {
+  public listenForTestDiscovery(testRunId: string): Execution<string, SpecCompleteResponse[]> {
+    return this.listenForTests(testRunId, [], {
       emitTestEvents: [],
       filterTestEvents: [],
-      emitTestStats: false
+      emitTestStats: false,
+      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
     });
   }
 
-  public async listenForTestRun(testRunExecution: Execution, testNames: string[] = []): Promise<TestCapture> {
-    const capturedSpecs = await this.listenForTests(testRunExecution, testNames, {
+  public listenForTestRun(testRunId: string, testNames: string[] = []): Execution<string, TestCapture> {
+    const testCaptureDeferredExecution = new DeferredExecution<string, TestCapture>();
+
+    const specResultExecution = this.listenForTests(testRunId, testNames, {
       emitTestEvents: Object.values(TestStatus),
       filterTestEvents: [],
-      emitTestStats: true
+      emitTestStats: true,
+      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
     });
 
-    const capturedTests: TestCapture = {
-      [TestStatus.Failed]: [],
-      [TestStatus.Success]: [],
-      [TestStatus.Skipped]: []
-    };
+    specResultExecution.started().then(testRunId => testCaptureDeferredExecution.start(testRunId));
 
-    capturedSpecs.forEach(processedSpec => capturedTests[processedSpec.status].push(processedSpec));
+    specResultExecution.ended().then(capturedSpecs => {
+      const capturedTests: TestCapture = {
+        [TestStatus.Failed]: [],
+        [TestStatus.Success]: [],
+        [TestStatus.Skipped]: []
+      };
 
-    return capturedTests;
+      capturedSpecs.forEach(processedSpec => capturedTests[processedSpec.status].push(processedSpec));
+      testCaptureDeferredExecution.end(capturedTests);
+    });
+
+    specResultExecution.failed().then(failureReason => testCaptureDeferredExecution.fail(failureReason));
+
+    return testCaptureDeferredExecution.execution();
   }
 
-  private async listenForTests(
-    testExecution: Execution,
+  private listenForTests(
+    testRunId: string,
     testNames: string[],
-    eventProcessingOptions: TestEventProcessingOptions
-  ): Promise<SpecCompleteResponse[]> {
-    try {
-      this.watchModeTestEventProcessor?.processTestErrorEvent('Abort for user-requested test run');
-      const processingResults = await this.testEventProcessor.processTestEvents(
-        testExecution,
-        testNames,
-        eventProcessingOptions
-      );
-      return processingResults.processedSpecs;
-    } catch (error) {
-      this.logger.error(() => `Could not listen for Karma events - Test execution failed: ${error}`);
-      throw error;
-    }
+    testEventProcessingOptions: TestEventProcessingOptions
+  ): Execution<string, SpecCompleteResponse[]> {
+    const deferredSpecCaptureExecution = new DeferredExecution<string, SpecCompleteResponse[]>();
+    const futureSpecCaptureExecution = deferredSpecCaptureExecution.execution();
+
+    const testRunStartHandler = (startedTestRunId?: string) => {
+      if (startedTestRunId !== testRunId) {
+        this.logger.debug(
+          () =>
+            `New test run starting with id '${startedTestRunId}' ` +
+            `is not for the current requested test run Id: ${testRunId}`
+        );
+        return;
+      }
+      this.logger.debug(() => `Test run starting for requested test run Id: ${testRunId}`);
+
+      if (this.testEventProcessor.isProcessing()) {
+        this.logger.warn(
+          () =>
+            `New requested test run with run id '${startedTestRunId}' ` +
+            `is starting while another one with same Id is already in progress - ` +
+            `Continuing with existing test`
+        );
+        return;
+      }
+      this.logger.debug(() => `Starting test capture session for current requested test run Id: ${testRunId}`);
+
+      deferredSpecCaptureExecution.start(testRunId);
+      const futureProcessingResults = this.testEventProcessor.processTestEvents(testNames, testEventProcessingOptions);
+
+      futureProcessingResults.then(processingResults => {
+        deferredSpecCaptureExecution.end(processingResults.processedSpecs);
+      });
+
+      futureProcessingResults.catch(failureReason => {
+        this.logger.error(() => `Could not listen for Karma events - Test execution failed: ${failureReason}`);
+        deferredSpecCaptureExecution.fail(failureReason);
+      });
+    };
+
+    const testRunEndHandler = (endedTestRunId?: string) => {
+      if (endedTestRunId !== testRunId) {
+        this.logger.debug(
+          () =>
+            `Test run ending now with test run Id '${endedTestRunId}' ` +
+            `is not for the current requested test run Id: ${testRunId}`
+        );
+        return;
+      }
+      this.logger.debug(() => `Test run ending for current requested test run Id: ${testRunId}`);
+
+      if (!this.testEventProcessor.isProcessing()) {
+        this.logger.warn(
+          () =>
+            `Test run ending now with test run Id '${endedTestRunId}' while ` +
+            `current requested test run with same Id is not currently processing - ` +
+            `Ignoring test run end event`
+        );
+        return;
+      }
+      this.logger.debug(() => `Ending test capture session for current requested test run Id: ${testRunId}`);
+      this.testEventProcessor.concludeProcessing();
+    };
+
+    this.currentTestCaptureSession = {
+      testRunId,
+      testNames,
+      testEventProcessingOptions,
+      testRunStarted: testRunStartHandler,
+      testRunEnded: testRunEndHandler
+    };
+
+    futureSpecCaptureExecution.done().then(() => {
+      this.logger.debug(() => `Done listening for test run Id: ${testRunId}`);
+      this.currentTestCaptureSession = undefined;
+    });
+
+    this.logger.debug(() => `Started listening for test run Id: ${testRunId}`);
+    return deferredSpecCaptureExecution.execution();
   }
 
   public async stop(): Promise<void> {
@@ -288,13 +382,18 @@ export class KarmaTestEventListener implements Disposable {
       const browserNames = event.browsers?.map(browser => browser.name)?.join(', ');
       this.logger.debug(() => `Test run started for browsers: ${browserNames ?? 'unknown'}`);
 
+      if (this.watchModeTestEventProcessor?.isProcessing()) {
+        this.watchModeTestEventProcessor.processTestErrorEvent('New test is starting');
+      }
+      this.currentTestCaptureSession?.testRunStarted(event.runId);
+
       if (!this.testEventProcessor.isProcessing() && this.watchModeTestEventProcessor) {
-        const watchModeProcessingExecution = this.watchModeTestEventProcessor.beginProcessing();
+        const futureWatchModeProcessingCompletion = this.watchModeTestEventProcessor.beginProcessing();
 
         this.notifications.notifyStatus(
           StatusType.Busy,
           'Watch mode running tests in background...',
-          watchModeProcessingExecution.ended()
+          futureWatchModeProcessingCompletion
         );
       }
     });
@@ -313,7 +412,7 @@ export class KarmaTestEventListener implements Disposable {
       if (!eventProcessor?.isProcessing()) {
         this.logger.debug(
           () =>
-            `Not processing received spec id '${event.results?.id}' - ` +
+            `Not processing received spec id '${event.results?.id ?? '<none>'}' - ` +
             `Neither the test run nor watch mode test processors are currently active`
         );
         return;
@@ -328,7 +427,7 @@ export class KarmaTestEventListener implements Disposable {
 
       this.logger.debug(
         () =>
-          `Processing received spec id '${event.results?.id}' ` +
+          `Processing received spec id '${event.results?.id ?? '<none>'}' ` +
           `with test processor: ${eventProcessor.constructor.name}`
       );
 
@@ -367,8 +466,19 @@ export class KarmaTestEventListener implements Disposable {
 
       if (errorMsg) {
         this.processTestErrorEvent(errorMsg);
-      } else if (this.watchModeTestEventProcessor?.isProcessing()) {
-        this.watchModeTestEventProcessor?.concludeProcessing();
+        return;
+      }
+
+      if (this.currentTestCaptureSession) {
+        this.currentTestCaptureSession.testRunEnded(event.runId);
+      } else {
+        this.logger.debug(
+          () => `Received '${event.name}' event with run Id '${event.runId}' while no requested user test capture`
+        );
+      }
+
+      if (this.watchModeTestEventProcessor?.isProcessing()) {
+        this.watchModeTestEventProcessor.concludeProcessing();
       }
     });
 

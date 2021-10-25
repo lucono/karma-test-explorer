@@ -78,10 +78,11 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     } else if (isAngularInstalledGlobally) {
       command = 'ng';
     } else {
-      const errorMessage = '@angular/cli does not seem to be installed. Please install it and try again.';
-      this.logger.error(() => errorMessage);
-      deferredServerExecution.fail(errorMessage);
-      return deferredServerExecution.execution();
+      throw new Error(
+        `@angular/cli does not seem to be installed - ` +
+          `You may need to run 'npm install' in your project. ` +
+          `Please install it and try again.`
+      );
     }
 
     processArguments = [

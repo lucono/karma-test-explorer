@@ -12,7 +12,6 @@ import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
-import { Execution } from '../../../util/future/execution';
 import { Logger } from '../../../util/logging/logger';
 import { TestCapture } from './karma-test-event-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
@@ -28,6 +27,7 @@ export interface TestEventProcessingOptions {
   filterTestEvents?: TestStatus[];
   emitTestEvents?: TestStatus[];
   emitTestStats?: boolean;
+  testEventIntervalTimeout?: number;
 }
 
 export interface TestEventProcessingResults {
@@ -35,13 +35,17 @@ export interface TestEventProcessingResults {
   filteredEvents: TestEvent[];
 }
 
+interface ProcessingInfo {
+  testNames: string[];
+  eventProcessingOptions: TestEventProcessingOptions;
+  processedTestResults: Map<string, SpecCompleteResponse>;
+  filteredTestResultEvents: Map<string, TestEvent>;
+  deferredProcessingResults: DeferredPromise<TestEventProcessingResults>;
+}
+
 export class KarmaTestEventProcessor {
-  private readonly processedTestResults: Map<string, SpecCompleteResponse> = new Map();
-  private readonly filteredTestResultEvents: Map<string, TestEvent> = new Map();
-  private eventProcessingOptions?: TestEventProcessingOptions;
-  private currentTestNames?: string[];
+  private currentProcessingInfo?: ProcessingInfo;
   private disposables: Disposable[] = [];
-  private deferredProcessingResults?: DeferredPromise<TestEventProcessingResults>;
 
   public constructor(
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
@@ -58,47 +62,54 @@ export class KarmaTestEventProcessor {
   }
 
   public async processTestEvents(
-    testExecution: Execution,
     testNames: string[] = [],
     eventProcessingOptions: TestEventProcessingOptions = defaultEventProcessingOptions
   ): Promise<TestEventProcessingResults> {
+    this.logger.debug(() => `Request to begin test event processing`);
+
     if (this.isProcessing()) {
+      this.logger.debug(() => `Conclude current test processing before commencing new processing`);
       this.concludeProcessing();
     }
-    this.currentTestNames = testNames;
-    this.eventProcessingOptions = eventProcessingOptions;
 
+    this.logger.debug(() => `Proceeding to begin processing test events`);
     const deferredProcessingResults: DeferredPromise<TestEventProcessingResults> = new DeferredPromise();
-    this.deferredProcessingResults = deferredProcessingResults;
 
-    testExecution.ended().then(() => {
-      const isStillCurrentExecution = deferredProcessingResults === this.deferredProcessingResults;
+    this.currentProcessingInfo = {
+      testNames,
+      eventProcessingOptions,
+      deferredProcessingResults,
+      processedTestResults: new Map(),
+      filteredTestResultEvents: new Map()
+    };
 
-      if (isStillCurrentExecution) {
-        this.concludeProcessing();
-      }
-    });
+    const testEventIntervalTimeout = eventProcessingOptions.testEventIntervalTimeout;
 
-    testExecution.failed().then(reason => this.processTestErrorEvent(reason));
+    if (testEventIntervalTimeout) {
+      deferredProcessingResults.autoReject(
+        testEventIntervalTimeout,
+        `Exceeded ${eventProcessingOptions.testEventIntervalTimeout} ms timeout while waiting for first test result`
+      );
+    }
 
     return deferredProcessingResults.promise();
   }
 
-  private concludeProcessing(): void {
-    if (this.isProcessing()) {
+  public concludeProcessing(): void {
+    this.logger.debug(() => `Request to conclude test event processing`);
+
+    if (this.currentProcessingInfo && this.isProcessing()) {
+      this.logger.debug(() => `Test event processor is currently processing - Concluding current processing`);
+
       const processedResults: TestEventProcessingResults = {
-        processedSpecs: Array.from(this.processedTestResults.values()),
-        filteredEvents: Array.from(this.filteredTestResultEvents.values())
+        processedSpecs: Array.from(this.currentProcessingInfo.processedTestResults.values()),
+        filteredEvents: Array.from(this.currentProcessingInfo.filteredTestResultEvents.values())
       };
-      this.deferredProcessingResults!.fulfill(processedResults);
+      this.currentProcessingInfo.deferredProcessingResults!.fulfill(processedResults);
       this.emitTestSuiteEvents();
     }
 
-    this.processedTestResults.clear();
-    this.filteredTestResultEvents.clear();
-    this.currentTestNames = undefined;
-    this.eventProcessingOptions = undefined;
-    this.deferredProcessingResults = undefined;
+    this.currentProcessingInfo = undefined;
   }
 
   public processTestErrorEvent(message: string) {
@@ -108,21 +119,39 @@ export class KarmaTestEventProcessor {
       this.logger.debug(() => `Ignoring test error event - Processor not currently processing`);
       return;
     }
-    this.deferredProcessingResults!.reject(message);
+    this.currentProcessingInfo!.deferredProcessingResults.reject(message);
     this.concludeProcessing();
   }
 
   public processTestResultEvent(testResult: SpecCompleteResponse) {
+    this.logger.debug(() => `Request to process test result event having status: ${testResult.status}`);
+    this.logger.trace(() => `Test result event for processing has Id: ${testResult.id}`);
+
     if (!this.isProcessing()) {
+      this.logger.debug(() => `Ignoring test result event - Processor not currently processing`);
       return;
     }
+
+    const testEventIntervalTimeout = this.currentProcessingInfo?.eventProcessingOptions.testEventIntervalTimeout;
+
+    if (testEventIntervalTimeout) {
+      this.logger.debug(
+        () => `Resetting elapsed test event interval time to timeout value: ${testEventIntervalTimeout}`
+      );
+
+      this.currentProcessingInfo?.deferredProcessingResults.autoReject(
+        testEventIntervalTimeout,
+        `Exceeded ${testEventIntervalTimeout} ms timeout while waiting for new test results`
+      );
+    }
+
     const testId = testResult.id;
 
     if (!this.isIncludedTest(testResult)) {
       this.logger.debug(() => `Skipping spec id '${testId}' - Not included in current test run`);
       return;
     }
-    const processedTest = this.processedTestResults.get(testId);
+    const processedTest = this.currentProcessingInfo!.processedTestResults.get(testId);
 
     if (processedTest && testResult.status === TestStatus.Skipped) {
       this.logger.debug(
@@ -136,28 +165,32 @@ export class KarmaTestEventProcessor {
     }
 
     this.emitTestResultEvent(testResult);
-    this.processedTestResults.set(testId, testResult);
+    this.currentProcessingInfo!.processedTestResults.set(testId, testResult);
   }
 
   public isProcessing(): boolean {
-    return this.deferredProcessingResults !== undefined && !this.deferredProcessingResults.promise().isResolved();
+    return (
+      this.currentProcessingInfo !== undefined &&
+      !this.currentProcessingInfo.deferredProcessingResults.promise().isResolved()
+    );
   }
 
   private isIncludedTest(testResult: SpecCompleteResponse) {
-    if (!this.currentTestNames) {
+    if (!this.currentProcessingInfo) {
       return false;
     }
-    const includeAll = this.currentTestNames.length === 0;
+    const includeAll = this.currentProcessingInfo.testNames.length === 0;
 
     return (
-      includeAll || this.currentTestNames.some(includedSpecName => testResult.fullName.startsWith(includedSpecName))
+      includeAll ||
+      this.currentProcessingInfo.testNames.some(includedSpecName => testResult.fullName.startsWith(includedSpecName))
     );
   }
 
   private emitTestResultEvent(testResult: SpecCompleteResponse) {
     const testId = testResult.id;
 
-    if (!this.eventProcessingOptions?.emitTestEvents?.includes(testResult.status)) {
+    if (!this.currentProcessingInfo?.eventProcessingOptions.emitTestEvents?.includes(testResult.status)) {
       this.logger.debug(
         () =>
           `Skipping test result event for test id ${testId} - ` +
@@ -217,15 +250,15 @@ export class KarmaTestEventProcessor {
       decorations
     };
 
-    if (this.eventProcessingOptions?.emitTestStats) {
+    if (this.currentProcessingInfo.eventProcessingOptions.emitTestStats) {
       testResultEvent.description = `(${testTimeDescription})`;
       testResultEvent.tooltip += `  (${resultDescription})`;
     }
 
-    if (this.eventProcessingOptions?.filterTestEvents?.includes(testResult.status)) {
+    if (this.currentProcessingInfo.eventProcessingOptions.filterTestEvents?.includes(testResult.status)) {
       this.logger.debug(() => `Filtering ${testResult.status} test result event for test id: ${testId}`);
 
-      this.filteredTestResultEvents.set(testResult.id, testResultEvent);
+      this.currentProcessingInfo.filteredTestResultEvents.set(testResult.id, testResultEvent);
       return;
     }
 
@@ -239,7 +272,7 @@ export class KarmaTestEventProcessor {
   }
 
   private emitTestSuiteEvents() {
-    if (!this.eventProcessingOptions?.emitTestStats) {
+    if (!this.currentProcessingInfo?.eventProcessingOptions.emitTestStats) {
       return;
     }
 
@@ -249,7 +282,7 @@ export class KarmaTestEventProcessor {
       [TestStatus.Skipped]: []
     };
 
-    Array.from(this.processedTestResults.values()).forEach(processedSpec =>
+    Array.from(this.currentProcessingInfo.processedTestResults.values()).forEach(processedSpec =>
       capturedTests[processedSpec.status].push(processedSpec)
     );
 

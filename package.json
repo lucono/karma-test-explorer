@@ -5,7 +5,7 @@
   "icon": "docs/img/extension-icon-128.png",
   "author": "Lucas Ononiwu",
   "publisher": "lucono",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "preview": true,
   "license": "MIT",
   "homepage": "https://github.com/lucono/karma-test-explorer",
@@ -19,9 +19,6 @@
   "categories": [
     "Testing"
   ],
-  "jest": {
-    "testEnvironment": "node"
-  },
   "keywords": [
     "karma",
     "angular",
@@ -99,7 +96,7 @@
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
-    "vsce": "^1.100.1"
+    "vsce": "^1.100.2"
   },
   "engines": {
     "vscode": "^1.60.0"
@@ -393,10 +390,5 @@
         }
       }
     }
-  },
-  "__metadata": {
-    "id": "eea8111e-ea45-4aa2-8d60-48efb3edc54e",
-    "publisherDisplayName": "Lucas Ononiwu",
-    "publisherId": "26f17aec-afc6-4165-b153-1c670baba559"
   }
 }

@@ -5,9 +5,10 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ master, beta ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, beta ]
+    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
       max-parallel: 3
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        node-version: [12.x, 14.x, 16.x]
+        node-version: [14.x, 16.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     runs-on: ${{ matrix.os }}
@@ -34,3 +35,8 @@ jobs:
     - run: npm run build
     - run: npm test
     - run: npm run package
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: packaged-vsix
+        path: ./*.vsix

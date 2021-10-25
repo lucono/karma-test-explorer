@@ -16,7 +16,7 @@ import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { LogLevel, LogLevelName } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
-import { asNonBlankStringOrUndefined, toSingleUniqueArray } from '../../util/utils';
+import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
 import { TestFrameworkName } from '../base/test-framework-name';
 import { TestGrouping } from '../base/test-grouping';
 import { ConfigSetting } from './config-setting';
@@ -34,6 +34,7 @@ export enum TestTriggerMethod {
 }
 
 export class ExtensionConfig implements Disposable {
+  public readonly projectRootPath: string;
   public readonly autoWatchBatchDelay?: number;
   public readonly autoWatchEnabled: boolean;
   public readonly baseKarmaConfFilePath: string;
@@ -54,7 +55,6 @@ export class ExtensionConfig implements Disposable {
   public readonly angularProcessCommand?: string;
   public readonly karmaProcessCommand?: string;
   public readonly karmaReadyTimeout: number;
-  public readonly projectRootPath: string;
   public readonly reloadOnChangedFiles: readonly string[];
   public readonly reloadOnKarmaConfigChange: boolean;
   public readonly testFiles: readonly string[];
@@ -65,26 +65,23 @@ export class ExtensionConfig implements Disposable {
   public readonly testTriggerMethod: TestTriggerMethod;
   public readonly failOnStandardError: boolean;
 
-  public constructor(config: ConfigStore, workspaceUriPath: string, private readonly logger: Logger) {
-    const workspacePath = workspaceUriPath.replace(/^\/([A-Za-z]):\//, '$1:/');
+  public constructor(config: ConfigStore, workspacePath: string, private readonly logger: Logger) {
+    const normalizedWorkspacePath = normalizePath(workspacePath);
 
-    this.projectRootPath = resolve(workspacePath, config.get(ConfigSetting.ProjectRootPath)!);
-    this.userKarmaConfFilePath = resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath)!);
+    this.projectRootPath = normalizePath(resolve(normalizedWorkspacePath, config.get(ConfigSetting.ProjectRootPath)!));
     this.karmaPort = config.get(ConfigSetting.KarmaPort)!;
     this.karmaProcessCommand = asNonBlankStringOrUndefined(config.get(ConfigSetting.KarmaProcessCommand));
     this.angularProcessCommand = asNonBlankStringOrUndefined(config.get(ConfigSetting.AngularProcessCommand));
     this.testTriggerMethod = config.get<string>(ConfigSetting.TestTriggerMethod)!.toUpperCase() as TestTriggerMethod;
     this.failOnStandardError = !!config.get(ConfigSetting.FailOnStandardError);
-    this.testsBasePath = resolve(this.projectRootPath, config.get(ConfigSetting.TestsBasePath)!);
-    this.testFiles = config.get(ConfigSetting.TestFiles)!;
-    this.excludeFiles = toSingleUniqueArray(config.get(ConfigSetting.ExcludeFiles), ALWAYS_EXCLUDED_TEST_FILE_GLOBS);
+    this.testsBasePath = normalizePath(resolve(this.projectRootPath, config.get(ConfigSetting.TestsBasePath)!));
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort)!;
     this.logLevel = LogLevel[config.get<string>(ConfigSetting.LogLevel)!.toUpperCase() as LogLevelName];
     this.karmaLogLevel = config.get<string>(ConfigSetting.KarmaLogLevel)!.toUpperCase() as KarmaLogLevel;
     this.autoWatchEnabled = !!config.get(ConfigSetting.AutoWatchEnabled);
     this.autoWatchBatchDelay = config.get(ConfigSetting.AutoWatchBatchDelay);
     this.karmaReadyTimeout = config.get(ConfigSetting.KarmaReadyTimeout)!;
-    this.baseKarmaConfFilePath = resolve(__dirname, './karma.conf');
+    this.baseKarmaConfFilePath = normalizePath(resolve(__dirname, './karma.conf'));
     this.testGrouping = config.get(ConfigSetting.TestGrouping)!;
     this.flattenSingleChildFolders = !!config.get(ConfigSetting.FlattenSingleChildFolders);
     this.environment = this.getCombinedEnvironment(config);
@@ -95,6 +92,16 @@ export class ExtensionConfig implements Disposable {
     this.browser = asNonBlankStringOrUndefined(config.get(ConfigSetting.Browser));
     this.debuggerConfig = config.get(ConfigSetting.DebuggerConfig)!;
     this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
+    this.testFiles = config.get<string[]>(ConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
+
+    this.excludeFiles = toSingleUniqueArray(
+      config.get(ConfigSetting.ExcludeFiles),
+      ALWAYS_EXCLUDED_TEST_FILE_GLOBS
+    ).map(fileGlob => normalizePath(fileGlob));
+
+    this.userKarmaConfFilePath = normalizePath(
+      resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath)!)
+    );
 
     this.defaultDebugPort = this.getDefaultDebugPort(
       this.browser,
@@ -105,7 +112,7 @@ export class ExtensionConfig implements Disposable {
     );
 
     this.reloadOnChangedFiles = (config.get<string[]>(ConfigSetting.ReloadOnChangedFiles) || []).map(filePath =>
-      resolve(this.projectRootPath, filePath)
+      normalizePath(resolve(this.projectRootPath, filePath))
     );
   }
 

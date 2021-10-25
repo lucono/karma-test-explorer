@@ -6,7 +6,7 @@ import { Disposer } from '../util/disposable/disposer';
 import { FileHandler } from '../util/file-handler';
 import { DeferredPromise } from '../util/future/deferred-promise';
 import { Logger } from '../util/logging/logger';
-import { toPosixPath } from '../util/utils';
+import { normalizePath } from '../util/utils';
 import { TestFileParser, TestNodeInfo, TestNodeType, TestSuiteFileInfo } from './test-file-parser';
 
 export interface SpecLocation {
@@ -26,6 +26,7 @@ export interface SpecLocatorOptions extends globby.GlobbyOptions {
 }
 
 export class SpecLocator implements Disposable {
+  private readonly fileGlobs: string[];
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly specLocatorOptions: SpecLocatorOptions;
@@ -34,14 +35,15 @@ export class SpecLocator implements Disposable {
   private readonly disposables: Disposable[] = [];
 
   public constructor(
-    private readonly filePatterns: string[],
+    fileGlobs: string[],
     private readonly testFileParser: TestFileParser,
     private readonly fileHandler: FileHandler,
     private readonly logger: Logger,
     specLocatorOptions: SpecLocatorOptions = {}
   ) {
+    this.fileGlobs = fileGlobs.map(glob => normalizePath(glob));
     this.disposables.push(logger, fileHandler);
-    this.cwd = specLocatorOptions.cwd ?? process.cwd();
+    this.cwd = normalizePath(specLocatorOptions.cwd ?? process.cwd());
     this.specLocatorOptions = { ...specLocatorOptions, cwd: this.cwd };
     this.refreshFiles();
   }
@@ -50,23 +52,26 @@ export class SpecLocator implements Disposable {
     await this.refreshInProgress;
   }
 
-  public async refreshFiles(files?: string[]): Promise<void> {
-    const filesDescriptionList = JSON.stringify(files ?? this.filePatterns);
+  public async refreshFiles(files?: readonly string[]): Promise<void> {
+    const filePaths = files?.map(file => normalizePath(file));
+    const filesDescription = JSON.stringify(filePaths ?? this.fileGlobs);
 
     this.logger.debug(
-      () => `Received request to refresh ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`
+      () => `Received request to refresh ${filePaths ? filePaths.length : 'all'} spec file(s): ${filesDescription}`
     );
     const deferredRefreshCompletion = new DeferredPromise();
     const futureRefreshCompletion = deferredRefreshCompletion.promise();
 
     const doRefresh = async () => {
-      this.logger.debug(() => `Refreshing ${files ? files.length : 'all'} spec file(s): ` + `${filesDescriptionList}`);
-      this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(files)}`);
+      this.logger.debug(
+        () => `Refreshing ${filePaths ? filePaths.length : 'all'} spec file(s): ` + `${filesDescription}`
+      );
+      this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(filePaths)}`);
 
       const reloadStartTime = Date.now();
-      this.purgeFiles(files ?? undefined);
+      this.purgeFiles(filePaths ?? undefined);
 
-      const filesToRefresh = files ?? (await this.getAbsoluteFilesForGlobs(this.filePatterns));
+      const filesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
       let loadedFileCount: number = 0;
 
       for (const file of filesToRefresh) {
@@ -82,21 +87,21 @@ export class SpecLocator implements Disposable {
 
       this.logger.debug(
         () =>
-          `Refreshed ${loadedFileCount} spec ${files ? 'files' : 'globs'} ` +
-          `in ${reloadSecs.toFixed(2)} secs: ${filesDescriptionList}`
+          `Refreshed ${loadedFileCount} spec ${filePaths ? 'files' : 'globs'} ` +
+          `in ${reloadSecs.toFixed(2)} secs: ${filesDescription}`
       );
     };
 
     if (this.refreshInProgress) {
       this.logger.debug(
-        () => `Prior refresh still in progress - queing subsequent refresh for files: ${filesDescriptionList}`
+        () => `Prior refresh still in progress - queing subsequent refresh for files: ${filesDescription}`
       );
 
       this.refreshInProgress.then(async () => await doRefresh());
       this.refreshInProgress = futureRefreshCompletion;
     } else {
       this.logger.debug(
-        () => `No refresh currently in progress - will commence new refresh for files: ${filesDescriptionList}`
+        () => `No refresh currently in progress - will commence new refresh for files: ${filesDescription}`
       );
 
       this.refreshInProgress = futureRefreshCompletion;
@@ -106,10 +111,11 @@ export class SpecLocator implements Disposable {
   }
 
   public removeFiles(absoluteFilePaths: string[]) {
-    this.purgeFiles(absoluteFilePaths);
+    const normalizedPaths = absoluteFilePaths.map(filePath => normalizePath(filePath));
+    this.purgeFiles(normalizedPaths);
   }
 
-  private purgeFiles(absoluteFilePaths?: string[]) {
+  private purgeFiles(absoluteFilePaths?: readonly string[]) {
     if (!absoluteFilePaths) {
       this.fileInfoMap.clear();
       this.specFilesBySuite.clear();
@@ -123,9 +129,7 @@ export class SpecLocator implements Disposable {
       this.fileInfoMap.delete(fileToPurge);
 
       Array.from(this.specFilesBySuite.entries()).forEach((suiteToFilesEntry: [string, string[]]) => {
-        const suite = suiteToFilesEntry[0];
-        const files = suiteToFilesEntry[1];
-
+        const [suite, files] = suiteToFilesEntry;
         const fileIndex = files.indexOf(fileToPurge);
 
         if (fileIndex === -1) {
@@ -191,8 +195,8 @@ export class SpecLocator implements Disposable {
   }
 
   public isSpecFile(filePath: string): boolean {
-    const absoluteFilePath = resolve(this.cwd, filePath);
-    const absoluteFilePatterns = this.filePatterns.map(pattern => toPosixPath(join(this.cwd, pattern)));
+    const absoluteFilePath = normalizePath(resolve(this.cwd, filePath));
+    const absoluteFilePatterns = this.fileGlobs.map(pattern => normalizePath(join(this.cwd, pattern)));
 
     const isSpecFilePath = isMatch(absoluteFilePath, absoluteFilePatterns, {
       cwd: this.cwd,
@@ -206,7 +210,9 @@ export class SpecLocator implements Disposable {
   }
 
   private async getAbsoluteFilesForGlobs(fileGlobs: string[]): Promise<string[]> {
-    return await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions);
+    const filePaths = await this.fileHandler.resolveFileGlobs(fileGlobs, this.specLocatorOptions);
+    const normalizedPaths = filePaths.map(path => normalizePath(path));
+    return normalizedPaths;
   }
 
   private addSuiteFileToCache(suite: string[], filePath: string) {
@@ -220,6 +226,9 @@ export class SpecLocator implements Disposable {
       }
       const suiteFiles = this.specFilesBySuite.get(suiteKey)!;
       if (!suiteFiles.includes(filePath)) {
+        this.logger.debug(() => `Adding suite file to cache: ${filePath}`);
+        this.logger.trace(() => `Suite for cached file is: ${suiteKey}`);
+
         suiteFiles.push(filePath);
       }
     }

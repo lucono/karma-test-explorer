@@ -76,7 +76,11 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     } else if (isKarmaInstalledGlobally) {
       command = 'karma';
     } else {
-      throw new Error('Karma does not seem to be installed. Please install it and try again.');
+      throw new Error(
+        `Karma does not seem to be installed - ` +
+          `You may need to run 'npm install' in your project. ` +
+          `Please install it and try again.`
+      );
     }
 
     processArguments = [...processArguments, 'start', this.baseKarmaConfigFile, '--no-single-run'];

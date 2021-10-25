@@ -9,7 +9,6 @@ import {
   EventEmitter,
   FileChangeType,
   FileSystemWatcher,
-  Uri,
   workspace,
   WorkspaceFolder
 } from 'vscode';
@@ -51,8 +50,9 @@ import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
 import { DeferredPromise } from './util/future/deferred-promise';
 import { Execution } from './util/future/execution';
+import { LogLevel, LogLevelName } from './util/logging/log-level';
 import { SimpleLogger } from './util/logging/simple-logger';
-import { getCircularReferenceReplacer, toPosixPath } from './util/utils';
+import { getCircularReferenceReplacer, normalizePath } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
   private specLocator?: SpecLocator;
@@ -98,11 +98,6 @@ export class Adapter implements TestAdapter, Disposable {
       commands.registerCommand(`${ExtensionCommands.Reload}`, () => this.reload()),
       commands.registerCommand(`${ExtensionCommands.ExecuteFunction}`, (fn: () => void) => fn())
     );
-  }
-
-  private async reinit() {
-    await Disposer.dispose(this.initDisposables);
-    this.init();
   }
 
   private init() {
@@ -159,6 +154,11 @@ export class Adapter implements TestAdapter, Disposable {
       testResolver
     );
     this.initDisposables.push(this.testManager);
+  }
+
+  private async reinit() {
+    await Disposer.dispose(this.initDisposables);
+    this.init();
   }
 
   public async run(testIds: string[], isDebug: boolean = false): Promise<void> {
@@ -411,14 +411,15 @@ export class Adapter implements TestAdapter, Disposable {
 
   private createConfig(): ExtensionConfig {
     const config: ConfigStore = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, this.workspaceFolder.uri);
-    const configLogger = new SimpleLogger(this.logger, ExtensionConfig.name);
+    const logLevel = LogLevel[config.get<string>(ConfigSetting.LogLevel)!.toUpperCase() as LogLevelName];
+    const configLogger = new SimpleLogger(this.extensionOutputChannelLog, ExtensionConfig.name, logLevel);
     return new ExtensionConfig(config, this.workspaceFolder.uri.path, configLogger);
   }
 
   private createFileWatchers(): Disposable[] {
     this.logger.debug(() => 'Creating file watchers for monitored files');
-
     const reloadTriggerFiles = [...this.config.reloadOnChangedFiles];
+
     if (this.config.reloadOnKarmaConfigChange) {
       reloadTriggerFiles.push(this.config.userKarmaConfFilePath);
     }
@@ -428,17 +429,16 @@ export class Adapter implements TestAdapter, Disposable {
 
     const reloadTriggerFilesWatchers = this.registerFileHandler(
       reloadTriggerFiles,
-      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, fileUri => {
-        const filePath = fileUri.fsPath;
+      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, filePath => {
         this.logger.info(() => `Requesting adapter reset - monitored file changed: ${filePath}`);
         this.reset();
       })
     );
 
     this.logger.debug(() => 'Creating file watchers for test file changes');
+    const testFileGlobs = this.config.testFiles;
 
-    const reloadTestFilesWatchers = this.registerFileHandler(this.config.testFiles, async (fileUri, changeType) => {
-      const changedTestFile = fileUri.fsPath;
+    const reloadTestFilesWatchers = this.registerFileHandler(testFileGlobs, async (changedTestFile, changeType) => {
       if (!this.specLocator?.isSpecFile(changedTestFile)) {
         this.logger.warn(() => `Expected changed file to be spec file but it is not: ${changedTestFile}`);
         return;
@@ -466,14 +466,14 @@ export class Adapter implements TestAdapter, Disposable {
 
   private registerFileHandler(
     filePatterns: readonly string[],
-    handler: (fileUri: Uri, changeType: FileChangeType) => void
+    handler: (filePath: string, changeType: FileChangeType) => void
   ): FileSystemWatcher[] {
     const fileWatchers: FileSystemWatcher[] = [];
 
-    this.logger.debug(() => `Registering file handler for files: ${filePatterns}`);
+    this.logger.debug(() => `Registering file handler for files: ${JSON.stringify(filePatterns, null, 2)}`);
 
     for (const fileOrPattern of filePatterns) {
-      const absoluteFileOrPattern = toPosixPath(resolve(this.config.projectRootPath, fileOrPattern));
+      const absoluteFileOrPattern = normalizePath(resolve(this.config.projectRootPath, fileOrPattern));
       const fileWatcher = workspace.createFileSystemWatcher(absoluteFileOrPattern);
       fileWatchers.push(fileWatcher);
 
@@ -484,9 +484,9 @@ export class Adapter implements TestAdapter, Disposable {
       );
 
       this.disposables.push(
-        fileWatcher.onDidChange(fileUri => handler(fileUri, FileChangeType.Changed)),
-        fileWatcher.onDidCreate(fileUri => handler(fileUri, FileChangeType.Created)),
-        fileWatcher.onDidDelete(fileUri => handler(fileUri, FileChangeType.Deleted))
+        fileWatcher.onDidChange(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Changed)),
+        fileWatcher.onDidCreate(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Created)),
+        fileWatcher.onDidDelete(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Deleted))
       );
     }
     return fileWatchers;

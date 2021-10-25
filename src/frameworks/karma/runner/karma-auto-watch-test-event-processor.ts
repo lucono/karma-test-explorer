@@ -14,8 +14,6 @@ import { TestState } from '../../../core/base/test-state';
 import { TestStatus } from '../../../core/base/test-status';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { Execution } from '../../../util/future/execution';
 import { Logger } from '../../../util/logging/logger';
 import { KarmaTestEventProcessor, TestEventProcessingResults } from './karma-test-event-processor';
 import { SpecCompleteResponse } from './spec-complete-response';
@@ -24,8 +22,6 @@ import { TestDiscoveryProcessor } from './test-discovery-processor';
 export class KarmaAutoWatchTestEventProcessor {
   private skippedSpecIds?: string[];
   private disposables: Disposable[] = [];
-  private deferredProcessingExecution?: DeferredExecution;
-  private futureProcessingResults?: Promise<TestEventProcessingResults>;
 
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
@@ -39,56 +35,57 @@ export class KarmaAutoWatchTestEventProcessor {
     this.disposables.push(logger);
   }
 
-  public beginProcessing(): Execution {
+  public async beginProcessing(): Promise<void> {
     this.logger.debug(() => 'Beginning ambient test event processing');
     this.concludeProcessing();
 
     const testRunStartedEvent: TestRunStartedEvent = { type: 'started', tests: [] };
     this.testRunEventEmitter.fire(testRunStartedEvent);
 
-    const deferredProcessingExecution = new DeferredExecution();
-    this.deferredProcessingExecution = deferredProcessingExecution;
-    const processingExecution = deferredProcessingExecution.execution();
-
-    deferredProcessingExecution.start();
     this.skippedSpecIds = [];
 
-    this.futureProcessingResults = this.testEventProcessor.processTestEvents(processingExecution, [], {
+    const futureProcessingResults = this.testEventProcessor.processTestEvents([], {
       emitTestEvents: [TestStatus.Success, TestStatus.Failed],
       filterTestEvents: [TestStatus.Failed],
       emitTestStats: false
     });
-    return processingExecution;
+
+    let processingResults: TestEventProcessingResults | undefined;
+
+    try {
+      processingResults = await futureProcessingResults;
+    } catch (error) {
+      this.logger.warn(() => `Aborting current ambient event processing - ${error ?? '<No message>'}`);
+    }
+
+    this.concludeCurrentProcessing();
+
+    if (processingResults) {
+      this.emitTestLoadEvents(processingResults.processedSpecs);
+      this.emitFilteredTestEvents(processingResults.filteredEvents);
+    } else {
+      processingResults = { processedSpecs: [], filteredEvents: [] };
+    }
   }
 
-  public processTestErrorEvent(message?: string): void {
+  public processTestErrorEvent(message: string): void {
     this.logger.debug(() => `Aborting current ambient event processing - ${message ?? '<No message>'}`);
 
     if (!this.testEventProcessor.isProcessing()) {
       return;
     }
-    this.concludeCurrentProcessing();
+    this.testEventProcessor.processTestErrorEvent(message);
   }
 
   public async concludeProcessing(): Promise<void> {
     if (!this.testEventProcessor.isProcessing()) {
       return;
     }
-    const futureProcessingResults = this.futureProcessingResults;
-    this.concludeCurrentProcessing();
-
-    const processingResults = await futureProcessingResults;
-
-    if (processingResults) {
-      this.emitTestLoadEvents(processingResults.processedSpecs);
-      this.emitFilteredTestEvents(processingResults.filteredEvents);
-    }
+    this.testEventProcessor.concludeProcessing();
   }
 
   private concludeCurrentProcessing(): void {
     this.logger.debug(() => 'Concluding ambient test event processing');
-    this.deferredProcessingExecution?.end();
-
     this.logger.debug(() => `Retiring ${this.skippedSpecIds?.length ?? 0} skipped ambient test ids`);
     this.logger.trace(() => `Skipped ambient test ids to retire: ${JSON.stringify(this.skippedSpecIds)}`);
     this.emitRetireEvent(this.skippedSpecIds);
@@ -97,8 +94,6 @@ export class KarmaAutoWatchTestEventProcessor {
     this.testRunEventEmitter.fire(testRunFinishedEvent);
 
     this.skippedSpecIds = undefined;
-    this.deferredProcessingExecution = undefined;
-    this.futureProcessingResults = undefined;
     this.logger.debug(() => 'Done concluding ambient test event processing');
   }
 

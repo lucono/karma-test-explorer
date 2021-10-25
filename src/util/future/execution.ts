@@ -1,13 +1,13 @@
 import RichPromise from 'bluebird';
 
-export class Execution<S = void, T = void> {
-  public constructor(private readonly futureStart: RichPromise<S>, private readonly futureEnd: RichPromise<T>) {}
+export class Execution<S = void, E = void> {
+  public constructor(private readonly futureStart: RichPromise<S>, private readonly futureEnd: RichPromise<E>) {}
 
   public started(): RichPromise<S> {
     return this.futureStart;
   }
 
-  public ended(): RichPromise<T> {
+  public ended(): RichPromise<E> {
     return this.futureEnd;
   }
 

@@ -1,12 +1,15 @@
+import RichPromise from 'bluebird';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestRunExecutor } from '../../../api/test-run-executor';
 import { TestRunner } from '../../../api/test-runner';
+import { KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
 import { TestFramework, TestSet } from '../../../core/base/test-framework';
 import { AnyTestInfo, TestSuiteType, TestType } from '../../../core/base/test-infos';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
+import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
+import { generateRandomId } from '../../../util/utils';
 import { KarmaTestEventListener } from './karma-test-event-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { TestDiscoveryProcessor } from './test-discovery-processor';
@@ -25,23 +28,25 @@ export class KarmaTestRunner implements TestRunner {
   }
 
   public async discoverTests(karmaPort: number): Promise<TestSuiteInfo> {
+    const testRunId = generateRandomId();
     const testDiscoverySelector: string = this.testFramework.getTestSelector().testDiscovery();
-    const clientArgs: string[] = [`--grep=${testDiscoverySelector}`];
+    const clientArgs: string[] = [`--grep=${testDiscoverySelector}`, `${KARMA_TEST_RUN_ID_FLAG}=${testRunId}`];
 
-    const deferredTestDiscoveryExecution = new DeferredExecution();
+    const deferredTestDiscovery = new DeferredPromise<SpecCompleteResponse[]>();
+    const futureTestDiscovery = deferredTestDiscovery.promise();
 
-    const discoveredTestCapture: Promise<SpecCompleteResponse[]> = this.karmaEventListener.listenForTestDiscovery(
-      deferredTestDiscoveryExecution.execution()
+    const testDiscoveryProcessingExecution = this.karmaEventListener.listenForTestDiscovery(testRunId);
+
+    this.logger.debug(() => `Executing test discovery run id: ${testRunId}`);
+    const testDiscoveryExecution = this.testRunExecutor.executeTestRun(karmaPort, clientArgs);
+
+    RichPromise.any([testDiscoveryExecution.failed(), testDiscoveryProcessingExecution.failed()]).then(failureReason =>
+      deferredTestDiscovery.reject(failureReason)
     );
 
-    deferredTestDiscoveryExecution.start();
-    const futureTestDiscoveryCompletion = this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
+    testDiscoveryProcessingExecution.ended().then(discoveredSpecs => deferredTestDiscovery.fulfill(discoveredSpecs));
 
-    futureTestDiscoveryCompletion
-      .then(() => deferredTestDiscoveryExecution.end())
-      .catch(reason => deferredTestDiscoveryExecution.fail(reason));
-
-    const discoveredSpecs: SpecCompleteResponse[] = await discoveredTestCapture;
+    const discoveredSpecs: SpecCompleteResponse[] = await futureTestDiscovery;
 
     this.logger.debug(() => 'Processing specs from test discovery');
     const discoveredTests: TestSuiteInfo = this.testDiscoveryProcessor.processTests(discoveredSpecs);
@@ -55,7 +60,6 @@ export class KarmaTestRunner implements TestRunner {
     );
 
     const runAllTests = tests.length === 0;
-    const clientArgs: string[] = [];
     let testList: (TestInfo | TestSuiteInfo)[];
     let aggregateTestPattern: string;
 
@@ -79,25 +83,27 @@ export class KarmaTestRunner implements TestRunner {
       aggregateTestPattern = this.testFramework.getTestSelector().testSet(testSet);
     }
 
-    clientArgs.push(`--grep=${aggregateTestPattern}`);
-
+    const testRunId = generateRandomId();
+    const clientArgs = [`--grep=${aggregateTestPattern}`, `${KARMA_TEST_RUN_ID_FLAG}=${testRunId}`];
     const testNames: string[] = testList.map(test => test.fullName);
-    const deferredTestRunExecution = new DeferredExecution();
 
-    const futureTestRunResultProcessing = this.karmaEventListener.listenForTestRun(
-      deferredTestRunExecution.execution(),
-      testNames
-    );
+    const deferredTestRun = new DeferredPromise<void>();
+    const futureTestRunCompletion = deferredTestRun.promise();
 
-    deferredTestRunExecution.start();
-    const futureTestRunCompletion = this.testRunExecutor.executeTestRun(karmaPort, clientArgs).ended();
+    const testRunProcessingExecution = this.karmaEventListener.listenForTestRun(testRunId, testNames);
 
-    futureTestRunCompletion.then(
-      () => deferredTestRunExecution.end(),
-      reason => deferredTestRunExecution.fail(`Test execution failed with error: ${reason}`)
-    );
+    this.logger.debug(() => `Executing test execution run id: ${testRunId}`);
+    const testRunExecution = this.testRunExecutor.executeTestRun(karmaPort, clientArgs);
 
-    await futureTestRunResultProcessing;
+    RichPromise.any([testRunExecution.failed(), testRunProcessingExecution.failed()]).then(failureReason => {
+      deferredTestRun.reject(failureReason);
+    });
+
+    testRunProcessingExecution.ended().then(() => {
+      deferredTestRun.fulfill();
+    });
+
+    await futureTestRunCompletion;
   }
 
   private toRunnableTests(tests: AnyTestInfo[]): (TestInfo | TestSuiteInfo)[] {

@@ -5,6 +5,7 @@ import { Disposable } from './disposable/disposable';
 import { Disposer } from './disposable/disposer';
 import { DeferredPromise } from './future/deferred-promise';
 import { Logger } from './logging/logger';
+import { normalizePath } from './utils';
 
 const DEFAULT_GLOB_OPTIONS: globby.GlobbyOptions = {
   unique: true,
@@ -67,7 +68,7 @@ export class FileHandler implements Disposable {
 
   public async resolveFileGlobs(filePatterns: string[], globOptions: globby.GlobbyOptions = {}): Promise<string[]> {
     const searchOptions = { ...DEFAULT_GLOB_OPTIONS, ...this.fileHandlerOptions, ...globOptions };
-    const files = await globby(filePatterns, searchOptions);
+    const files = (await globby(filePatterns, searchOptions)).map(file => normalizePath(file));
 
     this.logger.debug(() => `Resolved ${files.length} file(s) from file patterns: ${JSON.stringify(filePatterns)}`);
 

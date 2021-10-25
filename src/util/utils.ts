@@ -26,7 +26,14 @@ export const stripJsComments = (content: string): string => {
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
 export const escapeForRegExp = (stringValue: string) => stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export const toPosixPath = (filePath: string) => filePath.split(path.sep).join(path.posix.sep);
+export const normalizePath = (filePath: string): string => {
+  return process.platform === 'win32'
+    ? filePath
+        .replace(/^[\/]?([A-Za-z]:)/, (_, drive) => drive.toUpperCase())
+        .split(path.sep)
+        .join(path.posix.sep)
+    : filePath;
+};
 
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
 export const getCircularReferenceReplacer = () => {

@@ -26,6 +26,8 @@ export class DeferredExecution<S = void, T = void> {
   public end(value: T) {
     if (this.executionInstance.isStarted()) {
       this.deferredExecutionEnd.fulfill(value);
+    } else {
+      throw new Error('Attempt to end execution before starting it');
     }
   }
 

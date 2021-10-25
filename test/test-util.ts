@@ -1,3 +1,4 @@
+import { posix, sep as pathSeparator } from 'path';
 import { AnyTestInfo } from '../src/core/base/test-infos';
 import { ExtensionConfig } from '../src/core/config/extension-config';
 
@@ -5,9 +6,11 @@ export type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
 export const asUnixStylePath = <T extends string | undefined>(path: T): T => {
   const isWindowsOs = process.platform === 'win32';
-  const osAgnosticPath = isWindowsOs ? path?.replace(/^[a-zA-Z]:/, '').replace(/\\/g, '/') : path;
-  return osAgnosticPath as T;
+  const unixStylePath = isWindowsOs ? path?.replace(/^[a-zA-Z]:/, '').replace(/\\/g, '/') : path;
+  return unixStylePath as T;
 };
+
+export const withUnixStyleSeparator = (filePath: string) => filePath.split(pathSeparator).join(posix.sep);
 
 export const asExtensionConfigWithUnixStylePaths = (extensionConfig: ExtensionConfig): ExtensionConfig => {
   const config = extensionConfig as Writeable<ExtensionConfig>;
