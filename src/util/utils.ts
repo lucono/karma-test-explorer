@@ -73,3 +73,7 @@ export const getValueTypeReplacer = () => {
   };
   return replacer;
 };
+
+export const maybeEscapePath = (path: string) => {
+  return path.includes(' ') && !path.includes('"') ? `"${path}"` : path;
+};

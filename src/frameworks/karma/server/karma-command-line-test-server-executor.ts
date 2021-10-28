@@ -12,6 +12,7 @@ import {
   CommandLineProcessHandlerOptions
 } from '../../../util/process/command-line-process-handler';
 import { CommandLineProcessLog } from '../../../util/process/command-line-process-log';
+import { maybeEscapePath } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 
 export interface KarmaCommandLineTestServerExecutorOptions {
@@ -83,7 +84,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       );
     }
 
-    processArguments = [...processArguments, 'start', this.baseKarmaConfigFile, '--no-single-run'];
+    processArguments = [...processArguments, 'start', maybeEscapePath(this.baseKarmaConfigFile), '--no-single-run'];
 
     const commandLineProcessLogger = new SimpleLogger(
       this.logger,
