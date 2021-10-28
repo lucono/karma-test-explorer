@@ -72,7 +72,7 @@ export class KarmaConfigurator {
     config.retryLimit = 3;
 
     config.client ??= {};
-    config.client.clearContext = true;
+    config.client.clearContext = false;
   }
 
   public dontLoadOriginalConfigurationFileIntoBrowser(config: KarmaConfig, originalConfigPath: string) {
