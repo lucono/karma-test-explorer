@@ -5,7 +5,7 @@
   "icon": "docs/img/extension-icon-128.png",
   "author": "Lucas Ononiwu",
   "publisher": "lucono",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "preview": true,
   "license": "MIT",
   "homepage": "https://github.com/lucono/karma-test-explorer",
@@ -48,10 +48,10 @@
   },
   "dependencies": {
     "bluebird": "^3.7.2",
-    "cross-spawn": "^7.0.0",
     "dotenv": "^8.2.0",
     "dotenv-expand": "5.1.0",
     "express": "^4.17.1",
+    "get-installed-path": "^4.0.8",
     "globby": "11.0.4",
     "is-docker": "^2.2.1",
     "karma": "^6.3.2",
@@ -71,8 +71,8 @@
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.36",
-    "@types/cross-spawn": "^6.0.2",
     "@types/express": "~4.17.13",
+    "@types/get-installed-path": "^4.0.1",
     "@types/glob": "^7.1.4",
     "@types/jest": "^27.0.2",
     "@types/jest-when": "^2.7.3",
@@ -81,7 +81,7 @@
     "@types/node": "^14.14.31",
     "@types/semver": "~6.0.2",
     "@types/throttle-debounce": "^2.1.0",
-    "@types/vscode": "^1.60.0",
+    "@types/vscode": "^1.22.0",
     "@typescript-eslint/eslint-plugin": "^4.32.0",
     "@typescript-eslint/parser": "^4.32.0",
     "esbuild": "^0.13.3",
@@ -96,16 +96,27 @@
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
-    "vsce": "^1.100.2"
+    "vsce": "^1.102.0"
   },
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.22.0"
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer"
   ],
   "activationEvents": [
-    "*"
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onStartupFinished",
+    "onView:test-explorer",
+    "onCommand:test-explorer.reload",
+    "onCommand:test-explorer.rerun",
+    "onCommand:test-explorer.redebug",
+    "onCommand:test-explorer.cancel",
+    "onCommand:test-explorer.run-all",
+    "onCommand:test-explorer.run-file",
+    "onCommand:test-explorer.run-test-at-cursor",
+    "onCommand:test-explorer.debug-test-at-cursor"
   ],
   "contributes": {
     "configuration": {
@@ -149,8 +160,14 @@
             "Test runs are triggered using the Karma Http interface"
           ]
         },
+        "karmaTestExplorer.nonHeadlessModeEnabled": {
+          "description": "Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
         "karmaTestExplorer.failOnStandardError": {
-          "description": "Treats any errors written to stderr as a failure. This can sometimes be useful for uncovering testing issues",
+          "description": "Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues",
           "type": "boolean",
           "scope": "resource",
           "default": false
@@ -279,6 +296,27 @@
             "Log only errors",
             "Log only errors and warnings",
             "Log errors, warnings and info level messages",
+            "More detailed logging which includes debug level information"
+          ]
+        },
+        "karmaTestExplorer.karmaReporterLogLevel": {
+          "description": "Sets the level of logging detail for the Karma Test Explorer reporter which logs additional details to the Karma server log related to the processing of test and browser events in Karma. This can be helpful when troubleshooting issues with how test and browser events are being processed in Karma and exchanged with the Karma Test Explorer. Set this to `disable` in order to not log any additional output from the reporter into the Karma server logs",
+          "type": "string",
+          "scope": "resource",
+          "default": "disable",
+          "enum": [
+            "disable",
+            "error",
+            "warn",
+            "info",
+            "debug",
+            "trace"
+          ],
+          "enumDescriptions": [
+            "Disable logging",
+            "Log only errors",
+            "Log only errors and warnings",
+            "Log errors, warnings and info level messages",
             "More detailed logging which includes debug level information",
             "Very detailed logging which includes very low level information. This logging level is very verbose"
           ]
@@ -330,8 +368,11 @@
             "base"
           ],
           "default": {
-            "base": "ChromeHeadless",
+            "base": "Chrome",
             "flags": [
+              "--headless",
+              "--disable-gpu",
+              "--disable-dev-shm-usage",
               "--remote-debugging-port=9222"
             ]
           }

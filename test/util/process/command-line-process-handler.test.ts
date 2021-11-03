@@ -1,12 +1,11 @@
-import { ChildProcess } from 'child_process';
-import spawn from 'cross-spawn';
+import { ChildProcess, spawn } from 'child_process';
 import { mock } from 'jest-mock-extended';
 import treeKill from 'tree-kill';
 import { Logger } from '../../../src/util/logging/logger';
 import { CommandLineProcessHandler } from '../../../src/util/process/command-line-process-handler';
 import { Writeable } from '../../test-util';
 
-jest.mock('cross-spawn');
+jest.mock('child_process');
 jest.mock('tree-kill');
 
 const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;

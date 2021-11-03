@@ -34,6 +34,7 @@ export type KarmaFactoryConfig = Pick<
   | 'environment'
   | 'failOnStandardError'
   | 'karmaLogLevel'
+  | 'karmaReporterLogLevel'
   | 'karmaProcessCommand'
   | 'projectRootPath'
   | 'testTriggerMethod'
@@ -129,7 +130,8 @@ export class KarmaFactory implements TestFactory, Disposable {
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.factoryConfig.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.factoryConfig.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.factoryConfig.customLauncher),
-      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.factoryConfig.karmaLogLevel}`
+      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.factoryConfig.karmaLogLevel}`,
+      [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.factoryConfig.karmaReporterLogLevel}`
     };
 
     const options: KarmaCommandLineTestServerExecutorOptions = {

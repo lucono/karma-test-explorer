@@ -41,6 +41,10 @@ interface TestCaptureSession {
   readonly testRunEnded: (testRunId?: string) => void;
 }
 
+interface KarmaTestEventListenerOptions {
+  readonly karmaReadyTimeout?: number;
+}
+
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaTestEventListener implements Disposable {
@@ -54,10 +58,11 @@ export class KarmaTestEventListener implements Disposable {
   public constructor(
     private readonly testEventProcessor: KarmaTestEventProcessor,
     private readonly watchModeTestEventProcessor: KarmaAutoWatchTestEventProcessor | undefined,
-    karmaReadyTimeout: number,
     private readonly notifications: Notifications,
-    private readonly logger: SimpleLogger
+    private readonly logger: SimpleLogger,
+    listenerOptions: KarmaTestEventListenerOptions = {}
   ) {
+    const karmaReadyTimeout = listenerOptions.karmaReadyTimeout ?? 0;
     this.karmaReadyTimeout = karmaReadyTimeout > 0 ? karmaReadyTimeout : KARMA_READY_DEFAULT_TIMEOUT;
     this.disposables.push(logger);
   }
@@ -412,7 +417,7 @@ export class KarmaTestEventListener implements Disposable {
       if (!eventProcessor?.isProcessing()) {
         this.logger.debug(
           () =>
-            `Not processing received spec id '${event.results?.id ?? '<none>'}' - ` +
+            `Not processing received spec id '${event.results?.id || '<none>'}' - ` +
             `Neither the test run nor watch mode test processors are currently active`
         );
         return;
@@ -421,13 +426,18 @@ export class KarmaTestEventListener implements Disposable {
       const results: LightSpecCompleteResponse = event.results!;
       const fullName: string = [...results.suite, results.description].join(' ');
       const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
-      const specResults: SpecCompleteResponse = { ...results, id: testId, fullName };
-      const testStatus: TestStatus = specResults.status;
+      const testStatus: TestStatus = results.status;
       const browserName = `${event.browser?.name ?? '(Unknwon browser)'}`;
+
+      const specResults: SpecCompleteResponse = {
+        ...results,
+        id: testId,
+        fullName
+      };
 
       this.logger.debug(
         () =>
-          `Processing received spec id '${event.results?.id ?? '<none>'}' ` +
+          `Processing received spec id '${specResults.id || '<none>'}' ` +
           `with test processor: ${eventProcessor.constructor.name}`
       );
 
@@ -465,6 +475,11 @@ export class KarmaTestEventListener implements Disposable {
           : undefined;
 
       if (errorMsg) {
+        this.logger.warn(
+          () =>
+            `${errorMsg} (Exit code: ${event.exitCode ?? '<unknown>'}) - ` +
+            `${event.error?.split('\n')[0] || '<no message>'}`
+        );
         this.processTestErrorEvent(errorMsg);
         return;
       }

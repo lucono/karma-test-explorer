@@ -1,6 +1,4 @@
-import { existsSync } from 'fs';
 import { join } from 'path';
-import { silent } from 'resolve-global';
 import { ServerStopExecutor, TestServerExecutor } from '../../api/test-server-executor';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
@@ -12,6 +10,7 @@ import {
   CommandLineProcessHandlerOptions
 } from '../../util/process/command-line-process-handler';
 import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
+import { getPackageInstallPathForProjectRoot } from '../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
 import { AngularProject } from './angular-project';
 
@@ -62,27 +61,25 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const angularProcessCommand = this.options.angularProcessCommand;
-    const localAngularPath = join(this.workspaceRootPath, 'node_modules', '@angular', 'cli', 'bin', 'ng');
-    const isAngularInstalledLocally = existsSync(localAngularPath);
-    const isAngularInstalledGlobally = silent('@angular/cli') !== undefined;
+    const angularInstallPath = getPackageInstallPathForProjectRoot('@angular/cli', this.workspaceRootPath);
+    const angularBinaryPath = angularInstallPath ? join(angularInstallPath, 'bin', 'ng') : undefined;
+
+    if (!angularBinaryPath) {
+      throw new Error(
+        `Angular CLI does not seem to be installed - ` +
+          `You may need to run 'npm install' in your project. ` +
+          `Please install it and try again.`
+      );
+    }
 
     let command: string;
     let processArguments: string[] = [];
 
-    if (angularProcessCommand) {
-      command = angularProcessCommand;
-    } else if (isAngularInstalledLocally) {
-      command = 'npx';
-      processArguments.push('ng');
-    } else if (isAngularInstalledGlobally) {
-      command = 'ng';
+    if (this.options.angularProcessCommand) {
+      command = this.options.angularProcessCommand;
     } else {
-      throw new Error(
-        `@angular/cli does not seem to be installed - ` +
-          `You may need to run 'npm install' in your project. ` +
-          `Please install it and try again.`
-      );
+      command = process.execPath;
+      processArguments = [angularBinaryPath];
     }
 
     processArguments = [

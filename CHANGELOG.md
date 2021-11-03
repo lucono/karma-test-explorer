@@ -18,7 +18,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Changed
 
-- Test duplication is only now reported for tests but no longer reported for test suites because test suites are simply containers for tests, so that duplicated test suites are themselves not an indication that actual tests have also been duplicated
+- Test duplication is no longer reported for test suites because test suites are simply containers for tests, so that duplicated test suites are themselves not an indication of actual test duplication
 
 ### Fixed
 - Fixed an issue where test duplicate detection was producing false-positives on Windows (thanks [@nwash57](https://github.com/nwash57)!)

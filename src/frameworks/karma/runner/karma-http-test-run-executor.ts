@@ -6,7 +6,7 @@ import { DeferredExecution } from '../../../util/future/deferred-execution';
 import { Execution } from '../../../util/future/execution';
 import { Logger } from '../../../util/logging/logger';
 
-const defaultRunOptions = {
+const DEFAULT_RUN_OPTIONS = {
   refresh: true,
   urlRoot: '/run',
   hostname: 'localhost',
@@ -26,12 +26,12 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
     const karmaRequestData = {
       // See: https://github.com/karma-runner/karma/blob/94cf15e8fa4420c8716998873b77f0c4f59b9e94/lib/runner.js#L100-L105
       args: clientArgs,
-      refresh: defaultRunOptions.refresh
+      refresh: DEFAULT_RUN_OPTIONS.refresh
     };
 
     const httpRequestOptions: RequestOptions = {
-      hostname: defaultRunOptions.hostname,
-      path: defaultRunOptions.urlRoot,
+      hostname: DEFAULT_RUN_OPTIONS.hostname,
+      path: DEFAULT_RUN_OPTIONS.urlRoot,
       port: karmaPort,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }

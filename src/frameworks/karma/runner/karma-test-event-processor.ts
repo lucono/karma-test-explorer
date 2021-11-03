@@ -1,3 +1,4 @@
+import { isAbsolute, posix } from 'path';
 import { EventEmitter } from 'vscode';
 import { TestDecoration, TestEvent, TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestResultEvent } from '../../../core/base/test-events';
@@ -7,12 +8,14 @@ import { TestResolver } from '../../../core/base/test-resolver';
 import { TestResults } from '../../../core/base/test-results';
 import { TestState } from '../../../core/base/test-state';
 import { TestStatus } from '../../../core/base/test-status';
+import { SpecLocation, SpecLocator } from '../../../core/spec-locator';
 import { SuiteAggregateTestResultProcessor } from '../../../core/suite-aggregate-test-result-processor';
 import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
+import { escapeForRegExp } from '../../../util/utils';
 import { TestCapture } from './karma-test-event-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { SpecResponseToTestSuiteInfoMapper } from './spec-response-to-test-suite-info-mapper';
@@ -52,6 +55,7 @@ export class KarmaTestEventProcessor {
     private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
+    private readonly specLocator: SpecLocator,
     private readonly testGrouping: TestGrouping,
     private readonly projectRootPath: string,
     private readonly testsBasePath: string,
@@ -123,7 +127,7 @@ export class KarmaTestEventProcessor {
     this.concludeProcessing();
   }
 
-  public processTestResultEvent(testResult: SpecCompleteResponse) {
+  public processTestResultEvent(testResult: Readonly<SpecCompleteResponse>) {
     this.logger.debug(() => `Request to process test result event having status: ${testResult.status}`);
     this.logger.trace(() => `Test result event for processing has Id: ${testResult.id}`);
 
@@ -187,7 +191,7 @@ export class KarmaTestEventProcessor {
     );
   }
 
-  private emitTestResultEvent(testResult: SpecCompleteResponse) {
+  private emitTestResultEvent(testResult: Readonly<SpecCompleteResponse>) {
     const testId = testResult.id;
 
     if (!this.currentProcessingInfo?.eventProcessingOptions.emitTestEvents?.includes(testResult.status)) {
@@ -196,7 +200,6 @@ export class KarmaTestEventProcessor {
           `Skipping test result event for test id ${testId} - ` +
           `Emit events not enabled for test status ${testResult.status}`
       );
-
       return;
     }
     this.logger.debug(() => `Processing test result event for test id: ${testId}`);
@@ -215,27 +218,47 @@ export class KarmaTestEventProcessor {
         ? 'Skipped'
         : '';
 
-    let message: string | undefined;
-    let decorations: TestDecoration[] | undefined;
+    let relativeTestLocation: SpecLocation | undefined =
+      test?.file && test?.line !== undefined
+        ? { file: posix.relative(this.projectRootPath, test.file), line: test.line }
+        : undefined;
 
-    if (testResult.failureMessages.length > 0) {
-      message = this.createErrorMessage(testResult);
-      decorations = this.createDecorations(testResult) ?? [];
+    this.logger.debug(
+      () =>
+        `Relative test location from loaded test: ` +
+        `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
+    );
 
-      if (decorations.length === 0 && test?.line !== undefined) {
-        const { file, line } = test;
-        const hover = `${testResult.fullName} \n-------- Failure: --------\n${message || 'Failed'}`;
+    if (!relativeTestLocation) {
+      const candidateSpecLocations = this.specLocator.getSpecLocations(testResult.suite, testResult.description, true);
+      relativeTestLocation = candidateSpecLocations.length === 1 ? candidateSpecLocations[0] : relativeTestLocation;
 
-        decorations = [
-          {
-            line,
-            file,
-            message: message || 'Failed',
-            hover: `\`${hover.replace(/`/g, '\\`')}\``
-          }
-        ];
-      }
+      this.logger.debug(
+        () =>
+          `Relative test location from ${candidateSpecLocations.length} resulting candidates from lookup: ` +
+          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
+      );
     }
+
+    if (!relativeTestLocation && testResult.filePath && testResult.line !== undefined) {
+      relativeTestLocation = { file: posix.relative(this.projectRootPath, testResult.filePath), line: testResult.line };
+
+      this.logger.debug(
+        () =>
+          `Relative test location from karma spec response: ` +
+          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
+      );
+    }
+
+    const testResultForErrorReporting: SpecCompleteResponse = {
+      ...testResult,
+      filePath: relativeTestLocation?.file,
+      line: relativeTestLocation?.line,
+      failureMessages: testResult.failureMessages.map(message => decodeURIComponent(message))
+    };
+
+    const failureMessage = this.createFailureMessage(testResultForErrorReporting);
+    const failureDecorations = this.createTestFailureDecorations(testResultForErrorReporting);
 
     if (test) {
       this.updateTestWithResultData(test, testResult);
@@ -246,8 +269,8 @@ export class KarmaTestEventProcessor {
       test: test ?? testId,
       state: testState,
       tooltip: `${testResult.fullName}`,
-      message,
-      decorations
+      message: failureMessage,
+      decorations: failureDecorations
     };
 
     if (this.currentProcessingInfo.eventProcessingOptions.emitTestStats) {
@@ -330,7 +353,7 @@ export class KarmaTestEventProcessor {
     test.label = testResult.description || test.label;
     test.fullName = testResult.fullName || test.fullName;
     test.file = testResult.filePath || test.file;
-    test.line = testResult.line || test.line;
+    test.line = testResult.line ?? test.line;
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {
@@ -344,17 +367,20 @@ export class KarmaTestEventProcessor {
     }
   }
 
-  private createErrorMessage(results: SpecCompleteResponse): string {
-    const failureMessage = results.failureMessages[0];
+  private createFailureMessage(testResult: SpecCompleteResponse): string | undefined {
+    if (testResult.failureMessages.length === 0) {
+      return;
+    }
+    const failureMessage = testResult.failureMessages[0] || 'Failed';
     const message = failureMessage.split('\n')[0];
 
-    if (!results.filePath) {
+    if (!testResult.filePath) {
       return message;
     }
 
     try {
       const errorLineAndColumnCollection = failureMessage
-        .substring(failureMessage.indexOf(results.filePath))
+        .substring(failureMessage.indexOf(testResult.filePath))
         .split(':');
       const lineNumber = parseInt(errorLineAndColumnCollection[1], undefined);
       const columnNumber = parseInt(errorLineAndColumnCollection[2], undefined);
@@ -369,31 +395,73 @@ export class KarmaTestEventProcessor {
     }
   }
 
-  private createDecorations(results: SpecCompleteResponse): TestDecoration[] | undefined {
-    if (!results.filePath) {
-      return undefined;
+  private createTestFailureDecorations(testResult: SpecCompleteResponse): TestDecoration[] | undefined {
+    if (testResult.failureMessages.length === 0) {
+      return;
     }
+    this.logger.debug(() => `Creating detailed test failure decorations for test id: ${testResult.id}`);
 
-    try {
-      const decorations = results.failureMessages.map((failureMessage: string) => {
-        const errorLineAndColumnCollection = failureMessage
-          .substring(failureMessage.indexOf(results.filePath as string))
-          .split(':');
-        const lineNumber = parseInt(errorLineAndColumnCollection[1], undefined);
-        return {
-          line: lineNumber,
-          message: failureMessage.split('\n')[0]
-        };
-      });
+    let failureDecorations: TestDecoration[] = [];
+    const testDescriptionHoverHeader = `'${testResult.fullName.replace(/'/g, "\\'")}'\n---`;
+    const relativeFilePath = testResult.filePath && !isAbsolute(testResult.filePath) ? testResult.filePath : undefined;
 
-      if (decorations.some(x => isNaN(x.line))) {
-        return undefined;
+    this.logger.debug(() => `Using relative file path for test id '${testResult.id}': ${relativeFilePath || '<none>'}`);
+
+    if (relativeFilePath) {
+      try {
+        const decorations = testResult.failureMessages.map((failureMessage): TestDecoration => {
+          const errorLineAndColumnCollection = failureMessage
+            .substring(failureMessage.indexOf(relativeFilePath))
+            .split(':');
+
+          const fileAndLinePattern = new RegExp(
+            `\\([^)]*${escapeForRegExp(relativeFilePath)}[^:)]*:(\\d+):(\\d+)\\)`,
+            'gm'
+          );
+
+          const sanitizedFailureMessage = failureMessage.replace(fileAndLinePattern, `(${relativeFilePath}:$1:$2)`);
+          const lineNumber = parseInt(errorLineAndColumnCollection[1], undefined);
+          const hoverMessage = `${testDescriptionHoverHeader}\n${sanitizedFailureMessage}`;
+
+          return {
+            line: lineNumber - 1,
+            message: sanitizedFailureMessage.split('\n')[0],
+            hover: hoverMessage
+          };
+        });
+
+        if (decorations.every(decoration => !isNaN(decoration.line))) {
+          failureDecorations = decorations;
+        } else {
+          this.logger.debug(
+            () =>
+              `Aborting creation of detailed test failure decorations for test id '${testResult.id}' - ` +
+              `Could not determine some failure line positions`
+          );
+          this.logger.trace(
+            () => `Test result with undetermined failure line positions: ${JSON.stringify(testResult, null, 2)}`
+          );
+        }
+      } catch (error) {
+        this.logger.debug(
+          () => `Error while creating detailed test failure decorations for test id '${testResult.id}': ${error}`
+        );
       }
-
-      return decorations;
-    } catch (error) {
-      return undefined;
+    } else {
+      this.logger.debug(
+        () =>
+          `Not able to create detailed test failure decoration - ` +
+          `Could not determine relative file path for test id: ${testResult.id}`
+      );
     }
+
+    if (failureDecorations?.length === 0 && testResult.line !== undefined) {
+      const failureMessage = testResult.failureMessages[0]?.split('\n')[0] || 'Failed';
+      const hoverMessage = `${testDescriptionHoverHeader}\n${testResult.failureMessages.join('\n')}`;
+
+      failureDecorations = [{ line: testResult.line, message: failureMessage, hover: hoverMessage }];
+    }
+    return failureDecorations;
   }
 
   public async dispose() {

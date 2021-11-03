@@ -1,42 +1,39 @@
 import { EventEmitter } from 'events';
 import { Server as HttpServer } from 'http';
-import { ConfigOptions as KarmaConfigOptions, TestResults as KarmaTestResults } from 'karma';
+import { TestResults as KarmaTestResults } from 'karma';
 import { resolve } from 'path';
 import { Worker } from 'worker_threads';
 import { KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT, KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
 import { TestStatus } from '../../../core/base/test-status';
-import { BasicLog } from '../../../util/logging/basic-log';
 import { LogLevel } from '../../../util/logging/log-level';
 import { Logger } from '../../../util/logging/logger';
 import { LoggerAdapter } from '../../../util/logging/logger-adapter';
 import { MultiEventHandler } from '../../../util/multi-event-handler';
+import { getCircularReferenceReplacer } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
-import { KarmaLogger, KarmaLogLevel } from '../karma-logger';
 import { BrowserInfo, KarmaEvent, KarmaEventName } from './karma-event';
 import { LightSpecCompleteResponse } from './spec-complete-response';
 import { TestResultEmitterWorkerData } from './test-result-emitter-worker-data';
 import { TestRunStatus } from './test-run-status';
 
-function KarmaTestExplorerReporter(
+export function KarmaTestExplorerReporter(
   this: any,
   baseReporterDecorator: any,
-  config: KarmaConfigOptions,
-  logger: any,
   emitter: EventEmitter,
+  karmaLogger: any,
   injector: any
 ) {
   baseReporterDecorator(this);
 
-  this.config = config;
-  this.emitter = emitter;
-
   // --- Setup logger ---
 
-  const karmaLogLevel: KarmaLogLevel = process.env[KarmaEnvironmentVariable.KarmaLogLevel]! as KarmaLogLevel;
-  const logLevel: LogLevel = LogLevel[karmaLogLevel];
-  const log: BasicLog = logger.create(`reporter:${name}`);
-  const reporterLogger: Logger = LoggerAdapter.fromBasicLog(log, logLevel);
-  const karmaLogger: KarmaLogger = reporterLogger;
+  const logLevel = process.env[KarmaEnvironmentVariable.KarmaReporterLogLevel] as LogLevel;
+
+  const logger: Logger = LoggerAdapter.fromBasicLog(
+    karmaLogger.create(`reporter:${KarmaTestExplorerReporter.name}`),
+    logLevel,
+    { bypassUnderlyingTraceMethod: true }
+  );
 
   // --- Setup worker to communicate with extension ---
 
@@ -51,11 +48,11 @@ function KarmaTestExplorerReporter(
   const workerScriptFile = resolve(__dirname, './test-result-emitter-worker.js');
   const worker = new Worker(workerScriptFile, { workerData });
 
-  karmaLogger.debug(
+  logger.debug(
     () => `Using socket port from '${KarmaEnvironmentVariable.KarmaSocketPort}' env variable: ${socketPort}`
   );
 
-  karmaLogger.debug(
+  logger.debug(
     () => `Using ping timeout of '${KARMA_SOCKET_PING_TIMEOUT}' and ping interval of '${KARMA_SOCKET_PING_INTERVAL}'`
   );
 
@@ -68,28 +65,33 @@ function KarmaTestExplorerReporter(
   // --- Setup karma event listeners ---
 
   const karmaEventHandler: MultiEventHandler<KarmaEventName, (eventName: KarmaEventName, ...args: any[]) => void> =
-    new MultiEventHandler(reporterLogger);
+    new MultiEventHandler(logger);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   karmaEventHandler.setDefaultHandler((eventName: string, ...args: any[]) => {
-    karmaLogger.debug(() => `No specific handler for event: ${eventName}`);
+    logger.debug(() => `No specific handler for event: ${eventName}`);
     const isErrorEvent = eventName.toLowerCase().includes('error');
 
     if (isErrorEvent) {
-      karmaLogger.debug(
-        () => `No specific handler for received error event '${eventName}' with data: ${JSON.stringify(args, null, 2)}`
+      logger.trace(
+        () =>
+          `No specific handler for received error event '${eventName}' with data: ` +
+          `${JSON.stringify(args, getCircularReferenceReplacer(), 2)}`
       );
     }
     sendEvent({ name: eventName as KarmaEventName });
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   karmaEventHandler.setErrorHandler((eventName: string, error: Error, ...args: any[]) => {
-    karmaLogger.error(() => `Error while handling event '${eventName}': ${error}`);
+    logger.error(() => `Error while handling event '${eventName}': ${error}`);
+    logger.trace(
+      () =>
+        `Event data for errored '${eventName}' event handling: ` +
+        `${JSON.stringify(args, getCircularReferenceReplacer(), 2)}`
+    );
   });
 
   interceptAllEmitterEvents(emitter, (eventName: string, ...args: any[]) => {
-    karmaLogger.debug(() => `New Karma event: ${eventName}`);
+    logger.trace(() => `New Karma event: ${JSON.stringify({ eventName, args }, getCircularReferenceReplacer(), 2)}`);
     karmaEventHandler.handleEvent(eventName as KarmaEventName, eventName as KarmaEventName, ...args);
   });
 
@@ -101,14 +103,14 @@ function KarmaTestExplorerReporter(
     const clientArgs: string[] = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args ?? [];
     let runId: string | undefined;
 
-    karmaLogger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
+    logger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
 
     if (clientArgs) {
       const runIdArg = clientArgs.find(clientArg => clientArg.startsWith(KARMA_TEST_RUN_ID_FLAG));
 
       if (runIdArg) {
         runId = runIdArg.split('=')[1];
-        karmaLogger.debug(() => `Karma event '${name}' has runId: ${runId}`);
+        logger.debug(() => `Karma event '${name}' has runId: ${runId}`);
       }
     }
 
@@ -119,8 +121,9 @@ function KarmaTestExplorerReporter(
     });
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   karmaEventHandler.setEventHandler(KarmaEventName.BrowserStart, (name: KarmaEventName, browser: any, info: any) => {
+    logger.trace(() => `Karma event '${name}' has 'info': ${JSON.stringify(info, getCircularReferenceReplacer(), 2)}`);
+
     sendEvent({
       name,
       browser: getBrowserInfo(browser)
@@ -155,8 +158,11 @@ function KarmaTestExplorerReporter(
 
   karmaEventHandler.setEventHandler(
     KarmaEventName.BrowserComplete,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (name: KarmaEventName, browser: any, runInfo: any) => {
+      logger.trace(
+        () => `Karma event '${name}' has 'runInfo': ${JSON.stringify(runInfo, getCircularReferenceReplacer(), 2)}`
+      );
+
       sendEvent({
         name,
         browser: getBrowserInfo(browser)
@@ -170,14 +176,14 @@ function KarmaTestExplorerReporter(
       const clientArgs: string[] = browsers?.emitter?._injector?._providers?.config?.[1]?.client?.args ?? [];
       let runId: string | undefined;
 
-      karmaLogger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
+      logger.debug(() => `Karma event '${name}' has client args: ${JSON.stringify(clientArgs, null, 2)}`);
 
       if (clientArgs) {
         const runIdArg = clientArgs.find(clientArg => clientArg.startsWith(KARMA_TEST_RUN_ID_FLAG));
 
         if (runIdArg) {
           runId = runIdArg.split('=')[1];
-          karmaLogger.debug(() => `Karma event '${name}' has runId: ${runId}`);
+          logger.debug(() => `Karma event '${name}' has runId: ${runId}`);
         }
       }
 
@@ -190,8 +196,10 @@ function KarmaTestExplorerReporter(
       sendEvent({
         name,
         runId,
+        runStatus,
+        exitCode: runResult.exitCode,
         browsers: browsers.map(getBrowserInfo),
-        runStatus
+        error: typeof runResult.error === 'string' ? runResult.error : undefined
       });
     }
   );
@@ -223,6 +231,8 @@ function KarmaTestExplorerReporter(
   });
 }
 
+KarmaTestExplorerReporter.$inject = ['baseReporterDecorator', 'emitter', 'logger', 'injector'];
+
 const interceptAllEmitterEvents = (emitter: EventEmitter, listener: (eventName: string, ...args: any[]) => void) => {
   const emit = emitter.emit.bind(emitter);
 
@@ -252,8 +262,3 @@ const configureTimeouts = (injector: any) => {
     }
   });
 };
-
-KarmaTestExplorerReporter.$inject = ['baseReporterDecorator', 'config', 'logger', 'emitter', 'injector'];
-
-export const name = KarmaTestExplorerReporter.name;
-export const instance = KarmaTestExplorerReporter;

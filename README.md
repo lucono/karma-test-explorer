@@ -89,7 +89,7 @@ Special thanks to the [author](https://github.com/Raagh) and contributors of the
 
 ## Reporting Issues
 
-If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new).
+If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new/choose).
 
 ## See Also
 

@@ -1,4 +1,5 @@
 import path = require('path');
+import { getInstalledPathSync } from 'get-installed-path';
 
 export const generateRandomId = () => Math.random().toString(36).slice(2);
 
@@ -72,4 +73,30 @@ export const getValueTypeReplacer = () => {
     return value === null ? 'null' : typeof value;
   };
   return replacer;
+};
+
+export const getPackageInstallPathForProjectRoot = (
+  packageName: string,
+  projectRootPath?: string
+): string | undefined => {
+  let packageInstallPath: string | undefined;
+
+  if (projectRootPath) {
+    try {
+      packageInstallPath = getInstalledPathSync(packageName, { local: true, cwd: projectRootPath });
+    } catch (error) {
+      console.warn(`Could not find '${packageName}' package local install at root path '${projectRootPath}': ${error}`);
+    }
+  }
+
+  if (!packageInstallPath) {
+    try {
+      packageInstallPath = getInstalledPathSync('karma');
+    } catch (error) {
+      console.warn(`Could not find '${packageName}' package global install: ${error}`);
+      return;
+    }
+  }
+
+  return packageInstallPath;
 };

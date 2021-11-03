@@ -1,5 +1,4 @@
-import { ChildProcess, SpawnOptions } from 'child_process';
-import spawn from 'cross-spawn';
+import { ChildProcess, spawn, SpawnOptions } from 'child_process';
 import treeKill from 'tree-kill';
 import { Disposable } from '../disposable/disposable';
 import { Disposer } from '../disposable/disposer';

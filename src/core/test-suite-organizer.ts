@@ -1,4 +1,4 @@
-import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep as pathSeparator } from 'path';
+import { basename, dirname, isAbsolute, normalize, posix, relative, resolve, sep as pathSeparator } from 'path';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
@@ -142,7 +142,7 @@ export class TestSuiteOrganizer implements Disposable {
 
     const flattenedTestSuite =
       flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
-        ? { ...singleChild, label: join(suite.label, singleChild.label) }
+        ? { ...singleChild, label: posix.join(suite.label, singleChild.label) }
         : suite;
 
     return flattenedTestSuite;

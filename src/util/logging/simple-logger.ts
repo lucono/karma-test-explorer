@@ -1,8 +1,9 @@
 import { DEFAULT_LOG_LEVEL } from '../../constants';
 import { Disposable } from '../disposable/disposable';
 import { Disposer } from '../disposable/disposer';
+import { getPropertyWithValue } from '../utils';
 import { LogAppender } from './log-appender';
-import { LogLevel } from './log-level';
+import { LogLevel, LogLevels } from './log-level';
 import { Logger } from './logger';
 
 export class SimpleLogger implements Logger {
@@ -51,12 +52,12 @@ export class SimpleLogger implements Logger {
   }
 
   private isLevelEnabled(logLevel: LogLevel): boolean {
-    return logLevel <= this.logLevel;
+    return LogLevels[this.logLevel] >= LogLevels[logLevel];
   }
 
   private log(logLevel: LogLevel, msg: string): void {
     const timeStamp = new Date().toISOString().replace('T', ' ').replace('Z', '');
-    const logLevelLabel = LogLevel[logLevel];
+    const logLevelLabel = getPropertyWithValue(LogLevel, logLevel) || 'LOG';
     const loggerNameDecoration = this.loggerName ? ` [${this.loggerName}]` : '';
     this.appender.append(`[${timeStamp}] [${logLevelLabel}]${loggerNameDecoration}: ${msg}`);
   }

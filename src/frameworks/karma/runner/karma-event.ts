@@ -6,6 +6,7 @@ export interface KarmaEvent {
   readonly runId?: string;
   readonly runStatus?: TestRunStatus;
   readonly runInfo?: Record<string, unknown>;
+  readonly exitCode?: number;
   readonly port?: number;
   readonly results?: LightSpecCompleteResponse;
   readonly browser?: BrowserInfo;

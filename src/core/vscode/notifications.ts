@@ -1,5 +1,5 @@
-import { commands, StatusBarItem, window } from 'vscode';
-import { EXTENSION_NAME, STATUS_BAR_MESASGE_MAX_DURATION } from '../../constants';
+import { Command, commands, MarkdownString, window } from 'vscode';
+import { EXTENSION_NAME, STATUS_BAR_MESASGE_MAX_DURATION, STATUS_BAR_MESASGE_MIN_DURATION } from '../../constants';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { DeferredPromise } from '../../util/future/deferred-promise';
@@ -53,14 +53,20 @@ const DEFAULT_NOTIFY_OPTIONS: NotifyOptions = {
   dismissAction: true
 };
 
+interface StatusDisplay extends Disposable {
+  text: string;
+  tooltip?: string | MarkdownString;
+  command: string | Command | undefined;
+  readonly show: () => void;
+  readonly hide: () => void;
+}
+
 export class Notifications implements Disposable {
-  private readonly statusBar: StatusBarItem;
-  private deferredStatus?: DeferredPromise;
+  private deferredStatusDismissal?: DeferredPromise;
   private disposables: Disposable[] = [];
 
-  public constructor(private readonly logger: Logger) {
-    this.statusBar = window.createStatusBarItem();
-    this.disposables.push(this.statusBar, logger);
+  public constructor(private readonly statusDisplay: StatusDisplay, private readonly logger: Logger) {
+    this.disposables.push(statusDisplay, logger);
   }
 
   public notify(
@@ -117,10 +123,14 @@ export class Notifications implements Disposable {
 
     this.logger.trace(() => `Setting '${statusName}' status with message '${message}' and tooltip: ${tooltip}`);
 
-    this.deferredStatus?.reject();
-    this.statusBar.hide();
-    this.statusBar.text = `$(${statusType}) ${EXTENSION_NAME} - ${message}`;
-    this.statusBar.tooltip = tooltip;
+    if (this.deferredStatusDismissal?.promise().isResolved() === false) {
+      this.logger.trace(() => 'Existing status is yet to dismiss - Will cancel future dismissal');
+      this.deferredStatusDismissal.reject(`Displaying new status with message - ${message}`);
+    }
+
+    this.statusDisplay.hide();
+    this.statusDisplay.text = `$(${statusType}) ${EXTENSION_NAME} - ${message}`;
+    this.statusDisplay.tooltip = tooltip;
 
     const clickCommand =
       'command' in action.handler
@@ -132,25 +142,50 @@ export class Notifications implements Disposable {
       this.executeAction(clickCommand);
     };
 
-    this.statusBar.command = {
+    this.statusDisplay.command = {
       title: clickCommand.title,
       command: ExtensionCommands.ExecuteFunction,
       arguments: [clickHandler]
     };
 
-    this.statusBar.show();
+    this.statusDisplay.show();
 
-    const deferredStatus = new DeferredPromise();
-    deferredStatus.autoFulfill(STATUS_BAR_MESASGE_MAX_DURATION);
+    const deferredStatusDismissal = new DeferredPromise();
+    deferredStatusDismissal.autoFulfill(dismiss ? STATUS_BAR_MESASGE_MAX_DURATION : STATUS_BAR_MESASGE_MIN_DURATION);
 
-    const statusResolver = deferredStatus.fulfill.bind(deferredStatus);
-    dismiss?.then(statusResolver, statusResolver);
+    const fulfillFutureDismissal = () => {
+      this.logger.trace(
+        () =>
+          `Dismissing promise has concluded for '${statusName}' ` +
+          `status with message '${message}' and tooltip: ${tooltip}`
+      );
+      deferredStatusDismissal.fulfill();
+    };
 
-    deferredStatus.promise().then(() => {
+    dismiss?.then(fulfillFutureDismissal, fulfillFutureDismissal);
+
+    const dismissStatus = () => {
+      if (this.deferredStatusDismissal !== deferredStatusDismissal) {
+        this.logger.trace(
+          () =>
+            `Aborting dismiss of '${statusName}' status with message '${message}' - ` +
+            `Different status already displayed`
+        );
+        return;
+      }
       this.logger.trace(() => `Dismissing '${statusName}' status with message '${message}' and tooltip: ${tooltip}`);
-      this.statusBar.hide();
+      this.statusDisplay.hide();
+    };
+
+    deferredStatusDismissal.promise().then(dismissStatus);
+
+    deferredStatusDismissal.promise().catch(reason => {
+      this.logger.trace(
+        () => `Cancelled status dismisser for '${statusName}' status with message '${message}' due to reason: ${reason}`
+      );
     });
-    this.deferredStatus = deferredStatus;
+
+    this.deferredStatusDismissal = deferredStatusDismissal;
   }
 
   private executeAction(handler: NotificationActionHandler) {

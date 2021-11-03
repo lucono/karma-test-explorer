@@ -246,6 +246,7 @@ export class DefaultTestManager implements TestManager {
         await this.restart();
       }
       this.logger.info(() => 'Discovering tests');
+
       this.notifications.notifyStatus(
         StatusType.Busy,
         'Discovering tests...',

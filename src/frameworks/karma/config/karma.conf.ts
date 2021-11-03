@@ -6,11 +6,10 @@ const originalConfigPath = process.env[KarmaEnvironmentVariable.UserKarmaConfigP
 const karmaConfigurator = new KarmaConfigurator();
 
 module.exports = (config: KarmaConfig) => {
-  karmaConfigurator.loadOriginalUserConfiguration(config, originalConfigPath);
-  karmaConfigurator.setMandatoryOptions(config);
-  karmaConfigurator.cleanUpReporters(config);
-  karmaConfigurator.dontLoadOriginalConfigurationFileIntoBrowser(config, originalConfigPath);
-  karmaConfigurator.configureTestExplorerCustomReporter(config);
+  karmaConfigurator.loadOriginalKarmaConfig(config, originalConfigPath);
+  karmaConfigurator.applyConfigOverrides(config);
+  karmaConfigurator.addOriginalKarmaConfigToExcludes(config, originalConfigPath);
+  karmaConfigurator.addReporter(config);
   karmaConfigurator.setBasePath(config, originalConfigPath);
-  karmaConfigurator.disableSingleRunPermanently(config);
+  karmaConfigurator.disableSingleRun(config);
 };
