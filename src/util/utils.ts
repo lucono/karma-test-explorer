@@ -1,5 +1,5 @@
-import path = require('path');
 import { getInstalledPathSync } from 'get-installed-path';
+import path from 'path';
 
 export const generateRandomId = () => Math.random().toString(36).slice(2);
 

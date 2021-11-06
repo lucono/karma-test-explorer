@@ -1,4 +1,5 @@
 import { join } from 'path';
+import which from 'which';
 import { TestRunExecutor } from '../../../api/test-run-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -45,13 +46,15 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       );
     }
 
+    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+
     let command: string;
     let processArguments: string[] = [];
 
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
     } else {
-      command = process.execPath;
+      command = nodeExecutablePath ?? process.execPath;
       processArguments = [karmaBinaryPath];
     }
 

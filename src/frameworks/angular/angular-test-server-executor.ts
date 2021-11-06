@@ -1,4 +1,5 @@
 import { join } from 'path';
+import which from 'which';
 import { ServerStopExecutor, TestServerExecutor } from '../../api/test-server-executor';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
@@ -72,13 +73,15 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       );
     }
 
+    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+
     let command: string;
     let processArguments: string[] = [];
 
     if (this.options.angularProcessCommand) {
       command = this.options.angularProcessCommand;
     } else {
-      command = process.execPath;
+      command = nodeExecutablePath ?? process.execPath;
       processArguments = [angularBinaryPath];
     }
 

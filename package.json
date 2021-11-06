@@ -67,7 +67,8 @@
     "tree-kill": "^1.2.2",
     "tslib": "^1.10.0",
     "vscode-test-adapter-api": "^1.9.0",
-    "vscode-test-adapter-util": "^0.7.1"
+    "vscode-test-adapter-util": "^0.7.1",
+    "which": "^2.0.2"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.36",
@@ -82,6 +83,7 @@
     "@types/semver": "~6.0.2",
     "@types/throttle-debounce": "^2.1.0",
     "@types/vscode": "^1.22.0",
+    "@types/which": "^2.0.1",
     "@typescript-eslint/eslint-plugin": "^4.32.0",
     "@typescript-eslint/parser": "^4.32.0",
     "esbuild": "^0.13.3",
@@ -96,7 +98,7 @@
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
-    "vsce": "^1.102.0"
+    "vsce": "^2.1.0"
   },
   "engines": {
     "vscode": "^1.22.0"
