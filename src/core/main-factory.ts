@@ -7,6 +7,7 @@ import { AngularProject } from '../frameworks/angular/angular-project';
 import { getDefaultAngularProject } from '../frameworks/angular/angular-util';
 import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framework';
 import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-factory';
+import { KarmaLogLevel } from '../frameworks/karma/karma-log-level';
 import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
 import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
 import { KarmaTestEventProcessor } from '../frameworks/karma/runner/karma-test-event-processor';
@@ -18,7 +19,6 @@ import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { FileHandler } from '../util/file-handler';
 import { LogAppender } from '../util/logging/log-appender';
-import { LogLevel } from '../util/logging/log-level';
 import { SimpleLogger } from '../util/logging/simple-logger';
 import { PortAcquisitionManager } from '../util/port-acquisition-manager';
 import { CommandLineProcessLog } from '../util/process/command-line-process-log';
@@ -30,7 +30,6 @@ import { TestFramework } from './base/test-framework';
 import { TestFrameworkName } from './base/test-framework-name';
 import { TestResolver } from './base/test-resolver';
 import { CascadingTestFactory } from './cascading-test-factory';
-import { ConfigSetting } from './config/config-setting';
 import { ExtensionConfig } from './config/extension-config';
 import { DefaultTestFileParser } from './default-test-file-parser';
 import { DefaultTestManager } from './default-test-manager';
@@ -56,7 +55,7 @@ export class MainFactory {
     this.disposables.push(logger);
 
     this.angularProject = getDefaultAngularProject(this.config.projectRootPath, this.config.defaultAngularProjectName);
-    this.logger.info(() => `Project detected as ${this.angularProject ? 'Angular' : 'non-Angular'} project`);
+    this.logger.info(() => `Project detected as ${this.angularProject ? 'Angular' : 'plain Karma'} project`);
 
     const fileHandler = new FileHandler(this.createLogger(FileHandler.name));
     const karmaConfigPath = this.angularProject?.karmaConfigPath ?? this.config.userKarmaConfFilePath;
@@ -68,7 +67,7 @@ export class MainFactory {
     this.disposables.push(this.specLocator);
 
     this.testServerLog = new OutputChannelLog(KARMA_SERVER_OUTPUT_CHANNEL_NAME, {
-      enabled: config.karmaLogLevel !== LogLevel[LogLevel.DISABLE]
+      enabled: config.karmaLogLevel !== KarmaLogLevel.DISABLE
     });
     this.disposables.push(this.testServerLog);
   }
@@ -85,11 +84,7 @@ export class MainFactory {
     const watchModeEnabled = watchModeRequested && watchModeSupported;
 
     if (watchModeRequested && !watchModeSupported) {
-      this.logger.warn(
-        () =>
-          `Auto-watch setting '${ConfigSetting.AutoWatchEnabled}' is enabled but not supported ` +
-          `for the current test framework '${this.testFramework.name}'`
-      );
+      this.logger.info(() => `Auto-watch is unavailable for the current test framework: ${this.testFramework.name}`);
     }
 
     const testSuiteOrganizer = new TestSuiteOrganizer(this.createLogger(TestSuiteOrganizer.name));
@@ -201,6 +196,7 @@ export class MainFactory {
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
       karmaLogLevel: this.config.karmaLogLevel,
+      karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
       environment: this.config.environment,
       browser: this.config.browser,
@@ -228,6 +224,7 @@ export class MainFactory {
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
       karmaLogLevel: this.config.karmaLogLevel,
+      karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
       environment: this.config.environment,
       browser: this.config.browser,
@@ -268,6 +265,7 @@ export class MainFactory {
       specToTestSuiteMapper,
       testSuiteOrganizer,
       suiteTestResultProcessor,
+      this.specLocator,
       this.config.testGrouping,
       this.config.projectRootPath,
       this.config.testsBasePath,
@@ -283,6 +281,7 @@ export class MainFactory {
         specToTestSuiteMapper,
         testSuiteOrganizer,
         suiteTestResultProcessor,
+        this.specLocator,
         this.config.testGrouping,
         this.config.projectRootPath,
         this.config.testsBasePath,
@@ -304,9 +303,9 @@ export class MainFactory {
     return new KarmaTestEventListener(
       testRunEventProcessor,
       watchModeTestEventProcessor,
-      this.config.karmaReadyTimeout,
       this.notifications,
-      this.createLogger(KarmaTestEventListener.name)
+      this.createLogger(KarmaTestEventListener.name),
+      { karmaReadyTimeout: this.config.karmaReadyTimeout }
     );
   }
 

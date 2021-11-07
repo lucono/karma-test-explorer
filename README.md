@@ -25,6 +25,7 @@ This extension lets you run your Karma or Angular tests in Visual Studio Code us
 - Karma version 6 support
 - Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Watch mode support with auto pass / fail test status update
+- Non-Headless testing mode
 - Group and run tests by folder or by test suite
 - Duplicate test detection and reporting
 - Specify or override environment variables for Karma
@@ -89,7 +90,14 @@ Special thanks to the [author](https://github.com/Raagh) and contributors of the
 
 ## Reporting Issues
 
-If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new).
+If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new/choose).
+
+---
+If you like the Karma Test Explorer extension, please consider rating it in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer), and starring the [GitHub repo](https://github.com/lucono/karma-test-explorer).
+
+---
+
+<a href="#contents"><img align="right" height="24" src="docs/img/back-to-top.png"></a>
 
 ## See Also
 

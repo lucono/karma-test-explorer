@@ -1,9 +1,9 @@
 import { Disposable } from '../disposable/disposable';
 
 export interface Logger extends Disposable {
-  error(msgSource: () => string): void;
-  warn(msgSource: () => string): void;
-  info(msgSource: () => string): void;
-  debug(msgSource: () => string): void;
-  trace(msgSource: () => string): void;
+  error(provideMessage: () => string): void;
+  warn(provideMessage: () => string): void;
+  info(provideMessage: () => string): void;
+  debug(provideMessage: () => string): void;
+  trace(provideMessage: () => string): void;
 }

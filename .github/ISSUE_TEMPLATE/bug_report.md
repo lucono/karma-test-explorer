@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: ''
+labels: 'bug'
 assignees: ''
 
 ---
@@ -22,9 +22,10 @@ assignees: ''
 
 - A clear and concise description of what you expected to happen.
 
-**Debug Logs**
+**Provide Debug Logs**
 
-- With the `karmaTestExplorer.logLevel` set to `debug`, please capture and attach the logs from the `Karma Test Explorer` Output panel.
+- With the `karmaTestExplorer.logLevel` set to `debug`, please capture and attach the logs from the `Karma Test Explorer` Output chanel when the issue occurs.
+- Please also capture and attach the logs from the `Karma Server` Output channel when the issue occurs.
 
 **Screenshots**
 

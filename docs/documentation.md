@@ -8,6 +8,7 @@
 - [Configuration](#configuration)
 - [Specifying Test Files](#specifying-test-files)
 - [Specifying a Test Framework](#specifying-a-test-framework)
+- [Non-Headless Testing](#non-headless-testing)
 - [Testing in a Development Container](#testing-in-a-development-container)
 - [Output Panels](#output-panels)
 - [Known Issues and Limitations](#known-issues-and-limitations)
@@ -50,12 +51,12 @@ Note that Karma Test Explorer will briefly display updates (using available spac
 
 ## Project Types
 
+### Karma Projects
+Projects without an `angular.json` or `.angular-cli.json` file in the project root are treated as plain Karma projects. Use the various [extension options](#configuration) where necessary to customize Karma Test Explorer's behavior to the specific needs of your project and team.
+
 ### Angular Projects
 
 By default, any project with an `angular.json` or `.angular-cli.json` file in the project root is loaded as an Angular project. Use the `karmaTestExplorer.defaultAngularProjectName` setting to specify which configured Angular project should be loaded for testing. Otherwise, the project specified as default in the `angular.json` config will be chosen.
-
-### Non-Angular Projects
-Projects without an `angular.json` or `.angular-cli.json` file in the project root are treated as plain Karma projects. Use the various [extension options](#configuration) where necessary to customize Karma Test Explorer's behavior to the specific needs of your project and team.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
@@ -97,12 +98,13 @@ Setting                                       | Description
 `karmaTestExplorer.customLauncher` | Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file
 `karmaTestExplorer.autoWatchEnabled` | Enables automatic re-run of tests when the files change
 `karmaTestExplorer.autoWatchBatchDelay` | The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as Karma config's `autoWatchBatchDelay` option and overrides it when set
+`karmaTestExplorer.nonHeadlessModeEnabled` | Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden
 `karmaTestExplorer.env` | Additional environment variables to be set when running the tests. These override the values of the same variables if also provided through the `envFile` setting
 `karmaTestExplorer.envFile` | Path to a dotenv file containing environment variables to be set when running the tests
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.testTriggerMethod` | Experimental. Specifies how test runs are triggered by default, either through the Karma CLI or Http interface. You will usually not need to use this setting unless working around specific issues
-`karmaTestExplorer.failOnStandardError` | Treats any errors written to stderr as a failure. This can sometimes be useful for uncovering testing issues
+`karmaTestExplorer.failOnStandardError` | Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues
 `karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to `projectRootPath`)
 `karmaTestExplorer.testFiles` | The path glob patterns identifying the test files (relative to `projectRootPath`)
 `karmaTestExplorer.excludeFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to `projectRootPath`)
@@ -114,6 +116,7 @@ Setting                                       | Description
 `karmaTestExplorer.containerMode` | Enables additional support for easier testing when running in a container. Can be either `auto` (the default when not set), `enabled`, or `disabled`
 `karmaTestExplorer.logLevel` | Sets the level of logging detail produced in the output panel of the extension. More detailed levels such as the `debug` level can be helpful when troubleshooting issues with running Karma or the extension
 `karmaTestExplorer.karmaLogLevel` | Sets the level of logging detail for the Karma server in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension
+`karmaTestExplorer.karmaReporterLogLevel` | Sets the level of logging detail for the Karma Test Explorer reporter which logs additional details to the Karma server log related to the processing of test and browser events in Karma. This can be helpful when troubleshooting issues with how test and browser events are being processed in Karma and exchanged with the Karma Test Explorer. Set this to `disable` in order to not log any additional output from the reporter into the Karma server logs
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
@@ -138,7 +141,7 @@ For example, the following files would all be detected as test files by default,
 
 ### Customizing Test Discovery
 
-However, you can change this to the specific name pattern and paths of your test files by using the `karmaTestExplorer.testFiles` extension setting, which accepts an array of file glob patterns that identify the locations of your test files.
+You can change the default test discovery behavior by customizing test file detection to the specific name pattern and paths for your test files by using the `karmaTestExplorer.testFiles` extension setting, which accepts an array of file glob patterns that identify the locations of your test files.
 
 For example:
 
@@ -167,6 +170,16 @@ Value | Description
 Most times however, you will not need to set this config option at all as Karma Test Explorer will be able to automatically detect the right test framework in use by your project. Note also that specifying a framework value that is different from the one actually in use by your project will usually result in your tests not being successfully discovered.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
+
+## Non-Headless Testing
+
+Though by default Karma Test Explorer runs tests headlessly (using a headless instance of Chrome), it also has support for non-headless testing which can be enabled with the `karmaTestExplorer.nonHeadlessModeEnabled` setting. When this is enabled, the browser UI will be displayed when Karma Test Explorer is started, and you will be able to see your tests being executed in the browser.
+
+Non-headless testing through the `nonHeadlessModeEnabled` setting is not supported in certain scenarios where non-headless usage would normaly not be possible, such as when running in a container. It is also not supported when the default value of the `customLauncher` or `browser` config settings have been overridden to use a non-Chrome browser, which is the default browser used by Karma Test Explorer. It is however supported in all other cases, including when running on WSLg (Windows Subsystem for Linux GUI) on Windows 11.
+
+Also note that for regular headless testing, Karma Test Explorer supports any browser (Chrome or non-Chrome) with a Karma launcher implementation that is installed in the project, including Firefox, Edge, and others.
 
 ---
 
@@ -241,7 +254,7 @@ Karma Test Explorer adds the output channels described below to the Output panel
 Name | Description
 -----|-------------
 Karma&nbsp;Test&nbsp;Explorer | This output panel shows the logs of the Karma Test Explorer extension. The `karmaTestExplorer.logLevel` setting can be used to set the desired level of extension logging detail, with `trace` having the most detailed and verbose logging.
-Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTestExplorer.karmaLogLevel` can be used to set the level of logging detail desired from the Karma server.
+Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTestExplorer.karmaLogLevel` setting can be used to specify the desired level of logging detail from the Karma server, while the `karmaTestExplorer.karmaReporterLogLevel` setting can be used to specify the desired level of logging detail from Karma Test Explorer's Karma reporter plugin, whose output also appears in the Karma server log.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 

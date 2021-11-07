@@ -15,7 +15,7 @@ export class SpecResponseToTestSuiteInfoMapper {
 
     specs.forEach(rawSpec => {
       const spec: SpecCompleteResponse = { ...rawSpec, suite: this.filterSuiteNoise(rawSpec.suite) };
-      const matchingSpecLocations = this.specLocator.getSpecLocation(spec.suite, spec.description);
+      const matchingSpecLocations = this.specLocator.getSpecLocations(spec.suite, spec.description);
       let specFile: string | undefined = spec.filePath;
 
       if (matchingSpecLocations.length === 1) {
@@ -86,7 +86,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   }
 
   private createSuite(suitePath: string[], suiteFile: string): TestSuiteInfo {
-    const allMatchingSuiteLocations = this.specLocator.getSpecLocation(suitePath);
+    const allMatchingSuiteLocations = this.specLocator.getSpecLocations(suitePath);
     const suiteLocation = allMatchingSuiteLocations.find(loc => loc.file === suiteFile);
     const suiteName = suitePath[suitePath.length - 1];
     const suiteFullName = suitePath.join(' ');
@@ -107,7 +107,7 @@ export class SpecResponseToTestSuiteInfoMapper {
   }
 
   private createTest(spec: SpecCompleteResponse, specFile: string): TestInfo {
-    const allMatchingSpecLocations = this.specLocator.getSpecLocation(spec.suite, spec.description);
+    const allMatchingSpecLocations = this.specLocator.getSpecLocations(spec.suite, spec.description);
     const specLocation = allMatchingSpecLocations.find(loc => loc.file === specFile);
 
     const runFailureMessage = spec.failureMessages?.join('\n');

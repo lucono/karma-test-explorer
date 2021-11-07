@@ -9,12 +9,13 @@ import {
   ALWAYS_EXCLUDED_TEST_FILE_GLOBS,
   CHROME_BROWSER_DEBUGGING_PORT_FLAG,
   CHROME_DEFAULT_DEBUGGING_PORT,
+  KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS,
   KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
 } from '../../constants';
-import { KarmaLogLevel } from '../../frameworks/karma/karma-logger';
+import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
-import { LogLevel, LogLevelName } from '../../util/logging/log-level';
+import { LogLevel } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
 import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
 import { TestFrameworkName } from '../base/test-framework-name';
@@ -29,8 +30,8 @@ export enum ContainerMode {
 }
 
 export enum TestTriggerMethod {
-  Http = 'HTTP',
-  Cli = 'CLI'
+  Http = 'http',
+  Cli = 'cli'
 }
 
 export class ExtensionConfig implements Disposable {
@@ -46,9 +47,10 @@ export class ExtensionConfig implements Disposable {
   public readonly envFile?: string;
   public readonly environment: Readonly<Record<string, string>>;
   public readonly excludeFiles: readonly string[];
-  public readonly logLevel?: LogLevel;
   public readonly flattenSingleChildFolders: boolean;
+  public readonly logLevel: LogLevel;
   public readonly karmaLogLevel: KarmaLogLevel;
+  public readonly karmaReporterLogLevel: LogLevel;
   public readonly karmaPort: number;
   public readonly defaultSocketConnectionPort: number;
   public readonly defaultDebugPort?: number;
@@ -72,12 +74,13 @@ export class ExtensionConfig implements Disposable {
     this.karmaPort = config.get(ConfigSetting.KarmaPort)!;
     this.karmaProcessCommand = asNonBlankStringOrUndefined(config.get(ConfigSetting.KarmaProcessCommand));
     this.angularProcessCommand = asNonBlankStringOrUndefined(config.get(ConfigSetting.AngularProcessCommand));
-    this.testTriggerMethod = config.get<string>(ConfigSetting.TestTriggerMethod)!.toUpperCase() as TestTriggerMethod;
+    this.testTriggerMethod = config.get<TestTriggerMethod>(ConfigSetting.TestTriggerMethod);
     this.failOnStandardError = !!config.get(ConfigSetting.FailOnStandardError);
     this.testsBasePath = normalizePath(resolve(this.projectRootPath, config.get(ConfigSetting.TestsBasePath)!));
     this.defaultSocketConnectionPort = config.get(ConfigSetting.DefaultSocketConnectionPort)!;
-    this.logLevel = LogLevel[config.get<string>(ConfigSetting.LogLevel)!.toUpperCase() as LogLevelName];
-    this.karmaLogLevel = config.get<string>(ConfigSetting.KarmaLogLevel)!.toUpperCase() as KarmaLogLevel;
+    this.logLevel = config.get<LogLevel>(ConfigSetting.LogLevel);
+    this.karmaLogLevel = config.get<KarmaLogLevel>(ConfigSetting.KarmaLogLevel);
+    this.karmaReporterLogLevel = config.get<LogLevel>(ConfigSetting.KarmaReporterLogLevel);
     this.autoWatchEnabled = !!config.get(ConfigSetting.AutoWatchEnabled);
     this.autoWatchBatchDelay = config.get(ConfigSetting.AutoWatchBatchDelay);
     this.karmaReadyTimeout = config.get(ConfigSetting.KarmaReadyTimeout)!;
@@ -151,6 +154,7 @@ export class ExtensionConfig implements Disposable {
   private getCustomLauncher(config: ConfigStore): CustomLauncher {
     const configuredLauncher: CustomLauncher = config.get(ConfigSetting.CustomLauncher);
     const configuredContainerMode: ContainerMode = config.get(ConfigSetting.ContainerMode);
+    const isNonHeadlessMode = !!config.get(ConfigSetting.NonHeadlessModeEnabled);
 
     const isContainerMode =
       configuredContainerMode === ContainerMode.Enabled
@@ -159,15 +163,19 @@ export class ExtensionConfig implements Disposable {
         ? false
         : isDocker();
 
-    if (!isContainerMode || (configuredLauncher.base ?? '').toLowerCase().indexOf('chrome') === -1) {
+    if ((configuredLauncher.base ?? '').toLowerCase().indexOf('chrome') === -1) {
       return configuredLauncher;
     }
 
     let launcherFlags = (configuredLauncher.flags ??= []);
 
-    launcherFlags = launcherFlags.includes(KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG)
-      ? launcherFlags
-      : [...launcherFlags, KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG];
+    if (isContainerMode && !launcherFlags.includes(KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG)) {
+      launcherFlags = [...launcherFlags, KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG];
+    }
+
+    if (!isContainerMode && configuredLauncher.base === 'Chrome' && isNonHeadlessMode) {
+      launcherFlags = launcherFlags.filter(flag => !KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS.includes(flag));
+    }
 
     const customLauncher: CustomLauncher = { ...configuredLauncher, flags: launcherFlags };
     return customLauncher;

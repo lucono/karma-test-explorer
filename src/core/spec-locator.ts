@@ -1,6 +1,6 @@
 import globby from 'globby';
 import { isMatch } from 'micromatch';
-import { join, resolve } from 'path';
+import { join, relative, resolve } from 'path';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { FileHandler } from '../util/file-handler';
@@ -26,7 +26,6 @@ export interface SpecLocatorOptions extends globby.GlobbyOptions {
 }
 
 export class SpecLocator implements Disposable {
-  private readonly fileGlobs: string[];
   private readonly fileInfoMap: Map<string, TestSuiteFileInfo> = new Map();
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly specLocatorOptions: SpecLocatorOptions;
@@ -35,13 +34,12 @@ export class SpecLocator implements Disposable {
   private readonly disposables: Disposable[] = [];
 
   public constructor(
-    fileGlobs: string[],
+    private readonly fileGlobs: string[],
     private readonly testFileParser: TestFileParser,
     private readonly fileHandler: FileHandler,
     private readonly logger: Logger,
     specLocatorOptions: SpecLocatorOptions = {}
   ) {
-    this.fileGlobs = fileGlobs.map(glob => normalizePath(glob));
     this.disposables.push(logger, fileHandler);
     this.cwd = normalizePath(specLocatorOptions.cwd ?? process.cwd());
     this.specLocatorOptions = { ...specLocatorOptions, cwd: this.cwd };
@@ -164,33 +162,39 @@ export class SpecLocator implements Disposable {
     this.addSuiteFileToCache(fileTopSuite, fileAbsolutePath);
   }
 
-  public getSpecLocation(specSuite: string[], specDescription?: string): SpecLocation[] {
+  public getSpecLocations(
+    specSuite: string[],
+    specDescription?: string,
+    withRelativePaths: boolean = false
+  ): SpecLocation[] {
     if (specSuite.length === 0) {
       return [];
     }
     const specFiles = this.getSuiteFilesFromCache(specSuite);
+    let specLocations: SpecLocation[] = [];
 
     if (specFiles) {
-      const specLocations: SpecLocation[] = specFiles
+      specLocations = specFiles
         .map((specFile: string): SpecLocation | undefined => {
           const specLine = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
           return specLine ? { file: specFile, line: specLine } : undefined;
         })
         .filter(specLocation => specLocation !== undefined) as SpecLocation[];
+    } else {
+      for (const specFile of this.fileInfoMap.keys()) {
+        const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
 
-      return specLocations;
-    }
-
-    const specLocations: SpecLocation[] = [];
-
-    for (const specFile of this.fileInfoMap.keys()) {
-      const specLineNumber = this.getSpecLineNumber(this.fileInfoMap.get(specFile), specSuite, specDescription);
-
-      if (specLineNumber !== undefined) {
-        this.addSuiteFileToCache(specSuite, specFile);
-        specLocations.push({ file: specFile, line: specLineNumber });
+        if (specLineNumber !== undefined) {
+          this.addSuiteFileToCache(specSuite, specFile);
+          specLocations.push({ file: specFile, line: specLineNumber });
+        }
       }
     }
+
+    if (withRelativePaths) {
+      specLocations.forEach(specLocation => (specLocation.file = normalizePath(relative(this.cwd, specLocation.file))));
+    }
+
     return specLocations;
   }
 

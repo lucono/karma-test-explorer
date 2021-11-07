@@ -60,7 +60,7 @@ describe('SpecLocator', () => {
 
       describe('the getSpecLocation method', () => {
         it('should return the spec locations with normalized file paths', () => {
-          const specLocations = specLocator.getSpecLocation(['SuiteName']);
+          const specLocations = specLocator.getSpecLocations(['SuiteName']);
 
           const expectedNormalizedTestFiles = [
             withUnixStyleSeparator(mockTestFiles[0]).replace(/^d:/, 'D:'),

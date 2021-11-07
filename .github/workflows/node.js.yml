@@ -30,13 +30,15 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - run: npm run check-format
     - run: npm run lint
     - run: npm run clean
     - run: npm run build
-    - run: npm test
+    - run: npm run test
+    - run: npm run bundle
     - run: npm run package
 
     - uses: actions/upload-artifact@v2
       with:
-        name: packaged-vsix
+        name: vsix-artifact-${{ matrix.os }}-node-${{ matrix.node-version }}
         path: ./*.vsix

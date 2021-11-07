@@ -1,6 +1,5 @@
-import { existsSync } from 'fs';
 import { join } from 'path';
-import { silent } from 'resolve-global';
+import which from 'which';
 import { TestRunExecutor } from '../../../api/test-run-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -11,6 +10,7 @@ import {
   CommandLineProcessHandlerOptions,
   CommandLineProcessLogOutput
 } from '../../../util/process/command-line-process-handler';
+import { getPackageInstallPathForProjectRoot } from '../../../util/utils';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: Record<string, string | undefined>;
@@ -35,26 +35,27 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const localKarmaPath = join(this.projectRootPath, 'node_modules', 'karma', 'bin', 'karma');
-    const isKarmaInstalledLocally = existsSync(localKarmaPath);
-    const isKarmaInstalledGlobally = silent('karma') !== undefined;
+    const karmaInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath);
+    const karmaBinaryPath = karmaInstallPath ? join(karmaInstallPath, 'bin', 'karma') : undefined;
+
+    if (!karmaBinaryPath) {
+      throw new Error(
+        `Karma does not seem to be installed - ` +
+          `You may need to run 'npm install' in your project. ` +
+          `Please install it and try again.`
+      );
+    }
+
+    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
 
     let command: string;
     let processArguments: string[] = [];
 
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
-    } else if (isKarmaInstalledLocally) {
-      command = 'npx';
-      processArguments = ['karma'];
-    } else if (isKarmaInstalledGlobally) {
-      command = 'karma';
     } else {
-      throw new Error(
-        `Karma does not seem to be installed - ` +
-          `You may need to run 'npm install' in your project. ` +
-          `Please install it and try again.`
-      );
+      command = nodeExecutablePath ?? process.execPath;
+      processArguments = [karmaBinaryPath];
     }
 
     const escapedClientArgs: string[] = clientArgs.map(arg => this.shellEscape(arg));

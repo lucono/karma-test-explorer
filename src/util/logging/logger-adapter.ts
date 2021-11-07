@@ -1,12 +1,24 @@
 import { BasicLog } from './basic-log';
-import { LogLevel } from './log-level';
+import { LogLevel, LogLevels } from './log-level';
 import { Logger } from './logger';
 
-export class LoggerAdapter implements Logger {
-  private constructor(private readonly logger: BasicLog, private readonly logLevel: LogLevel) {}
+export interface LoggerAdapterOptions {
+  bypassUnderlyingTraceMethod?: boolean;
+}
 
-  public static fromBasicLog(log: BasicLog, logLevel: LogLevel): LoggerAdapter {
-    return new LoggerAdapter(log, logLevel);
+export class LoggerAdapter implements Logger {
+  private options: Required<LoggerAdapterOptions>;
+
+  private constructor(
+    private readonly logger: BasicLog,
+    private readonly logLevel: LogLevel,
+    options?: LoggerAdapterOptions
+  ) {
+    this.options = { bypassUnderlyingTraceMethod: false, ...options };
+  }
+
+  public static fromBasicLog(log: BasicLog, logLevel: LogLevel, options?: LoggerAdapterOptions): LoggerAdapter {
+    return new LoggerAdapter(log, logLevel, options);
   }
 
   public error(msgSource: () => string) {
@@ -34,13 +46,18 @@ export class LoggerAdapter implements Logger {
   }
 
   public trace(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.TRACE)) {
-      (this.logger.trace ?? this.logger.debug).apply(this.logger, [msgSource()]);
+    if (!this.isLevelEnabled(LogLevel.TRACE)) {
+      return;
+    }
+    if (!this.options.bypassUnderlyingTraceMethod && typeof this.logger.trace === 'function') {
+      this.logger.trace(msgSource());
+    } else {
+      this.logger.debug(`[TRACE]: ${msgSource()}`);
     }
   }
 
   private isLevelEnabled(logLevel: LogLevel): boolean {
-    return logLevel <= this.logLevel;
+    return LogLevels[this.logLevel] >= LogLevels[logLevel];
   }
 
   public dispose(): void {
