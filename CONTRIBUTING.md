@@ -9,7 +9,7 @@
 
 ## Recommended Areas of Focus
 
-Contributions to the Karma Test Explorer are welcome, particularly in the core areas of focus mentioned in the [Why this Extension](#why-this-extension) section. Other particular areas, among others, include:
+Contributions to the Karma Test Explorer are welcome, particularly in the core areas of focus mentioned in the [Why this Extension](./README.md#why-this-extension) section. Other particular areas, among others, include:
 
 - Migrating to the native VS Code test API
 - Enhancing the level of Angular and Mocha support

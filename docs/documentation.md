@@ -8,6 +8,7 @@
 - [Configuration](#configuration)
 - [Specifying Test Files](#specifying-test-files)
 - [Specifying a Test Framework](#specifying-a-test-framework)
+- [Non-Headless Testing](#non-headless-testing)
 - [Testing in a Development Container](#testing-in-a-development-container)
 - [Output Panels](#output-panels)
 - [Known Issues and Limitations](#known-issues-and-limitations)
@@ -172,6 +173,16 @@ Most times however, you will not need to set this config option at all as Karma 
 
 ---
 
+## Non-Headless Testing
+
+Though by default Karma Test Explorer runs tests headlessly (using a headless instance of Chrome), it also has support for non-headless testing which can be enabled with the `karmaTestExplorer.nonHeadlessModeEnabled` setting. When this is enabled, the browser UI will be displayed when Karma Test Explorer is started, and you will be able to see your tests being executed in the browser.
+
+Non-headless testing through the `nonHeadlessModeEnabled` setting is not supported in certain scenarios where non-headless usage would normaly not be possible, such as when running in a container. It is also not supported when the default value of the `customLauncher` or `browser` config settings have been overridden to use a non-Chrome browser, which is the default browser used by Karma Test Explorer. It is however supported in all other cases, including when running on WSLg (Windows Subsystem for Linux GUI) on Windows 11.
+
+Also note that for regular headless testing, Karma Test Explorer supports any browser (Chrome or non-Chrome) with a Karma launcher implementation that is installed in the project, including Firefox, Edge, and others.
+
+---
+
 ## Testing in a Development Container
 
 With VS Code's Development Container feature, you can develop and run your project's Karma tests inside a container, using browsers installed in that container. However, launching Chrome and other Chromium browsers in a container environment often requires additional browser flags and other adjustments. Therefore, to fully support DevContainer-based setups and workflows, Karma Test Explorer provides a number of options to help make development and testing smoother and more seamless in those scenarios.
@@ -243,7 +254,7 @@ Karma Test Explorer adds the output channels described below to the Output panel
 Name | Description
 -----|-------------
 Karma&nbsp;Test&nbsp;Explorer | This output panel shows the logs of the Karma Test Explorer extension. The `karmaTestExplorer.logLevel` setting can be used to set the desired level of extension logging detail, with `trace` having the most detailed and verbose logging.
-Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTestExplorer.karmaLogLevel` can be used to set the level of logging detail desired from the Karma server.
+Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTestExplorer.karmaLogLevel` setting can be used to specify the desired level of logging detail from the Karma server, while the `karmaTestExplorer.karmaReporterLogLevel` setting can be used to specify the desired level of logging detail from Karma Test Explorer's Karma reporter plugin, whose output also appears in the Karma server log.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 

@@ -34,6 +34,7 @@
   ],
   "main": "dist/main.js",
   "scripts": {
+    "check-format": "npx prettier --check -- \"{src,test,scripts}/**/*.{js,ts}\" \"./*.{js,json}\"",
     "format": "npx prettier --write -- \"{src,test,scripts}/**/*.{js,ts}\" \"./*.{js,json}\"",
     "lint": "npx eslint -- \"{src,test,scripts}/**/*.{js,ts}\" \"./*.{js,json}\"",
     "clean": "rimraf out dist *.vsix",
@@ -98,7 +99,7 @@
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
-    "vsce": "^2.1.0"
+    "vsce": "^2.2.0"
   },
   "engines": {
     "vscode": "^1.22.0"

@@ -7,11 +7,32 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.3.0 - Nov 6, 2021](#030---nov-6-2021)
   - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
   - [0.2.0 - Oct 13, 2021](#020---oct-13-2021)
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.3.0] - Nov 6, 2021
+
+### Added
+
+- New `karmaTestExplorer.nonHeadlessModeEnabled` extension setting for running tests in non-Headless mode
+- New `karmaTestExplorer.karmaReporterLogLevel` extension setting for specifying the level of logging detail for Karma Test Explorer's Karma reporter plugin
+
+### Changed
+
+- Karma Test Explorer is now only activated for a workspace folder if it contains one or more Karma Test Explorer configuration settings, or a known standard config file for Karma or Angular projects exists somewhere under the project folder tree, with the exclusion of the `node_modules` folder
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/9) where the extension fails to start for Windows users if the user's profile path contains a space
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/10) where test discovery or execution sometimes fails on a Karma error indicating that some of the tests performed a full page reload
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/7) where some Karma reporters configured in the user's Karma config file would cause the extension to fail to start
+- Fixed an issue which increases the number of test failure scenarios where the precise test expectation that failed can be highlighted. Previously, only the parent test containing the failed expectation was ever highlighted
+- Fixed an issue where changes to test files, and changes to the Karma config and other watched files, were not always detected and reflected in the test view and did not always trigger the appropriate refresh behavior
 
 ---
 ## [0.2.1] - Oct 24, 2021
@@ -21,6 +42,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 - Test duplication is no longer reported for test suites because test suites are simply containers for tests, so that duplicated test suites are themselves not an indication of actual test duplication
 
 ### Fixed
+
 - Fixed an issue where test duplicate detection was producing false-positives on Windows (thanks [@nwash57](https://github.com/nwash57)!)
 - Fixed an issue where some tests may not always be discovered on Windows
 
