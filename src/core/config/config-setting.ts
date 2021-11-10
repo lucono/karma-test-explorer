@@ -29,5 +29,6 @@ export enum ConfigSetting {
   KarmaReadyTimeout = 'karmaReadyTimeout',
   TestFramework = 'testFramework',
   ContainerMode = 'containerMode',
-  FailOnStandardError = 'failOnStandardError'
+  FailOnStandardError = 'failOnStandardError',
+  AllowGlobalPackageFallback = 'allowGlobalPackageFallback'
 }

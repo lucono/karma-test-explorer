@@ -20,6 +20,7 @@ export type AngularFactoryConfig = Pick<
   | 'defaultAngularProjectName'
   | 'environment'
   | 'failOnStandardError'
+  | 'allowGlobalPackageFallback'
   | 'karmaLogLevel'
   | 'karmaReporterLogLevel'
   | 'projectRootPath'
@@ -62,7 +63,8 @@ export class AngularFactory implements Partial<TestFactory> {
       environment,
       serverProcessLog: this.serverProcessLog,
       angularProcessCommand: this.factoryConfig.angularProcessCommand,
-      failOnStandardError: this.factoryConfig.failOnStandardError
+      failOnStandardError: this.factoryConfig.failOnStandardError,
+      allowGlobalPackageFallback: this.factoryConfig.allowGlobalPackageFallback
     };
 
     const serverExecutor = new AngularTestServerExecutor(

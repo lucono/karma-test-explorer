@@ -1,5 +1,5 @@
 import { getInstalledPathSync } from 'get-installed-path';
-import path from 'path';
+import { isAbsolute, posix, relative, sep } from 'path';
 
 export const generateRandomId = () => Math.random().toString(36).slice(2);
 
@@ -31,8 +31,8 @@ export const normalizePath = (filePath: string): string => {
   return process.platform === 'win32'
     ? filePath
         .replace(/^[\/]?([A-Za-z]:)/, (_, drive) => drive.toUpperCase())
-        .split(path.sep)
-        .join(path.posix.sep)
+        .split(sep)
+        .join(posix.sep)
     : filePath;
 };
 
@@ -77,19 +77,18 @@ export const getValueTypeReplacer = () => {
 
 export const getPackageInstallPathForProjectRoot = (
   packageName: string,
-  projectRootPath?: string
+  projectRootPath: string,
+  options?: { allowGlobalPackageFallback?: boolean }
 ): string | undefined => {
   let packageInstallPath: string | undefined;
 
-  if (projectRootPath) {
-    try {
-      packageInstallPath = getInstalledPathSync(packageName, { local: true, cwd: projectRootPath });
-    } catch (error) {
-      console.warn(`Could not find '${packageName}' package local install at root path '${projectRootPath}': ${error}`);
-    }
+  try {
+    packageInstallPath = getInstalledPathSync(packageName, { local: true, cwd: projectRootPath });
+  } catch (error) {
+    console.warn(`Could not find '${packageName}' package local install at root path '${projectRootPath}': ${error}`);
   }
 
-  if (!packageInstallPath) {
+  if (!packageInstallPath && options?.allowGlobalPackageFallback === true) {
     try {
       packageInstallPath = getInstalledPathSync('karma');
     } catch (error) {
@@ -99,4 +98,14 @@ export const getPackageInstallPathForProjectRoot = (
   }
 
   return packageInstallPath;
+};
+
+export const isChildPath = (parentPath: string, childPath: string): boolean => {
+  const childFromParentRelativePath = relative(parentPath, childPath);
+
+  return (
+    childPath !== parentPath &&
+    !isAbsolute(childFromParentRelativePath) &&
+    !childFromParentRelativePath.startsWith('..')
+  );
 };

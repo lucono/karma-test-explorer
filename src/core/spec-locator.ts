@@ -85,7 +85,8 @@ export class SpecLocator implements Disposable {
 
       this.logger.debug(
         () =>
-          `Refreshed ${loadedFileCount} spec ${filePaths ? 'files' : 'globs'} ` +
+          `Refreshed ${loadedFileCount} spec files ` +
+          `from ${filePaths ? 'file list' : 'glob list'} ` +
           `in ${reloadSecs.toFixed(2)} secs: ${filesDescription}`
       );
     };

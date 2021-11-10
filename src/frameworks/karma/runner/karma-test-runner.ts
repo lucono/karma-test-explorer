@@ -10,7 +10,7 @@ import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
 import { generateRandomId } from '../../../util/utils';
-import { KarmaTestEventListener } from './karma-test-event-listener';
+import { KarmaTestListener } from './karma-test-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { TestDiscoveryProcessor } from './test-discovery-processor';
 
@@ -20,7 +20,7 @@ export class KarmaTestRunner implements TestRunner {
   public constructor(
     private readonly testRunExecutor: TestRunExecutor,
     private readonly testFramework: TestFramework,
-    private readonly karmaEventListener: KarmaTestEventListener,
+    private readonly karmaEventListener: KarmaTestListener,
     private readonly testDiscoveryProcessor: TestDiscoveryProcessor,
     private readonly logger: Logger
   ) {

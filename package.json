@@ -5,7 +5,7 @@
   "icon": "docs/img/extension-icon-128.png",
   "author": "Lucas Ononiwu",
   "publisher": "lucono",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "preview": true,
   "license": "MIT",
   "homepage": "https://github.com/lucono/karma-test-explorer",
@@ -87,7 +87,7 @@
     "@types/which": "^2.0.1",
     "@typescript-eslint/eslint-plugin": "^4.32.0",
     "@typescript-eslint/parser": "^4.32.0",
-    "esbuild": "^0.13.3",
+    "esbuild": "^0.13.12",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jest": "^24.4.3",
@@ -165,6 +165,12 @@
         },
         "karmaTestExplorer.nonHeadlessModeEnabled": {
           "description": "Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
+        "karmaTestExplorer.allowGlobalPackageFallback": {
+          "description": "Allows use of global install of Karma or Angular if available and there is no local install in the project folder",
           "type": "boolean",
           "scope": "resource",
           "default": false

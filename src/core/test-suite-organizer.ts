@@ -1,8 +1,9 @@
-import { basename, dirname, isAbsolute, normalize, posix, relative, resolve, sep as pathSeparator } from 'path';
+import { basename, dirname, posix, relative, resolve, sep as pathSeparator } from 'path';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { Logger } from '../util/logging/logger';
+import { isChildPath } from '../util/utils';
 import { TestGrouping } from './base/test-grouping';
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from './base/test-infos';
 
@@ -22,40 +23,29 @@ export interface TestSuiteOrganizationOptions extends Partial<TestSuiteFolderGro
 }
 
 export class TestSuiteOrganizer implements Disposable {
+  private readonly testsBasePath: string;
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly logger: Logger) {
+  public constructor(private readonly rootPath: string, testsBasePath: string, private readonly logger: Logger) {
+    this.testsBasePath = isChildPath(rootPath, testsBasePath) ? testsBasePath : rootPath;
     this.disposables.push(logger);
   }
 
-  public organizeTests(
-    rootSuite: TestSuiteInfo,
-    rootPath: string,
-    testsBasePath: string,
-    options?: TestSuiteOrganizationOptions
-  ): TestSuiteInfo {
+  public organizeTests(rootSuite: TestSuiteInfo, options?: TestSuiteOrganizationOptions): TestSuiteInfo {
     const allOptions: Required<TestSuiteOrganizationOptions> = {
       ...defaultTestSuiteOrganizerOptions,
       ...options
     };
 
-    const adjustedBasePath = this.isChildPath(rootPath, testsBasePath) ? testsBasePath : rootPath;
-
     const groupedTestSuite: TestSuiteInfo =
-      allOptions.testGrouping === TestGrouping.Folder
-        ? this.groupByFolder(rootSuite, adjustedBasePath, allOptions)
-        : rootSuite;
+      allOptions.testGrouping === TestGrouping.Folder ? this.groupByFolder(rootSuite, allOptions) : rootSuite;
 
     this.sortTestTree(groupedTestSuite);
 
     return groupedTestSuite;
   }
 
-  private groupByFolder(
-    rootSuite: TestSuiteInfo,
-    basePath: string,
-    groupingOptions: TestSuiteFolderGroupingOptions
-  ): TestSuiteInfo {
+  private groupByFolder(rootSuite: TestSuiteInfo, groupingOptions: TestSuiteFolderGroupingOptions): TestSuiteInfo {
     const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
     const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
     const fileLessSpecsSuite: TestSuiteInfo[] = [];
@@ -78,13 +68,13 @@ export class TestSuiteOrganizer implements Disposable {
       let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(test.file);
 
       if (!testFileSuite) {
-        testFileSuite = this.createTestFileSuite(basePath, test.file);
+        testFileSuite = this.createTestFileSuite(test.file);
         testFileSuitesByFilePath.set(test.file, testFileSuite);
       }
       testFileSuite.children.push(test);
     });
 
-    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(basePath);
+    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(this.testsBasePath);
     rootFolderSuite.label = '.';
 
     testFileSuitesByFilePath.forEach(testFileSuite => {
@@ -140,7 +130,7 @@ export class TestSuiteOrganizer implements Disposable {
 
     const singleChild = suite.children.length === 1 ? suite.children[0] : undefined;
 
-    const flattenedTestSuite =
+    const flattenedTestSuite: TestFolderSuiteInfo =
       flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
         ? { ...singleChild, label: posix.join(suite.label, singleChild.label) }
         : suite;
@@ -180,26 +170,25 @@ export class TestSuiteOrganizer implements Disposable {
   }
 
   private createFolderSuite(absolutePath: string): TestFolderSuiteInfo {
-    const folderPath = normalize(absolutePath);
-    const folderName = basename(folderPath);
+    const relativePath = relative(this.rootPath, absolutePath);
+    const folderName = basename(absolutePath);
 
     return {
       type: TestType.Suite,
       suiteType: TestSuiteType.Folder,
-      path: folderPath,
-      id: folderPath,
+      path: absolutePath,
+      id: absolutePath,
       fullName: '', // To prevent being runnable with grep pattern of fullName
       label: folderName,
-      tooltip: folderPath,
+      tooltip: relativePath ?? absolutePath,
       children: [],
       testCount: 0
     };
   }
 
-  private createTestFileSuite(basePath: string, absoluteFilePath: string): TestFileSuiteInfo {
-    const relativeFilePath = relative(basePath, absoluteFilePath);
+  private createTestFileSuite(absoluteFilePath: string): TestFileSuiteInfo {
+    const relativeFilePath = relative(this.testsBasePath, absoluteFilePath);
     const fileSuiteId = `${absoluteFilePath}:`;
-
     const fileSuiteLabel = basename(absoluteFilePath).replace(/^(test[_\.-])?([^\.]*)([_\.-]test)?(\..*)$/i, '$2');
 
     return {
@@ -247,16 +236,6 @@ export class TestSuiteOrganizer implements Disposable {
       currentFolderNode = nextFolderNode;
     }
     return currentFolderNode;
-  }
-
-  private isChildPath(parentPath: string, childPath: string): boolean {
-    const childFromParentRelativePath = relative(parentPath, childPath);
-
-    return (
-      childPath !== parentPath &&
-      !isAbsolute(childFromParentRelativePath) &&
-      !childFromParentRelativePath.startsWith('..')
-    );
   }
 
   public async dispose() {

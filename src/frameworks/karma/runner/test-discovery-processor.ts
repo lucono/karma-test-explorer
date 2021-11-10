@@ -18,8 +18,6 @@ export class TestDiscoveryProcessor implements Disposable {
     private readonly testCountProcessor: TestCountProcessor,
     private readonly testGrouping: TestGrouping,
     private readonly flattenSingleChildFolders: boolean,
-    private readonly projectRootPath: string,
-    private readonly testsBasePath: string,
     private readonly logger: Logger
   ) {
     this.disposables.push(logger);
@@ -33,12 +31,7 @@ export class TestDiscoveryProcessor implements Disposable {
       flattenSingleChildFolders: this.flattenSingleChildFolders
     };
 
-    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(
-      mappedTestSuite,
-      this.projectRootPath,
-      this.testsBasePath,
-      testOrganizationOptions
-    );
+    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(mappedTestSuite, testOrganizationOptions);
 
     const addTestCountToSuite = (test: AnyTestInfo, testCount: number) => {
       if (test.type === TestType.Suite) {

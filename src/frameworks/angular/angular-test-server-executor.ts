@@ -20,6 +20,7 @@ export interface AngularTestServerExecutorOptions {
   angularProcessCommand?: string;
   serverProcessLog?: CommandLineProcessLog;
   failOnStandardError?: boolean;
+  allowGlobalPackageFallback?: boolean;
 }
 
 export class AngularTestServerExecutor implements TestServerExecutor {
@@ -62,8 +63,10 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const angularInstallPath = getPackageInstallPathForProjectRoot('@angular/cli', this.workspaceRootPath);
-    const angularBinaryPath = angularInstallPath ? join(angularInstallPath, 'bin', 'ng') : undefined;
+    const angularLocalInstallPath = getPackageInstallPathForProjectRoot('@angular/cli', this.workspaceRootPath, {
+      allowGlobalPackageFallback: this.options.allowGlobalPackageFallback
+    });
+    const angularBinaryPath = angularLocalInstallPath ? join(angularLocalInstallPath, 'bin', 'ng') : undefined;
 
     if (!angularBinaryPath) {
       throw new Error(
@@ -73,6 +76,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       );
     }
 
+    const npxExecutablePath = which.sync('npx', { all: false, nothrow: true });
     const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
 
     let command: string;
@@ -80,6 +84,9 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     if (this.options.angularProcessCommand) {
       command = this.options.angularProcessCommand;
+    } else if (npxExecutablePath) {
+      command = npxExecutablePath;
+      processArguments = ['--no', '@angular/cli'];
     } else {
       command = nodeExecutablePath ?? process.execPath;
       processArguments = [angularBinaryPath];

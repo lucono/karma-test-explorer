@@ -1,4 +1,4 @@
-import { isAbsolute, posix } from 'path';
+import { isAbsolute } from 'path';
 import { EventEmitter } from 'vscode';
 import { TestDecoration, TestEvent, TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestResultEvent } from '../../../core/base/test-events';
@@ -16,7 +16,7 @@ import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
 import { escapeForRegExp } from '../../../util/utils';
-import { TestCapture } from './karma-test-event-listener';
+import { TestCapture } from './karma-test-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { SpecResponseToTestSuiteInfoMapper } from './spec-response-to-test-suite-info-mapper';
 
@@ -57,8 +57,6 @@ export class KarmaTestEventProcessor {
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly specLocator: SpecLocator,
     private readonly testGrouping: TestGrouping,
-    private readonly projectRootPath: string,
-    private readonly testsBasePath: string,
     private readonly testResolver: TestResolver,
     private readonly logger: Logger
   ) {
@@ -218,37 +216,16 @@ export class KarmaTestEventProcessor {
         ? 'Skipped'
         : '';
 
-    let relativeTestLocation: SpecLocation | undefined =
-      test?.file && test?.line !== undefined
-        ? { file: posix.relative(this.projectRootPath, test.file), line: test.line }
-        : undefined;
+    const candidateSpecLocations = this.specLocator.getSpecLocations(testResult.suite, testResult.description, true);
+
+    const relativeTestLocation: SpecLocation | undefined =
+      candidateSpecLocations.length === 1 ? candidateSpecLocations[0] : undefined;
 
     this.logger.debug(
       () =>
-        `Relative test location from loaded test: ` +
+        `Relative test location from ${candidateSpecLocations.length} resulting candidates from lookup: ` +
         `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
     );
-
-    if (!relativeTestLocation) {
-      const candidateSpecLocations = this.specLocator.getSpecLocations(testResult.suite, testResult.description, true);
-      relativeTestLocation = candidateSpecLocations.length === 1 ? candidateSpecLocations[0] : relativeTestLocation;
-
-      this.logger.debug(
-        () =>
-          `Relative test location from ${candidateSpecLocations.length} resulting candidates from lookup: ` +
-          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
-      );
-    }
-
-    if (!relativeTestLocation && testResult.filePath && testResult.line !== undefined) {
-      relativeTestLocation = { file: posix.relative(this.projectRootPath, testResult.filePath), line: testResult.line };
-
-      this.logger.debug(
-        () =>
-          `Relative test location from karma spec response: ` +
-          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
-      );
-    }
 
     const testResultForErrorReporting: SpecCompleteResponse = {
       ...testResult,
@@ -326,24 +303,9 @@ export class KarmaTestEventProcessor {
     };
 
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(
-        testResults.Failed,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      ),
-      Success: this.testSuiteOrganizer.organizeTests(
-        testResults.Success,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      ),
-      Skipped: this.testSuiteOrganizer.organizeTests(
-        testResults.Skipped,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      )
+      Failed: this.testSuiteOrganizer.organizeTests(testResults.Failed, testOrganizationOptions),
+      Success: this.testSuiteOrganizer.organizeTests(testResults.Success, testOrganizationOptions),
+      Skipped: this.testSuiteOrganizer.organizeTests(testResults.Skipped, testOrganizationOptions)
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);

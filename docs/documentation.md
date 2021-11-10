@@ -99,6 +99,7 @@ Setting                                       | Description
 `karmaTestExplorer.autoWatchEnabled` | Enables automatic re-run of tests when the files change
 `karmaTestExplorer.autoWatchBatchDelay` | The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as Karma config's `autoWatchBatchDelay` option and overrides it when set
 `karmaTestExplorer.nonHeadlessModeEnabled` | Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden
+`karmaTestExplorer.allowGlobalPackageFallback` | Allows use of global install of Karma or Angular if available and there is no local install in the project folder
 `karmaTestExplorer.env` | Additional environment variables to be set when running the tests. These override the values of the same variables if also provided through the `envFile` setting
 `karmaTestExplorer.envFile` | Path to a dotenv file containing environment variables to be set when running the tests
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default

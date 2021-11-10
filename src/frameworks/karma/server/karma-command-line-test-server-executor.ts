@@ -19,6 +19,7 @@ export interface KarmaCommandLineTestServerExecutorOptions {
   karmaProcessCommand?: string;
   serverProcessLog?: CommandLineProcessLog;
   failOnStandardError?: boolean;
+  allowGlobalPackageFallback?: boolean;
 }
 
 export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
@@ -61,8 +62,10 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const karmaInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath);
-    const karmaBinaryPath = karmaInstallPath ? join(karmaInstallPath, 'bin', 'karma') : undefined;
+    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath, {
+      allowGlobalPackageFallback: this.options.allowGlobalPackageFallback
+    });
+    const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
 
     if (!karmaBinaryPath) {
       throw new Error(
@@ -72,6 +75,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       );
     }
 
+    const npxExecutablePath = which.sync('npx', { all: false, nothrow: true });
     const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
 
     let command: string;
@@ -79,6 +83,9 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
 
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
+    } else if (npxExecutablePath) {
+      command = npxExecutablePath;
+      processArguments = ['--no', 'karma'];
     } else {
       command = nodeExecutablePath ?? process.execPath;
       processArguments = [karmaBinaryPath];

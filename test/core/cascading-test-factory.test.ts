@@ -3,7 +3,7 @@ import { TestFactory } from '../../src/api/test-factory';
 import { TestRunExecutor } from '../../src/api/test-run-executor';
 import { TestServerExecutor } from '../../src/api/test-server-executor';
 import { CascadingTestFactory } from '../../src/core/cascading-test-factory';
-import { KarmaTestEventListener } from '../../src/frameworks/karma/runner/karma-test-event-listener';
+import { KarmaTestListener } from '../../src/frameworks/karma/runner/karma-test-listener';
 import { TestDiscoveryProcessor } from '../../src/frameworks/karma/runner/test-discovery-processor';
 import { Logger } from '../../src/util/logging/logger';
 
@@ -104,10 +104,10 @@ describe('CascadingTestFactory', () => {
         ];
         const cascadingTestFactory = new CascadingTestFactory(delegateFactories, mockLogger);
 
-        const mocktestEventListener = mock<KarmaTestEventListener>();
+        const mockTestListener = mock<KarmaTestListener>();
         const mockTestDiscoveryProcessor = mock<TestDiscoveryProcessor>();
         const mockTestRunExecutor = mock<TestRunExecutor>();
-        cascadingTestFactory.createTestRunner(mocktestEventListener, mockTestDiscoveryProcessor, mockTestRunExecutor);
+        cascadingTestFactory.createTestRunner(mockTestListener, mockTestDiscoveryProcessor, mockTestRunExecutor);
 
         expect(testServerAndRunnerAndServerExecutorFactory.createTestRunner).not.toHaveBeenCalled();
         expect(testServerAndRunnerFactory.createTestRunner).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('CascadingTestFactory', () => {
         expect(testRunnerFactory.createTestRunner).toHaveBeenCalledTimes(1);
 
         expect(testRunnerFactory.createTestRunner).toHaveBeenCalledWith(
-          mocktestEventListener,
+          mockTestListener,
           mockTestDiscoveryProcessor,
           mockTestRunExecutor
         );
@@ -130,9 +130,9 @@ describe('CascadingTestFactory', () => {
         ];
         const cascadingTestFactory = new CascadingTestFactory(delegateFactories, mockLogger);
 
-        const mocktestEventListener = mock<KarmaTestEventListener>();
+        const mockTestListener = mock<KarmaTestListener>();
         const mockTestDiscoveryProcessor = mock<TestDiscoveryProcessor>();
-        cascadingTestFactory.createTestRunner(mocktestEventListener, mockTestDiscoveryProcessor);
+        cascadingTestFactory.createTestRunner(mockTestListener, mockTestDiscoveryProcessor);
 
         expect(testServerAndRunnerAndRunExecutorFactory.createTestRunExecutor).toHaveBeenCalledTimes(1);
         const expectedTestRunExecutor = (testServerAndRunnerAndRunExecutorFactory.createTestRunExecutor as any).mock
@@ -140,7 +140,7 @@ describe('CascadingTestFactory', () => {
 
         expect(testRunnerFactory.createTestRunner).toHaveBeenCalledTimes(1);
         expect(testRunnerFactory.createTestRunner).toHaveBeenCalledWith(
-          mocktestEventListener,
+          mockTestListener,
           mockTestDiscoveryProcessor,
           expectedTestRunExecutor
         );
@@ -152,7 +152,7 @@ describe('CascadingTestFactory', () => {
 
         expect(() =>
           cascadingTestFactory.createTestRunner(
-            mock<KarmaTestEventListener>(),
+            mock<KarmaTestListener>(),
             mock<TestDiscoveryProcessor>(),
             mock<TestRunExecutor>()
           )

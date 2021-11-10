@@ -66,6 +66,7 @@ export class ExtensionConfig implements Disposable {
   public readonly userKarmaConfFilePath: string;
   public readonly testTriggerMethod: TestTriggerMethod;
   public readonly failOnStandardError: boolean;
+  public readonly allowGlobalPackageFallback: boolean;
 
   public constructor(config: ConfigStore, workspacePath: string, private readonly logger: Logger) {
     const normalizedWorkspacePath = normalizePath(workspacePath);
@@ -96,6 +97,7 @@ export class ExtensionConfig implements Disposable {
     this.debuggerConfig = config.get(ConfigSetting.DebuggerConfig)!;
     this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
     this.testFiles = config.get<string[]>(ConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
+    this.allowGlobalPackageFallback = !!config.get(ConfigSetting.AllowGlobalPackageFallback);
 
     this.excludeFiles = toSingleUniqueArray(
       config.get(ConfigSetting.ExcludeFiles),

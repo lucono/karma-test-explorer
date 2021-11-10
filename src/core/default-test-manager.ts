@@ -3,7 +3,7 @@ import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { ServerStartInfo, TestManager } from '../api/test-manager';
 import { TestRunner } from '../api/test-runner';
 import { TestServer } from '../api/test-server';
-import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { DeferredPromise } from '../util/future/deferred-promise';
@@ -25,7 +25,7 @@ export class DefaultTestManager implements TestManager {
   public constructor(
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
-    private readonly karmaEventListener: KarmaTestEventListener,
+    private readonly karmaEventListener: KarmaTestListener,
     private readonly portManager: PortAcquisitionManager,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,

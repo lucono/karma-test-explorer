@@ -9,8 +9,9 @@ import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framewo
 import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-factory';
 import { KarmaLogLevel } from '../frameworks/karma/karma-log-level';
 import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
-import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
 import { KarmaTestEventProcessor } from '../frameworks/karma/runner/karma-test-event-processor';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
+import { KarmaTestRunProcessor } from '../frameworks/karma/runner/karma-test-run-processor';
 import { SpecResponseToTestSuiteInfoMapper } from '../frameworks/karma/runner/spec-response-to-test-suite-info-mapper';
 import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor';
 import { KarmaServerProcessLog } from '../frameworks/karma/server/karma-server-process-log';
@@ -87,7 +88,12 @@ export class MainFactory {
       this.logger.info(() => `Auto-watch is unavailable for the current test framework: ${this.testFramework.name}`);
     }
 
-    const testSuiteOrganizer = new TestSuiteOrganizer(this.createLogger(TestSuiteOrganizer.name));
+    const testSuiteOrganizer = new TestSuiteOrganizer(
+      this.config.projectRootPath,
+      this.config.testsBasePath,
+      this.createLogger(TestSuiteOrganizer.name)
+    );
+
     const testTreeProcessor = new TestTreeProcessor(this.createLogger(TestTreeProcessor.name));
     const testCountProcessor = new TestCountProcessor(testTreeProcessor, this.createLogger(TestCountProcessor.name));
 
@@ -104,8 +110,6 @@ export class MainFactory {
       testCountProcessor,
       this.config.testGrouping,
       this.config.flattenSingleChildFolders,
-      this.config.projectRootPath,
-      this.config.testsBasePath,
       this.createLogger(TestDiscoveryProcessor.name)
     );
 
@@ -202,7 +206,8 @@ export class MainFactory {
       browser: this.config.browser,
       karmaProcessCommand: this.config.karmaProcessCommand,
       testTriggerMethod: this.config.testTriggerMethod,
-      failOnStandardError: this.config.failOnStandardError
+      failOnStandardError: this.config.failOnStandardError,
+      allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
     };
 
     return new KarmaFactory(
@@ -230,7 +235,8 @@ export class MainFactory {
       browser: this.config.browser,
       angularProcessCommand: this.config.angularProcessCommand,
       defaultAngularProjectName: this.config.defaultAngularProjectName,
-      failOnStandardError: this.config.failOnStandardError
+      failOnStandardError: this.config.failOnStandardError,
+      allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
     };
 
     return new AngularFactory(
@@ -252,7 +258,7 @@ export class MainFactory {
     testSuiteOrganizer: TestSuiteOrganizer,
     testDiscoveryProcessor: TestDiscoveryProcessor,
     autoWatchEnabled: boolean
-  ): KarmaTestEventListener {
+  ): KarmaTestListener {
     const suiteTestResultProcessor = new SuiteAggregateTestResultProcessor(
       testResultEventEmitter,
       testResolver,
@@ -267,8 +273,6 @@ export class MainFactory {
       suiteTestResultProcessor,
       this.specLocator,
       this.config.testGrouping,
-      this.config.projectRootPath,
-      this.config.testsBasePath,
       testResolver,
       this.createLogger(KarmaTestEventProcessor.name)
     );
@@ -283,8 +287,6 @@ export class MainFactory {
         suiteTestResultProcessor,
         this.specLocator,
         this.config.testGrouping,
-        this.config.projectRootPath,
-        this.config.testsBasePath,
         testResolver,
         this.createLogger(`${KarmaAutoWatchTestEventProcessor.name}:${KarmaTestEventProcessor.name}`)
       );
@@ -300,13 +302,16 @@ export class MainFactory {
       );
     }
 
-    return new KarmaTestEventListener(
+    const testRunProcessor = new KarmaTestRunProcessor(
       testRunEventProcessor,
       watchModeTestEventProcessor,
       this.notifications,
-      this.createLogger(KarmaTestEventListener.name),
-      { karmaReadyTimeout: this.config.karmaReadyTimeout }
+      new SimpleLogger(this.logger, KarmaTestRunProcessor.name)
     );
+
+    return new KarmaTestListener(testRunProcessor, this.createLogger(KarmaTestListener.name), {
+      karmaReadyTimeout: this.config.karmaReadyTimeout
+    });
   }
 
   private detectTestFramework(karmaConfigPath: string, fileHandler: FileHandler): TestFramework {
