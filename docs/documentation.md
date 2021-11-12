@@ -93,6 +93,7 @@ Setting                                       | Description
 `karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to `projectRootPath`)
 `karmaTestExplorer.testGrouping` | How tests should be grouped in the Test view side bar
 `karmaTestExplorer.flattenSingleChildFolders` | Flattens paths consisting of single child folders when using folder-based test grouping
+`karmaTestExplorer.flagDuplicateTests` | Enables flagging of duplicate tests in the VS Code sidebar
 `karmaTestExplorer.karmaPort` | The port to be used for the Karma server in VS Code
 `karmaTestExplorer.browser` | The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file. This takes precedence over the `customLauncher` setting
 `karmaTestExplorer.customLauncher` | Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file

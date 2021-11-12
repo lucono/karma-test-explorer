@@ -101,7 +101,8 @@ export class MainFactory {
 
     const specToTestSuiteMapper = new SpecResponseToTestSuiteInfoMapper(
       specLocator,
-      this.createLogger(SpecResponseToTestSuiteInfoMapper.name)
+      this.createLogger(SpecResponseToTestSuiteInfoMapper.name),
+      { flagDuplicateTests: this.config.flagDuplicateTests }
     );
 
     const testDiscoveryProcessor = new TestDiscoveryProcessor(

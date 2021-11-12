@@ -1,11 +1,23 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestType } from '../../../core/base/test-infos';
-import { SpecLocator } from '../../../core/spec-locator';
+import { SpecLocation, SpecLocator } from '../../../core/spec-locator';
 import { Logger } from '../../../util/logging/logger';
 import { SpecCompleteResponse } from './spec-complete-response';
 
+export interface SpecResponseToTestSuiteInfoMapperOptions {
+  flagDuplicateTests?: boolean;
+}
+
 export class SpecResponseToTestSuiteInfoMapper {
-  public constructor(private readonly specLocator: SpecLocator, private readonly logger: Logger) {}
+  private readonly options: SpecResponseToTestSuiteInfoMapperOptions;
+
+  public constructor(
+    private readonly specLocator: SpecLocator,
+    private readonly logger: Logger,
+    options: SpecResponseToTestSuiteInfoMapperOptions = {}
+  ) {
+    this.options = { flagDuplicateTests: true, ...options };
+  }
 
   public map(specs: SpecCompleteResponse[]): TestSuiteInfo {
     const rootTestSuite: TestSuiteInfo = this.createRootSuite();
@@ -41,7 +53,7 @@ export class SpecResponseToTestSuiteInfoMapper {
         return;
       }
       const testSuite = this.getDescendantSuite(rootTestSuite, spec.suite, specFile);
-      const test = this.createTest(spec, specFile);
+      const test = this.createTest(spec, specFile, matchingSpecLocations);
       testSuite.children.push(test);
       processedSpecCount += 1;
     });
@@ -106,10 +118,8 @@ export class SpecResponseToTestSuiteInfoMapper {
     return suiteNode;
   }
 
-  private createTest(spec: SpecCompleteResponse, specFile: string): TestInfo {
-    const allMatchingSpecLocations = this.specLocator.getSpecLocations(spec.suite, spec.description);
-    const specLocation = allMatchingSpecLocations.find(loc => loc.file === specFile);
-
+  private createTest(spec: SpecCompleteResponse, specFile: string, allMatchingSpecLocations: SpecLocation[]): TestInfo {
+    const specLocation = allMatchingSpecLocations.find(specLocation => specLocation.file === specFile);
     const runFailureMessage = spec.failureMessages?.join('\n');
     let loadFailureMessage: string | undefined;
 
@@ -122,7 +132,7 @@ export class SpecResponseToTestSuiteInfoMapper {
       line = specLocation?.line;
       const hasDuplicates = allMatchingSpecLocations.length > 1;
 
-      if (hasDuplicates) {
+      if (hasDuplicates && this.options.flagDuplicateTests) {
         errored = true;
         let duplicateSpecCounter = 0;
 

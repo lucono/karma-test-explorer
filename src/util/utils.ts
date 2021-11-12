@@ -1,10 +1,45 @@
+import dotenvExpand from 'dotenv-expand';
 import { getInstalledPathSync } from 'get-installed-path';
-import { isAbsolute, posix, relative, sep } from 'path';
-
-export const generateRandomId = () => Math.random().toString(36).slice(2);
+import { dirname, isAbsolute, posix, relative, sep } from 'path';
+import which from 'which';
+import { Logger } from './logging/logger';
 
 export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T): string | undefined => {
   return Object.keys(object).find(key => object[key] === propValue);
+};
+
+export const extractProperties = <T>(object: Record<string, T>, ...propNames: string[]): Record<string, T> => {
+  const objectSubset: Record<string, T> = {};
+  propNames.forEach(propName => (objectSubset[propName] = object[propName]));
+  return objectSubset;
+};
+
+export const changePropertyCase = <T>(
+  object: Readonly<Record<string, T>>,
+  toCase: 'upper' | 'lower',
+  ...propNames: string[]
+): Record<string, T> => {
+  const adjustedObject: Record<string, T> = {};
+  const adjustCase = toCase === 'lower' ? String.prototype.toLocaleLowerCase : String.prototype.toLocaleUpperCase;
+  const lowerCasePropsForAdjustment = propNames.map(propName => propName.toLocaleLowerCase());
+
+  Object.keys(object).forEach(originalProp => {
+    const adjustedProp = lowerCasePropsForAdjustment.includes(originalProp.toLocaleLowerCase())
+      ? adjustCase.apply(originalProp)
+      : originalProp;
+
+    adjustedObject[adjustedProp] = object[originalProp];
+  });
+
+  return adjustedObject;
+};
+
+export const generateRandomId = () => {
+  return Math.random().toString(36).slice(2);
+};
+
+export const asNonBlankStringOrUndefined = (value?: string): string | undefined => {
+  return (value ?? '').trim().length > 0 ? value : undefined;
 };
 
 export const toSingleUniqueArray = <T>(...arrays: (T[] | undefined)[]): T[] => {
@@ -12,8 +47,9 @@ export const toSingleUniqueArray = <T>(...arrays: (T[] | undefined)[]): T[] => {
   return [...new Set(combinedArray)];
 };
 
-export const asNonBlankStringOrUndefined = (value?: string): string | undefined => {
-  return (value ?? '').trim().length > 0 ? value : undefined;
+// From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+export const escapeForRegExp = (stringValue: string) => {
+  return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 export const stripJsComments = (content: string): string => {
@@ -24,9 +60,6 @@ export const stripJsComments = (content: string): string => {
   );
 };
 
-// From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-export const escapeForRegExp = (stringValue: string) => stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 export const normalizePath = (filePath: string): string => {
   return process.platform === 'win32'
     ? filePath
@@ -34,6 +67,16 @@ export const normalizePath = (filePath: string): string => {
         .split(sep)
         .join(posix.sep)
     : filePath;
+};
+
+export const isChildPath = (parentPath: string, childPath: string): boolean => {
+  const childFromParentRelativePath = relative(parentPath, childPath);
+
+  return (
+    childPath !== parentPath &&
+    !isAbsolute(childFromParentRelativePath) &&
+    !childFromParentRelativePath.startsWith('..')
+  );
 };
 
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
@@ -50,49 +93,66 @@ export const getCircularReferenceReplacer = () => {
   };
 };
 
-export const getValueTypeReplacer = () => {
-  const seen = new WeakSet();
-  const replacer = (key: string, value: any) => {
-    try {
-      if (Array.isArray(value)) {
-        return value;
-      } else if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return;
-        }
-        seen.add(value);
-        const result: Record<string, any> = {};
-        Object.keys(value).forEach(propName => (result[propName] = replacer(propName, value[propName])));
-        return result;
-      } else if (typeof value === 'function') {
-        return `${value.name}()`;
-      }
-    } catch (error) {
-      /* No handling required */
-    }
-    return value === null ? 'null' : typeof value;
-  };
-  return replacer;
+export const expandEnvironment = (
+  environment: Readonly<Record<string, string>>,
+  logger?: Logger
+): Record<string, string> | undefined => {
+  const UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES = [
+    'HOMEDRIVE',
+    'HOMEPATH',
+    'LOGONSERVER',
+    'PATH',
+    'SYSTEMDRIVE',
+    'SYSTEMROOT',
+    'TEMP',
+    'USERDOMAIN',
+    'USERNAME',
+    'USERPROFILE',
+    'WINDIR'
+  ];
+
+  let expandedEnvironment: Record<string, string> | undefined;
+
+  try {
+    const processEnv = changePropertyCase(process.env, 'upper', ...UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES);
+    const mergedProcessEnvironment = { ...processEnv, ...environment } as Record<string, string>;
+
+    dotenvExpand(<any>{ parsed: mergedProcessEnvironment, ignoreProcessEnv: true });
+    expandedEnvironment = extractProperties(mergedProcessEnvironment, ...Object.keys(environment));
+  } catch (error) {
+    logger?.error(
+      () =>
+        `Failed to expand combined environment: ${JSON.stringify(environment, null, 2)}\n` +
+        `Expansion failed with error: ${error}`
+    );
+  }
+
+  return expandedEnvironment;
 };
 
 export const getPackageInstallPathForProjectRoot = (
   packageName: string,
   projectRootPath: string,
-  options?: { allowGlobalPackageFallback?: boolean }
+  options?: { allowGlobalPackageFallback?: boolean },
+  logger?: Logger
 ): string | undefined => {
   let packageInstallPath: string | undefined;
 
   try {
     packageInstallPath = getInstalledPathSync(packageName, { local: true, cwd: projectRootPath });
+    logger?.debug(() => `Found '${packageName}' local package at: ${packageInstallPath}`);
   } catch (error) {
-    console.warn(`Could not find '${packageName}' package local install at root path '${projectRootPath}': ${error}`);
+    logger?.warn(
+      () => `Could not find '${packageName}' local package install in root path '${projectRootPath}': ${error}`
+    );
   }
 
   if (!packageInstallPath && options?.allowGlobalPackageFallback === true) {
     try {
-      packageInstallPath = getInstalledPathSync('karma');
+      packageInstallPath = getInstalledPathSync(packageName);
+      logger?.debug(() => `Found '${packageName}' global package at: ${packageInstallPath}`);
     } catch (error) {
-      console.warn(`Could not find '${packageName}' package global install: ${error}`);
+      logger?.warn(() => `Could not find '${packageName}' global package install: ${error}`);
       return;
     }
   }
@@ -100,12 +160,15 @@ export const getPackageInstallPathForProjectRoot = (
   return packageInstallPath;
 };
 
-export const isChildPath = (parentPath: string, childPath: string): boolean => {
-  const childFromParentRelativePath = relative(parentPath, childPath);
+export const getNodeExecutablePath = (searchPath?: string): string | undefined => {
+  const path = searchPath ?? process.env.PATH;
+  const npxExecutablePath = which.sync('npx', { all: false, nothrow: true, path });
 
-  return (
-    childPath !== parentPath &&
-    !isAbsolute(childFromParentRelativePath) &&
-    !childFromParentRelativePath.startsWith('..')
-  );
+  const npxNodeExecutablePath = npxExecutablePath
+    ? which.sync('node', { all: false, nothrow: true, path: dirname(npxExecutablePath) })
+    : undefined;
+
+  const nodeExecutablePath = which.sync('node', { all: false, nothrow: true, path });
+
+  return npxNodeExecutablePath ?? nodeExecutablePath ?? undefined;
 };

@@ -30,5 +30,6 @@ export enum ConfigSetting {
   TestFramework = 'testFramework',
   ContainerMode = 'containerMode',
   FailOnStandardError = 'failOnStandardError',
-  AllowGlobalPackageFallback = 'allowGlobalPackageFallback'
+  AllowGlobalPackageFallback = 'allowGlobalPackageFallback',
+  FlagDuplicateTests = 'flagDuplicateTests'
 }

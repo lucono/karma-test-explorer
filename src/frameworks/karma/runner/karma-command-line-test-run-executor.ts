@@ -1,5 +1,4 @@
 import { join } from 'path';
-import which from 'which';
 import { TestRunExecutor } from '../../../api/test-run-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -10,7 +9,7 @@ import {
   CommandLineProcessHandlerOptions,
   CommandLineProcessLogOutput
 } from '../../../util/process/command-line-process-handler';
-import { getPackageInstallPathForProjectRoot } from '../../../util/utils';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: Record<string, string | undefined>;
@@ -36,9 +35,12 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath, {
-      allowGlobalPackageFallback: this.options.allowGlobalPackageFallback
-    });
+    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+      'karma',
+      this.projectRootPath,
+      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+      this.logger
+    );
     const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
 
     if (!karmaBinaryPath) {
@@ -49,17 +51,13 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       );
     }
 
-    const npxExecutablePath = which.sync('npx', { all: false, nothrow: true });
-    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
     let processArguments: string[] = [];
 
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
-    } else if (npxExecutablePath) {
-      command = npxExecutablePath;
-      processArguments = ['--no', 'karma'];
     } else {
       command = nodeExecutablePath ?? process.execPath;
       processArguments = [karmaBinaryPath];

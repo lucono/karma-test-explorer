@@ -28,4 +28,3 @@ export const ALWAYS_EXCLUDED_TEST_FILE_GLOBS = ['**/node_modules/**/*'];
 export const CHROME_BROWSER_DEBUGGING_PORT_FLAG = '--remote-debugging-port';
 export const CHROME_DEFAULT_DEBUGGING_PORT = 9222;
 export const DEFAULT_FILE_ENCODING: BufferEncoding = 'utf-8';
-export const FILE_URI_SCHEME = 'file';
