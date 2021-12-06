@@ -95,7 +95,10 @@ export class Notifications implements Disposable {
     const actionLabels = allActions.map(action => action.label);
 
     this.logger.debug(
-      () => `Showing '${type}' notification with actions ${JSON.stringify(actions)} and message: ${message}`
+      () =>
+        `Showing '${type}' notification with actions ` +
+        `${actions.map(action => `'${action.label}'`).join(', ')} ` +
+        `and message: ${message}`
     );
 
     notifier(message, ...actionLabels).then(selectedActionLabel => {

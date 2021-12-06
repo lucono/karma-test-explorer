@@ -50,6 +50,6 @@ For linting and building the code, and running unit tests, you can use the follo
 
 ## See Also
 
-- [Readme](https://github.com/lucono/karma-test-explorer/blob/master/README.md#karma-test-explorer-for-visual-studio-code)
-- [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer)
-- [Changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#changelog)
+- [Readme](./README.md#karma-test-explorer-for-visual-studio-code)
+- [Documentation](./docs/documentation.md#documentation---karma-test-explorer)
+- [Changelog](./CHANGELOG.md#changelog)

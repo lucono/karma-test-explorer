@@ -160,7 +160,7 @@ export const getPackageInstallPathForProjectRoot = (
   return packageInstallPath;
 };
 
-export const getNodeExecutablePath = (searchPath?: string): string | undefined => {
+export const getNodeExecutablePath = (searchPath?: string): string => {
   const path = searchPath ?? process.env.PATH;
   const npxExecutablePath = which.sync('npx', { all: false, nothrow: true, path });
 
@@ -170,5 +170,5 @@ export const getNodeExecutablePath = (searchPath?: string): string | undefined =
 
   const nodeExecutablePath = which.sync('node', { all: false, nothrow: true, path });
 
-  return npxNodeExecutablePath ?? nodeExecutablePath ?? undefined;
+  return npxNodeExecutablePath ?? nodeExecutablePath ?? process.execPath;
 };

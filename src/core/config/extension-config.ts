@@ -66,7 +66,10 @@ export class ExtensionConfig implements Disposable {
   public readonly testTriggerMethod: TestTriggerMethod;
   public readonly failOnStandardError: boolean;
   public readonly allowGlobalPackageFallback: boolean;
-  public readonly flagDuplicateTests: boolean;
+  public readonly excludeDisabledTests: boolean;
+  public readonly showOnlyFocusedTests: boolean;
+  public readonly showTestDefinitionTypeIndicators: boolean;
+  public readonly showUnmappedTests: boolean;
 
   public constructor(config: ConfigStore, workspacePath: string, private readonly logger: Logger) {
     const normalizedWorkspacePath = normalizePath(workspacePath);
@@ -98,7 +101,10 @@ export class ExtensionConfig implements Disposable {
     this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
     this.testFiles = config.get<string[]>(ConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
     this.allowGlobalPackageFallback = !!config.get(ConfigSetting.AllowGlobalPackageFallback);
-    this.flagDuplicateTests = !!config.get(ConfigSetting.FlagDuplicateTests);
+    this.excludeDisabledTests = !!config.get(ConfigSetting.ExcludeDisabledTests);
+    this.showOnlyFocusedTests = !!config.get(ConfigSetting.ShowOnlyFocusedTests);
+    this.showUnmappedTests = !!config.get(ConfigSetting.ShowUnmappedTests);
+    this.showTestDefinitionTypeIndicators = !!config.get(ConfigSetting.ShowTestDefinitionTypeIndicators);
 
     this.excludeFiles = toSingleUniqueArray(
       config.get(ConfigSetting.ExcludeFiles),

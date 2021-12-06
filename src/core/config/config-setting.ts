@@ -1,4 +1,5 @@
 export enum ConfigSetting {
+  EnableExtension = 'enableExtension',
   ProjectRootPath = 'projectRootPath',
   KarmaConfFilePath = 'karmaConfFilePath',
   KarmaPort = 'karmaPort',
@@ -31,5 +32,8 @@ export enum ConfigSetting {
   ContainerMode = 'containerMode',
   FailOnStandardError = 'failOnStandardError',
   AllowGlobalPackageFallback = 'allowGlobalPackageFallback',
-  FlagDuplicateTests = 'flagDuplicateTests'
+  ExcludeDisabledTests = 'excludeDisabledTests',
+  ShowUnmappedTests = 'showUnmappedTests',
+  ShowTestDefinitionTypeIndicators = 'showTestDefinitionTypeIndicators',
+  ShowOnlyFocusedTests = 'showOnlyFocusedTests'
 }

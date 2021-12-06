@@ -1,10 +1,18 @@
-<a href="https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml"><img align="right" src="https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg"></a>
+
+[![Installs](https://vsmarketplacebadge.apphb.com/installs-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
+[![Rating](https://vsmarketplacebadge.apphb.com/rating-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
+[![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
 
 # Karma Test Explorer for Visual Studio Code
 
 This extension lets you run your Karma or Angular tests in Visual Studio Code using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer), and supports both the Jasmine and Mocha test frameworks. It is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension, with various significant enhancements that are outlined in [Why this Extension](#why-this-extension) below.
 
 ![Karma Test Explorer screenshot](docs/img/extension-screenshot.png)
+
+---
+Your feedback helps improve this extension. Please rate it in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer), star the [GitHub project](https://github.com/lucono/karma-test-explorer/stargazers), and report issues and feature requests through the [issue tracker](https://github.com/lucono/karma-test-explorer/issues/new/choose).
+
+---
 
 ## Contents
 
@@ -25,6 +33,7 @@ This extension lets you run your Karma or Angular tests in Visual Studio Code us
 - Karma version 6 support
 - Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Watch mode support with auto pass / fail test status update
+- Show only focused tests or exclude disabled tests from the test view
 - Non-Headless testing mode
 - Group and run tests by folder or by test suite
 - Duplicate test detection and reporting
@@ -59,7 +68,7 @@ To quickly get started:
 - When done, you should see your tests in the Test View, and code lenses above each test in the editor, either of which can be used to run and debug the tests
 
 ---
-Also explore the many other [extension settings](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#configuration) to further customize it to the needs of your project and team, and if you run into any issues with setup or usage, please see the more detailed [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer) for help.
+Also explore the many other [extension settings](./docs/documentation.md#configuration) to further customize it to the needs of your project and team, and if you run into any issues with setup or usage, please see the more detailed [Documentation](./docs/documentation.md#documentation---karma-test-explorer) for help.
 
 ---
 
@@ -67,13 +76,13 @@ Also explore the many other [extension settings](https://github.com/lucono/karma
 
 ## Documentation
 
-For a more detailed guide on how to setup Karma Test Explorer to work with your project, customizing and fully leveraging all its features, and other helpful documentation around common scenarios and potential issues, please see the more detailed [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer).
+For a more detailed guide on how to setup Karma Test Explorer to work with your project, customizing and fully leveraging all its features, and other helpful documentation around common scenarios and potential issues, please see the more detailed [Documentation](./docs/documentation.md#documentation---karma-test-explorer).
 
 <a href="#contents"><img align="right" height="24" src="docs/img/back-to-top.png"></a>
 
 ## Why this Extension
 
-The Karma Test Explorer extension was initially created out of [need for additional features](https://github.com/Raagh/angular-karma_test-explorer/issues?q=is%3Aissue+author%3Alucono) from the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension at a time when that project seemed not to be accepting contributions anymore, and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#010---sep-28-2021)). 
+The Karma Test Explorer extension was initially created out of [need for additional features](https://github.com/Raagh/angular-karma_test-explorer/issues?q=is%3Aissue+author%3Alucono) from the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension at a time when that project seemed not to be accepting contributions anymore, and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](./CHANGELOG.md#010---sep-28-2021)). 
 
 This extension's core focus is on better and robust support for:
 
@@ -93,14 +102,11 @@ Special thanks to the [author](https://github.com/Raagh) and contributors of the
 If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new/choose).
 
 ---
-If you like the Karma Test Explorer extension, please consider rating it in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer), and starring the [GitHub repo](https://github.com/lucono/karma-test-explorer).
-
----
 
 <a href="#contents"><img align="right" height="24" src="docs/img/back-to-top.png"></a>
 
 ## See Also
 
-- [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer)
-- [Contributing](https://github.com/lucono/karma-test-explorer/blob/master/CONTRIBUTING.md#contributing---karma-test-explorer)
-- [Changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#changelog)
+- [Documentation](./docs/documentation.md#documentation---karma-test-explorer)
+- [Contributing](./CONTRIBUTING.md#contributing---karma-test-explorer)
+- [Changelog](./CHANGELOG.md#changelog)

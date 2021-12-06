@@ -227,7 +227,7 @@ export class KarmaTestRunProcessor implements Disposable {
 
       const results: LightSpecCompleteResponse = event.results!;
       const fullName: string = [...results.suite, results.description].join(' ');
-      const testId: string = results.id || `${results.filePath ?? ''}:${fullName}`;
+      const testId: string = results.id || `:${fullName}`;
       const testStatus: TestStatus = results.status;
       const browserName = `${event.browser?.name ?? '(Unknwon browser)'}`;
 
@@ -249,7 +249,7 @@ export class KarmaTestRunProcessor implements Disposable {
         testStatus === TestStatus.Success
           ? `[SUCCESS] ✅ Passed - ${browserName}`
           : testStatus === TestStatus.Failed
-          ? `[FAILURE] ❌ failed - ${browserName}`
+          ? `[FAILURE] ❌ Failed - ${browserName}`
           : `[SKIPPED] Test Skipped - ${browserName}`;
 
       this.logger.debug(() => statusMsg);

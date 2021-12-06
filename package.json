@@ -5,7 +5,7 @@
   "icon": "docs/img/extension-icon-128.png",
   "author": "Lucas Ononiwu",
   "publisher": "lucono",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "preview": true,
   "license": "MIT",
   "homepage": "https://github.com/lucono/karma-test-explorer",
@@ -43,8 +43,8 @@
     "watch": "tsc -w",
     "test": "jest -c jest.config.js",
     "bundle": "node ./scripts/bundle.js",
-    "package": "npx vsce package",
-    "publish": "npx vsce publish",
+    "package": "npx vsce package --baseContentUrl https://github.com/lucono/karma-test-explorer",
+    "publish": "npx vsce publish --baseContentUrl https://github.com/lucono/karma-test-explorer",
     "validate": "npm run format && npm run lint && npm run rebuild && npm run test && npm run bundle && npm run package"
   },
   "dependencies": {
@@ -98,8 +98,8 @@
     "prettier": "^2.4.1",
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.0.5",
-    "typescript": "^4.4.3",
-    "vsce": "^2.3.0"
+    "typescript": "^4.4.4",
+    "vsce": "^2.5.1"
   },
   "engines": {
     "vscode": "^1.22.0"
@@ -124,8 +124,14 @@
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Karma Test Explorer configuration",
+      "title": "Karma Test Explorer",
       "properties": {
+        "karmaTestExplorer.enableExtension": {
+          "description": "Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision",
+          "type": "boolean",
+          "scope": "resource",
+          "default": null
+        },
         "karmaTestExplorer.projectRootPath": {
           "description": "The working directory where the project is located (relative to the root folder)",
           "type": "string",
@@ -175,17 +181,35 @@
           "scope": "resource",
           "default": false
         },
-        "karmaTestExplorer.flagDuplicateTests": {
-          "description": "Enables flagging of duplicate tests in the VS Code sidebar",
-          "type": "boolean",
-          "scope": "resource",
-          "default": true
-        },
         "karmaTestExplorer.failOnStandardError": {
           "description": "Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues",
           "type": "boolean",
           "scope": "resource",
           "default": false
+        },
+        "karmaTestExplorer.excludeDisabledTests": {
+          "description": "Exclude disabled tests from the test view",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
+        "karmaTestExplorer.showOnlyFocusedTests": {
+          "description": "Show only focused tests in the test view. This is always true if using the Mocha test framework",
+          "type": "boolean",
+          "scope": "resource",
+          "default": false
+        },
+        "karmaTestExplorer.showUnmappedTests": {
+          "description": "Include tests in the test view which were returned by Karma but either not discovered or included in the set of test files configured for Karma Test Explorer",
+          "type": "boolean",
+          "scope": "resource",
+          "default": true
+        },
+        "karmaTestExplorer.showTestDefinitionTypeIndicators": {
+          "description": "Show test definition type indicators such as tests defined as focused or disabled",
+          "type": "boolean",
+          "scope": "resource",
+          "default": true
         },
         "karmaTestExplorer.karmaPort": {
           "description": "The port to be used for the Karma server in VS Code",

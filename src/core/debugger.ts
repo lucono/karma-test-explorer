@@ -6,6 +6,8 @@ import { Execution } from '../util/future/execution';
 import { Logger } from '../util/logging/logger';
 
 export class Debugger implements Disposable {
+  private activeDebugSession?: DebugSession;
+
   public constructor(private readonly logger: Logger) {}
 
   public startDebugSession(
@@ -25,11 +27,13 @@ export class Debugger implements Disposable {
       if (activeDebugSession && activeDebugSession.name === debuggerConfigName) {
         this.logger.info(() => `Debug session '${activeDebugSession.name}' is alredy active`);
         deferredDebugSessionExecution.start(activeDebugSession);
+        this.activeDebugSession = activeDebugSession;
       } else {
         const debugStartSubscription: Disposable = debug.onDidStartDebugSession(session => {
           if (session.name === debuggerConfigName) {
             this.logger.info(() => `Debug session '${session.name}' has started`);
             deferredDebugSessionExecution.start(session);
+            this.activeDebugSession = session;
           }
         });
 
@@ -58,6 +62,7 @@ export class Debugger implements Disposable {
           if (session === debugSession) {
             this.logger.info(() => `Debug session '${session.name}' has ended`);
             deferredDebugSessionExecution.end();
+            this.activeDebugSession = undefined;
             debugStopSubscription.dispose();
           }
         });
@@ -69,7 +74,15 @@ export class Debugger implements Disposable {
     return debugSessionExecution;
   }
 
+  public isDebugging() {
+    return this.activeDebugSession !== undefined;
+  }
+
   public async dispose() {
+    if (this.activeDebugSession) {
+      debug.stopDebugging(this.activeDebugSession);
+    }
+
     await Disposer.dispose(this.logger);
   }
 }

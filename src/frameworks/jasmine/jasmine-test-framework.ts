@@ -3,8 +3,17 @@ import { TestFrameworkName } from '../../core/base/test-framework-name';
 import { JasmineTestSelector } from './jasmine-test-selector';
 
 const testInterface: TestInterface = {
-  suite: ['describe', 'xdescribe', 'fdescribe'],
-  test: ['it', 'xit', 'fit']
+  suiteTags: {
+    default: ['describe'],
+    focused: ['fdescribe'],
+    disabled: ['xdescribe']
+  },
+
+  testTags: {
+    default: ['it'],
+    focused: ['fit'],
+    disabled: ['xit']
+  }
 };
 
 const testCapabilities: TestCapabilities = {

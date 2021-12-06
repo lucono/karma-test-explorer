@@ -43,7 +43,7 @@ import { ConfigStore } from './core/config/config-store';
 import { ExtensionConfig } from './core/config/extension-config';
 import { Debugger } from './core/debugger';
 import { MainFactory } from './core/main-factory';
-import { SpecLocator } from './core/spec-locator';
+import { TestLocator } from './core/test-locator';
 import { ExtensionCommands } from './core/vscode/extension-commands';
 import { MessageType, Notifications, StatusType } from './core/vscode/notifications';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
@@ -56,7 +56,7 @@ import { SimpleLogger } from './util/logging/simple-logger';
 import { getCircularReferenceReplacer, normalizePath } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
-  private specLocator?: SpecLocator;
+  private testLocator?: TestLocator;
   private isTestProcessRunning: boolean = false;
   private loadedRootSuite?: TestSuiteInfo;
   private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
@@ -127,12 +127,11 @@ export class Adapter implements TestAdapter, Disposable {
     const fileWatchers = this.createFileWatchers();
     this.initDisposables.push(...fileWatchers);
 
-    this.logger.debug(() => 'Getting spec locator');
-    this.specLocator = this.factory.getSpecLocator();
+    this.logger.debug(() => 'Getting test locator');
+    this.testLocator = this.factory.getTestLocator();
 
-    this.logger.debug(() => 'Creating debugger');
-    this.debugger = new Debugger(new SimpleLogger(this.logger, Debugger.name));
-    this.initDisposables.push(this.debugger);
+    this.logger.debug(() => 'Getting debugger');
+    this.debugger = this.factory.getDebugger();
 
     this.logger.debug(() => 'Creating test manager');
     const testResolver: TestResolver = {
@@ -202,7 +201,7 @@ export class Adapter implements TestAdapter, Disposable {
           );
           await this.testManager.start();
         }
-        await this.specLocator?.ready();
+        await this.testLocator?.ready();
         await this.testManager.runTests(runAllTests ? [] : tests);
       } catch (error) {
         runError = `${(error as Error).message ?? error}`;
@@ -338,7 +337,7 @@ export class Adapter implements TestAdapter, Disposable {
 
     try {
       this.testLoadEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
-      this.specLocator?.refreshFiles();
+      this.testLocator?.refreshFiles();
 
       if (!this.testManager.isStarted()) {
         this.logger.debug(() => 'Refresh request - Test manager is not started - Starting it');
@@ -347,7 +346,7 @@ export class Adapter implements TestAdapter, Disposable {
         await this.testManager.restart();
       }
 
-      const testFileLoadCompletion = this.specLocator?.ready();
+      const testFileLoadCompletion = this.testLocator?.ready();
       this.notifications.notifyStatus(StatusType.Busy, 'Loading test files...', testFileLoadCompletion);
       await testFileLoadCompletion;
 
@@ -450,7 +449,7 @@ export class Adapter implements TestAdapter, Disposable {
     const testFileGlobs = this.config.testFiles;
 
     const reloadTestFilesWatchers = this.registerFileHandler(testFileGlobs, async (changedTestFile, changeType) => {
-      if (!this.specLocator?.isSpecFile(changedTestFile)) {
+      if (!this.testLocator?.isTestFile(changedTestFile)) {
         this.logger.warn(() => `Expected changed file to be spec file but it is not: ${changedTestFile}`);
         return;
       }
@@ -458,8 +457,8 @@ export class Adapter implements TestAdapter, Disposable {
 
       if (this.factory.getTestFramework().getTestCapabilities().watchModeSupport) {
         await (changeType === FileChangeType.Deleted
-          ? this.specLocator.removeFiles([changedTestFile])
-          : this.specLocator.refreshFiles([changedTestFile]));
+          ? this.testLocator.removeFiles([changedTestFile])
+          : this.testLocator.refreshFiles([changedTestFile]));
       } else {
         const changedTestIds: string[] = Array.from(this.loadedTestsById.values())
           .filter(loadedTest => loadedTest.file === changedTestFile && loadedTest.type === TestType.Test)

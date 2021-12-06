@@ -3,6 +3,7 @@
 ## Contents
 
 - [Setup](#setup)
+- [Extension Activation Rules](#extension-activation-rules)
 - [Project Types](#project-types)
 - [Test Frameworks](#test-frameworks)
 - [Configuration](#configuration)
@@ -49,6 +50,18 @@ Note that Karma Test Explorer will briefly display updates (using available spac
 
 ---
 
+## Extension Activation Rules
+
+The Karma Test Explorer extension is activated for a project workspace or folder based on the presence of any one of the following conditions:
+
+- The project workspace has the `karmaTestExplorer.enableExtension` setting set to `true`. This setting is a maunal override of the extension's automatic activation rules to forcefully activate or deactivate the extension
+- The project workspace has one or more Karma Test Explorer extension settings (`karmaTestExplorer.*`) configured, except for `karmaTestExplorer.enableExtension` set to `false`
+- The project declares a `karma` dev dependency in its `package.json` file
+
+<a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
+
 ## Project Types
 
 ### Karma Projects
@@ -87,13 +100,17 @@ Though this extension comes with many configuration options that make it flexibl
 
 Setting                                       | Description
 -----------------------------------------------|---------------------------------------------------------------
+`karmaTestExplorer.enableExtension` | Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision
 `karmaTestExplorer.projectRootPath` | The working directory where the project is located (relative to the root folder)
 `karmaTestExplorer.defaultAngularProjectName` | Only applies to Angular projects. This is the default Angular project to be loaded for testing. If not specified, the default project specified in `angular.json` is loaded instead
 `karmaTestExplorer.testFramework` | The test framework used by the project. The framework will be auto-detected if none is specified. Specify the right test framework if it is not correctly auto-detected
 `karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to `projectRootPath`)
 `karmaTestExplorer.testGrouping` | How tests should be grouped in the Test view side bar
 `karmaTestExplorer.flattenSingleChildFolders` | Flattens paths consisting of single child folders when using folder-based test grouping
-`karmaTestExplorer.flagDuplicateTests` | Enables flagging of duplicate tests in the VS Code sidebar
+`karmaTestExplorer.showTestDefinitionTypeIndicators` | Show test definition type indicators such as tests defined as focused or disabled
+`karmaTestExplorer.excludeDisabledTests` | Exclude disabled tests from the test view
+`karmaTestExplorer.showOnlyFocusedTests` | Show only focused tests in the test view. This is always true if using the Mocha test framework
+`karmaTestExplorer.showUnmappedTests` | Include tests in the test view which were returned by Karma but either not discovered or included in the set of test files configured for Karma Test Explorer
 `karmaTestExplorer.karmaPort` | The port to be used for the Karma server in VS Code
 `karmaTestExplorer.browser` | The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file. This takes precedence over the `customLauncher` setting
 `karmaTestExplorer.customLauncher` | Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file
@@ -283,6 +300,6 @@ Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTest
 
 ## See Also
 
-- [Readme](https://github.com/lucono/karma-test-explorer/blob/master/README.md#karma-test-explorer-for-visual-studio-code)
-- [Contributing](https://github.com/lucono/karma-test-explorer/blob/master/CONTRIBUTING.md#contributing---karma-test-explorer)
-- [Changelog](https://github.com/lucono/karma-test-explorer/blob/master/CHANGELOG.md#changelog)
+- [Readme](../README.md#karma-test-explorer-for-visual-studio-code)
+- [Contributing](../CONTRIBUTING.md#contributing---karma-test-explorer)
+- [Changelog](../CHANGELOG.md#changelog)

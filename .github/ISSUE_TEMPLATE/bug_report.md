@@ -34,8 +34,11 @@ assignees: ''
 **Please Provide the Following Information**
  
  - OS: (e.g. macOS)
- - Environment (e.g. DevContainer Guest OS and version)
- - Version (e.g. 22)
+ - Environment: (e.g. Dev Container with Guest OS and version)
+ - Node Version: (e.g. 14.x)
+ - VSCode Version: 
+ - Karma Version:
+ - Frameworks: (e.g. Angular, Jasmine, Mocha)
 
 **Additional Context**
 

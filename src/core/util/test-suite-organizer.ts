@@ -1,11 +1,14 @@
 import { basename, dirname, posix, relative, resolve, sep as pathSeparator } from 'path';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { Logger } from '../util/logging/logger';
-import { isChildPath } from '../util/utils';
-import { TestGrouping } from './base/test-grouping';
-import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from './base/test-infos';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
+import { Disposable } from '../../util/disposable/disposable';
+import { Disposer } from '../../util/disposable/disposer';
+import { Logger } from '../../util/logging/logger';
+import { isChildPath } from '../../util/utils';
+import { TestGrouping } from '../base/test-grouping';
+import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos';
+import { ConfigSetting } from '../config/config-setting';
+import { TestHelper } from '../test-helper';
 
 const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizationOptions> = {
   testGrouping: TestGrouping.Folder,
@@ -26,43 +29,89 @@ export class TestSuiteOrganizer implements Disposable {
   private readonly testsBasePath: string;
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly rootPath: string, testsBasePath: string, private readonly logger: Logger) {
+  public constructor(
+    private readonly rootPath: string,
+    testsBasePath: string,
+    private readonly testHelper: TestHelper,
+    private readonly logger: Logger
+  ) {
     this.testsBasePath = isChildPath(rootPath, testsBasePath) ? testsBasePath : rootPath;
     this.disposables.push(logger);
   }
 
-  public organizeTests(rootSuite: TestSuiteInfo, options?: TestSuiteOrganizationOptions): TestSuiteInfo {
+  public organizeTests(tests: (TestInfo | TestSuiteInfo)[], options?: TestSuiteOrganizationOptions): TestSuiteInfo {
     const allOptions: Required<TestSuiteOrganizationOptions> = {
       ...defaultTestSuiteOrganizerOptions,
       ...options
     };
 
-    const groupedTestSuite: TestSuiteInfo =
-      allOptions.testGrouping === TestGrouping.Folder ? this.groupByFolder(rootSuite, allOptions) : rootSuite;
-
-    this.sortTestTree(groupedTestSuite);
-
-    return groupedTestSuite;
-  }
-
-  private groupByFolder(rootSuite: TestSuiteInfo, groupingOptions: TestSuiteFolderGroupingOptions): TestSuiteInfo {
-    const tests: (TestInfo | TestSuiteInfo)[] = rootSuite.children;
-    const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
-    const fileLessSpecsSuite: TestSuiteInfo[] = [];
+    const mappedTests: (TestInfo | TestSuiteInfo)[] = [];
+    const unmappedTests: (TestInfo | TestSuiteInfo)[] = [];
 
     tests.forEach(test => {
-      if (test.type === TestType.Test) {
-        // FIXME: Should never be true. Use type system to eliminate need for check
-        this.logger.warn(
-          () => `Got test with unknown top-level test suite: ${JSON.stringify(test, null, 2)} - Test will be ignored`
-        );
-        return;
-      }
       if (!test.file) {
         this.logger.warn(() => `Got test with unknown file - Test Id is: ${test.id}`);
-        this.logger.trace(() => `Test with unknown file: ${JSON.stringify(test)}`);
+        this.logger.trace(() => `Test with unknown file: ${JSON.stringify(test, null, 2)}`);
 
-        fileLessSpecsSuite.push(test);
+        unmappedTests.push(test);
+        return;
+      }
+      mappedTests.push(test);
+    });
+
+    const groupedMappedTests: AnyTestInfo[] =
+      allOptions.testGrouping === TestGrouping.Folder ? this.groupByFolder(mappedTests, allOptions) : mappedTests;
+
+    this.sortTestTree(groupedMappedTests);
+
+    const rootSuite = this.createRootSuite();
+    rootSuite.children.push(...groupedMappedTests);
+
+    if (unmappedTests.length > 0) {
+      const filelessTestsSuiteMessage =
+        `${EXTENSION_NAME} could not find the test sources in your project ` +
+        `for the tests in this group. This can occur if the tests: \n\n` +
+        `- Use parameterization \n` +
+        `- Use computed test descriptions \n` +
+        `- Are in test files not captured by your '${EXTENSION_CONFIG_PREFIX}.${ConfigSetting.TestFiles}' setting \n` +
+        `- Were otherwise not successfully discovered by ${EXTENSION_NAME}` +
+        `\n\n` +
+        `To exclude unmapped tests from being displayed, set the ` +
+        `'${EXTENSION_CONFIG_PREFIX}.${ConfigSetting.ShowUnmappedTests}' setting to false.`;
+
+      const unmappedTestsSuite: TestSuiteInfo = {
+        id: '*',
+        name: '',
+        fullName: '', // To prevent being runnable with grep pattern of fullName
+        label: this.testHelper.getTestLabel('Unmapped Tests'),
+        type: TestType.Suite,
+        activeState: 'default',
+        message: filelessTestsSuiteMessage,
+        testCount: 0,
+        children: unmappedTests
+      };
+
+      rootSuite.children.push(unmappedTestsSuite);
+    }
+
+    return rootSuite;
+  }
+
+  private groupByFolder(
+    tests: (TestInfo | TestSuiteInfo)[],
+    groupingOptions: TestSuiteFolderGroupingOptions
+  ): (TestFileSuiteInfo | TestFolderSuiteInfo)[] {
+    const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
+
+    tests.forEach(test => {
+      if (!test.file) {
+        this.logger.warn(
+          () =>
+            `Encountered unexpected test with unknown file in ` +
+            `pre-filtered test list for folder grouping operation - ` +
+            `Test Id is: ${test.id}`
+        );
+        this.logger.trace(() => `Test with unknown file: ${JSON.stringify(test, null, 2)}`);
         return;
       }
       let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(test.file);
@@ -75,25 +124,13 @@ export class TestSuiteOrganizer implements Disposable {
     });
 
     const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(this.testsBasePath);
+    rootFolderSuite.name = '.';
     rootFolderSuite.label = '.';
 
     testFileSuitesByFilePath.forEach(testFileSuite => {
-      const testSuiteFolder = dirname(testFileSuite.file);
-      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, testSuiteFolder);
+      const testSuiteFolderPath = dirname(testFileSuite.file);
+      const specFolderSuite = this.getDescendantFolderSuite(rootFolderSuite, testSuiteFolderPath);
       specFolderSuite.children.push(testFileSuite);
-    });
-
-    fileLessSpecsSuite.forEach(fileLessTestSuite => {
-      const fileLessTestFileSuite: TestFileSuiteInfo = {
-        ...fileLessTestSuite,
-        type: TestType.Suite,
-        suiteType: TestSuiteType.File,
-        file: '',
-        line: undefined,
-        testCount: 0,
-        message: 'Could not determine the file for this test suite'
-      };
-      rootFolderSuite.children.push(fileLessTestFileSuite);
     });
 
     this.logger.debug(() => `Rearranged ${testFileSuitesByFilePath.size} test files into folders`);
@@ -103,8 +140,7 @@ export class TestSuiteOrganizer implements Disposable {
     const rootSuiteChildren =
       topLevelFolderSuite === rootFolderSuite ? topLevelFolderSuite.children : [topLevelFolderSuite];
 
-    const folderGroupedRootSuite: TestSuiteInfo = { ...rootSuite, children: rootSuiteChildren };
-    return folderGroupedRootSuite;
+    return rootSuiteChildren;
   }
 
   private flattenSingChildPaths(
@@ -130,21 +166,37 @@ export class TestSuiteOrganizer implements Disposable {
 
     const singleChild = suite.children.length === 1 ? suite.children[0] : undefined;
 
-    const flattenedTestSuite: TestFolderSuiteInfo =
-      flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder
-        ? { ...singleChild, label: posix.join(suite.label, singleChild.label) }
-        : suite;
+    let flattenedTestSuite: TestFolderSuiteInfo = suite;
+
+    if (flattenOptions.flattenSingleChildFolders && singleChild?.suiteType === TestSuiteType.Folder) {
+      const flattenedSuiteName = posix.join(suite.name, singleChild.name);
+      flattenedTestSuite = { ...singleChild, name: flattenedSuiteName, label: flattenedSuiteName };
+    }
 
     return flattenedTestSuite;
   }
 
-  private sortTestTree(test: TestSuiteInfo | TestFileSuiteInfo | TestFolderSuiteInfo) {
-    const testComparator = this.compareTests.bind(this);
-    test.children.sort(testComparator);
+  private createRootSuite(): TestSuiteInfo {
+    const rootSuite: TestSuiteInfo = {
+      type: TestType.Suite,
+      id: ':',
+      activeState: 'default',
+      label: 'Karma tests',
+      name: '',
+      fullName: '', // To prevent being runnable with grep pattern of fullName
+      children: [],
+      testCount: 0
+    };
+    return rootSuite;
+  }
 
-    test.children.forEach(childTest => {
+  private sortTestTree(tests: AnyTestInfo[]) {
+    const testComparator = this.compareTests.bind(this);
+    tests.sort(testComparator);
+
+    tests.forEach(childTest => {
       if (childTest.type === TestType.Suite) {
-        this.sortTestTree(childTest);
+        this.sortTestTree(childTest.children);
       }
     });
   }
@@ -164,7 +216,7 @@ export class TestSuiteOrganizer implements Disposable {
       ? suite1Rank - suite2Rank
       : test1.file && test1.file === test2.file && test1.line !== undefined && test2.line !== undefined
       ? test1.line - test2.line
-      : test1.label.toLocaleLowerCase() < test2.label.toLocaleLowerCase()
+      : test1.name.toLocaleLowerCase() < test2.name.toLocaleLowerCase()
       ? -1
       : 1;
   }
@@ -176,10 +228,12 @@ export class TestSuiteOrganizer implements Disposable {
     return {
       type: TestType.Suite,
       suiteType: TestSuiteType.Folder,
+      activeState: 'default',
       path: absolutePath,
       id: absolutePath,
-      fullName: '', // To prevent being runnable with grep pattern of fullName
       label: folderName,
+      name: folderName,
+      fullName: '', // To prevent being runnable with grep pattern of fullName
       tooltip: relativePath ?? absolutePath,
       children: [],
       testCount: 0
@@ -194,11 +248,13 @@ export class TestSuiteOrganizer implements Disposable {
     return {
       type: TestType.Suite,
       suiteType: TestSuiteType.File,
+      activeState: 'default',
       file: absoluteFilePath,
       line: 0,
       id: fileSuiteId,
-      fullName: '', // To prevent being runnable with grep pattern of fullName
       label: fileSuiteLabel,
+      name: fileSuiteLabel,
+      fullName: '', // To prevent being runnable with grep pattern of fullName
       tooltip: relativeFilePath,
       children: [],
       testCount: 0

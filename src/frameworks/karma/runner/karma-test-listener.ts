@@ -22,6 +22,10 @@ interface KarmaTestListenerOptions {
   readonly karmaReadyTimeout?: number;
 }
 
+export interface DebugStatusResolver {
+  isDebugging: () => boolean;
+}
+
 export type TestCapture = Record<TestStatus, SpecCompleteResponse[]>;
 
 export class KarmaTestListener implements Disposable {
@@ -33,6 +37,7 @@ export class KarmaTestListener implements Disposable {
 
   public constructor(
     private readonly testRunProcessor: KarmaTestRunProcessor,
+    private readonly debugStatusResolver: DebugStatusResolver,
     private readonly logger: SimpleLogger,
     listenerOptions: KarmaTestListenerOptions = {}
   ) {
@@ -150,22 +155,30 @@ export class KarmaTestListener implements Disposable {
   }
 
   public listenForTestDiscovery(testRunId: string): Execution<void, SpecCompleteResponse[]> {
+    const testEventIntervalTimeout = this.debugStatusResolver.isDebugging()
+      ? undefined
+      : KARMA_TEST_EVENT_INTERVAL_TIMEOUT;
+
     return this.testRunProcessor.processTestRun(testRunId, [], {
       emitTestEvents: [],
       filterTestEvents: [],
       emitTestStats: false,
-      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
+      testEventIntervalTimeout
     });
   }
 
   public listenForTestRun(testRunId: string, testNames: string[] = []): Execution<void, TestCapture> {
     const testCaptureDeferredExecution = new DeferredExecution<void, TestCapture>();
 
+    const testEventIntervalTimeout = this.debugStatusResolver.isDebugging()
+      ? undefined
+      : KARMA_TEST_EVENT_INTERVAL_TIMEOUT;
+
     const specResultExecution = this.testRunProcessor.processTestRun(testRunId, testNames, {
       emitTestEvents: Object.values(TestStatus),
       filterTestEvents: [],
       emitTestStats: true,
-      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
+      testEventIntervalTimeout
     });
 
     specResultExecution.started().then(testRunId => testCaptureDeferredExecution.start(testRunId));

@@ -3,13 +3,31 @@ import { TestFrameworkName } from '../../core/base/test-framework-name';
 import { MochaTestSelector } from './mocha-test-selector';
 
 const bddTestInterface: TestInterface = {
-  suite: ['describe', 'describe.only', 'describe.skip'],
-  test: ['it', 'it.only', 'it.skip']
+  suiteTags: {
+    default: ['describe'],
+    focused: ['describe.only'],
+    disabled: ['describe.skip']
+  },
+
+  testTags: {
+    default: ['it'],
+    focused: ['it.only'],
+    disabled: ['it.skip']
+  }
 };
 
 const tddTestInterface: TestInterface = {
-  suite: ['suite', 'suite.only', 'suite.skip'],
-  test: ['test', 'test.only', 'test.skip']
+  suiteTags: {
+    default: ['suite'],
+    focused: ['suite.only'],
+    disabled: ['suite.skip']
+  },
+
+  testTags: {
+    default: ['test'],
+    focused: ['test.only'],
+    disabled: ['test.skip']
+  }
 };
 
 enum MochaInterfaceStyle {
