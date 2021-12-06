@@ -1,5 +1,4 @@
 import { join } from 'path';
-import which from 'which';
 import { TestRunExecutor } from '../../../api/test-run-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -10,12 +9,13 @@ import {
   CommandLineProcessHandlerOptions,
   CommandLineProcessLogOutput
 } from '../../../util/process/command-line-process-handler';
-import { getPackageInstallPathForProjectRoot } from '../../../util/utils';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: Record<string, string | undefined>;
   karmaProcessCommand?: string;
   failOnStandardError?: boolean;
+  allowGlobalPackageFallback?: boolean;
 }
 
 export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
@@ -35,8 +35,13 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const karmaInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath);
-    const karmaBinaryPath = karmaInstallPath ? join(karmaInstallPath, 'bin', 'karma') : undefined;
+    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+      'karma',
+      this.projectRootPath,
+      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+      this.logger
+    );
+    const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
 
     if (!karmaBinaryPath) {
       throw new Error(
@@ -46,7 +51,7 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       );
     }
 
-    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
     let processArguments: string[] = [];

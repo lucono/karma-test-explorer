@@ -1,6 +1,6 @@
-import { isAbsolute, posix } from 'path';
 import { EventEmitter } from 'vscode';
-import { TestDecoration, TestEvent, TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
+import { TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
+import { TestDefinition } from '../../../core/base/test-definition';
 import { TestResultEvent } from '../../../core/base/test-events';
 import { TestGrouping } from '../../../core/base/test-grouping';
 import { TestType } from '../../../core/base/test-infos';
@@ -8,17 +8,19 @@ import { TestResolver } from '../../../core/base/test-resolver';
 import { TestResults } from '../../../core/base/test-results';
 import { TestState } from '../../../core/base/test-state';
 import { TestStatus } from '../../../core/base/test-status';
-import { SpecLocation, SpecLocator } from '../../../core/spec-locator';
-import { SuiteAggregateTestResultProcessor } from '../../../core/suite-aggregate-test-result-processor';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/test-suite-organizer';
+import { TestHelper } from '../../../core/test-helper';
+import { TestLocator } from '../../../core/test-locator';
+import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
+import { FileHandler } from '../../../util/file-handler';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
 import { escapeForRegExp } from '../../../util/utils';
-import { TestCapture } from './karma-test-event-listener';
+import { TestCapture } from './karma-test-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
-import { SpecResponseToTestSuiteInfoMapper } from './spec-response-to-test-suite-info-mapper';
+import { SuiteAggregateTestResultProcessor } from './suite-aggregate-test-result-processor';
+import { TestBuilder } from './test-builder';
 
 const defaultEventProcessingOptions: TestEventProcessingOptions = {
   filterTestEvents: [],
@@ -52,14 +54,14 @@ export class KarmaTestEventProcessor {
 
   public constructor(
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
-    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    private readonly testBuilder: TestBuilder,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
-    private readonly specLocator: SpecLocator,
+    private readonly testLocator: TestLocator,
     private readonly testGrouping: TestGrouping,
-    private readonly projectRootPath: string,
-    private readonly testsBasePath: string,
     private readonly testResolver: TestResolver,
+    private readonly fileHandler: FileHandler,
+    private readonly testHelper: TestHelper,
     private readonly logger: Logger
   ) {
     this.disposables.push(logger, testResultEventEmitter);
@@ -157,10 +159,10 @@ export class KarmaTestEventProcessor {
     }
     const processedTest = this.currentProcessingInfo!.processedTestResults.get(testId);
 
-    if (processedTest && testResult.status === TestStatus.Skipped) {
-      this.logger.debug(
+    if (processedTest) {
+      this.logger.warn(
         () =>
-          'Ignoring skipped update for previously processed test result. ' +
+          'Ignoring duplicate result for already processed test result. ' +
           `Processed test: id='${testId}', status='${testResult.status}'. ` +
           `Duplicate test: id='${processedTest.id}', status='${processedTest.status}'`
       );
@@ -218,50 +220,36 @@ export class KarmaTestEventProcessor {
         ? 'Skipped'
         : '';
 
-    let relativeTestLocation: SpecLocation | undefined =
-      test?.file && test?.line !== undefined
-        ? { file: posix.relative(this.projectRootPath, test.file), line: test.line }
-        : undefined;
+    const testDefinitionResults = this.testLocator.getTestDefinitions(testResult.suite, testResult.description);
+    const candidateTestDefinitions = testDefinitionResults.map(testDefinitionResult => testDefinitionResult.test);
 
-    this.logger.debug(
-      () =>
-        `Relative test location from loaded test: ` +
-        `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
+    const matchedTestDefinitions = candidateTestDefinitions.filter(candidateTestDefinition =>
+      test?.file && test?.line !== undefined
+        ? candidateTestDefinition.file === test.file && candidateTestDefinition.line === test.line
+        : true
     );
 
-    if (!relativeTestLocation) {
-      const candidateSpecLocations = this.specLocator.getSpecLocations(testResult.suite, testResult.description, true);
-      relativeTestLocation = candidateSpecLocations.length === 1 ? candidateSpecLocations[0] : relativeTestLocation;
+    let failureMessage: string | undefined;
+    let failureDecorations: TestDecoration[] | undefined;
 
-      this.logger.debug(
-        () =>
-          `Relative test location from ${candidateSpecLocations.length} resulting candidates from lookup: ` +
-          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
-      );
+    if (testResult.failureMessages.length > 0) {
+      const testHasExistingMessage = !!test?.message;
+
+      failureDecorations = this.createTestFailureDecorations(testResult, matchedTestDefinitions);
+
+      const failureMessages = failureDecorations?.length
+        ? failureDecorations.map(decoration => decoration.hover?.split('\n---\n')[1])
+        : testResult.failureMessages.map(failureMessage => decodeURIComponent(failureMessage));
+
+      failureMessage = (testHasExistingMessage ? '\n\n---\n\n' : '') + failureMessages.join('\n\n---\n\n');
     }
-
-    if (!relativeTestLocation && testResult.filePath && testResult.line !== undefined) {
-      relativeTestLocation = { file: posix.relative(this.projectRootPath, testResult.filePath), line: testResult.line };
-
-      this.logger.debug(
-        () =>
-          `Relative test location from karma spec response: ` +
-          `${relativeTestLocation ? JSON.stringify(relativeTestLocation, null, 2) : '<none>'}`
-      );
-    }
-
-    const testResultForErrorReporting: SpecCompleteResponse = {
-      ...testResult,
-      filePath: relativeTestLocation?.file,
-      line: relativeTestLocation?.line,
-      failureMessages: testResult.failureMessages.map(message => decodeURIComponent(message))
-    };
-
-    const failureMessage = this.createFailureMessage(testResultForErrorReporting);
-    const failureDecorations = this.createTestFailureDecorations(testResultForErrorReporting);
 
     if (test) {
-      this.updateTestWithResultData(test, testResult);
+      this.updateTestWithResultData(
+        test,
+        testResult,
+        matchedTestDefinitions.length === 1 ? matchedTestDefinitions[0] : undefined
+      );
     }
 
     const testResultEvent: TestEvent = {
@@ -309,15 +297,9 @@ export class KarmaTestEventProcessor {
       capturedTests[processedSpec.status].push(processedSpec)
     );
 
-    const failedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Failed]);
-    const passedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Success]);
-    const skippedTests: TestSuiteInfo = this.specToTestSuiteMapper.map(capturedTests[TestStatus.Skipped]);
-
-    const testResults: TestResults = {
-      [TestStatus.Failed]: failedTests,
-      [TestStatus.Success]: passedTests,
-      [TestStatus.Skipped]: skippedTests
-    };
+    const failedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Failed]);
+    const passedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Success]);
+    const skippedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Skipped]);
 
     const testOrganizationOptions: TestSuiteOrganizationOptions = {
       testGrouping: this.testGrouping,
@@ -326,34 +308,23 @@ export class KarmaTestEventProcessor {
     };
 
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(
-        testResults.Failed,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      ),
-      Success: this.testSuiteOrganizer.organizeTests(
-        testResults.Success,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      ),
-      Skipped: this.testSuiteOrganizer.organizeTests(
-        testResults.Skipped,
-        this.projectRootPath,
-        this.testsBasePath,
-        testOrganizationOptions
-      )
+      Failed: this.testSuiteOrganizer.organizeTests(failedTests, testOrganizationOptions),
+      Success: this.testSuiteOrganizer.organizeTests(passedTests, testOrganizationOptions),
+      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, testOrganizationOptions)
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);
   }
 
-  private updateTestWithResultData(test: TestInfo, testResult: SpecCompleteResponse) {
-    test.label = testResult.description || test.label;
-    test.fullName = testResult.fullName || test.fullName;
-    test.file = testResult.filePath || test.file;
-    test.line = testResult.line ?? test.line;
+  private updateTestWithResultData(test: TestInfo, testResult: SpecCompleteResponse, testDefinition?: TestDefinition) {
+    const activeState = this.testHelper.getTestActiveState(testDefinition, test.activeState);
+    const updatedLabel = this.testHelper.getTestLabel(testResult.description, testDefinition, activeState);
+    const updatedTooltip = this.testHelper.getTestTooltip(testResult.fullName, activeState);
+
+    test.activeState = activeState;
+    test.label = updatedLabel;
+    test.fullName = testResult.fullName;
+    test.tooltip = updatedTooltip;
   }
 
   private mapTestResultToTestState(testStatus: TestStatus): TestState {
@@ -367,99 +338,96 @@ export class KarmaTestEventProcessor {
     }
   }
 
-  private createFailureMessage(testResult: SpecCompleteResponse): string | undefined {
+  private createTestFailureDecorations(
+    testResult: Readonly<SpecCompleteResponse>,
+    candidateTestDefinitions: readonly TestDefinition[]
+  ): TestDecoration[] | undefined {
     if (testResult.failureMessages.length === 0) {
       return;
     }
-    const failureMessage = testResult.failureMessages[0] || 'Failed';
-    const message = failureMessage.split('\n')[0];
 
-    if (!testResult.filePath) {
-      return message;
-    }
+    const decodedFailureMessages = testResult.failureMessages.map(message => decodeURIComponent(message));
 
-    try {
-      const errorLineAndColumnCollection = failureMessage
-        .substring(failureMessage.indexOf(testResult.filePath))
-        .split(':');
-      const lineNumber = parseInt(errorLineAndColumnCollection[1], undefined);
-      const columnNumber = parseInt(errorLineAndColumnCollection[2], undefined);
+    const matchingTestDefinitionsForFailure = candidateTestDefinitions.filter(candidateTestDefinition => {
+      const relativeTestFilePath = this.fileHandler.getFileRelativePath(candidateTestDefinition.file);
+      return decodedFailureMessages.some(failureMessage => failureMessage.includes(relativeTestFilePath));
+    });
 
-      if (isNaN(lineNumber) || isNaN(columnNumber)) {
-        return failureMessage;
-      }
+    const testDefinition =
+      matchingTestDefinitionsForFailure.length === 1 ? matchingTestDefinitionsForFailure[0] : undefined;
 
-      return `${message} (line:${lineNumber} column:${columnNumber})`;
-    } catch (error) {
-      return failureMessage;
-    }
-  }
-
-  private createTestFailureDecorations(testResult: SpecCompleteResponse): TestDecoration[] | undefined {
-    if (testResult.failureMessages.length === 0) {
-      return;
-    }
-    this.logger.debug(() => `Creating detailed test failure decorations for test id: ${testResult.id}`);
-
-    let failureDecorations: TestDecoration[] = [];
-    const testDescriptionHoverHeader = `'${testResult.fullName.replace(/'/g, "\\'")}'\n---`;
-    const relativeFilePath = testResult.filePath && !isAbsolute(testResult.filePath) ? testResult.filePath : undefined;
-
-    this.logger.debug(() => `Using relative file path for test id '${testResult.id}': ${relativeFilePath || '<none>'}`);
-
-    if (relativeFilePath) {
-      try {
-        const decorations = testResult.failureMessages.map((failureMessage): TestDecoration => {
-          const errorLineAndColumnCollection = failureMessage
-            .substring(failureMessage.indexOf(relativeFilePath))
-            .split(':');
-
-          const fileAndLinePattern = new RegExp(
-            `\\([^)]*${escapeForRegExp(relativeFilePath)}[^:)]*:(\\d+):(\\d+)\\)`,
-            'gm'
-          );
-
-          const sanitizedFailureMessage = failureMessage.replace(fileAndLinePattern, `(${relativeFilePath}:$1:$2)`);
-          const lineNumber = parseInt(errorLineAndColumnCollection[1], undefined);
-          const hoverMessage = `${testDescriptionHoverHeader}\n${sanitizedFailureMessage}`;
-
-          return {
-            line: lineNumber - 1,
-            message: sanitizedFailureMessage.split('\n')[0],
-            hover: hoverMessage
-          };
-        });
-
-        if (decorations.every(decoration => !isNaN(decoration.line))) {
-          failureDecorations = decorations;
-        } else {
-          this.logger.debug(
-            () =>
-              `Aborting creation of detailed test failure decorations for test id '${testResult.id}' - ` +
-              `Could not determine some failure line positions`
-          );
-          this.logger.trace(
-            () => `Test result with undetermined failure line positions: ${JSON.stringify(testResult, null, 2)}`
-          );
-        }
-      } catch (error) {
-        this.logger.debug(
-          () => `Error while creating detailed test failure decorations for test id '${testResult.id}': ${error}`
-        );
-      }
-    } else {
+    if (!testDefinition) {
       this.logger.debug(
         () =>
-          `Not able to create detailed test failure decoration - ` +
-          `Could not determine relative file path for test id: ${testResult.id}`
+          `Cannot create test failure decorations for test id '${testResult.id}' - ` +
+          `${matchingTestDefinitionsForFailure.length === 0 ? 'No' : 'Multiple'} ` +
+          `(${matchingTestDefinitionsForFailure.length}) candidate test definitions ` +
+          `matched the file of the error stack. Candidate test definitions: ` +
+          `${JSON.stringify(candidateTestDefinitions)}`
+      );
+      return;
+    }
+
+    this.logger.debug(() => `Creating detailed test failure decorations for test id: ${testResult.id}`);
+
+    const testDescriptionHoverHeader = `'${testResult.fullName.replace(/'/g, "\\'")}'\n---`;
+    let failureDecorations: TestDecoration[] = [];
+
+    try {
+      const decorations = decodedFailureMessages.map((failureMessage): TestDecoration => {
+        const relativeTestFilePath = this.fileHandler.getFileRelativePath(testDefinition.file);
+
+        const errorLineAndColumnCollection = failureMessage
+          .substring(failureMessage.indexOf(relativeTestFilePath))
+          .split(':');
+
+        const fileAndLinePattern = new RegExp(
+          `\\([^)]*${escapeForRegExp(relativeTestFilePath)}[^:)]*:(\\d+):(\\d+)\\)`,
+          'gm'
+        );
+
+        const sanitizedFailureMessage = failureMessage.replace(fileAndLinePattern, `(${relativeTestFilePath}:$1:$2)`);
+        const lineNumber = parseInt(errorLineAndColumnCollection[1]);
+        const hoverMessage = `${testDescriptionHoverHeader}\n${sanitizedFailureMessage}`;
+
+        return {
+          file: testDefinition.file,
+          line: lineNumber - 1,
+          message: sanitizedFailureMessage.split('\n')[0],
+          hover: hoverMessage
+        };
+      });
+
+      if (decorations.every(decoration => !isNaN(decoration.line))) {
+        failureDecorations = decorations;
+      } else {
+        this.logger.debug(
+          () =>
+            `Aborting creation of detailed test failure decorations for test id '${testResult.id}' - ` +
+            `Could not determine some failure line positions`
+        );
+        this.logger.trace(
+          () => `Test result with undetermined failure line positions: ${JSON.stringify(testResult, null, 2)}`
+        );
+      }
+    } catch (error) {
+      this.logger.debug(
+        () => `Error while creating detailed test failure decorations for test id '${testResult.id}': ${error}`
       );
     }
 
-    if (failureDecorations?.length === 0 && testResult.line !== undefined) {
-      const failureMessage = testResult.failureMessages[0]?.split('\n')[0] || 'Failed';
-      const hoverMessage = `${testDescriptionHoverHeader}\n${testResult.failureMessages.join('\n')}`;
+    if (failureDecorations.length === 0) {
+      const failureMessage = decodedFailureMessages[0]?.split('\n')[0] || 'Failed';
+      const hoverMessage = `${testDescriptionHoverHeader}\n${decodedFailureMessages.join('\n')}`;
 
-      failureDecorations = [{ line: testResult.line, message: failureMessage, hover: hoverMessage }];
+      failureDecorations = [
+        {
+          file: testDefinition.file,
+          line: testDefinition.line,
+          message: failureMessage,
+          hover: hoverMessage
+        }
+      ];
     }
     return failureDecorations;
   }

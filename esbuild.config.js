@@ -2,7 +2,7 @@ module.exports = {
   entryPoints: [
     './out/main.js',
     './out/frameworks/karma/config/karma.conf.js',
-    './out/frameworks/karma/runner/test-result-emitter-worker.js'
+    './out/frameworks/karma/reporter/test-result-emitter-worker.js'
   ],
   outdir: './dist',
   outbase: './src',

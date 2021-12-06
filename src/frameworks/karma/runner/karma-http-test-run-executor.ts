@@ -65,8 +65,7 @@ export class KarmaHttpTestRunExecutor implements TestRunExecutor {
 
     const karmaRequestContent = JSON.stringify(karmaRequestData);
 
-    this.logger.debug(() => 'Sending karma run http request');
-    this.logger.trace(() => `Karma http request data to be sent: ${karmaRequestContent}`);
+    this.logger.debug(() => `Sending karma run http request with data: ${karmaRequestContent}`);
 
     deferredTestRunExecution.start();
 

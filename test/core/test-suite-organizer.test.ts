@@ -1,19 +1,22 @@
 import { mock, MockProxy } from 'jest-mock-extended';
-import { TestSuiteInfo } from 'vscode-test-adapter-api';
+import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestGrouping } from '../../src/core/base/test-grouping';
 import { TestSuiteType, TestType } from '../../src/core/base/test-infos';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../src/core/test-suite-organizer';
+import { TestHelper } from '../../src/core/test-helper';
+import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../src/core/util/test-suite-organizer';
 import '../../src/types/vscode-test-adapter-api';
 import { Logger } from '../../src/util/logging/logger';
 import { asTestSuiteWithUnixStylePaths as withUnixPaths } from '../test-util';
 
 describe('TestSuiteOrganizer', () => {
   let mockLogger: MockProxy<Logger>;
+  let testHelper: TestHelper;
   let testSuiteOrganizer: TestSuiteOrganizer;
 
   beforeEach(() => {
     mockLogger = mock<Logger>();
-    testSuiteOrganizer = new TestSuiteOrganizer(mockLogger);
+    testHelper = new TestHelper(mockLogger, { showTestDefinitionTypeIndicators: false });
+    testSuiteOrganizer = new TestSuiteOrganizer('/', '/', testHelper, mockLogger);
 
     const organizeTests = testSuiteOrganizer.organizeTests.bind(testSuiteOrganizer);
 
@@ -23,38 +26,59 @@ describe('TestSuiteOrganizer', () => {
   });
 
   describe('organizeTests method', () => {
-    describe('when called on a test suite using option to group by folder', () => {
-      let originalTestSuite: TestSuiteInfo;
-      let organizationOptions: TestSuiteOrganizationOptions;
+    let originalTests: (TestInfo | TestSuiteInfo)[];
+    let organizationOptions: TestSuiteOrganizationOptions;
 
-      beforeEach(() => {
-        originalTestSuite = {
-          id: ':',
+    beforeEach(() => {
+      originalTests = [
+        {
+          id: 'suite2',
           type: 'suite',
-          label: '',
-          fullName: '',
+          activeState: 'default',
+          file: '/path-1/path-2/component-2.spec.ts',
+          label: 'suite 2',
+          name: 'suite 2',
+          fullName: 'suite two',
           testCount: 1,
           children: [
             {
-              id: 'suite2',
-              type: 'suite',
+              id: 'spec2',
+              activeState: 'default',
+              type: 'test',
               file: '/path-1/path-2/component-2.spec.ts',
-              label: 'suite 2',
-              fullName: 'suite two',
-              testCount: 1,
-              children: [
-                {
-                  id: 'spec2',
-                  type: 'test',
-                  file: '/path-1/path-2/component-2.spec.ts',
-                  fullName: 'suite two spec two',
-                  label: 'spec 2'
-                }
-              ]
+              name: 'spec 2',
+              fullName: 'suite two spec two',
+              label: 'spec 2'
             }
           ]
-        };
+        }
+      ];
 
+      organizationOptions = {};
+    });
+
+    describe('when organizing tests by suite', () => {
+      beforeEach(() => {
+        organizationOptions = { testGrouping: TestGrouping.Suite };
+      });
+
+      it('bundles the tests under a single root suite with the expected properties', () => {
+        const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
+
+        expect(organizedTestSuite).toEqual(
+          expect.objectContaining({
+            type: TestType.Suite,
+            id: ':',
+            label: 'Karma tests',
+            name: '',
+            fullName: ''
+          })
+        );
+      });
+    });
+
+    describe('when organizing tests by folder', () => {
+      beforeEach(() => {
         organizationOptions = {
           testGrouping: TestGrouping.Folder,
           flattenSingleChildFolders: false,
@@ -62,8 +86,22 @@ describe('TestSuiteOrganizer', () => {
         };
       });
 
+      it('bundles the tests under a single root suite with the expected properties', () => {
+        const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
+
+        expect(organizedTestSuite).toEqual(
+          expect.objectContaining({
+            type: TestType.Suite,
+            id: ':',
+            label: 'Karma tests',
+            name: '',
+            fullName: ''
+          })
+        );
+      });
+
       it('creates an intermediate folder suite for each parent folder of the tests in the suite', () => {
-        const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
+        const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
         expect(organizedTestSuite.children).toEqual(
           expect.arrayContaining([
@@ -106,27 +144,13 @@ describe('TestSuiteOrganizer', () => {
         );
       });
 
-      it('preserves all the property values of the container node except for `children`', () => {
-        const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
-
-        expect(organizedTestSuite).toEqual(
-          expect.objectContaining({
-            id: ':',
-            type: 'suite',
-            label: '',
-            fullName: '',
-            testCount: 1
-          })
-        );
-      });
-
       describe('and with option to flatten single child folders', () => {
         beforeEach(() => {
           organizationOptions.flattenSingleChildFolders = true;
         });
 
         it('creates a single intermediate folder node for the tests for several parent folder levels having only one sub-folder each', () => {
-          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
+          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
           expect(organizedTestSuite.children).toEqual(
             expect.arrayContaining([
@@ -148,35 +172,32 @@ describe('TestSuiteOrganizer', () => {
         });
 
         it('does not flatten parent folders having multiple sub-folders or files', () => {
-          originalTestSuite = {
-            id: ':',
-            type: 'suite',
-            label: '',
-            fullName: '',
-            testCount: 2,
-            children: [
-              {
-                id: 'suite1',
-                type: 'suite',
-                file: '/path-1/component-1.spec.ts',
-                label: 'suite 1',
-                fullName: 'suite one',
-                testCount: 0,
-                children: []
-              },
-              {
-                id: 'suite2',
-                type: 'suite',
-                file: '/path-1/path-2/component-2.spec.ts',
-                label: 'suite 2',
-                fullName: 'suite two',
-                testCount: 0,
-                children: []
-              }
-            ]
-          };
+          originalTests = [
+            {
+              id: 'suite1',
+              type: 'suite',
+              activeState: 'default',
+              file: '/path-1/component-1.spec.ts',
+              label: 'suite 1',
+              name: 'suite one',
+              fullName: 'suite one',
+              testCount: 0,
+              children: []
+            },
+            {
+              id: 'suite2',
+              type: 'suite',
+              activeState: 'default',
+              file: '/path-1/path-2/component-2.spec.ts',
+              label: 'suite 2',
+              name: 'suite two',
+              fullName: 'suite two',
+              testCount: 0,
+              children: []
+            }
+          ];
 
-          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
+          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
           expect(organizedTestSuite.children).toEqual(
             expect.arrayContaining([
@@ -203,7 +224,7 @@ describe('TestSuiteOrganizer', () => {
         });
 
         it('combines into a single node the file suite and test suite for test files having a single top-level suite', () => {
-          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
+          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
           expect(organizedTestSuite.children).toEqual(
             expect.arrayContaining([
@@ -239,7 +260,7 @@ describe('TestSuiteOrganizer', () => {
         });
 
         it('uses the suite name as the label for the combined node for test files having a single top-level suite', () => {
-          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTestSuite, '/', '/', organizationOptions);
+          const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
           expect(organizedTestSuite.children).toEqual(
             expect.arrayContaining([
@@ -269,42 +290,34 @@ describe('TestSuiteOrganizer', () => {
 
         describe('for test suite files with multiple top-level suites', () => {
           beforeEach(() => {
-            originalTestSuite = {
-              id: ':',
-              type: 'suite',
-              label: '',
-              fullName: '',
-              testCount: 2,
-              children: [
-                {
-                  id: 'suite1',
-                  type: 'suite',
-                  file: '/path-1/component-1.spec.ts',
-                  label: 'suite 1',
-                  fullName: 'suite one',
-                  testCount: 0,
-                  children: []
-                },
-                {
-                  id: 'suite1-2',
-                  type: 'suite',
-                  file: '/path-1/component-1.spec.ts',
-                  label: 'suite 1-2',
-                  fullName: 'suite one-2',
-                  testCount: 0,
-                  children: []
-                }
-              ]
-            };
+            originalTests = [
+              {
+                id: 'suite1',
+                type: 'suite',
+                activeState: 'default',
+                file: '/path-1/component-1.spec.ts',
+                label: 'suite 1',
+                name: 'suite one',
+                fullName: 'suite one',
+                testCount: 0,
+                children: []
+              },
+              {
+                id: 'suite1-2',
+                type: 'suite',
+                activeState: 'default',
+                file: '/path-1/component-1.spec.ts',
+                label: 'suite 1-2',
+                name: 'suite one-2',
+                fullName: 'suite one-2',
+                testCount: 0,
+                children: []
+              }
+            ];
           });
 
           it('does not combine the file suite node and test suite nodes', () => {
-            const organizedTestSuite = testSuiteOrganizer.organizeTests(
-              originalTestSuite,
-              '/',
-              '/',
-              organizationOptions
-            );
+            const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
             expect(organizedTestSuite.children).toEqual(
               expect.arrayContaining([
@@ -339,12 +352,7 @@ describe('TestSuiteOrganizer', () => {
           });
 
           it('uses a friendly version of the filename for the label of the file suite node', () => {
-            const organizedTestSuite = testSuiteOrganizer.organizeTests(
-              originalTestSuite,
-              '/',
-              '/',
-              organizationOptions
-            );
+            const organizedTestSuite = testSuiteOrganizer.organizeTests(originalTests, organizationOptions);
 
             expect(organizedTestSuite.children).toEqual(
               expect.arrayContaining([
@@ -367,32 +375,22 @@ describe('TestSuiteOrganizer', () => {
         });
       });
 
-      describe('and with a value for testsBasePath', () => {
-        let testsBasePath: string;
+      it('uses the specified tests base path as the root of the test tree if it is a sub-folder of the root path', () => {
+        const rootPath = '/';
+        const testsBasePath = '/path-1';
+        testSuiteOrganizer = new TestSuiteOrganizer(rootPath, testsBasePath, testHelper, mockLogger);
 
-        beforeEach(() => {
-          testsBasePath = '/';
-        });
+        const organizedTestSuite = withUnixPaths(testSuiteOrganizer.organizeTests(originalTests, organizationOptions));
 
-        it('uses the testsBasePath as the root of the test tree if it is a sub-folder of the root path', () => {
-          testsBasePath = '/path-1';
-          const organizedTestSuite = testSuiteOrganizer.organizeTests(
-            originalTestSuite,
-            '/',
-            testsBasePath,
-            organizationOptions
-          );
-
-          expect(organizedTestSuite.children).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                suiteType: TestSuiteType.Folder,
-                path: '/path-1/path-2',
-                label: 'path-2'
-              })
-            ])
-          );
-        });
+        expect(organizedTestSuite.children).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              suiteType: TestSuiteType.Folder,
+              path: `${testsBasePath}/path-2`,
+              label: 'path-2'
+            })
+          ])
+        );
       });
     });
   });

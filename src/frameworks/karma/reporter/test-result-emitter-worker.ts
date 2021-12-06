@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import { parentPort, workerData } from 'worker_threads';
-import { KarmaEvent } from './karma-event';
+import { KarmaEvent } from '../runner/karma-event';
 import { TestResultEmitterWorkerData } from './test-result-emitter-worker-data';
 
 const initWorker = () => {

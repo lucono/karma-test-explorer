@@ -11,10 +11,10 @@ import { LoggerAdapter } from '../../../util/logging/logger-adapter';
 import { MultiEventHandler } from '../../../util/multi-event-handler';
 import { getCircularReferenceReplacer } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
-import { BrowserInfo, KarmaEvent, KarmaEventName } from './karma-event';
-import { LightSpecCompleteResponse } from './spec-complete-response';
+import { BrowserInfo, KarmaEvent, KarmaEventName } from '../runner/karma-event';
+import { LightSpecCompleteResponse } from '../runner/spec-complete-response';
+import { TestRunStatus } from '../runner/test-run-status';
 import { TestResultEmitterWorkerData } from './test-result-emitter-worker-data';
-import { TestRunStatus } from './test-run-status';
 
 export function KarmaTestExplorerReporter(
   this: any,

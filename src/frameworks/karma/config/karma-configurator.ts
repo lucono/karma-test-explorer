@@ -1,9 +1,13 @@
 import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions, CustomLauncher, InlinePluginDef } from 'karma';
 import { dirname, resolve } from 'path';
-import { CHROME_BROWSER_DEBUGGING_PORT_FLAG, KARMA_CUSTOM_LAUNCHER_BROWSER_NAME } from '../../../constants';
+import {
+  CHROME_BROWSER_DEBUGGING_PORT_FLAG,
+  KARMA_BROWSER_CAPTURE_MIN_TIMEOUT,
+  KARMA_CUSTOM_LAUNCHER_BROWSER_NAME
+} from '../../../constants';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { KarmaLogLevel } from '../karma-log-level';
-import { KarmaTestExplorerReporter } from '../runner/karma-test-explorer-reporter';
+import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter';
 
 export class KarmaConfigurator {
   private readonly karmaPort: number;
@@ -57,7 +61,7 @@ export class KarmaConfigurator {
     config.browserNoActivityTimeout = 1000 * 60 * 60 * 24;
     config.browserDisconnectTimeout = Math.max(config.browserDisconnectTimeout || 0, 30_000);
     config.pingTimeout = 1000 * 60 * 60 * 24;
-    config.captureTimeout = Math.max(config.captureTimeout || 0, 60_000);
+    config.captureTimeout = Math.max(config.captureTimeout || 0, KARMA_BROWSER_CAPTURE_MIN_TIMEOUT);
     config.browserSocketTimeout = 30_000;
     config.processKillTimeout = 2000;
     config.retryLimit = Math.max(config.retryLimit || 0, 3);

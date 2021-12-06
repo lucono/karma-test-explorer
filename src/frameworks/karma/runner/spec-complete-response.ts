@@ -8,8 +8,6 @@ export interface SpecCompleteResponse {
   readonly fullName: string;
   readonly status: TestStatus;
   readonly timeSpentInMilliseconds: string;
-  readonly filePath?: string; // FIXME: Is this ever sent from source?
-  readonly line?: number; // FIXME: Is this ever sent from source?
 }
 
 export type LightSpecCompleteResponse = Omit<SpecCompleteResponse, 'fullName'>;

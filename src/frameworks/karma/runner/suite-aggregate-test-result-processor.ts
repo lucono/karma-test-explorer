@@ -1,19 +1,19 @@
 import { EventEmitter } from 'vscode';
-import { TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { Logger } from '../util/logging/logger';
-import { TestCountProcessor } from '../util/testing/test-count-processor';
-import { TestResultEvent } from './base/test-events';
-import { AnyTestInfo, TestType } from './base/test-infos';
-import { TestResolver } from './base/test-resolver';
-import { TestResults } from './base/test-results';
-import { TestStatus } from './base/test-status';
-import { TestSuiteState } from './base/test-suite-state';
+import { TestInfo, TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
+import { TestResultEvent } from '../../../core/base/test-events';
+import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
+import { TestResolver } from '../../../core/base/test-resolver';
+import { TestResults } from '../../../core/base/test-results';
+import { TestStatus } from '../../../core/base/test-status';
+import { TestSuiteState } from '../../../core/base/test-suite-state';
+import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
+import { Logger } from '../../../util/logging/logger';
 
 export class SuiteAggregateTestResultProcessor {
   public constructor(
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testResolver: TestResolver,
-    private readonly testCountProcessor: TestCountProcessor,
+    private readonly testTreeProcessor: TestTreeProcessor,
     private readonly logger: Logger
   ) {}
 
@@ -31,8 +31,10 @@ export class SuiteAggregateTestResultProcessor {
     const totalTestCounts: { [key in TestStatus]?: number } = {};
 
     Object.values(TestStatus).forEach(testStatus => {
-      totalTestCounts[testStatus] = this.testCountProcessor.processTestSuite(
+      totalTestCounts[testStatus] = this.testTreeProcessor.processTestTree(
         testResults[testStatus],
+        (test: TestInfo): number => (test.type === TestType.Test ? 1 : 0),
+        counts => counts.reduce((count1, count2) => count1 + count2, 0),
         (test, testCount) => captureCountForSuiteAndStatus(test, testCount, testStatus)
       );
     });
@@ -80,7 +82,7 @@ export class SuiteAggregateTestResultProcessor {
         suite: testSuiteId,
         state: TestSuiteState.Completed,
         description: `(${testResultDescription})`,
-        tooltip: `${testSuite?.tooltip}  (${testResultDescription})`
+        tooltip: (testSuite ? `${testSuite.tooltip}  ` : '') + testResultDescription
       };
 
       this.testResultEventEmitter.fire(testEvent);

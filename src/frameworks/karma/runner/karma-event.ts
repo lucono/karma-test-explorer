@@ -1,21 +1,10 @@
 import { LightSpecCompleteResponse } from './spec-complete-response';
 import { TestRunStatus } from './test-run-status';
 
-export interface KarmaEvent {
-  readonly name: KarmaEventName;
-  readonly runId?: string;
-  readonly runStatus?: TestRunStatus;
-  readonly runInfo?: Record<string, unknown>;
-  readonly exitCode?: number;
-  readonly port?: number;
-  readonly results?: LightSpecCompleteResponse;
-  readonly browser?: BrowserInfo;
-  readonly browsers?: BrowserInfo[];
-  readonly info?: Record<string, unknown>;
-  readonly error?: string;
-  readonly logMessage?: string;
-  readonly logLevel?: string;
-  readonly data?: any;
+export interface BrowserInfo {
+  id: string;
+  name: string;
+  fullName: string;
 }
 
 export enum KarmaEventName {
@@ -40,8 +29,19 @@ export enum KarmaEventName {
   BrowserCompleteWithNoMoreRetires = 'browser_complete_with_no_more_retries'
 }
 
-export interface BrowserInfo {
-  id: string;
-  name: string;
-  fullName: string;
+export interface KarmaEvent {
+  readonly name: KarmaEventName;
+  readonly runId?: string;
+  readonly runStatus?: TestRunStatus;
+  readonly runInfo?: Record<string, unknown>;
+  readonly exitCode?: number;
+  readonly port?: number;
+  readonly results?: LightSpecCompleteResponse;
+  readonly browser?: BrowserInfo;
+  readonly browsers?: BrowserInfo[];
+  readonly info?: Record<string, unknown>;
+  readonly error?: string;
+  readonly logMessage?: string;
+  readonly logLevel?: string;
+  readonly data?: any;
 }

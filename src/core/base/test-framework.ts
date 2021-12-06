@@ -1,8 +1,8 @@
 import { TestFrameworkName } from './test-framework-name';
 
 export interface TestInterface {
-  suite: string[];
-  test: string[];
+  suiteTags: { default: string[]; focused: string[]; disabled: string[] };
+  testTags: { default: string[]; focused: string[]; disabled: string[] };
 }
 
 export interface TestSet {

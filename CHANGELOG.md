@@ -7,12 +7,38 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.4.0 - Dec 5, 2021](#040---dec-5-2021)
   - [0.3.0 - Nov 6, 2021](#030---nov-6-2021)
   - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
   - [0.2.0 - Oct 13, 2021](#020---oct-13-2021)
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.4.0] - Dec 5, 2021
+
+### Added
+
+- Number of focused and disabled tests are now shown for each test suite or folder
+- New `karmaTestExplorer.excludeDisabledTests` extension setting for excluding disabled tests from the test view
+- New `karmaTestExplorer.showOnlyFocusedTests` extension setting for showing only currently focused tests in the test view
+- New `karmaTestExplorer.showTestDefinitionTypeIndicators` extension setting for showing or hiding focused and disabled test indicators in the test view
+- New `karmaTestExplorer.showUnmappedTests` extension setting for showing or excluding unmapped tests which are reported by Karma but not captured by the set of files defined by the `karmaTestExplorer.testFiles` extension setting
+- New `karmaTestExplorer.allowGlobalPackageFallback` extension setting which enables using a global Karma or Angular package installation when none is locally installed in the project folder
+- New `karmaTestExplorer.enableExtension` extension setting for explicitly enabling or disabling the extension for a project workspace
+
+### Changed
+
+- Automatic extension activation for a project is now based on the presence of Karma Test Explorer settings or a Karma dev dependency in the project `package.json` file. Previously, extension activation was based on the presence of a Karma or Angular configuration file under the project folder
+- All tests which are reported by Karma are now shown in the test view, with a new option (`karmaTestExplorer.showUnmappedTests`) added to exclude them if desired. Previously, tests not captured by the `karmaTestExplorer.testFiles` extension setting would not be shown at all
+- Global installations of Karma or Angular are no longer used by default when no local installation is found in the project. This behavior must now be explicitly enabled through a new `karmaTestExplorer.allowGlobalPackageFallback` extension setting
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/16) where debug sessions time out after 60 seconds while paused on a breakpoint
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/12) where the wrong Node binary is used for starting Karma in certain cases. The corresponding Node binary of the default `npx` installation on the system path is now preferred for launching Karma. Previously, the first Node binary on the path was preferred
+- Fixed an issue where tests defined on the first line of a test file are not recognized by Karma Test Explorer
 
 ---
 ## [0.3.0] - Nov 6, 2021
@@ -104,6 +130,6 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 ---
 ## See Also
 
-- [Readme](https://github.com/lucono/karma-test-explorer/blob/master/README.md#karma-test-explorer-for-visual-studio-code)
-- [Documentation](https://github.com/lucono/karma-test-explorer/blob/master/docs/documentation.md#documentation---karma-test-explorer)
-- [Contributing](https://github.com/lucono/karma-test-explorer/blob/master/CONTRIBUTING.md#contributing---karma-test-explorer)
+- [Readme](./README.md#karma-test-explorer-for-visual-studio-code)
+- [Documentation](./docs/documentation.md#documentation---karma-test-explorer)
+- [Contributing](./CONTRIBUTING.md#contributing---karma-test-explorer)

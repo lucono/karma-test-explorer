@@ -3,7 +3,7 @@ import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { ServerStartInfo, TestManager } from '../api/test-manager';
 import { TestRunner } from '../api/test-runner';
 import { TestServer } from '../api/test-server';
-import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
 import { DeferredPromise } from '../util/future/deferred-promise';
@@ -25,7 +25,7 @@ export class DefaultTestManager implements TestManager {
   public constructor(
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
-    private readonly karmaEventListener: KarmaTestEventListener,
+    private readonly karmaTestListener: KarmaTestListener,
     private readonly portManager: PortAcquisitionManager,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
@@ -33,7 +33,7 @@ export class DefaultTestManager implements TestManager {
     private readonly logger: Logger,
     private readonly defaultDebugPort?: number
   ) {
-    this.disposables.push(testServer, testRunner, karmaEventListener, portManager, notifications, logger);
+    this.disposables.push(testServer, testRunner, karmaTestListener, portManager, notifications, logger);
   }
 
   public async restart(): Promise<void> {
@@ -66,9 +66,9 @@ export class DefaultTestManager implements TestManager {
 
       // --- Stop system if currently running ---
 
-      if (this.karmaEventListener.isRunning()) {
+      if (this.karmaTestListener.isRunning()) {
         this.logger.info(() => 'Stopping currently running karma test event listener session');
-        await this.karmaEventListener.stop();
+        await this.karmaTestListener.stop();
       }
 
       if (this.testServer.isRunning()) {
@@ -115,7 +115,7 @@ export class DefaultTestManager implements TestManager {
 
       // --- Start system (Karma server and listener) ---
 
-      const karmaServerConnection: Execution = this.karmaEventListener.receiveKarmaConnection(karmerListenerSocketPort);
+      const karmaServerConnection: Execution = this.karmaTestListener.receiveKarmaConnection(karmerListenerSocketPort);
 
       const karmaServerExecution: Execution = this.testServer.start(
         serverKarmaPort,
@@ -240,7 +240,7 @@ export class DefaultTestManager implements TestManager {
           () =>
             'Test discovery request - ' +
             `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
-            `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+            `karma listener is ${!this.karmaTestListener.isRunning() ? 'not' : ''} running - ` +
             'Restarting both'
         );
         await this.restart();
@@ -291,7 +291,7 @@ export class DefaultTestManager implements TestManager {
           () =>
             'Request to run tests - ' +
             `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
-            `karma listener is ${!this.karmaEventListener.isRunning() ? 'not' : ''} running - ` +
+            `karma listener is ${!this.karmaTestListener.isRunning() ? 'not' : ''} running - ` +
             'Restarting both'
         );
 
@@ -322,9 +322,9 @@ export class DefaultTestManager implements TestManager {
 
     this.notifications.notifyStatus(StatusType.Busy, 'Stopping Karma...', this.systemCurrentlyStopping);
 
-    if (this.karmaEventListener.isRunning()) {
+    if (this.karmaTestListener.isRunning()) {
       this.logger.debug(() => 'Stopping karma event listener');
-      await this.karmaEventListener.stop();
+      await this.karmaTestListener.stop();
     } else {
       this.logger.debug(() => 'Karma event listener is already stopped');
     }
@@ -341,7 +341,7 @@ export class DefaultTestManager implements TestManager {
   }
 
   public isStarted(): boolean {
-    return this.testServer.isRunning() && this.karmaEventListener.isRunning();
+    return this.testServer.isRunning() && this.karmaTestListener.isRunning();
   }
 
   public isActionRunning(): boolean {

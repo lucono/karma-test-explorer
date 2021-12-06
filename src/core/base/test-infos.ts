@@ -13,6 +13,7 @@ export enum TestSuiteType {
 export interface TestFolderSuiteInfo extends TestSuiteInfo {
   suiteType: TestSuiteType.Folder;
   path: string;
+  name: string;
   fullName: '';
   children: (TestFolderSuiteInfo | TestFileSuiteInfo)[];
   file?: undefined;

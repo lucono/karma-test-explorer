@@ -1,5 +1,6 @@
 import { readFile, readFileSync } from 'fs';
 import globby from 'globby';
+import { relative } from 'path';
 import { DEFAULT_FILE_ENCODING } from '../constants';
 import { Disposable } from './disposable/disposable';
 import { Disposer } from './disposable/disposer';
@@ -79,6 +80,10 @@ export class FileHandler implements Disposable {
         `are: ${JSON.stringify(files, null, 2)}`
     );
     return files;
+  }
+
+  public getFileRelativePath(fileAbsolutePath: string) {
+    return normalizePath(relative(this.cwd, fileAbsolutePath));
   }
 
   public async dispose() {

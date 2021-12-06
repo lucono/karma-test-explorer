@@ -3,7 +3,7 @@ import { TestRunExecutor } from '../api/test-run-executor';
 import { TestRunner } from '../api/test-runner';
 import { TestServer } from '../api/test-server';
 import { TestServerExecutor } from '../api/test-server-executor';
-import { KarmaTestEventListener } from '../frameworks/karma/runner/karma-test-event-listener';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
 import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
@@ -30,7 +30,7 @@ export class CascadingTestFactory implements TestFactory {
   }
 
   public createTestRunner(
-    karmaEventListener: KarmaTestEventListener,
+    karmaEventListener: KarmaTestListener,
     testDiscoveryProcessor: TestDiscoveryProcessor,
     testRunExecutor?: TestRunExecutor
   ): TestRunner {

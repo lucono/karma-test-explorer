@@ -20,6 +20,7 @@ export const KARMA_TEST_RUN_ID_FLAG = '--testRunId';
 export const KARMA_SOCKET_PING_INTERVAL = 1000 * 60 * 60 * 24;
 export const KARMA_SOCKET_PING_TIMEOUT = 1000 * 60 * 60 * 24;
 export const KARMA_READY_DEFAULT_TIMEOUT = 1000 * 60 * 15;
+export const KARMA_BROWSER_CAPTURE_MIN_TIMEOUT = 1000 * 90;
 export const KARMA_TEST_EVENT_INTERVAL_TIMEOUT = 1000 * 60;
 
 // Others
@@ -28,4 +29,3 @@ export const ALWAYS_EXCLUDED_TEST_FILE_GLOBS = ['**/node_modules/**/*'];
 export const CHROME_BROWSER_DEBUGGING_PORT_FLAG = '--remote-debugging-port';
 export const CHROME_DEFAULT_DEBUGGING_PORT = 9222;
 export const DEFAULT_FILE_ENCODING: BufferEncoding = 'utf-8';
-export const FILE_URI_SCHEME = 'file';

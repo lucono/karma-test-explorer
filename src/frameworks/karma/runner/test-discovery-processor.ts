@@ -1,61 +1,132 @@
-import { TestSuiteInfo } from 'vscode-test-adapter-api';
+import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
+import { AllTestsFilteredError } from '../../../core/all-tests-filtered-error';
 import { TestGrouping } from '../../../core/base/test-grouping';
 import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/test-suite-organizer';
+import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
+import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
+import { MessageType, Notifications } from '../../../core/vscode/notifications';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
-import { TestCountProcessor } from '../../../util/testing/test-count-processor';
 import { SpecCompleteResponse } from './spec-complete-response';
-import { SpecResponseToTestSuiteInfoMapper } from './spec-response-to-test-suite-info-mapper';
+import { TestBuilder } from './test-builder';
+
+interface TestDiscoveryCount {
+  focused: number;
+  disabled: number;
+  total: number;
+}
 
 export class TestDiscoveryProcessor implements Disposable {
   private readonly disposables: Disposable[] = [];
 
   public constructor(
-    private readonly specToTestSuiteMapper: SpecResponseToTestSuiteInfoMapper,
+    private readonly testBuilder: TestBuilder,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
-    private readonly testCountProcessor: TestCountProcessor,
+    private readonly testTreeProcessor: TestTreeProcessor,
     private readonly testGrouping: TestGrouping,
     private readonly flattenSingleChildFolders: boolean,
-    private readonly projectRootPath: string,
-    private readonly testsBasePath: string,
+    private readonly notifications: Notifications,
     private readonly logger: Logger
   ) {
     this.disposables.push(logger);
   }
 
   public processTests(discoveredSpecs: SpecCompleteResponse[]): TestSuiteInfo {
-    const mappedTestSuite: TestSuiteInfo = this.specToTestSuiteMapper.map(discoveredSpecs);
+    let builtTests: (TestInfo | TestSuiteInfo)[] = [];
+
+    try {
+      builtTests = this.testBuilder.buildTests(discoveredSpecs);
+    } catch (error) {
+      if (error instanceof AllTestsFilteredError) {
+        const allTestsFilteredMessage =
+          `There are no tests to display because all tests are currently filtered. ` +
+          `Try adjusting your test filtering settings.`;
+
+        this.notifications.notify(MessageType.Error, allTestsFilteredMessage, undefined, {
+          dismissAction: true,
+          showLogAction: false
+        });
+
+        return this.createEmptySuite();
+      }
+    }
 
     const testOrganizationOptions: TestSuiteOrganizationOptions = {
       testGrouping: this.testGrouping,
       flattenSingleChildFolders: this.flattenSingleChildFolders
     };
 
-    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(
-      mappedTestSuite,
-      this.projectRootPath,
-      this.testsBasePath,
-      testOrganizationOptions
-    );
+    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(builtTests, testOrganizationOptions);
 
-    const addTestCountToSuite = (test: AnyTestInfo, testCount: number) => {
+    const testCountEvaluator = (test: TestInfo): TestDiscoveryCount => ({
+      focused: test.activeState === 'focused' || test.activeState === 'focusedIn' ? 1 : 0,
+      disabled: test.activeState === 'disabled' || test.activeState === 'disabledOut' ? 1 : 0,
+      total: 1
+    });
+
+    const testCountReducer = (testCount1: TestDiscoveryCount, testCount2: TestDiscoveryCount) => ({
+      focused: testCount1.focused + testCount2.focused,
+      disabled: testCount1.disabled + testCount2.disabled,
+      total: testCount1.total + testCount2.total
+    });
+
+    const testCountAggregator = (testCounts: TestDiscoveryCount[]) => {
+      return testCounts.reduce(testCountReducer, { focused: 0, disabled: 0, total: 0 });
+    };
+
+    const testCountUpdater = (test: AnyTestInfo, testCount: TestDiscoveryCount) => {
       if (test.type === TestType.Suite) {
-        test.testCount = testCount;
-        test.description = testCount === 1 ? '(1 test)' : `(${testCount} tests)`;
+        const totalCount = testCount.total;
+        const focusedCount = testCount.focused;
+        const disabledCount = testCount.disabled;
+
+        const totalCountDescription = totalCount === 1 ? '1 test' : `${totalCount} tests`;
+
+        const allCountsDescription =
+          focusedCount === 0 && disabledCount === 0
+            ? `${totalCountDescription}`
+            : focusedCount === totalCount
+            ? `${totalCountDescription}, all focused`
+            : disabledCount === totalCount
+            ? `${totalCountDescription}, all disabled`
+            : `${totalCountDescription}` +
+              (focusedCount > 0 ? `, ${focusedCount} focused` : '') +
+              (disabledCount > 0 ? `, ${disabledCount} disabled` : '');
+
+        test.testCount = testCount.total;
+        test.description = `(${allCountsDescription})`;
       }
     };
 
-    const totalTestCount = this.testCountProcessor.processTestSuite(discoveredTestSuite, addTestCountToSuite);
+    const fullTestCount = this.testTreeProcessor.processTestTree(
+      discoveredTestSuite,
+      testCountEvaluator,
+      testCountAggregator,
+      testCountUpdater
+    );
 
     this.logger.debug(() =>
-      totalTestCount > 0
-        ? `Test discovery - ${totalTestCount} total tests discovered from Karma`
+      fullTestCount.total > 0
+        ? `Test discovery - ${fullTestCount.total} total tests discovered from Karma`
         : 'Test discovery - No tests found'
     );
 
     return discoveredTestSuite;
+  }
+
+  private createEmptySuite(): TestSuiteInfo {
+    const placeholderSuite: TestSuiteInfo = {
+      type: TestType.Suite,
+      id: ':',
+      label: 'All tests filtered',
+      name: '',
+      fullName: '',
+      children: [],
+      testCount: 0,
+      activeState: 'default'
+    };
+    return placeholderSuite;
   }
 
   public async dispose() {

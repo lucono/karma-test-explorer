@@ -1,5 +1,4 @@
 import { join } from 'path';
-import which from 'which';
 import { ServerStopExecutor, TestServerExecutor } from '../../api/test-server-executor';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
@@ -11,7 +10,7 @@ import {
   CommandLineProcessHandlerOptions
 } from '../../util/process/command-line-process-handler';
 import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
-import { getPackageInstallPathForProjectRoot } from '../../util/utils';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
 import { AngularProject } from './angular-project';
 
@@ -20,6 +19,7 @@ export interface AngularTestServerExecutorOptions {
   angularProcessCommand?: string;
   serverProcessLog?: CommandLineProcessLog;
   failOnStandardError?: boolean;
+  allowGlobalPackageFallback?: boolean;
 }
 
 export class AngularTestServerExecutor implements TestServerExecutor {
@@ -62,8 +62,13 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const angularInstallPath = getPackageInstallPathForProjectRoot('@angular/cli', this.workspaceRootPath);
-    const angularBinaryPath = angularInstallPath ? join(angularInstallPath, 'bin', 'ng') : undefined;
+    const angularLocalInstallPath = getPackageInstallPathForProjectRoot(
+      '@angular/cli',
+      this.workspaceRootPath,
+      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+      this.logger
+    );
+    const angularBinaryPath = angularLocalInstallPath ? join(angularLocalInstallPath, 'bin', 'ng') : undefined;
 
     if (!angularBinaryPath) {
       throw new Error(
@@ -73,7 +78,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       );
     }
 
-    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
     let processArguments: string[] = [];

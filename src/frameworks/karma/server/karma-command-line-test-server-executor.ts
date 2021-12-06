@@ -1,5 +1,4 @@
 import { join } from 'path';
-import which from 'which';
 import { ServerStopExecutor, TestServerExecutor } from '../../../api/test-server-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -11,7 +10,7 @@ import {
   CommandLineProcessHandlerOptions
 } from '../../../util/process/command-line-process-handler';
 import { CommandLineProcessLog } from '../../../util/process/command-line-process-log';
-import { getPackageInstallPathForProjectRoot } from '../../../util/utils';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 
 export interface KarmaCommandLineTestServerExecutorOptions {
@@ -19,6 +18,7 @@ export interface KarmaCommandLineTestServerExecutorOptions {
   karmaProcessCommand?: string;
   serverProcessLog?: CommandLineProcessLog;
   failOnStandardError?: boolean;
+  allowGlobalPackageFallback?: boolean;
 }
 
 export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
@@ -61,8 +61,13 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const karmaInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectRootPath);
-    const karmaBinaryPath = karmaInstallPath ? join(karmaInstallPath, 'bin', 'karma') : undefined;
+    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+      'karma',
+      this.projectRootPath,
+      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+      this.logger
+    );
+    const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
 
     if (!karmaBinaryPath) {
       throw new Error(
@@ -72,7 +77,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       );
     }
 
-    const nodeExecutablePath = which.sync('node', { all: false, nothrow: true });
+    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
     let processArguments: string[] = [];

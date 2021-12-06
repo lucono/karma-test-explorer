@@ -15,7 +15,7 @@ import {
   KarmaCommandLineTestRunExecutorOptions
 } from './runner/karma-command-line-test-run-executor';
 import { KarmaHttpTestRunExecutor } from './runner/karma-http-test-run-executor';
-import { KarmaTestEventListener } from './runner/karma-test-event-listener';
+import { KarmaTestListener } from './runner/karma-test-listener';
 import { KarmaTestRunner } from './runner/karma-test-runner';
 import { TestDiscoveryProcessor } from './runner/test-discovery-processor';
 import {
@@ -33,6 +33,7 @@ export type KarmaFactoryConfig = Pick<
   | 'customLauncher'
   | 'environment'
   | 'failOnStandardError'
+  | 'allowGlobalPackageFallback'
   | 'karmaLogLevel'
   | 'karmaReporterLogLevel'
   | 'karmaProcessCommand'
@@ -62,7 +63,7 @@ export class KarmaFactory implements TestFactory, Disposable {
   }
 
   public createTestRunner(
-    karmaEventListener: KarmaTestEventListener,
+    karmaEventListener: KarmaTestListener,
     testDiscoveryProcessor: TestDiscoveryProcessor,
     testRunExecutor?: TestRunExecutor
   ): TestRunner {
@@ -108,7 +109,8 @@ export class KarmaFactory implements TestFactory, Disposable {
     const options: KarmaCommandLineTestRunExecutorOptions = {
       environment,
       karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
-      failOnStandardError: this.factoryConfig.failOnStandardError
+      failOnStandardError: this.factoryConfig.failOnStandardError,
+      allowGlobalPackageFallback: this.factoryConfig.allowGlobalPackageFallback
     };
 
     const testRunExecutor = new KarmaCommandLineTestRunExecutor(
@@ -138,7 +140,8 @@ export class KarmaFactory implements TestFactory, Disposable {
       environment,
       serverProcessLog: this.serverProcessLog,
       karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
-      failOnStandardError: this.factoryConfig.failOnStandardError
+      failOnStandardError: this.factoryConfig.failOnStandardError,
+      allowGlobalPackageFallback: this.factoryConfig.allowGlobalPackageFallback
     };
 
     const testServerExecutor = new KarmaCommandLineTestServerExecutor(

@@ -1,5 +1,4 @@
-import { parse as parseEnvironmentFile } from 'dotenv';
-import dotenvExpand from 'dotenv-expand';
+import { parse as parseDotEnvContent } from 'dotenv';
 import { readFileSync } from 'fs';
 import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
@@ -17,7 +16,7 @@ import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { LogLevel } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
-import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
+import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, toSingleUniqueArray } from '../../util/utils';
 import { TestFrameworkName } from '../base/test-framework-name';
 import { TestGrouping } from '../base/test-grouping';
 import { ConfigSetting } from './config-setting';
@@ -66,6 +65,11 @@ export class ExtensionConfig implements Disposable {
   public readonly userKarmaConfFilePath: string;
   public readonly testTriggerMethod: TestTriggerMethod;
   public readonly failOnStandardError: boolean;
+  public readonly allowGlobalPackageFallback: boolean;
+  public readonly excludeDisabledTests: boolean;
+  public readonly showOnlyFocusedTests: boolean;
+  public readonly showTestDefinitionTypeIndicators: boolean;
+  public readonly showUnmappedTests: boolean;
 
   public constructor(config: ConfigStore, workspacePath: string, private readonly logger: Logger) {
     const normalizedWorkspacePath = normalizePath(workspacePath);
@@ -96,6 +100,11 @@ export class ExtensionConfig implements Disposable {
     this.debuggerConfig = config.get(ConfigSetting.DebuggerConfig)!;
     this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
     this.testFiles = config.get<string[]>(ConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
+    this.allowGlobalPackageFallback = !!config.get(ConfigSetting.AllowGlobalPackageFallback);
+    this.excludeDisabledTests = !!config.get(ConfigSetting.ExcludeDisabledTests);
+    this.showOnlyFocusedTests = !!config.get(ConfigSetting.ShowOnlyFocusedTests);
+    this.showUnmappedTests = !!config.get(ConfigSetting.ShowUnmappedTests);
+    this.showTestDefinitionTypeIndicators = !!config.get(ConfigSetting.ShowTestDefinitionTypeIndicators);
 
     this.excludeFiles = toSingleUniqueArray(
       config.get(ConfigSetting.ExcludeFiles),
@@ -183,33 +192,35 @@ export class ExtensionConfig implements Disposable {
 
   private getCombinedEnvironment(config: ConfigStore): Record<string, string> {
     const envMap: Record<string, string> = config.get(ConfigSetting.Env) ?? {};
+    let environment: Record<string, string> = { ...envMap };
 
     const envFile: string | undefined = this.stringSettingExists(config, ConfigSetting.EnvFile)
       ? resolve(this.projectRootPath, config.get<string>(ConfigSetting.EnvFile)!)
       : undefined;
 
-    if (!envFile) {
-      return envMap;
-    }
-    this.logger.info(() => `Reading environment from file: ${envFile}`);
+    if (envFile) {
+      this.logger.info(() => `Reading environment from file: ${envFile}`);
 
-    let envFileEnvironment: Record<string, string> = {};
+      try {
+        const envFileContent: Buffer = readFileSync(envFile!);
 
-    try {
-      const envFileContent: Buffer = readFileSync(envFile!);
+        if (!envFileContent) {
+          throw new Error(`Failed to read configured environment file: ${envFile}`);
+        }
+        const envFileEnvironment = parseDotEnvContent(envFileContent);
+        const entryCount = Object.keys(envFileEnvironment).length;
+        this.logger.info(() => `Fetched ${entryCount} entries from environment file: ${envFile}`);
 
-      if (!envFileContent) {
-        throw new Error(`Failed to read configured environment file: ${envFile}`);
+        const mergedEnvironment = { ...envFileEnvironment, ...environment };
+        const expandedEnvironment = expandEnvironment(mergedEnvironment, this.logger);
+
+        environment = expandedEnvironment ?? mergedEnvironment;
+      } catch (error) {
+        this.logger.error(() => `Failed to get environment from file '${envFile}': ${error}`);
       }
-      envFileEnvironment = parseEnvironmentFile(envFileContent);
-      dotenvExpand({ parsed: envFileEnvironment });
-      const entryCount = Object.keys(envFileEnvironment).length;
-      this.logger.info(() => `Fetched ${entryCount} entries from environment file: ${envFile}`);
-    } catch (error) {
-      this.logger.error(() => `Failed to get environment from file '${envFile}': ${error}`);
     }
 
-    return { ...envFileEnvironment, ...envMap };
+    return environment;
   }
 
   private stringSettingExists(config: ConfigStore, setting: ConfigSetting): boolean {

@@ -4,13 +4,13 @@ import { TestRunExecutor } from '../../../api/test-run-executor';
 import { TestRunner } from '../../../api/test-runner';
 import { KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
 import { TestFramework, TestSet } from '../../../core/base/test-framework';
-import { AnyTestInfo, TestSuiteType, TestType } from '../../../core/base/test-infos';
+import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
 import { generateRandomId } from '../../../util/utils';
-import { KarmaTestEventListener } from './karma-test-event-listener';
+import { KarmaTestListener } from './karma-test-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { TestDiscoveryProcessor } from './test-discovery-processor';
 
@@ -20,7 +20,7 @@ export class KarmaTestRunner implements TestRunner {
   public constructor(
     private readonly testRunExecutor: TestRunExecutor,
     private readonly testFramework: TestFramework,
-    private readonly karmaEventListener: KarmaTestEventListener,
+    private readonly karmaEventListener: KarmaTestListener,
     private readonly testDiscoveryProcessor: TestDiscoveryProcessor,
     private readonly logger: Logger
   ) {
@@ -110,24 +110,12 @@ export class KarmaTestRunner implements TestRunner {
     const runnableTests: (TestInfo | TestSuiteInfo)[] = [];
 
     tests.forEach(test => {
-      // Add all the runnable tests and test suites
-      if (test.fullName) {
-        runnableTests.push(test);
-        return;
-      }
-      // Skip anomalous tests and test suites that lack full name (which shouldn't happen)
-      if (!(test.type === TestType.Suite && 'suiteType' in test)) {
-        return;
-      }
-      // For remaining test files, extract underlying test suites
-      if (test.suiteType === TestSuiteType.File) {
-        runnableTests.push(...test.children);
-        return;
-      }
-      // For remaining test folders, extract underlying test suites
-      if (test.suiteType === TestSuiteType.Folder) {
-        runnableTests.push(...this.toRunnableTests(test.children));
-        return;
+      const tests = test.fullName ? [test] : test.type === TestType.Suite ? this.toRunnableTests(test.children) : [];
+      runnableTests.push(...tests);
+
+      if (test.type === TestType.Test && !test.fullName) {
+        this.logger.warn(() => `Encountered anomalous test lacking full name`);
+        this.logger.trace(() => `Anomalous test lacking full name: ${JSON.stringify(test, null, 2)}`);
       }
     });
     return runnableTests;
