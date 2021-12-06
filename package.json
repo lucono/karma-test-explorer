@@ -43,8 +43,8 @@
     "watch": "tsc -w",
     "test": "jest -c jest.config.js",
     "bundle": "node ./scripts/bundle.js",
-    "package": "npx vsce package --baseContentUrl https://github.com/lucono/karma-test-explorer",
-    "publish": "npx vsce publish --baseContentUrl https://github.com/lucono/karma-test-explorer",
+    "package": "npx vsce package --githubBranch master",
+    "publish": "npx vsce publish --githubBranch master",
     "validate": "npm run format && npm run lint && npm run rebuild && npm run test && npm run bundle && npm run package"
   },
   "dependencies": {
