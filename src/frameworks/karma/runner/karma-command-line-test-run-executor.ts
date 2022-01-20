@@ -68,7 +68,7 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
 
     const commandLineProcessLogger = new SimpleLogger(
       this.logger,
-      `${KarmaCommandLineTestRunExecutor.name}:${CommandLineProcessHandler.name}`
+      `${KarmaCommandLineTestRunExecutor.name}::${CommandLineProcessHandler.name}`
     );
 
     const karmaServerProcess = new CommandLineProcessHandler(

@@ -69,7 +69,7 @@ export class KarmaTestListener implements Disposable {
     const io = new SocketIOServer(server, socketServerOptions);
 
     io.on('connection', socket => {
-      this.logger.info(() => `New socket connection from Karma on port ${socketPort}`);
+      this.logger.info(() => `Established new connection with Karma on port ${socketPort}`);
       this.logger.debug(() => 'Listening for Karma events');
 
       this.sockets.add(socket);
@@ -133,7 +133,7 @@ export class KarmaTestListener implements Disposable {
     });
 
     server!.listen(socketPort, () => {
-      this.logger.info(() => `Waiting on port ${socketPort} for Karma to connect`);
+      this.logger.info(() => `Waiting for Karma to connect on port ${socketPort}`);
     });
 
     server!.on('close', () => {
@@ -234,7 +234,7 @@ export class KarmaTestListener implements Disposable {
   }
 
   private cleanupConnections() {
-    this.logger.info(() => 'Cleaning up connections');
+    this.logger.debug(() => 'Cleaning up connections');
     try {
       this.sockets.forEach(socket => {
         socket.removeAllListeners();

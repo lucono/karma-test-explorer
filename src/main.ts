@@ -62,7 +62,7 @@ const addAdapterForFolder = (
   registeredAdapters.set(workspaceFolder, adapter);
   testHub.registerTestAdapter(adapter);
 
-  logger.info(() => `Done activating adapter for workspace folder: ${workspaceFolderPath}`);
+  logger.debug(() => `Done activating adapter for workspace folder: ${workspaceFolderPath}`);
 };
 
 const removeAdapterForFolder = (
@@ -83,7 +83,7 @@ const removeAdapterForFolder = (
     registeredAdapters.delete(workspaceFolder);
     adapter.dispose();
 
-    logger.info(() => `Done deactivating adapter for workspace folder: ${workspaceFolderPath}`);
+    logger.debug(() => `Done deactivating adapter for workspace folder: ${workspaceFolderPath}`);
   }
 };
 

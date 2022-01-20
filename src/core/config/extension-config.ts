@@ -1,24 +1,17 @@
-import { parse as parseDotEnvContent } from 'dotenv';
-import { readFileSync } from 'fs';
-import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 import { DebugConfiguration } from 'vscode';
-import {
-  ALWAYS_EXCLUDED_TEST_FILE_GLOBS,
-  CHROME_BROWSER_DEBUGGING_PORT_FLAG,
-  CHROME_DEFAULT_DEBUGGING_PORT,
-  KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS,
-  KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
-} from '../../constants';
+import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS } from '../../constants';
 import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { LogLevel } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
-import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, toSingleUniqueArray } from '../../util/utils';
+import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
+import { ProjectType } from '../base/project-type';
 import { TestFrameworkName } from '../base/test-framework-name';
 import { TestGrouping } from '../base/test-grouping';
+import { getCombinedEnvironment, getCustomLauncher, getDefaultDebugPort } from './config-helper';
 import { ConfigSetting } from './config-setting';
 import { ConfigStore } from './config-store';
 
@@ -59,6 +52,7 @@ export class ExtensionConfig implements Disposable {
   public readonly reloadOnChangedFiles: readonly string[];
   public readonly reloadOnKarmaConfigChange: boolean;
   public readonly testFiles: readonly string[];
+  public readonly projectType?: ProjectType;
   public readonly testFramework?: TestFrameworkName;
   public readonly testGrouping: TestGrouping;
   public readonly testsBasePath: string;
@@ -91,11 +85,12 @@ export class ExtensionConfig implements Disposable {
     this.baseKarmaConfFilePath = normalizePath(resolve(__dirname, './karma.conf'));
     this.testGrouping = config.get(ConfigSetting.TestGrouping)!;
     this.flattenSingleChildFolders = !!config.get(ConfigSetting.FlattenSingleChildFolders);
-    this.environment = this.getCombinedEnvironment(config);
+    this.environment = getCombinedEnvironment(this.projectRootPath, config, logger);
+    this.projectType = config.get(ConfigSetting.ProjectType);
     this.testFramework = config.get(ConfigSetting.TestFramework);
     this.reloadOnKarmaConfigChange = !!config.get(ConfigSetting.ReloadOnKarmaConfigChange);
     this.defaultAngularProjectName = config.get(ConfigSetting.DefaultAngularProjectName)!;
-    this.customLauncher = this.getCustomLauncher(config);
+    this.customLauncher = getCustomLauncher(config);
     this.browser = asNonBlankStringOrUndefined(config.get(ConfigSetting.Browser));
     this.debuggerConfig = config.get(ConfigSetting.DebuggerConfig)!;
     this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
@@ -106,16 +101,15 @@ export class ExtensionConfig implements Disposable {
     this.showUnmappedTests = !!config.get(ConfigSetting.ShowUnmappedTests);
     this.showTestDefinitionTypeIndicators = !!config.get(ConfigSetting.ShowTestDefinitionTypeIndicators);
 
-    this.excludeFiles = toSingleUniqueArray(
-      config.get(ConfigSetting.ExcludeFiles),
-      ALWAYS_EXCLUDED_TEST_FILE_GLOBS
-    ).map(fileGlob => normalizePath(fileGlob));
-
     this.userKarmaConfFilePath = normalizePath(
-      resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath)!)
+      resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath))
     );
 
-    this.defaultDebugPort = this.getDefaultDebugPort(
+    this.reloadOnChangedFiles = (config.get<string[]>(ConfigSetting.ReloadOnChangedFiles) || []).map(filePath =>
+      normalizePath(resolve(this.projectRootPath, filePath))
+    );
+
+    this.defaultDebugPort = getDefaultDebugPort(
       this.browser,
       this.customLauncher,
       this.debuggerConfigName,
@@ -123,109 +117,10 @@ export class ExtensionConfig implements Disposable {
       config
     );
 
-    this.reloadOnChangedFiles = (config.get<string[]>(ConfigSetting.ReloadOnChangedFiles) || []).map(filePath =>
-      normalizePath(resolve(this.projectRootPath, filePath))
-    );
-  }
-
-  private getDefaultDebugPort(
-    browser: string | undefined,
-    customLauncher: CustomLauncher,
-    debuggerConfigName: string | undefined,
-    debuggerConfig: DebugConfiguration,
-    config: ConfigStore
-  ): number | undefined {
-    if (browser || debuggerConfigName) {
-      return;
-    }
-    const defaultCustomLauncher = config.inspect<CustomLauncher>(ConfigSetting.CustomLauncher)?.defaultValue;
-    const defaultDebuggerConfig = config.inspect<DebugConfiguration>(ConfigSetting.DebuggerConfig)?.defaultValue;
-
-    if (customLauncher.base !== defaultCustomLauncher?.base || debuggerConfig.type !== defaultDebuggerConfig?.type) {
-      return;
-    }
-
-    let configuredPort: number | undefined;
-
-    const browserDebugPortFlag = customLauncher.flags?.find(flag =>
-      flag.startsWith(CHROME_BROWSER_DEBUGGING_PORT_FLAG)
-    );
-
-    if (browserDebugPortFlag) {
-      const portPosition = browserDebugPortFlag.search(/[0-9]+$/g);
-      const portString = portPosition !== -1 ? browserDebugPortFlag.substring(portPosition) : undefined;
-      configuredPort = portString ? parseInt(portString, 10) : undefined;
-    }
-
-    return configuredPort ?? CHROME_DEFAULT_DEBUGGING_PORT;
-  }
-
-  private getCustomLauncher(config: ConfigStore): CustomLauncher {
-    const configuredLauncher: CustomLauncher = config.get(ConfigSetting.CustomLauncher);
-    const configuredContainerMode: ContainerMode = config.get(ConfigSetting.ContainerMode);
-    const isNonHeadlessMode = !!config.get(ConfigSetting.NonHeadlessModeEnabled);
-
-    const isContainerMode =
-      configuredContainerMode === ContainerMode.Enabled
-        ? true
-        : configuredContainerMode === ContainerMode.Disabled
-        ? false
-        : isDocker();
-
-    if ((configuredLauncher.base ?? '').toLowerCase().indexOf('chrome') === -1) {
-      return configuredLauncher;
-    }
-
-    let launcherFlags = (configuredLauncher.flags ??= []);
-
-    if (isContainerMode && !launcherFlags.includes(KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG)) {
-      launcherFlags = [...launcherFlags, KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG];
-    }
-
-    if (!isContainerMode && configuredLauncher.base === 'Chrome' && isNonHeadlessMode) {
-      launcherFlags = launcherFlags.filter(flag => !KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS.includes(flag));
-    }
-
-    const customLauncher: CustomLauncher = { ...configuredLauncher, flags: launcherFlags };
-    return customLauncher;
-  }
-
-  private getCombinedEnvironment(config: ConfigStore): Record<string, string> {
-    const envMap: Record<string, string> = config.get(ConfigSetting.Env) ?? {};
-    let environment: Record<string, string> = { ...envMap };
-
-    const envFile: string | undefined = this.stringSettingExists(config, ConfigSetting.EnvFile)
-      ? resolve(this.projectRootPath, config.get<string>(ConfigSetting.EnvFile)!)
-      : undefined;
-
-    if (envFile) {
-      this.logger.info(() => `Reading environment from file: ${envFile}`);
-
-      try {
-        const envFileContent: Buffer = readFileSync(envFile!);
-
-        if (!envFileContent) {
-          throw new Error(`Failed to read configured environment file: ${envFile}`);
-        }
-        const envFileEnvironment = parseDotEnvContent(envFileContent);
-        const entryCount = Object.keys(envFileEnvironment).length;
-        this.logger.info(() => `Fetched ${entryCount} entries from environment file: ${envFile}`);
-
-        const mergedEnvironment = { ...envFileEnvironment, ...environment };
-        const expandedEnvironment = expandEnvironment(mergedEnvironment, this.logger);
-
-        environment = expandedEnvironment ?? mergedEnvironment;
-      } catch (error) {
-        this.logger.error(() => `Failed to get environment from file '${envFile}': ${error}`);
-      }
-    }
-
-    return environment;
-  }
-
-  private stringSettingExists(config: ConfigStore, setting: ConfigSetting): boolean {
-    const value: string | undefined = config.get(setting);
-    return (value ?? '').trim().length > 0;
+    this.excludeFiles = toSingleUniqueArray(
+      config.get(ConfigSetting.ExcludeFiles),
+      ALWAYS_EXCLUDED_TEST_FILE_GLOBS
+    ).map(fileGlob => normalizePath(fileGlob));
   }
 
   public async dispose() {

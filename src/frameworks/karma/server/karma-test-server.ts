@@ -26,7 +26,7 @@ export class KarmaTestServer implements TestServer {
     const startServer = async () => {
       try {
         if (this.isRunning()) {
-          this.logger.info(() => 'Request to start karma server - server is currently running. Killing server');
+          this.logger.debug(() => 'Request to start karma server - server is currently running. Killing server');
           await this.stop();
         }
 
@@ -73,7 +73,7 @@ export class KarmaTestServer implements TestServer {
 
   public async stop(): Promise<void> {
     if (!this.isRunning()) {
-      this.logger.info(() => 'Request to kill karma server - server is not running');
+      this.logger.debug(() => 'Request to kill karma server - server is not running');
       return;
     }
     const serverExecutionInfo = this.serverExecutionInfo!;
@@ -87,7 +87,7 @@ export class KarmaTestServer implements TestServer {
     await serverStopper.executeServerStop();
     await serverExecution.ended();
 
-    this.logger.info(() => `Karma server on port ${serverPort} killed`);
+    this.logger.debug(() => `Karma server on port ${serverPort} killed`);
   }
 
   public getServerPort(): number | undefined {

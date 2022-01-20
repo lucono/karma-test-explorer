@@ -50,7 +50,7 @@ export class TestSuiteOrganizer implements Disposable {
 
     tests.forEach(test => {
       if (!test.file) {
-        this.logger.warn(() => `Got test with unknown file - Test Id is: ${test.id}`);
+        this.logger.debug(() => `Got test with unknown file - Test Id is: ${test.id}`);
         this.logger.trace(() => `Test with unknown file: ${JSON.stringify(test, null, 2)}`);
 
         unmappedTests.push(test);

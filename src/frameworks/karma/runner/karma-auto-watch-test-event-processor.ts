@@ -12,6 +12,7 @@ import { TestLoadEvent, TestResultEvent, TestRunEvent } from '../../../core/base
 import { TestType } from '../../../core/base/test-infos';
 import { TestState } from '../../../core/base/test-state';
 import { TestStatus } from '../../../core/base/test-status';
+import { TestStore } from '../../../core/test-store';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
@@ -30,6 +31,7 @@ export class KarmaAutoWatchTestEventProcessor {
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     private readonly testDiscoveryProcessor: TestDiscoveryProcessor,
+    private readonly testStore: TestStore,
     private readonly logger: Logger
   ) {
     this.disposables.push(logger);
@@ -55,7 +57,7 @@ export class KarmaAutoWatchTestEventProcessor {
     try {
       processingResults = await futureProcessingResults;
     } catch (error) {
-      this.logger.warn(() => `Aborting current ambient event processing - ${error ?? '<No message>'}`);
+      this.logger.debug(() => `Aborting current ambient event processing - ${error ?? '<No message>'}`);
     }
 
     this.concludeCurrentProcessing();
@@ -105,6 +107,7 @@ export class KarmaAutoWatchTestEventProcessor {
 
     const capturedTests = this.testDiscoveryProcessor.processTests(processedSpecs);
 
+    this.testStore.storeRootSuite(capturedTests);
     const testLoadFinishedEvent: TestLoadFinishedEvent = { type: 'finished', suite: capturedTests };
     this.testLoadEventEmitter.fire(testLoadFinishedEvent);
     this.logger.debug(() => 'Done processing ambient test load events');

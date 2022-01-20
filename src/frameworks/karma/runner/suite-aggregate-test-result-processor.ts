@@ -2,17 +2,17 @@ import { EventEmitter } from 'vscode';
 import { TestInfo, TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestResultEvent } from '../../../core/base/test-events';
 import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { TestResolver } from '../../../core/base/test-resolver';
 import { TestResults } from '../../../core/base/test-results';
 import { TestStatus } from '../../../core/base/test-status';
 import { TestSuiteState } from '../../../core/base/test-suite-state';
+import { StoredTestResolver } from '../../../core/test-store';
 import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
 import { Logger } from '../../../util/logging/logger';
 
 export class SuiteAggregateTestResultProcessor {
   public constructor(
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
-    private readonly testResolver: TestResolver,
+    private readonly testResolver: StoredTestResolver,
     private readonly testTreeProcessor: TestTreeProcessor,
     private readonly logger: Logger
   ) {}
@@ -39,7 +39,7 @@ export class SuiteAggregateTestResultProcessor {
       );
     });
 
-    this.logger.info(
+    this.logger.debug(
       () =>
         'Processed ' +
         `${totalTestCounts[TestStatus.Failed] ?? 0} total failed tests, ` +

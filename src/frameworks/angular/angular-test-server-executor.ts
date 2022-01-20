@@ -101,7 +101,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     const commandLineProcessLogger = new SimpleLogger(
       this.logger,
-      `${AngularTestServerExecutor.name}:${CommandLineProcessHandler.name}`
+      `${AngularTestServerExecutor.name}::${CommandLineProcessHandler.name}`
     );
 
     const angularProcess = new CommandLineProcessHandler(

@@ -1,5 +1,4 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { AllTestsFilteredError } from '../../../core/all-tests-filtered-error';
 import { TestGrouping } from '../../../core/base/test-grouping';
 import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
 import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
@@ -33,23 +32,20 @@ export class TestDiscoveryProcessor implements Disposable {
   }
 
   public processTests(discoveredSpecs: SpecCompleteResponse[]): TestSuiteInfo {
-    let builtTests: (TestInfo | TestSuiteInfo)[] = [];
+    const builtTests = this.testBuilder.buildTests(discoveredSpecs);
+    const allTestsAreFiltered = discoveredSpecs.length > 0 && builtTests.length === 0;
 
-    try {
-      builtTests = this.testBuilder.buildTests(discoveredSpecs);
-    } catch (error) {
-      if (error instanceof AllTestsFilteredError) {
-        const allTestsFilteredMessage =
-          `There are no tests to display because all tests are currently filtered. ` +
-          `Try adjusting your test filtering settings.`;
+    if (allTestsAreFiltered) {
+      const allTestsFilteredMessage =
+        `There are no tests to display because all tests are currently filtered. ` +
+        `Try adjusting your test filtering settings.`;
 
-        this.notifications.notify(MessageType.Error, allTestsFilteredMessage, undefined, {
-          dismissAction: true,
-          showLogAction: false
-        });
+      this.notifications.notify(MessageType.Error, allTestsFilteredMessage, undefined, {
+        dismissAction: true,
+        showLogAction: false
+      });
 
-        return this.createEmptySuite();
-      }
+      return this.createEmptySuite();
     }
 
     const testOrganizationOptions: TestSuiteOrganizationOptions = {

@@ -28,6 +28,7 @@ export enum ConfigSetting {
   AutoWatchEnabled = 'autoWatchEnabled',
   AutoWatchBatchDelay = 'autoWatchBatchDelay',
   KarmaReadyTimeout = 'karmaReadyTimeout',
+  ProjectType = 'projectType',
   TestFramework = 'testFramework',
   ContainerMode = 'containerMode',
   FailOnStandardError = 'failOnStandardError',

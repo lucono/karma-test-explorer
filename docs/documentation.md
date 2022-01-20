@@ -2,22 +2,68 @@
 
 ## Contents
 
-- [Setup](#setup)
+- [Why this Extension](#why-this-extension)
+- [Features](#features)
+- [Extension Setup](#extension-setup)
 - [Extension Activation Rules](#extension-activation-rules)
 - [Project Types](#project-types)
 - [Test Frameworks](#test-frameworks)
-- [Configuration](#configuration)
+- [Extension Settings](#extension-settings)
 - [Specifying Test Files](#specifying-test-files)
 - [Specifying a Test Framework](#specifying-a-test-framework)
 - [Non-Headless Testing](#non-headless-testing)
 - [Testing in a Development Container](#testing-in-a-development-container)
 - [Output Panels](#output-panels)
 - [Known Issues and Limitations](#known-issues-and-limitations)
+- [Reporting Issues](#reporting-issues)
 - [See Also](#see-also)
 
 ---
 
-## Setup
+## Why this Extension
+
+Karma Test Explorer is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](../CHANGELOG.md#010---sep-28-2021)). 
+
+Its core focus is on robust support for:
+
+- Large projects with thousands of tests
+- Remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
+- Flexibility to support a wide range of testing scenarios and workflows
+- Reliability, usability, and team productivity
+
+---
+
+## Features
+
+### Core Features
+
+- Angular and Karma project support
+- Jasmine and Mocha test framework support
+- Karma version 6 support
+- Watch mode support with auto pass / fail test status update
+- Duplicate test detection and reporting
+- Non-Headless testing / use visible browser window
+- Show only focused tests or exclude disabled tests from the test view
+- Group and run tests by folder or by test suite
+- Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
+- Specify or override environment variables for Karma
+- Run tests using custom launchers defined in the Karma config
+- Auto-reload Karma when karma config or other specified files change
+- Support for using a custom Karma executable or script (enables greater automation and integration with other processes and workflows)
+- Automatic port management prevents any port conflicts when running tests
+
+### UI Features
+
+- Shows your Karma tests in a visual test explorer in VS Code
+- Adds code lenses to your test files to easily run individual tests or suites
+- Adds gutter decorations to your test files that show the status of each test
+- Adds line decorations that show the failure message at the point of each test failure within your code
+
+<a href="#contents"><img align="right" height="24" src="docs/img/back-to-top.png"></a>
+
+---
+
+## Extension Setup
 
 ### 1. Install Prerequisites
 
@@ -34,7 +80,7 @@
 |Specify project root path relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace root folder | `karmaTestExplorer.projectRootPath`
 |Specify `karma.conf.js` file path relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
 |Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
-|Provide any other relevant [settings](#configuration) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#configuration) to further customize it to the needs of your project and team| See [all settings](#configuration)
+|Provide any other relevant [settings](#extension-settings) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#extension-settings) to further customize it to the needs of your project and team| See [all settings](#extension-settings)
 
 ### 3. Run Your Tests
 
@@ -64,12 +110,16 @@ The Karma Test Explorer extension is activated for a project workspace or folder
 
 ## Project Types
 
+Karma Test Explorer supports both [Karma](http://karma-runner.github.io/) and [Angular](https://angular.io/) projects, and is usually able to automatically detect which type your project is based on the presence of certain standard configuration files associated with specific project types. If the right project type is not automatically detected, you can use the `karmaTestExplorer.projectType` setting to explicitly specify a different type for your project.
+
 ### Karma Projects
-Projects without an `angular.json` or `.angular-cli.json` file in the project root are treated as plain Karma projects. Use the various [extension options](#configuration) where necessary to customize Karma Test Explorer's behavior to the specific needs of your project and team.
+Projects which DO NOT have an `angular.json` or `.angular-cli.json` file in the project root are loaded as plain Karma projects. Use the various [extension options](#extension-settings) where necessary to then customize Karma Test Explorer's behavior to the specific needs of your project and team.
 
 ### Angular Projects
 
-By default, any project with an `angular.json` or `.angular-cli.json` file in the project root is loaded as an Angular project. Use the `karmaTestExplorer.defaultAngularProjectName` setting to specify which configured Angular project should be loaded for testing. Otherwise, the project specified as default in the `angular.json` config will be chosen.
+Projects with an `angular.json` or `.angular-cli.json` file in the project root are loaded as Angular projects. Use the `karmaTestExplorer.defaultAngularProjectName` setting to specify which configured Angular project should be loaded for testing. Otherwise, the project specified as default in the `angular.json` config will be chosen.
+
+Note that if no angular config file is found for a project that is explicitly configured as an Angular project using the `karmaTestExplorer.projectType` setting, then the project will be loaded instead as a plain Karma project.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
@@ -77,15 +127,9 @@ By default, any project with an `angular.json` or `.angular-cli.json` file in th
 
 ## Test Frameworks
 
-Karma Tesk Explorer supports both the Jasmine and Mocha test frameworks, and is usually able to automatically detect which one is in use by your project, so that it's usually not necessary to manually specify this in the config settings.
+Karma Tesk Explorer supports both the [Jasmine](https://jasmine.github.io/) and [Mocha](https://mochajs.org/) test frameworks, and is usually able to automatically detect which one is in use by your project. It is therefore usually not necessary to manually specify the test framework in the Karma Test Explorer settings unless the right framework is not automatically detected, in which case you can use the `karmaTestExplorer.testFramework` config option to specify the right framework.
 
-### Jasmine
-
-If your project uses the Jasmine test framework and it is not automatically detected by Karma Test Explorer, use the `karmaTestExplorer.testFramework` config option to specify the right framework.
-
-### Mocha
-
-If your project uses the Mocha test framework and it - or the right Mocha interface style - is not automatically detected by Karma Test Explorer, use the `karmaTestExplorer.testFramework` config option to specify which Mocha testing interface style (BDD or TDD) is used by your tests.
+In the case of the Mocha test framework, the same setting can also be used to specify the Mocha testing interface style (BDD or TDD) that is used by your project.
 
 ---
 Note that watch mode is currently not supported for the Mocha test framework.
@@ -94,14 +138,15 @@ Note that watch mode is currently not supported for the Mocha test framework.
 
 ---
 
-## Configuration
+## Extension Settings
 
-Though this extension comes with many configuration options that make it flexible to adapt to a wide range of project setups and testing workflows, you may not need to set any of the options as the defaults are designed to work for most projects out of the box. If required however, customizing some of the options to the specific needs of your project may help you get even more out of it for your project and team.
+Though Karma Test Explorer comes with many configuration options that make it flexible to adapt to a wide range of project setups and testing workflows, you may not need to set any of the options as the defaults are designed to work for most projects out of the box. If required however, customizing some of the options to the specific needs of your project may help you get even more out of it for your project and team.
 
 Setting                                       | Description
 -----------------------------------------------|---------------------------------------------------------------
 `karmaTestExplorer.enableExtension` | Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision
 `karmaTestExplorer.projectRootPath` | The working directory where the project is located (relative to the root folder)
+`karmaTestExplorer.projectType` | The type of the project. This will be auto-detected if not specified. Specify the right project type if not correctly auto-detected
 `karmaTestExplorer.defaultAngularProjectName` | Only applies to Angular projects. This is the default Angular project to be loaded for testing. If not specified, the default project specified in `angular.json` is loaded instead
 `karmaTestExplorer.testFramework` | The test framework used by the project. The framework will be auto-detected if none is specified. Specify the right test framework if it is not correctly auto-detected
 `karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to `projectRootPath`)
@@ -293,6 +338,14 @@ Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTest
   it('does not support computed ' + someValue + ' test descriptions', ...
   it(`does not support computed ${someValue} test descriptions`, ...
   ```
+
+<a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
+
+## Reporting Issues
+
+If you encounter any problems using Karma Test Explorer, would like to request a feature, or have any questions, please open an issue [here](https://github.com/lucono/karma-test-explorer/issues/new/choose). Also, please take a minute to rate the extension in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and star it on [GitHub](https://github.com/lucono/karma-test-explorer/stargazers).
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 

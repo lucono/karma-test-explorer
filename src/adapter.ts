@@ -18,7 +18,6 @@ import {
   RetireEvent,
   TestAdapter,
   TestEvent,
-  TestInfo,
   TestLoadFinishedEvent,
   TestLoadStartedEvent,
   TestRunFinishedEvent,
@@ -35,8 +34,6 @@ import {
   WATCHED_FILE_CHANGE_BATCH_DELAY
 } from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
-import { TestType } from './core/base/test-infos';
-import { TestResolver } from './core/base/test-resolver';
 import { CancellationRequestedError } from './core/cancellation-requested-error';
 import { ConfigSetting } from './core/config/config-setting';
 import { ConfigStore } from './core/config/config-store';
@@ -44,6 +41,7 @@ import { ExtensionConfig } from './core/config/extension-config';
 import { Debugger } from './core/debugger';
 import { MainFactory } from './core/main-factory';
 import { TestLocator } from './core/test-locator';
+import { TestStore } from './core/test-store';
 import { ExtensionCommands } from './core/vscode/extension-commands';
 import { MessageType, Notifications, StatusType } from './core/vscode/notifications';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
@@ -56,10 +54,9 @@ import { SimpleLogger } from './util/logging/simple-logger';
 import { getCircularReferenceReplacer, normalizePath } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
+  private testStore?: TestStore;
   private testLocator?: TestLocator;
   private isTestProcessRunning: boolean = false;
-  private loadedRootSuite?: TestSuiteInfo;
-  private loadedTestsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
   private hasPendingConfigUpdates: boolean = false;
 
   private readonly initDisposables: Disposable[] = [];
@@ -106,7 +103,7 @@ export class Adapter implements TestAdapter, Disposable {
 
     this.logger = new SimpleLogger(this.extensionOutputChannelLog, Adapter.name, this.config.logLevel);
     this.initDisposables.push(this.logger);
-    this.logger.info(() => 'Initializing adapter');
+    this.logger.debug(() => 'Initializing adapter');
 
     this.logger.debug(
       () => `Using extension configuration: ${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
@@ -133,27 +130,15 @@ export class Adapter implements TestAdapter, Disposable {
     this.logger.debug(() => 'Getting debugger');
     this.debugger = this.factory.getDebugger();
 
+    this.logger.debug(() => 'Getting test store');
+    this.testStore = this.factory.getTestStore();
+
     this.logger.debug(() => 'Creating test manager');
-    const testResolver: TestResolver = {
-      resolveTest: (testId: string): TestInfo | undefined => {
-        const test = this.loadedTestsById.get(testId);
-        return test?.type === TestType.Test ? test : undefined;
-      },
-
-      resolveTestSuite: (testSuiteId: string): TestSuiteInfo | undefined => {
-        const testSuite = this.loadedTestsById.get(testSuiteId);
-        return testSuite?.type === TestType.Suite ? testSuite : undefined;
-      },
-
-      resolveRootSuite: () => this.loadedRootSuite
-    };
-
     this.testManager = this.factory.createTestManager(
       this.testLoadEmitter,
       this.testRunEmitter as EventEmitter<TestRunEvent>,
       this.testRunEmitter as EventEmitter<TestResultEvent>,
-      this.retireEmitter,
-      testResolver
+      this.retireEmitter
     );
     this.initDisposables.push(this.testManager);
   }
@@ -176,13 +161,10 @@ export class Adapter implements TestAdapter, Disposable {
       this.logger.debug(() => `Test run is requested for ${testIds.length} test ids`);
       this.logger.trace(() => `Requested test ids for test run: ${JSON.stringify(testIds)}`);
 
-      const tests = testIds.map(testId => this.loadedTestsById.get(testId)).filter(test => test !== undefined) as (
-        | TestInfo
-        | TestSuiteInfo
-      )[];
+      const rootTestSuite = this.testStore?.getRootSuite();
+      const tests = this.testStore?.getTestsOrSuitesById(testIds) ?? [];
 
-      const testsContainOnlyRootSuite =
-        this.loadedRootSuite !== undefined ? tests.length === 1 && tests[0] === this.loadedRootSuite : false;
+      const testsContainOnlyRootSuite = rootTestSuite !== undefined && tests.length === 1 && tests[0] === rootTestSuite;
       const runAllTests = testsContainOnlyRootSuite;
 
       this.logger.trace(
@@ -196,7 +178,7 @@ export class Adapter implements TestAdapter, Disposable {
 
       try {
         if (!this.testManager.isStarted()) {
-          this.logger.info(
+          this.logger.debug(
             () => `${isDebug ? 'Debug test' : 'Test'} run request - Test manager is not started - Starting it`
           );
           await this.testManager.start();
@@ -257,14 +239,14 @@ export class Adapter implements TestAdapter, Disposable {
         const debuggerPort = typeof debuggerConfig !== 'string' ? debuggerConfig.port : undefined;
 
         if (debuggerPort) {
-          this.logger.info(
+          this.logger.debug(
             () =>
               `Starting debug session '${debuggerConfigName}' ` +
               'with requested --> available debug port: ' +
               `${this.config.debuggerConfig.port ?? '<none>'} --> ${debuggerPort}`
           );
         } else {
-          this.logger.info(() => `Starting debug session '${debuggerConfigName}'`);
+          this.logger.debug(() => `Starting debug session '${debuggerConfigName}'`);
         }
 
         const deferredDebugSessionStart = new DeferredPromise();
@@ -397,22 +379,15 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   private storeLoadedTests(rootSuite?: TestSuiteInfo) {
-    this.logger.debug(() => 'Updating loaded test tree');
-
-    const testsById: Map<string, TestInfo | TestSuiteInfo> = new Map();
-
-    const processTestTree = (test: TestInfo | TestSuiteInfo): void => {
-      testsById.set(test.id, test);
-      if (test.type === TestType.Suite && test.children?.length) {
-        test.children.forEach(childTest => processTestTree(childTest));
-      }
-    };
+    this.logger.debug(() => 'Updating loaded test store');
 
     if (rootSuite) {
-      processTestTree(rootSuite);
+      this.logger.debug(() => 'Storing newly loaded root suite');
+      this.testStore?.storeRootSuite(rootSuite);
+    } else {
+      this.logger.debug(() => 'Clearing loaded root suite');
+      this.testStore?.clear();
     }
-    this.loadedRootSuite = rootSuite;
-    this.loadedTestsById = testsById;
   }
 
   private createConfig(): ExtensionConfig {
@@ -440,7 +415,7 @@ export class Adapter implements TestAdapter, Disposable {
     const reloadTriggerFilesWatchers = this.registerFileHandler(
       reloadTriggerFilesRelativePaths,
       debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, filePath => {
-        this.logger.info(() => `Requesting adapter reset - monitored file changed: ${filePath}`);
+        this.logger.info(() => `Reloading due to monitored file changed: ${filePath}`);
         this.reset();
       })
     );
@@ -460,9 +435,7 @@ export class Adapter implements TestAdapter, Disposable {
           ? this.testLocator.removeFiles([changedTestFile])
           : this.testLocator.refreshFiles([changedTestFile]));
       } else {
-        const changedTestIds: string[] = Array.from(this.loadedTestsById.values())
-          .filter(loadedTest => loadedTest.file === changedTestFile && loadedTest.type === TestType.Test)
-          .map(changedTest => changedTest.id);
+        const changedTestIds = this.testStore?.getTestsByFile(changedTestFile).map(changedTest => changedTest.id) ?? [];
 
         if (changedTestIds.length > 0) {
           this.logger.debug(() => `Retiring ${changedTestIds.length} tests from updated spec file: ${changedTestFile}`);
@@ -535,7 +508,7 @@ export class Adapter implements TestAdapter, Disposable {
     this.hasPendingConfigUpdates = true;
 
     const applyUpdatedSettingsHandler = async () => {
-      this.logger.info(() => 'Resetting adapter with updated configuration');
+      this.logger.info(() => 'Reloading with updated configuration');
       await this.reset();
       this.hasPendingConfigUpdates = false;
     };

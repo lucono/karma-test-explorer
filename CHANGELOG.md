@@ -7,12 +7,33 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.5.0 - Jan 22, 2021](#050---jan-22-2022)
   - [0.4.0 - Dec 5, 2021](#040---dec-5-2021)
   - [0.3.0 - Nov 6, 2021](#030---nov-6-2021)
   - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
   - [0.2.0 - Oct 13, 2021](#020---oct-13-2021)
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
+
+
+---
+## [0.5.0] - Jan 22, 2022
+
+_Karma Test Explorer is officially out of Preview!_
+
+### Added
+
+- New `karmaTestExplorer.projectType` config setting for overriding the auto-detected project type (Karma or Angular) if required
+
+### Changed
+
+- Removed extension `Preview` designation after an extended period of relative stability without any major reported new issues
+- Less noisy `INFO` and `WARN` level logging
+
+### Fixed
+
+- Fixed an issue where tests having the test description on a separate line from the starting line of the `describe` or `it` test definition are not recognized
+- Addressed [CVE-2022-0155](https://github.com/advisories/GHSA-74fj-2j2h-c42q) security vulnerability from a transitive dependency
 
 
 ---

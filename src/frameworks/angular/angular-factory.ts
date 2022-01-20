@@ -43,7 +43,7 @@ export class AngularFactory implements Partial<TestFactory> {
 
     this.logger.info(
       () =>
-        `Selected default Angular project '${this.angularProject.name}' ` +
+        `Using default Angular project '${this.angularProject.name}' ` +
         `at root path '${this.angularProject.rootPath}' ` +
         `and karma config file '${this.angularProject.karmaConfigPath}'`
     );
