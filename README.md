@@ -31,21 +31,18 @@ Please take a minute to rate this extension in the [marketplace](https://marketp
 Karma Test Explorer uses reasonable defaults, and in many cases will work out-of-the-box without any configuration. To quickly get started:
 
 - Ensure Chrome browser and the project dependencies are installed
-- Install the Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and wait a moment for it to initialize
-- Your tests should then be discovered and displayed in the Testing side bar
-
-<details>
-  <summary>&nbsp;Additional Steps</summary>
-
-- If you run into any issues or your tests are not automatically displayed in the Testing view, see [extension setup](./docs/documentation.md#extension-setup) for more detailed setup instructions
-- Optionally, also use the many other [extension settings](./docs/documentation.md#extension-settings) to further customize it to the specific needs of your project and team
-</details>
+- Install the Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and wait a moment while it initializes
+- When done, your tests should be displayed in the Testing side bar
+- Use the many [extension settings](./docs/documentation.md#extension-settings) to customize it to the specific needs of your project and team
 
 ---
-See the detailed [documentation](./docs/documentation.md#documentation---karma-test-explorer) for setting up Karma Test Explorer to work with your project.
+If you run into any issues, see [extension setup](./docs/documentation.md#extension-setup) for more detailed setup instructions.
 
 ---
 
+## Documentation
+
+For a more detailed guide on setting up, customizing, and fully leveraging all the available features to work for your project, please see the Karma Test Explorer [Documentation](./docs/documentation.md#documentation---karma-test-explorer).
 ## Acknowledgement
 
 Special thanks to the [author](https://github.com/Raagh) and contributors of the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension on which Karma Test Explorer is based.
