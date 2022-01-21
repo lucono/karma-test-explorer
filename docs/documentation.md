@@ -2,6 +2,7 @@
 
 ## Contents
 
+- [Overview](#overview)
 - [Why this Extension](#why-this-extension)
 - [Features](#features)
 - [Extension Setup](#extension-setup)
@@ -17,6 +18,20 @@
 - [Known Issues and Limitations](#known-issues-and-limitations)
 - [Reporting Issues](#reporting-issues)
 - [See Also](#see-also)
+
+---
+
+## Overview
+
+Karma Test Explorer shows your Karma tests in a visual explorer in VS Code, adds code lenses and gutter decorations to your test files, and shows test failure details inline within your code at the point of each failure.
+
+![Karma Test Explorer screenshot](img/extension-screenshot.png)
+
+Rich information about your tests will be displayed in the Testing side bar (left image below), including focused ⚡and disabled 💤 tests. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image below).
+
+![Karma Test Explorer screenshot](img/sidebar.png)
+
+Duplicated tests in your project are also detected and convniently flagged for action.
 
 ---
 

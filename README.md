@@ -23,7 +23,7 @@ Please take a minute to rate this extension in the [marketplace](https://marketp
 - Watch mode with active pass-fail test updates
 - Detect and flag duplicated tests
 - Filter view to focus on only enabled tests
-- Run tests in a visible browser window
+- Option to run tests in a visible browser window
 - [More](./docs/documentation.md#features)
 
 ## Quick Start
