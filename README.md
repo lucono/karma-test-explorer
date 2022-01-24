@@ -7,7 +7,7 @@
 
 This extension runs your Karma or Angular tests in Visual Studio Code using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer), and supports the Jasmine and Mocha test frameworks. It is based on [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer), with various significant [enhancements](./docs/documentation.md#why-this-extension).
 
-![Karma Test Explorer screenshot](docs/img/sidebar.png)
+![Karma Test Explorer screenshot](./docs/img/sidebar.png)
 
 It displays rich information about your tests in the Testing side bar (left image), including focused ⚡and disabled 💤 tests. It also detects duplicated tests in your project and convniently flags them for action. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image).
 
