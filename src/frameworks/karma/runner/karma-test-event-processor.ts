@@ -4,12 +4,12 @@ import { TestDefinition } from '../../../core/base/test-definition';
 import { TestResultEvent } from '../../../core/base/test-events';
 import { TestGrouping } from '../../../core/base/test-grouping';
 import { TestType } from '../../../core/base/test-infos';
-import { TestResolver } from '../../../core/base/test-resolver';
 import { TestResults } from '../../../core/base/test-results';
 import { TestState } from '../../../core/base/test-state';
 import { TestStatus } from '../../../core/base/test-status';
 import { TestHelper } from '../../../core/test-helper';
 import { TestLocator } from '../../../core/test-locator';
+import { StoredTestResolver } from '../../../core/test-store';
 import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -59,7 +59,7 @@ export class KarmaTestEventProcessor {
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testLocator: TestLocator,
     private readonly testGrouping: TestGrouping,
-    private readonly testResolver: TestResolver,
+    private readonly testResolver: StoredTestResolver,
     private readonly fileHandler: FileHandler,
     private readonly testHelper: TestHelper,
     private readonly logger: Logger

@@ -159,7 +159,7 @@ export class CommandLineProcessHandler implements Disposable {
     }
 
     const runningProcess = this.childProcess!;
-    this.logger.info(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
+    this.logger.debug(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
     const futureProcessTermination = new Promise<void>((resolve, reject) => {
       const processPid = runningProcess.pid;

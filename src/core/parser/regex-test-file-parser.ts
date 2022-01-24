@@ -33,7 +33,7 @@ export class RegexTestFileParser {
     while ((matchResult = testInterfaceParserRegex.exec(data)) != null) {
       activeLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : activeLineNumber;
       const nodeDefinition = this.getNodeTypeAndState(matchResult[4]);
-      const testDescription = matchResult[6]?.replace(/\\(['"`])/g, '$1');
+      const testDescription = matchResult[7]?.replace(/\\(['"`])/g, '$1'); // remove `\` from escaped quote chars
 
       if (!nodeDefinition || !testDescription || activeLineNumber === undefined) {
         continue;
@@ -95,7 +95,14 @@ export class RegexTestFileParser {
     ];
 
     const interfaceStrings = [...suiteDescriptors, ...testDescriptors].map(escapeForRegExp).join('|');
-    const pattern = `((^|\\n)(\\d+)\\.)?\\s+(${interfaceStrings})\\s*\\(\\s*((?<![\\\\])[\\\`\\'\\"])((?:.(?!(?<![\\\\])\\5))*.?)\\5`;
+
+    const pattern =
+      `((^|\\n)(\\d+)\\.)?\\s+` + // line number
+      `(${interfaceStrings})\\s*\\(\\s*` + // suite or test token such as describe / it
+      `(\\n\\d+\\.\\s+)*` + // optional new lines before test description
+      `((?<![\\\\])[\\\`\\'\\"])` + // test description opening quote
+      `((?:.(?!(?<![\\\\])\\6))*.?)` + // test description
+      `\\6`; // test description closing quote char of matching type with opening quote
 
     return new RegExp(pattern, 'gis');
   }

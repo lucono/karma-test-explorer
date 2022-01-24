@@ -1,6 +1,5 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants';
-import { AllTestsFilteredError } from '../../../core/all-tests-filtered-error';
 import { TestDefinition, TestDefinitionState } from '../../../core/base/test-definition';
 import { TestType } from '../../../core/base/test-infos';
 import { ConfigSetting } from '../../../core/config/config-setting';
@@ -158,18 +157,11 @@ export class DefaultTestBuilder implements TestBuilder {
       }
       processedSpecCount += 1;
     });
-
-    const builtTests = rootContainerSuite.children;
-    const allTestsAreFiltered = specs.length > 0 && builtTests.length === 0;
-
-    if (allTestsAreFiltered) {
-      this.logger.debug(() => `All ${specs.length} tests were filtered during test build`);
-      throw new AllTestsFilteredError(`All ${specs.length} tests were filtered`);
-    }
+    this.logger.debug(() => `Processed ${processedSpecCount} specs to build tests`);
 
     this.updateFocusedStates(focusContext);
+    const builtTests = rootContainerSuite.children;
 
-    this.logger.debug(() => `Processed ${processedSpecCount} specs to build tests`);
     return builtTests;
   }
 

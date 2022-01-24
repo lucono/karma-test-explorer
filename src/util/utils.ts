@@ -14,6 +14,17 @@ export const extractProperties = <T>(object: Record<string, T>, ...propNames: st
   return objectSubset;
 };
 
+export const transformProperties = <T>(
+  transformer: (value: T) => T,
+  object: Record<string, T>,
+  propNames?: string[]
+): Record<string, T> => {
+  const transformedObject: Record<string, T> = {};
+  const propsToTransform = propNames ?? Object.keys(object);
+  propsToTransform.forEach(propName => (transformedObject[propName] = transformer(object[propName])));
+  return transformedObject;
+};
+
 export const changePropertyCase = <T>(
   object: Readonly<Record<string, T>>,
   toCase: 'upper' | 'lower',

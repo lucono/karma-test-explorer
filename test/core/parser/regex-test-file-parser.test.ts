@@ -228,6 +228,37 @@ describe('RegexTestFileParser', () => {
       ]);
     });
 
+    it('correctly parses tests with description on following line', () => {
+      const testParser = new RegexTestFileParser(testInterface, mockLogger);
+      const fileText = `
+        ${_.describe}(
+          'test suite 1', function() {
+          ${_.it}(
+            'test 1', function() {
+            // test contents
+          });
+        })
+      `;
+      const testSuiteFileInfo = testParser.parseFileText(fileText);
+
+      expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
+        {
+          type: TestNodeType.Suite,
+          description: 'test suite 1',
+          line: 1,
+          state: TestDefinitionState.Default
+        }
+      ]);
+      expect(testSuiteFileInfo[TestNodeType.Test]).toEqual([
+        {
+          type: TestNodeType.Test,
+          description: 'test 1',
+          line: 3,
+          state: TestDefinitionState.Default
+        }
+      ]);
+    });
+
     it('correctly parses test description containing curly brace', () => {
       const testParser = new RegexTestFileParser(testInterface, mockLogger);
       const fileText = `

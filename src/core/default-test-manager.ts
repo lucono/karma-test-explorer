@@ -47,7 +47,7 @@ export class DefaultTestManager implements TestManager {
 
     try {
       if (this.systemCurrentlyStopping) {
-        this.logger.info(
+        this.logger.debug(
           () =>
             'Request to start test manager - test manager is still stopping. ' +
             'Waiting for stop operation to complete before proceeding to start'
@@ -57,7 +57,7 @@ export class DefaultTestManager implements TestManager {
       }
 
       if (this.isStarted()) {
-        this.logger.info(() => 'Request to start test manager ignored - test manager is already started');
+        this.logger.debug(() => 'Request to start test manager ignored - test manager is already started');
         return this.currentServerStartInfo!;
       }
 
@@ -67,7 +67,7 @@ export class DefaultTestManager implements TestManager {
       // --- Stop system if currently running ---
 
       if (this.karmaTestListener.isRunning()) {
-        this.logger.info(() => 'Stopping currently running karma test event listener session');
+        this.logger.debug(() => 'Stopping currently running karma test event listener session');
         await this.karmaTestListener.stop();
       }
 
@@ -236,7 +236,7 @@ export class DefaultTestManager implements TestManager {
       this.actionIsRunning = true;
 
       if (!this.isStarted()) {
-        this.logger.info(
+        this.logger.debug(
           () =>
             'Test discovery request - ' +
             `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
@@ -261,7 +261,7 @@ export class DefaultTestManager implements TestManager {
       const testSuiteInfo: TestSuiteInfo = await futureTestDiscovery;
       const testCount = testSuiteInfo.testCount;
 
-      this.logger.info(() => `Discovered ${testCount} total tests`);
+      this.logger.debug(() => `Discovered ${testCount} total tests`);
       this.notifications.notifyStatus(StatusType.Done, `Discovered ${testCount} ${testCount === 1 ? 'test' : 'tests'}`);
 
       return testSuiteInfo;
@@ -287,7 +287,7 @@ export class DefaultTestManager implements TestManager {
       this.actionIsRunning = true;
 
       if (!this.isStarted()) {
-        this.logger.info(
+        this.logger.debug(
           () =>
             'Request to run tests - ' +
             `karma server is ${!this.testServer.isRunning() ? 'not' : ''} running, and ` +
@@ -298,7 +298,7 @@ export class DefaultTestManager implements TestManager {
         await this.restart();
       }
 
-      this.logger.info(() => 'Proceeding to run tests');
+      this.logger.debug(() => 'Proceeding to run tests');
       this.notifications.notifyStatus(StatusType.Busy, 'Running tests...', deferredTestRunCompletion.promise());
 
       const karmaPort: number = this.testServer.getServerPort()!;
@@ -315,7 +315,7 @@ export class DefaultTestManager implements TestManager {
   }
 
   public async stop(): Promise<void> {
-    this.logger.info(() => 'Stopping test manager');
+    this.logger.debug(() => 'Stopping test manager');
 
     const systemIsStoppingDeferred = new DeferredPromise<void>();
     this.systemCurrentlyStopping = systemIsStoppingDeferred.promise();
@@ -336,7 +336,7 @@ export class DefaultTestManager implements TestManager {
       this.logger.debug(() => 'Karma server is already stopped');
     }
 
-    this.logger.info(() => 'Stopped test manager');
+    this.logger.debug(() => 'Stopped test manager');
     systemIsStoppingDeferred.fulfill();
   }
 

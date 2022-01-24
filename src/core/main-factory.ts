@@ -26,11 +26,11 @@ import { SimpleLogger } from '../util/logging/simple-logger';
 import { PortAcquisitionManager } from '../util/port-acquisition-manager';
 import { CommandLineProcessLog } from '../util/process/command-line-process-log';
 import { stripJsComments } from '../util/utils';
+import { ProjectType } from './base/project-type';
 import { TestDefinitionProvider } from './base/test-definition-provider';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events';
 import { TestFramework } from './base/test-framework';
 import { TestFrameworkName } from './base/test-framework-name';
-import { TestResolver } from './base/test-resolver';
 import { CascadingTestFactory } from './cascading-test-factory';
 import { ExtensionConfig } from './config/extension-config';
 import { Debugger } from './debugger';
@@ -39,6 +39,7 @@ import { RegexTestDefinitionProvider } from './parser/regex-test-definition-prov
 import { RegexTestFileParser } from './parser/regex-test-file-parser';
 import { TestHelper } from './test-helper';
 import { TestLocator, TestLocatorOptions } from './test-locator';
+import { StoredTestResolver, TestStore } from './test-store';
 import { TestSuiteOrganizer } from './util/test-suite-organizer';
 import { TestTreeProcessor } from './util/test-tree-processor';
 import { Notifications } from './vscode/notifications';
@@ -49,6 +50,7 @@ export class MainFactory {
   private readonly testFramework: TestFramework;
   private readonly angularProject?: AngularProject;
   private readonly fileHandler: FileHandler;
+  private readonly testStore: TestStore;
   private readonly testLocator: TestLocator;
   private readonly testHelper: TestHelper;
   private readonly debugger: Debugger;
@@ -61,17 +63,43 @@ export class MainFactory {
   ) {
     this.disposables.push(logger);
 
-    this.angularProject = getDefaultAngularProject(this.config.projectRootPath, this.config.defaultAngularProjectName);
-    const karmaConfigPath = this.angularProject?.karmaConfigPath ?? this.config.userKarmaConfFilePath;
+    this.angularProject =
+      config.projectType !== ProjectType.Karma
+        ? getDefaultAngularProject(this.config.projectRootPath, this.config.defaultAngularProjectName)
+        : undefined;
 
-    this.logger.info(() => `Project detected as ${this.angularProject ? 'Angular' : 'plain Karma'} project`);
+    if (config.projectType === ProjectType.Angular && !this.angularProject) {
+      this.logger.warn(
+        () => `Project type is configured as ${ProjectType.Angular} but no angular project configuration was found`
+      );
+    }
+
+    this.logger.info(
+      () =>
+        `Using project type: ${this.angularProject ? 'Angular' : 'Karma'}` +
+        `${!config.projectType ? ` (auto-detected)` : ''}`
+    );
+
+    const karmaConfigPath = this.angularProject?.karmaConfigPath ?? this.config.userKarmaConfFilePath;
 
     this.fileHandler = new FileHandler(this.createLogger(FileHandler.name), {
       cwd: this.config.projectRootPath
     });
 
-    this.testFramework = this.detectTestFramework(karmaConfigPath, this.fileHandler);
-    this.logger.info(() => `Using test framework: ${this.testFramework.name}`);
+    const configuredTestFramework: TestFramework | undefined =
+      this.config.testFramework === TestFrameworkName.MochaBDD
+        ? MochaTestFrameworkBdd
+        : this.config.testFramework === TestFrameworkName.MochaTDD
+        ? MochaTestFrameworkTdd
+        : this.config.testFramework === TestFrameworkName.Jasmine
+        ? JasmineTestFramework
+        : undefined;
+
+    this.testFramework = configuredTestFramework ?? this.detectTestFramework(karmaConfigPath, this.fileHandler);
+
+    this.logger.info(
+      () => `Using test framework: ${this.testFramework.name} ${!config.testFramework ? `(auto-detected)` : ''}`
+    );
 
     this.logger.debug(() => 'Creating test helper');
     this.testHelper = new TestHelper(this.createLogger(TestHelper.name), {
@@ -87,6 +115,10 @@ export class MainFactory {
     this.debugger = new Debugger(this.createLogger(Debugger.name));
     this.disposables.push(this.debugger);
 
+    this.logger.debug(() => 'Creating test store');
+    this.testStore = new TestStore(this.createLogger(TestStore.name));
+    this.disposables.push(this.testStore);
+
     this.testServerLog = new OutputChannelLog(KARMA_SERVER_OUTPUT_CHANNEL_NAME, {
       enabled: config.karmaLogLevel !== KarmaLogLevel.DISABLE
     });
@@ -97,8 +129,7 @@ export class MainFactory {
     testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
-    testRetireEventEmitter: EventEmitter<RetireEvent>,
-    testResolver: TestResolver
+    testRetireEventEmitter: EventEmitter<RetireEvent>
   ): DefaultTestManager {
     const watchModeSupported = !!this.testFramework.getTestCapabilities().watchModeSupport;
     const watchModeRequested = this.config.autoWatchEnabled;
@@ -158,7 +189,7 @@ export class MainFactory {
       testRunEventEmitter,
       testResultEventEmitter,
       testRetireEventEmitter,
-      testResolver,
+      this.testStore.getTestResolver(),
       testTreeProcessor,
       testBuilder,
       testSuiteOrganizer,
@@ -198,12 +229,16 @@ export class MainFactory {
     return this.testLocator;
   }
 
+  public getTestStore(): TestStore {
+    return this.testStore;
+  }
+
   public getDebugger(): Debugger {
     return this.debugger;
   }
 
   private createTestLocator(fileHandler: FileHandler): TestLocator {
-    this.logger.info(() => 'Loading test info from test files');
+    this.logger.info(() => 'Getting test details from test files');
 
     const testLocatorOptions: TestLocatorOptions = {
       ignore: [...this.config.excludeFiles],
@@ -296,7 +331,7 @@ export class MainFactory {
     testRunEventEmitter: EventEmitter<TestRunEvent>,
     testResultEventEmitter: EventEmitter<TestResultEvent>,
     testRetireEventEmitter: EventEmitter<RetireEvent>,
-    testResolver: TestResolver,
+    testResolver: StoredTestResolver,
     testTreeProcessor: TestTreeProcessor,
     testBuilder: TestBuilder,
     testSuiteOrganizer: TestSuiteOrganizer,
@@ -336,7 +371,7 @@ export class MainFactory {
         testResolver,
         this.fileHandler,
         this.testHelper,
-        this.createLogger(`${KarmaAutoWatchTestEventProcessor.name}:${KarmaTestEventProcessor.name}`)
+        this.createLogger(`${KarmaAutoWatchTestEventProcessor.name}::${KarmaTestEventProcessor.name}`)
       );
 
       watchModeTestEventProcessor = new KarmaAutoWatchTestEventProcessor(
@@ -346,6 +381,7 @@ export class MainFactory {
         testResultEventEmitter,
         testRetireEventEmitter,
         testDiscoveryProcessor,
+        this.testStore,
         this.createLogger(KarmaAutoWatchTestEventProcessor.name)
       );
     }
@@ -366,55 +402,41 @@ export class MainFactory {
     });
   }
 
+  private getFrameworksFromKarmaConfig(karmaConfigPath: string, fileHandler: FileHandler): string[] {
+    const rawConfigContent = fileHandler.readFileSync(karmaConfigPath);
+    const configContent = rawConfigContent ? stripJsComments(rawConfigContent).replace(/\s/g, '') : undefined;
+
+    const matchResult = configContent ? /frameworks:\[([^\]]*)\]/g.exec(configContent)?.[1] : '';
+    const frameworkList = matchResult?.split(',').map(entry => entry.replace(/(^['"`]|['"`]$)/g, '')) ?? [];
+
+    this.logger.debug(() => `Detected frameworks from karma config: ${frameworkList.join(', ')}`);
+    return frameworkList;
+  }
+
   private detectTestFramework(karmaConfigPath: string, fileHandler: FileHandler): TestFramework {
-    const specifiedTestFramework = this.config.testFramework;
-
-    this.logger.debug(() => `Configured test framework: ${specifiedTestFramework ?? '<none>'}`);
-
-    let testFramework: TestFramework | undefined =
-      specifiedTestFramework === TestFrameworkName.MochaBDD
-        ? MochaTestFrameworkBdd
-        : specifiedTestFramework === TestFrameworkName.MochaTDD
-        ? MochaTestFrameworkTdd
-        : undefined;
-
-    if (testFramework) {
-      this.logger.debug(() => `Selecting user-configured test framework: ${testFramework?.name}`);
-      return testFramework;
-    }
-
     this.logger.debug(() => `Detecting test framework from karma config file: ${karmaConfigPath}`);
 
-    const rawConfigContent = fileHandler.readFileSync(karmaConfigPath);
-    const configContent = rawConfigContent ? stripJsComments(rawConfigContent).replace(/ /g, '') : undefined;
+    const configuredKarmaFrameworks = this.getFrameworksFromKarmaConfig(karmaConfigPath, fileHandler);
+    const isJasmineConfigured = configuredKarmaFrameworks.includes('jasmine');
+    const isMochaConfigured = configuredKarmaFrameworks.includes('mocha');
 
-    if (configContent) {
-      const matchResult = /frameworks:\[[^\]]*['"]((jasmine)|(mocha))['"][^\]]*\]/g.exec(
-        stripJsComments(configContent).replace(/ /g, '')
+    let testFramework = isJasmineConfigured
+      ? JasmineTestFramework
+      : isMochaConfigured
+      ? MochaTestFrameworkBdd
+      : undefined;
+
+    if (testFramework) {
+      this.logger.debug(() => `Detected test framework: ${testFramework?.name}`);
+    } else {
+      testFramework = JasmineTestFramework;
+
+      this.logger.warn(
+        () =>
+          `Failed to detect test framework from karma config file: ${karmaConfigPath}. ` +
+          `Falling back to test framework: ${testFramework}`
       );
-
-      const isJasmineConfigured = matchResult?.[2];
-      const isMochaConfigured = matchResult?.[3];
-
-      testFramework = isJasmineConfigured
-        ? JasmineTestFramework
-        : isMochaConfigured
-        ? MochaTestFrameworkBdd
-        : undefined;
-
-      if (testFramework) {
-        this.logger.debug(() => `Selecting detected test framework: ${testFramework?.name}`);
-        return testFramework;
-      }
     }
-
-    testFramework = JasmineTestFramework;
-
-    this.logger.warn(
-      () =>
-        `Failed to detect test framework from karma config file: ${karmaConfigPath}. ` +
-        `Falling back to test framework: ${testFramework}`
-    );
 
     return testFramework;
   }

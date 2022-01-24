@@ -65,7 +65,7 @@ export class KarmaTestRunProcessor implements Disposable {
       this.logger.debug(() => `Test run starting for requested test run Id: ${testRunId}`);
 
       if (this.primaryTestEventProcessor.isProcessing()) {
-        this.logger.warn(
+        this.logger.debug(
           () =>
             `New requested test run with run id '${startedTestRunId}' ` +
             `is starting while another one with same Id is already in progress - ` +
@@ -101,7 +101,7 @@ export class KarmaTestRunProcessor implements Disposable {
       this.logger.debug(() => `Test run ending for current requested test run Id: ${testRunId}`);
 
       if (!this.primaryTestEventProcessor.isProcessing()) {
-        this.logger.warn(
+        this.logger.debug(
           () =>
             `Test run ending now with test run Id '${endedTestRunId}' while ` +
             `current requested test run with same Id is not currently processing - ` +
