@@ -11,7 +11,12 @@ import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from 
 import { ProjectType } from '../base/project-type';
 import { TestFrameworkName } from '../base/test-framework-name';
 import { TestGrouping } from '../base/test-grouping';
-import { getCombinedEnvironment, getCustomLauncher, getDefaultDebugPort } from './config-helper';
+import {
+  getCombinedEnvironment,
+  getCustomLauncher,
+  getDefaultDebugPort,
+  getMergedDebuggerConfig
+} from './config-helper';
 import { ConfigSetting } from './config-setting';
 import { ConfigStore } from './config-store';
 
@@ -92,14 +97,21 @@ export class ExtensionConfig implements Disposable {
     this.defaultAngularProjectName = config.get(ConfigSetting.DefaultAngularProjectName)!;
     this.customLauncher = getCustomLauncher(config);
     this.browser = asNonBlankStringOrUndefined(config.get(ConfigSetting.Browser));
-    this.debuggerConfig = config.get(ConfigSetting.DebuggerConfig)!;
-    this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
     this.testFiles = config.get<string[]>(ConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
     this.allowGlobalPackageFallback = !!config.get(ConfigSetting.AllowGlobalPackageFallback);
     this.excludeDisabledTests = !!config.get(ConfigSetting.ExcludeDisabledTests);
     this.showOnlyFocusedTests = !!config.get(ConfigSetting.ShowOnlyFocusedTests);
     this.showUnmappedTests = !!config.get(ConfigSetting.ShowUnmappedTests);
     this.showTestDefinitionTypeIndicators = !!config.get(ConfigSetting.ShowTestDefinitionTypeIndicators);
+    this.debuggerConfigName = asNonBlankStringOrUndefined(config.get(ConfigSetting.DebuggerConfigName));
+
+    this.debuggerConfig = getMergedDebuggerConfig(
+      normalizedWorkspacePath,
+      config.get(ConfigSetting.DebuggerConfig)!,
+      config.get(ConfigSetting.WebRoot),
+      config.get(ConfigSetting.PathMapping),
+      config.get(ConfigSetting.SourceMapPathOverrides)
+    );
 
     this.userKarmaConfFilePath = normalizePath(
       resolve(this.projectRootPath, config.get(ConfigSetting.KarmaConfFilePath))

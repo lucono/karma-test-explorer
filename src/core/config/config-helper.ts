@@ -11,7 +11,7 @@ import {
   KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
 } from '../../constants';
 import { Logger } from '../../util/logging/logger';
-import { expandEnvironment } from '../../util/utils';
+import { expandEnvironment, transformProperties } from '../../util/utils';
 import { ConfigSetting } from './config-setting';
 import { ConfigStore } from './config-store';
 import { ContainerMode } from './extension-config';
@@ -74,6 +74,50 @@ export const getCustomLauncher = (config: ConfigStore): CustomLauncher => {
 
   const customLauncher: CustomLauncher = { ...configuredLauncher, flags: launcherFlags };
   return customLauncher;
+};
+
+export const getMergedDebuggerConfig = (
+  workspacePath: string,
+  baseDebugConfig: DebugConfiguration,
+  webRootOverride?: string,
+  extraPathMappings?: Readonly<Record<string, string>>,
+  extraSourceMapPathOverrides?: Readonly<Record<string, string>>
+): DebugConfiguration => {
+  const hasPathMapping = baseDebugConfig.pathMapping || extraPathMappings;
+  const hasSourceMapPathOverrides = baseDebugConfig.sourceMapPathOverrides || extraSourceMapPathOverrides;
+
+  const webRoot: string | undefined = (webRootOverride ?? baseDebugConfig.webRoot)?.replace(
+    /\${workspaceFolder}/g,
+    workspacePath
+  );
+
+  const replaceWorkspacePath = (value: string) =>
+    value.replace(/\${webRoot}/g, webRoot ?? workspacePath).replace(/\${workspaceFolder}/g, workspacePath);
+
+  const pathMapping = transformProperties(replaceWorkspacePath, {
+    ...baseDebugConfig.pathMapping,
+    ...extraPathMappings
+  });
+
+  const sourceMapPathOverrides = transformProperties(replaceWorkspacePath, {
+    ...baseDebugConfig.sourceMapPathOverrides,
+    ...extraSourceMapPathOverrides
+  });
+
+  const mergedDebuggerConfig: DebugConfiguration = { ...baseDebugConfig };
+
+  if (webRoot) {
+    mergedDebuggerConfig.webRoot = webRoot;
+  }
+
+  if (hasPathMapping) {
+    mergedDebuggerConfig.pathMapping = pathMapping;
+  }
+
+  if (hasSourceMapPathOverrides) {
+    mergedDebuggerConfig.sourceMapPathOverrides = sourceMapPathOverrides;
+  }
+  return mergedDebuggerConfig;
 };
 
 export const getCombinedEnvironment = (

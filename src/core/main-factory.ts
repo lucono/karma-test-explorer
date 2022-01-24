@@ -402,33 +402,33 @@ export class MainFactory {
     });
   }
 
+  private getFrameworksFromKarmaConfig(karmaConfigPath: string, fileHandler: FileHandler): string[] {
+    const rawConfigContent = fileHandler.readFileSync(karmaConfigPath);
+    const configContent = rawConfigContent ? stripJsComments(rawConfigContent).replace(/\s/g, '') : undefined;
+
+    const matchResult = configContent ? /frameworks:\[([^\]]*)\]/g.exec(configContent)?.[1] : '';
+    const frameworkList = matchResult?.split(',').map(entry => entry.replace(/(^['"`]|['"`]$)/g, '')) ?? [];
+
+    this.logger.debug(() => `Detected frameworks from karma config: ${frameworkList.join(', ')}`);
+    return frameworkList;
+  }
+
   private detectTestFramework(karmaConfigPath: string, fileHandler: FileHandler): TestFramework {
-    let testFramework: TestFramework | undefined;
     this.logger.debug(() => `Detecting test framework from karma config file: ${karmaConfigPath}`);
 
-    const rawConfigContent = fileHandler.readFileSync(karmaConfigPath);
-    const configContent = rawConfigContent ? stripJsComments(rawConfigContent).replace(/ /g, '') : undefined;
+    const configuredKarmaFrameworks = this.getFrameworksFromKarmaConfig(karmaConfigPath, fileHandler);
+    const isJasmineConfigured = configuredKarmaFrameworks.includes('jasmine');
+    const isMochaConfigured = configuredKarmaFrameworks.includes('mocha');
 
-    if (configContent) {
-      const matchResult = /frameworks:\[[^\]]*['"]((jasmine)|(mocha))['"][^\]]*\]/g.exec(
-        stripJsComments(configContent).replace(/ /g, '')
-      );
+    let testFramework = isJasmineConfigured
+      ? JasmineTestFramework
+      : isMochaConfigured
+      ? MochaTestFrameworkBdd
+      : undefined;
 
-      const isJasmineConfigured = matchResult?.[2];
-      const isMochaConfigured = matchResult?.[3];
-
-      testFramework = isJasmineConfigured
-        ? JasmineTestFramework
-        : isMochaConfigured
-        ? MochaTestFrameworkBdd
-        : undefined;
-
-      if (testFramework) {
-        this.logger.debug(() => `Detected test framework: ${testFramework?.name}`);
-      }
-    }
-
-    if (!testFramework) {
+    if (testFramework) {
+      this.logger.debug(() => `Detected test framework: ${testFramework?.name}`);
+    } else {
       testFramework = JasmineTestFramework;
 
       this.logger.warn(

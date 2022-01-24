@@ -249,8 +249,8 @@
           "scope": "resource",
           "minItems": 1,
           "default": [
-            "**/*{.,-,_}{test,spec,unit}.{ts,js}",
-            "**/{test,spec,unit}{.,-,_}*.{ts,js}"
+            "**/*{.,-,_}{test,spec}.{ts,js}",
+            "**/{test,spec}{.,-,_}*.{ts,js}"
           ]
         },
         "karmaTestExplorer.excludeFiles": {
@@ -449,6 +449,24 @@
             "port": 9222,
             "timeout": 60000
           }
+        },
+        "karmaTestExplorer.webRoot": {
+          "description": "The web root to be used when debugging the Karma tests in VS Code. This takes precedence over the `webRoot` property in the `debuggerConfig` setting and supports using the `${workspaceFolder}` variable for the absolute workspace folder path. This setting is similar to the `webRoot` property of a VS Code launch configuration entry in the `.vscode/launch.json` file",
+          "type": "string",
+          "scope": "resource",
+          "default": null
+        },
+        "karmaTestExplorer.pathMapping": {
+          "description": "The path mappings to be used when debugging the Karma tests in VS Code. These take precedence over any identical path mappings defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `pathMapping` property of a VS Code launch configuration entry in the `.vscode/launch.json` file",
+          "type": "object",
+          "scope": "resource",
+          "default": null
+        },
+        "karmaTestExplorer.sourceMapPathOverrides": {
+          "description": "The source map path overrides to be used when debugging the Karma tests in VS Code. These take precedence over any identical source map path overrides defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `sourceMapPathOverrides` property of a VS Code launch configuration entry in the `.vscode/launch.json` file",
+          "type": "object",
+          "scope": "resource",
+          "default": null
         },
         "karmaTestExplorer.containerMode": {
           "description": "Enables additional support for easier testing when running in a container",

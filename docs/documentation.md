@@ -27,7 +27,7 @@ Karma Test Explorer shows your Karma tests in a visual explorer in VS Code, adds
 
 ![Karma Test Explorer screenshot](img/extension-screenshot.png)
 
-Rich information about your tests will be displayed in the Testing side bar (left image below), including focused ⚡and disabled 💤 tests. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image below).
+Rich information about your tests will be displayed in the Testing side bar, including focused ⚡and disabled 💤 tests (left image below). Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image below).
 
 ![Karma Test Explorer screenshot](img/sidebar.png)
 
@@ -44,6 +44,7 @@ Its core focus is on robust support for:
 - Large projects with thousands of tests
 - Remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Flexibility to support a wide range of testing scenarios and workflows
+- Simplicity to "just work" - without any or much configuration
 - Reliability, usability, and team productivity
 
 ---
@@ -190,8 +191,12 @@ Setting                                       | Description
 `karmaTestExplorer.reloadOnKarmaConfigChange` | Enables reloading of Karma on changes to the Karma configuration file
 `karmaTestExplorer.reloadOnChangedFiles` | The files which when modified will trigger a Karma reload
 `karmaTestExplorer.karmaReadyTimeout` | The duration in milliseconds after which the extension will stop listening and give up if Karma is not started, connected to the extension, and ready for testing
-`karmaTestExplorer.defaultSocketConnectionPort` | This is the port that will be used to connect Karma with the test explorer. When not specified, Karma Test Explorer will automatically use the first available port equal to, or higher than, 9999 
+`karmaTestExplorer.defaultSocketConnectionPort` | This is the port that will be used to connect Karma with the test explorer. When not specified, Karma Test Explorer will automatically use the first available port equal to, or higher than, 9999
+`karmaTestExplorer.debuggerConfigName` | The name of the launch configuration that will be used for debugging tests, which can be the name of any launch configuration defined or available in the VS Code `launch.json` file. This takes precedence over the `debuggerConfig` setting
 `karmaTestExplorer.debuggerConfig` | The debugger configuration to be used in debugging the Karma tests in VS Code. This is similar to a VS Code launch configuration entry in the `.vscode/launch.json` file
+`karmaTestExplorer.webRoot` | The web root to be used when debugging the Karma tests in VS Code. This takes precedence over the `webRoot` property in the `debuggerConfig` setting and supports using the `${workspaceFolder}` variable for the absolute workspace folder path. This setting is similar to the `webRoot` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
+`karmaTestExplorer.pathMapping` | The path mappings to be used when debugging the Karma tests in VS Code. These take precedence over any identical path mappings defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `pathMapping` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
+`karmaTestExplorer.sourceMapPathOverrides` | The source map path overrides to be used when debugging the Karma tests in VS Code. These take precedence over any identical source map path overrides defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `sourceMapPathOverrides` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
 `karmaTestExplorer.containerMode` | Enables additional support for easier testing when running in a container. Can be either `auto` (the default when not set), `enabled`, or `disabled`
 `karmaTestExplorer.logLevel` | Sets the level of logging detail produced in the output panel of the extension. More detailed levels such as the `debug` level can be helpful when troubleshooting issues with running Karma or the extension
 `karmaTestExplorer.karmaLogLevel` | Sets the level of logging detail for the Karma server in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension
@@ -207,16 +212,16 @@ By default, Karma Test Explorer searches for test files in every path under the 
 
 ### Default Test Discovery
 
-The default test discovery behavior looks for tests in all JavaScript or TypeScript files with a filename that starts or ends with `test` or `spec` or `unit`, delimited from the other part of the filename with a dot (`.`) or a hyphen (`-`) or an underscore (`_`).
+The default test discovery behavior looks for tests in all files with the filename pattern `(test|spec)[._-]*` or `*[._-](test|spec)`, and having a `.js` or `.ts` file extension. For example, the following files would all be detected as test files by default, anywhere under the project root directory tree (except for the `node_modules` directory):
 
-For example, the following files would all be detected as test files by default, anywhere under the project root directory tree (except for the `node_modules` directory):
-
-- `utils.spec.ts`
-- `utils.spec.js`
-- `utils.test.js`
-- `utils-spec.ts`
-- `utils_test.js`
-- `utils.unit.ts`
+- `app.spec.ts`
+- `app-test.js`
+- `app-spec.ts`
+- `app_spec.ts`
+- `test.app.js`
+- `spec.app.js`
+- `test-app.ts`
+- `spec_app.js`
 
 ### Customizing Test Discovery
 

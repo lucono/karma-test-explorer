@@ -22,7 +22,7 @@ Please take a minute to rate this extension in the [marketplace](https://marketp
 - Jasmine and Mocha framework support
 - Watch mode with active pass-fail test updates
 - Detect and flag duplicated tests
-- Filter view to focus on only enabled tests
+- Filter view to focus only on enabled tests
 - Option to run tests in a visible browser window
 - [More](./docs/documentation.md#features)
 

@@ -7,7 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
-  - [0.5.0 - Jan 22, 2021](#050---jan-22-2022)
+  - [0.5.0 - Jan 23, 2021](#050---jan-23-2022)
   - [0.4.0 - Dec 5, 2021](#040---dec-5-2021)
   - [0.3.0 - Nov 6, 2021](#030---nov-6-2021)
   - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
@@ -17,18 +17,22 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
-## [0.5.0] - Jan 22, 2022
+## [0.5.0] - Jan 23, 2022
 
 _Karma Test Explorer is officially out of Preview!_
 
 ### Added
 
 - New `karmaTestExplorer.projectType` config setting for overriding the auto-detected project type (Karma or Angular) if required
+- New `karmaTestExplorer.webRoot` config setting for providing the web root used when debugging Karma tests in VS Code
+- New `karmaTestExplorer.pathMapping` config setting for providing path mappings used when debugging Karma tests in VS Code
+- New `karmaTestExplorer.sourceMapPathOverrides` config setting for providing source map path overrides used when debugging Karma tests in VS Code
 
 ### Changed
 
-- Removed extension `Preview` designation after an extended period of relative stability without any major reported new issues
+- Files prefixed or suffixed with `unit` are no longer auto-detected as test files by default as that can often also capture non-test files. The `karmaTestExplorer.testFiles` extension setting can still be used to include them when desired
 - Less noisy `INFO` and `WARN` level logging
+- Removed extension `Preview` designation after an extended period of relative stability without any major new bugs reported
 
 ### Fixed
 
