@@ -96,6 +96,7 @@ Its core focus is on robust support for:
 |Specify project root path relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace root folder | `karmaTestExplorer.projectRootPath`
 |Specify `karma.conf.js` file path relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
 |Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
+|Ensure you DO NOT have any of these Test Explorer UI settings configured | Required to prevent conflict with Karma Test Explorer functionality | `testExplorer.useNativeTesting` and `testExplorer.onStart` and `testExplorer.onReload`
 |Provide any other relevant [settings](#extension-settings) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#extension-settings) to further customize it to the needs of your project and team| See [all settings](#extension-settings)
 
 ### 3. Run Your Tests
@@ -346,7 +347,7 @@ Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTest
 
 ## Known Issues and Limitations
 
-- Watch mode only works in the Test Explorer UI and doesn't currently work if the `testExplorer.useNativeTesting` config setting is used to disable the Test Explorer UI in favor of VS Code's native testing UI
+- Karma Test Explorer works best with the Test Explorer UI, and may not work properly if the `testExplorer.useNativeTesting` config setting is set to `true` to disable the Test Explorer UI in favor of VS Code's native testing UI
 - Watch mode is not yet supported for the Mocha test framework
 - Test descriptions that are computed are currently not supported. Test descriptions must be plain string literals in order to be available in the Test view side bar. For example:
   ```ts
