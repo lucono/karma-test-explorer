@@ -1,4 +1,3 @@
-import { join, relative } from 'path';
 import { debounce } from 'throttle-debounce';
 import {
   commands,
@@ -7,9 +6,6 @@ import {
   DebugSession,
   Event,
   EventEmitter,
-  FileChangeType,
-  FileSystemWatcher,
-  RelativePattern,
   window,
   workspace,
   WorkspaceFolder
@@ -30,8 +26,7 @@ import {
   CONFIG_FILE_CHANGE_BATCH_DELAY,
   DEBUG_SESSION_START_TIMEOUT,
   EXTENSION_CONFIG_PREFIX,
-  EXTENSION_NAME,
-  WATCHED_FILE_CHANGE_BATCH_DELAY
+  EXTENSION_NAME
 } from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
 import { CancellationRequestedError } from './core/cancellation-requested-error';
@@ -51,7 +46,7 @@ import { DeferredPromise } from './util/future/deferred-promise';
 import { Execution } from './util/future/execution';
 import { LogLevel } from './util/logging/log-level';
 import { SimpleLogger } from './util/logging/simple-logger';
-import { getCircularReferenceReplacer, normalizePath } from './util/utils';
+import { getCircularReferenceReplacer } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
   private testStore?: TestStore;
@@ -93,6 +88,7 @@ export class Adapter implements TestAdapter, Disposable {
       workspace.onDidChangeConfiguration(debouncedConfigChangeHandler),
       commands.registerCommand(`${ExtensionCommands.ShowLog}`, () => this.extensionOutputChannelLog.show()),
       commands.registerCommand(`${ExtensionCommands.Reload}`, () => this.reload()),
+      commands.registerCommand(`${ExtensionCommands.Reset}`, () => this.reset()),
       commands.registerCommand(`${ExtensionCommands.ExecuteFunction}`, (fn: () => void) => fn())
     );
   }
@@ -117,12 +113,20 @@ export class Adapter implements TestAdapter, Disposable {
     this.initDisposables.push(this.notifications);
 
     this.logger.debug(() => 'Creating main factory');
-    this.factory = new MainFactory(this.config, this.notifications, new SimpleLogger(this.logger, MainFactory.name));
+    this.factory = new MainFactory(
+      this.workspaceFolder,
+      this.config,
+      this.notifications,
+      this.testLoadEmitter,
+      this.testRunEmitter as EventEmitter<TestRunEvent>,
+      this.testRunEmitter as EventEmitter<TestResultEvent>,
+      this.retireEmitter,
+      new SimpleLogger(this.logger, MainFactory.name)
+    );
     this.initDisposables.push(this.factory);
 
-    this.logger.debug(() => 'Creating file watchers');
-    const fileWatchers = this.createFileWatchers();
-    this.initDisposables.push(...fileWatchers);
+    this.logger.debug(() => 'Creating file watcher');
+    this.initDisposables.push(this.factory.createFileWatcher());
 
     this.logger.debug(() => 'Getting test locator');
     this.testLocator = this.factory.getTestLocator();
@@ -134,12 +138,7 @@ export class Adapter implements TestAdapter, Disposable {
     this.testStore = this.factory.getTestStore();
 
     this.logger.debug(() => 'Creating test manager');
-    this.testManager = this.factory.createTestManager(
-      this.testLoadEmitter,
-      this.testRunEmitter as EventEmitter<TestRunEvent>,
-      this.testRunEmitter as EventEmitter<TestResultEvent>,
-      this.retireEmitter
-    );
+    this.testManager = this.factory.createTestManager();
     this.initDisposables.push(this.testManager);
   }
 
@@ -395,91 +394,6 @@ export class Adapter implements TestAdapter, Disposable {
     const logLevel = config.get<LogLevel>(ConfigSetting.LogLevel);
     const configLogger = new SimpleLogger(this.extensionOutputChannelLog, ExtensionConfig.name, logLevel);
     return new ExtensionConfig(config, this.workspaceFolder.uri.path, configLogger);
-  }
-
-  private createFileWatchers(): Disposable[] {
-    this.logger.debug(() => 'Creating file watchers for monitored files');
-    const reloadTriggerFiles = [...this.config.reloadOnChangedFiles];
-
-    if (this.config.reloadOnKarmaConfigChange) {
-      reloadTriggerFiles.push(this.config.userKarmaConfFilePath);
-    }
-    if (this.config.envFile) {
-      reloadTriggerFiles.push(this.config.envFile);
-    }
-
-    const reloadTriggerFilesRelativePaths = reloadTriggerFiles.map(triggerFile =>
-      normalizePath(relative(this.config.projectRootPath, triggerFile))
-    );
-
-    const reloadTriggerFilesWatchers = this.registerFileHandler(
-      reloadTriggerFilesRelativePaths,
-      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, filePath => {
-        this.logger.info(() => `Reloading due to monitored file changed: ${filePath}`);
-        this.reset();
-      })
-    );
-
-    this.logger.debug(() => 'Creating file watchers for test file changes');
-    const testFileGlobs = this.config.testFiles;
-
-    const reloadTestFilesWatchers = this.registerFileHandler(testFileGlobs, async (changedTestFile, changeType) => {
-      if (!this.testLocator?.isTestFile(changedTestFile)) {
-        this.logger.warn(() => `Expected changed file to be spec file but it is not: ${changedTestFile}`);
-        return;
-      }
-      this.logger.debug(() => `Changed file is spec file: ${changedTestFile}`);
-
-      if (this.factory.getTestFramework().getTestCapabilities().watchModeSupport) {
-        await (changeType === FileChangeType.Deleted
-          ? this.testLocator.removeFiles([changedTestFile])
-          : this.testLocator.refreshFiles([changedTestFile]));
-      } else {
-        const changedTestIds = this.testStore?.getTestsByFile(changedTestFile).map(changedTest => changedTest.id) ?? [];
-
-        if (changedTestIds.length > 0) {
-          this.logger.debug(() => `Retiring ${changedTestIds.length} tests from updated spec file: ${changedTestFile}`);
-          this.retireEmitter.fire({ tests: changedTestIds });
-        }
-      }
-    });
-
-    return [...reloadTriggerFilesWatchers, ...reloadTestFilesWatchers];
-  }
-
-  private registerFileHandler(
-    filePatterns: readonly string[],
-    handler: (filePath: string, changeType: FileChangeType) => void
-  ): FileSystemWatcher[] {
-    const fileWatchers: FileSystemWatcher[] = [];
-    const workspaceRootPath = normalizePath(this.workspaceFolder.uri.fsPath);
-    const relativeProjectRootPath = relative(workspaceRootPath, this.config.projectRootPath);
-    const isProjectRootSameAsWorkspace = this.config.projectRootPath === workspaceRootPath;
-
-    this.logger.debug(() => `Registering file handler for files: ${JSON.stringify(filePatterns, null, 2)}`);
-
-    for (const fileOrPattern of filePatterns) {
-      const relativeFileOrPattern = isProjectRootSameAsWorkspace
-        ? fileOrPattern
-        : normalizePath(join(relativeProjectRootPath, fileOrPattern));
-
-      const absoluteFileOrPattern = new RelativePattern(this.workspaceFolder, relativeFileOrPattern);
-
-      this.logger.debug(
-        () =>
-          `Creating file watcher for file or pattern '${fileOrPattern}' ` +
-          `using base path: ${absoluteFileOrPattern.base}`
-      );
-      const fileWatcher = workspace.createFileSystemWatcher(absoluteFileOrPattern);
-      fileWatchers.push(fileWatcher);
-
-      this.disposables.push(
-        fileWatcher.onDidChange(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Changed)),
-        fileWatcher.onDidCreate(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Created)),
-        fileWatcher.onDidDelete(fileUri => handler(normalizePath(fileUri.fsPath), FileChangeType.Deleted))
-      );
-    }
-    return fileWatchers;
   }
 
   private async handleConfigurationChange(configChangeEvent: ConfigurationChangeEvent): Promise<void> {

@@ -24,7 +24,7 @@ export interface TestLocatorOptions extends globby.GlobbyOptions {
 export class TestLocator implements Disposable {
   private readonly testLocatorOptions: TestLocatorOptions;
   private readonly cwd: string;
-  private refreshInProgress?: Promise<void>;
+  private pendingRefreshCompletion?: Promise<void>;
   private readonly disposables: Disposable[] = [];
 
   public constructor(
@@ -37,11 +37,10 @@ export class TestLocator implements Disposable {
     this.disposables.push(logger, fileHandler);
     this.cwd = normalizePath(testLocatorOptions.cwd ?? process.cwd());
     this.testLocatorOptions = { ...testLocatorOptions, cwd: this.cwd };
-    this.refreshFiles();
   }
 
-  public async ready() {
-    await this.refreshInProgress;
+  public async ready(): Promise<void> {
+    return this.pendingRefreshCompletion;
   }
 
   public async refreshFiles(files?: readonly string[]): Promise<void> {
@@ -49,7 +48,7 @@ export class TestLocator implements Disposable {
     const filesDescription = JSON.stringify(filePaths ?? this.fileGlobs);
 
     this.logger.debug(
-      () => `Received request to refresh ${filePaths ? filePaths.length : 'all'} spec file(s): ${filesDescription}`
+      () => `Refresh requested for ${filePaths ? filePaths.length : 'all'} spec file(s): ${filesDescription}`
     );
     const deferredRefreshCompletion = new DeferredPromise();
     const futureRefreshCompletion = deferredRefreshCompletion.promise();
@@ -58,8 +57,6 @@ export class TestLocator implements Disposable {
       this.logger.debug(
         () => `Refreshing ${filePaths ? filePaths.length : 'all'} spec file(s): ` + `${filesDescription}`
       );
-      this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(filePaths)}`);
-
       const reloadStartTime = Date.now();
 
       if (filePaths) {
@@ -68,42 +65,54 @@ export class TestLocator implements Disposable {
         this.testDefinitionProvider.clearAllContent();
       }
 
-      const filesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
-      let loadedFileCount: number = 0;
+      try {
+        const filesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
+        let loadedFileCount: number = 0;
 
-      for (const file of filesToRefresh) {
-        const fileText = await this.fileHandler.readFile(file, this.testLocatorOptions.fileEncoding);
-        this.testDefinitionProvider.addFileContent(file, fileText);
-        loadedFileCount++;
+        this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(filesToRefresh)}`);
+
+        for (const file of filesToRefresh) {
+          try {
+            const fileText = await this.fileHandler.readFile(file, this.testLocatorOptions.fileEncoding);
+            this.testDefinitionProvider.addFileContent(file, fileText);
+            loadedFileCount++;
+          } catch (error) {
+            this.logger.error(() => `Failed to get tests from spec file ${file}: ${error}`);
+          }
+        }
+        const reloadSecs = (Date.now() - reloadStartTime) / 1000;
+
+        this.logger.debug(
+          () =>
+            `Refreshed ${loadedFileCount} spec files ` +
+            `from ${filePaths ? 'file list' : 'glob list'} ` +
+            `in ${reloadSecs.toFixed(2)} secs: ${filesDescription}`
+        );
+        deferredRefreshCompletion.fulfill();
+      } catch (error) {
+        this.logger.error(() => `Failed to load spec files - ${filesDescription}: ${error}`);
+        deferredRefreshCompletion.reject();
       }
 
-      if (this.refreshInProgress === futureRefreshCompletion) {
-        this.refreshInProgress = undefined;
+      if (this.pendingRefreshCompletion === futureRefreshCompletion) {
+        this.pendingRefreshCompletion = undefined;
       }
-      deferredRefreshCompletion.fulfill();
-      const reloadSecs = (Date.now() - reloadStartTime) / 1000;
-
-      this.logger.debug(
-        () =>
-          `Refreshed ${loadedFileCount} spec files ` +
-          `from ${filePaths ? 'file list' : 'glob list'} ` +
-          `in ${reloadSecs.toFixed(2)} secs: ${filesDescription}`
-      );
     };
 
-    if (this.refreshInProgress) {
+    const lastPendingRefresh = this.pendingRefreshCompletion;
+    this.pendingRefreshCompletion = futureRefreshCompletion;
+
+    if (lastPendingRefresh) {
       this.logger.debug(
         () => `Prior refresh still in progress - queing subsequent refresh for files: ${filesDescription}`
       );
 
-      this.refreshInProgress.then(async () => await doRefresh());
-      this.refreshInProgress = futureRefreshCompletion;
+      lastPendingRefresh.then(() => doRefresh());
     } else {
       this.logger.debug(
         () => `No refresh currently in progress - will commence new refresh for files: ${filesDescription}`
       );
 
-      this.refreshInProgress = futureRefreshCompletion;
       doRefresh();
     }
     return futureRefreshCompletion;

@@ -49,7 +49,8 @@ export class KarmaAutoWatchTestEventProcessor {
     const futureProcessingResults = this.testEventProcessor.processTestEvents([], {
       emitTestEvents: [TestStatus.Success, TestStatus.Failed],
       filterTestEvents: [TestStatus.Failed],
-      emitTestStats: false
+      emitTestStats: false,
+      retireExcludedTests: false
     });
 
     let processingResults: TestEventProcessingResults | undefined;
@@ -88,15 +89,20 @@ export class KarmaAutoWatchTestEventProcessor {
 
   private concludeCurrentProcessing(): void {
     this.logger.debug(() => 'Concluding ambient test event processing');
-    this.logger.debug(() => `Retiring ${this.skippedSpecIds?.length ?? 0} skipped ambient test ids`);
-    this.logger.trace(() => `Skipped ambient test ids to retire: ${JSON.stringify(this.skippedSpecIds)}`);
-    this.emitRetireEvent(this.skippedSpecIds);
+
+    this.retireExcludedTests();
 
     const testRunFinishedEvent: TestRunFinishedEvent = { type: 'finished' };
     this.testRunEventEmitter.fire(testRunFinishedEvent);
 
     this.skippedSpecIds = undefined;
     this.logger.debug(() => 'Done concluding ambient test event processing');
+  }
+
+  private retireExcludedTests() {
+    this.logger.debug(() => `Retiring ${this.skippedSpecIds?.length ?? 0} skipped ambient test ids`);
+    this.logger.trace(() => `Skipped ambient test ids to retire: ${JSON.stringify(this.skippedSpecIds)}`);
+    this.emitRetireEvent(this.skippedSpecIds);
   }
 
   private emitTestLoadEvents(processedSpecs: SpecCompleteResponse[]) {

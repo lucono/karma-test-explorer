@@ -1,7 +1,7 @@
-import { EventEmitter } from 'vscode';
+import { EventEmitter, WorkspaceFolder } from 'vscode';
 import { RetireEvent } from 'vscode-test-adapter-api';
 import { TestFactory } from '../api/test-factory';
-import { KARMA_SERVER_OUTPUT_CHANNEL_NAME } from '../constants';
+import { KARMA_SERVER_OUTPUT_CHANNEL_NAME, KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../constants';
 import { AngularFactory, AngularFactoryConfig } from '../frameworks/angular/angular-factory';
 import { AngularProject } from '../frameworks/angular/angular-project';
 import { getDefaultAngularProject } from '../frameworks/angular/angular-util';
@@ -10,7 +10,10 @@ import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-fact
 import { KarmaLogLevel } from '../frameworks/karma/karma-log-level';
 import { DefaultTestBuilder, DefaultTestBuilderOptions } from '../frameworks/karma/runner/default-test-builder';
 import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
-import { KarmaTestEventProcessor } from '../frameworks/karma/runner/karma-test-event-processor';
+import {
+  KarmaTestEventProcessor,
+  TestEventProcessingOptions
+} from '../frameworks/karma/runner/karma-test-event-processor';
 import { DebugStatusResolver, KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
 import { KarmaTestRunProcessor } from '../frameworks/karma/runner/karma-test-run-processor';
 import { SuiteAggregateTestResultProcessor } from '../frameworks/karma/runner/suite-aggregate-test-result-processor';
@@ -31,10 +34,12 @@ import { TestDefinitionProvider } from './base/test-definition-provider';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events';
 import { TestFramework } from './base/test-framework';
 import { TestFrameworkName } from './base/test-framework-name';
+import { TestStatus } from './base/test-status';
 import { CascadingTestFactory } from './cascading-test-factory';
 import { ExtensionConfig } from './config/extension-config';
 import { Debugger } from './debugger';
 import { DefaultTestManager } from './default-test-manager';
+import { FileWatcher, FileWatcherOptions } from './file-watcher';
 import { RegexTestDefinitionProvider } from './parser/regex-test-definition-provider';
 import { RegexTestFileParser } from './parser/regex-test-file-parser';
 import { TestHelper } from './test-helper';
@@ -57,8 +62,13 @@ export class MainFactory {
   private readonly testServerLog: LogAppender;
 
   constructor(
+    private readonly workspaceFolder: WorkspaceFolder,
     private readonly config: ExtensionConfig,
     private readonly notifications: Notifications,
+    private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
+    private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
+    private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
+    private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     private readonly logger: SimpleLogger
   ) {
     this.disposables.push(logger);
@@ -125,12 +135,36 @@ export class MainFactory {
     this.disposables.push(this.testServerLog);
   }
 
-  public createTestManager(
-    testLoadEventEmitter: EventEmitter<TestLoadEvent>,
-    testRunEventEmitter: EventEmitter<TestRunEvent>,
-    testResultEventEmitter: EventEmitter<TestResultEvent>,
-    testRetireEventEmitter: EventEmitter<RetireEvent>
-  ): DefaultTestManager {
+  public createFileWatcher(): FileWatcher {
+    const reloadTriggerFiles = [...this.config.reloadOnChangedFiles];
+
+    if (this.config.reloadOnKarmaConfigChange) {
+      reloadTriggerFiles.push(this.config.userKarmaConfFilePath);
+    }
+    if (this.config.envFile) {
+      reloadTriggerFiles.push(this.config.envFile);
+    }
+
+    const fileWatcherOptions: FileWatcherOptions = {
+      retireTestsInChangedFiles: !this.isAutoWatchActive()
+    };
+
+    const fileWatcher = new FileWatcher(
+      this.workspaceFolder,
+      this.config.projectRootPath,
+      this.config.testFiles,
+      reloadTriggerFiles,
+      this.getTestLocator(),
+      this.testStore,
+      this.testRetireEventEmitter,
+      this.createLogger(FileWatcher.name),
+      fileWatcherOptions
+    );
+
+    return fileWatcher;
+  }
+
+  public createTestManager(): DefaultTestManager {
     const watchModeSupported = !!this.testFramework.getTestCapabilities().watchModeSupport;
     const watchModeRequested = this.config.autoWatchEnabled;
     const watchModeEnabled = watchModeRequested && watchModeSupported;
@@ -185,10 +219,10 @@ export class MainFactory {
     }
 
     const karmaEventListener = this.createKarmaTestEventListener(
-      testLoadEventEmitter,
-      testRunEventEmitter,
-      testResultEventEmitter,
-      testRetireEventEmitter,
+      this.testLoadEventEmitter,
+      this.testRunEventEmitter,
+      this.testResultEventEmitter,
+      this.testRetireEventEmitter,
       this.testStore.getTestResolver(),
       testTreeProcessor,
       testBuilder,
@@ -238,12 +272,9 @@ export class MainFactory {
   }
 
   private createTestLocator(fileHandler: FileHandler): TestLocator {
-    this.logger.info(() => 'Getting test details from test files');
-
     const testLocatorOptions: TestLocatorOptions = {
       ignore: [...this.config.excludeFiles],
-      cwd: this.config.projectRootPath,
-      extglob: true
+      cwd: this.config.projectRootPath
     };
 
     const testDefinitionProvider = this.createTestDefinitionProvider();
@@ -347,6 +378,7 @@ export class MainFactory {
 
     const testRunEventProcessor = new KarmaTestEventProcessor(
       testResultEventEmitter,
+      testRetireEventEmitter,
       testBuilder,
       testSuiteOrganizer,
       suiteTestResultProcessor,
@@ -363,6 +395,7 @@ export class MainFactory {
     if (autoWatchEnabled) {
       const ambientDelegateTestEventProcessor = new KarmaTestEventProcessor(
         testResultEventEmitter,
+        testRetireEventEmitter,
         testBuilder,
         testSuiteOrganizer,
         suiteTestResultProcessor,
@@ -386,18 +419,39 @@ export class MainFactory {
       );
     }
 
-    const testRunProcessor = new KarmaTestRunProcessor(
-      testRunEventProcessor,
-      watchModeTestEventProcessor,
-      this.notifications,
-      new SimpleLogger(this.logger, KarmaTestRunProcessor.name)
-    );
+    const testDiscoveryEventProcessingOptions: TestEventProcessingOptions = {
+      emitTestEvents: [],
+      filterTestEvents: [],
+      emitTestStats: false,
+      retireExcludedTests: false,
+      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
+    };
+
+    const foregroundOnlyLastExecutedTests = this.isAutoWatchActive();
+
+    const testRunEventProcessingOptions: TestEventProcessingOptions = {
+      emitTestEvents: Object.values(TestStatus),
+      filterTestEvents: [],
+      emitTestStats: true,
+      retireExcludedTests: foregroundOnlyLastExecutedTests,
+      testEventIntervalTimeout: KARMA_TEST_EVENT_INTERVAL_TIMEOUT
+    };
 
     const debugStatusResolver: DebugStatusResolver = {
       isDebugging: () => this.debugger.isDebugging()
     };
 
-    return new KarmaTestListener(testRunProcessor, debugStatusResolver, this.createLogger(KarmaTestListener.name), {
+    const testRunProcessor = new KarmaTestRunProcessor(
+      testRunEventProcessor,
+      watchModeTestEventProcessor,
+      this.notifications,
+      debugStatusResolver,
+      testDiscoveryEventProcessingOptions,
+      testRunEventProcessingOptions,
+      new SimpleLogger(this.logger, KarmaTestRunProcessor.name)
+    );
+
+    return new KarmaTestListener(testRunProcessor, this.createLogger(KarmaTestListener.name), {
       karmaReadyTimeout: this.config.karmaReadyTimeout
     });
   }
@@ -439,6 +493,10 @@ export class MainFactory {
     }
 
     return testFramework;
+  }
+
+  private isAutoWatchActive(): boolean {
+    return (this.testFramework.getTestCapabilities().watchModeSupport ?? false) && this.config.autoWatchEnabled;
   }
 
   private createLogger(loggerName: string): SimpleLogger {

@@ -1,8 +1,8 @@
 import { TestFrameworkName } from './test-framework-name';
 
 export interface TestInterface {
-  suiteTags: { default: string[]; focused: string[]; disabled: string[] };
-  testTags: { default: string[]; focused: string[]; disabled: string[] };
+  readonly suiteTags: { default: string[]; focused: string[]; disabled: string[] };
+  readonly testTags: { default: string[]; focused: string[]; disabled: string[] };
 }
 
 export interface TestSet {
@@ -19,7 +19,7 @@ export interface TestSelector {
 }
 
 export interface TestCapabilities {
-  watchModeSupport?: boolean;
+  readonly watchModeSupport?: boolean;
 }
 
 export interface TestFramework {
