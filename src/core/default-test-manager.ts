@@ -12,7 +12,8 @@ import { Logger } from '../util/logging/logger';
 import { PortAcquisitionManager } from '../util/port-acquisition-manager';
 import { TestType } from './base/test-infos';
 import { CancellationRequestedError } from './cancellation-requested-error';
-import { ExtensionCommands } from './vscode/extension-commands';
+import { Commands } from './vscode/commands/commands';
+import { ProjectCommand } from './vscode/commands/project-command';
 import { MessageType, Notifications, StatusType } from './vscode/notifications';
 
 export class DefaultTestManager implements TestManager {
@@ -29,6 +30,7 @@ export class DefaultTestManager implements TestManager {
     private readonly portManager: PortAcquisitionManager,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
+    private readonly projectCommands: Commands<ProjectCommand>,
     private readonly notifications: Notifications,
     private readonly logger: Logger,
     private readonly defaultDebugPort?: number
@@ -189,7 +191,10 @@ export class DefaultTestManager implements TestManager {
           if (!actionWasRunning) {
             const showMessageAndOptions = () => {
               this.notifications.notify(MessageType.Warning, rejectionMsg, [
-                { label: 'Restart Karma', handler: { command: ExtensionCommands.Reload } }
+                {
+                  label: 'Restart Karma',
+                  handler: { command: this.projectCommands.getCommandName(ProjectCommand.Reload) }
+                }
               ]);
             };
 

@@ -62,7 +62,7 @@ describe('TestLocator', () => {
       let testLocator: TestLocator;
 
       beforeEach(async () => {
-        testLocator = new TestLocator(mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
+        testLocator = new TestLocator('/', mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
         await testLocator.refreshFiles();
       });
 
@@ -152,7 +152,7 @@ describe('TestLocator', () => {
           });
 
           mockResolvedGlobFiles = [mockTestFilePath];
-          testLocator = new TestLocator(mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
+          testLocator = new TestLocator('/', mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
           await testLocator.refreshFiles();
         });
 

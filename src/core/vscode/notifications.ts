@@ -5,7 +5,9 @@ import { Disposer } from '../../util/disposable/disposer';
 import { DeferredPromise } from '../../util/future/deferred-promise';
 import { Logger } from '../../util/logging/logger';
 import { getPropertyWithValue } from '../../util/utils';
-import { ExtensionCommands } from './extension-commands';
+import { Commands } from './commands/commands';
+import { ExtensionCommands } from './commands/extension-commands';
+import { ProjectCommand } from './commands/project-command';
 
 export enum MessageType {
   Info = 'Info',
@@ -35,19 +37,6 @@ export interface NotifyOptions {
   dismissAction?: boolean;
 }
 
-const SHOW_LOG_NOTIFICATION_ACTION: NotificationAction = {
-  label: 'Show Log',
-  description: 'Click to show log',
-  handler: { command: ExtensionCommands.ShowLog }
-};
-
-const DISMISS_NOTIFICATION_ACTION: NotificationAction = {
-  label: 'Dismiss',
-  handler: () => {
-    // Do nothing
-  }
-};
-
 const DEFAULT_NOTIFY_OPTIONS: NotifyOptions = {
   showLogAction: true,
   dismissAction: true
@@ -62,10 +51,23 @@ interface StatusDisplay extends Disposable {
 }
 
 export class Notifications implements Disposable {
+  private readonly disposables: Disposable[] = [];
+  private readonly showLogNotificationAction: NotificationAction;
+  private readonly dismissNotificationAction: NotificationAction;
   private deferredStatusDismissal?: DeferredPromise;
-  private disposables: Disposable[] = [];
 
-  public constructor(private readonly statusDisplay: StatusDisplay, private readonly logger: Logger) {
+  public constructor(
+    private readonly statusDisplay: StatusDisplay,
+    projectCommands: Commands<ProjectCommand>,
+    private readonly logger: Logger
+  ) {
+    this.showLogNotificationAction = {
+      label: 'Show Log',
+      description: 'Click to show log',
+      handler: { command: projectCommands.getCommandName(ProjectCommand.ShowLog) }
+    };
+
+    this.dismissNotificationAction = { label: 'Dismiss', handler: () => ({}) };
     this.disposables.push(statusDisplay, logger);
   }
 
@@ -86,10 +88,10 @@ export class Notifications implements Disposable {
     const allActions: NotificationAction[] = [...actions];
 
     if (notifyOptions.showLogAction) {
-      allActions.push(SHOW_LOG_NOTIFICATION_ACTION);
+      allActions.push(this.showLogNotificationAction);
     }
     if (notifyOptions.dismissAction) {
-      allActions.push(DISMISS_NOTIFICATION_ACTION);
+      allActions.push(this.dismissNotificationAction);
     }
 
     const actionLabels = allActions.map(action => action.label);
@@ -119,7 +121,7 @@ export class Notifications implements Disposable {
     statusType: StatusType,
     message: string,
     dismiss?: Thenable<any>,
-    action: NotificationAction = SHOW_LOG_NOTIFICATION_ACTION
+    action: NotificationAction = this.showLogNotificationAction
   ) {
     const statusName = getPropertyWithValue(StatusType, statusType);
     const tooltip = action.description ?? action.label;

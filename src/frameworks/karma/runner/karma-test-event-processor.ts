@@ -2,7 +2,6 @@ import { EventEmitter } from 'vscode';
 import { RetireEvent, TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
 import { TestDefinition } from '../../../core/base/test-definition';
 import { TestResultEvent } from '../../../core/base/test-events';
-import { TestGrouping } from '../../../core/base/test-grouping';
 import { TestType } from '../../../core/base/test-infos';
 import { TestResults } from '../../../core/base/test-results';
 import { TestState } from '../../../core/base/test-state';
@@ -10,7 +9,7 @@ import { TestStatus } from '../../../core/base/test-status';
 import { TestHelper } from '../../../core/test-helper';
 import { TestLocator } from '../../../core/test-locator';
 import { StoredTestResolver } from '../../../core/test-store';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
+import { TestSuiteFolderGroupingOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { FileHandler } from '../../../util/file-handler';
@@ -62,7 +61,6 @@ export class KarmaTestEventProcessor {
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testLocator: TestLocator,
-    private readonly testGrouping: TestGrouping,
     private readonly testResolver: StoredTestResolver,
     private readonly fileHandler: FileHandler,
     private readonly testHelper: TestHelper,
@@ -325,16 +323,15 @@ export class KarmaTestEventProcessor {
     const passedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Success]);
     const skippedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Skipped]);
 
-    const testOrganizationOptions: TestSuiteOrganizationOptions = {
-      testGrouping: this.testGrouping,
+    const folderGroupingOptions: TestSuiteFolderGroupingOptions = {
       flattenSingleChildFolders: false,
       flattenSingleSuiteFiles: false
     };
 
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(failedTests, testOrganizationOptions),
-      Success: this.testSuiteOrganizer.organizeTests(passedTests, testOrganizationOptions),
-      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, testOrganizationOptions)
+      Failed: this.testSuiteOrganizer.organizeTests(failedTests, folderGroupingOptions),
+      Success: this.testSuiteOrganizer.organizeTests(passedTests, folderGroupingOptions),
+      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, folderGroupingOptions)
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);

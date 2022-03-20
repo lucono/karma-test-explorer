@@ -1,4 +1,10 @@
-export enum ConfigSetting {
+export type ConfigSetting = InternalConfigSetting | ExternalConfigSetting;
+
+export enum InternalConfigSetting {
+  ProjectSubFolderPath = 'projectSubFolderPath'
+}
+
+export enum ExternalConfigSetting {
   EnableExtension = 'enableExtension',
   ProjectRootPath = 'projectRootPath',
   KarmaConfFilePath = 'karmaConfFilePath',

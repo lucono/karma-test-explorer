@@ -1,7 +1,6 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { TestGrouping } from '../../../core/base/test-grouping';
 import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
+import { TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
 import { MessageType, Notifications } from '../../../core/vscode/notifications';
 import { Disposable } from '../../../util/disposable/disposable';
@@ -23,8 +22,6 @@ export class TestDiscoveryProcessor implements Disposable {
     private readonly testBuilder: TestBuilder,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly testTreeProcessor: TestTreeProcessor,
-    private readonly testGrouping: TestGrouping,
-    private readonly flattenSingleChildFolders: boolean,
     private readonly notifications: Notifications,
     private readonly logger: Logger
   ) {
@@ -48,12 +45,7 @@ export class TestDiscoveryProcessor implements Disposable {
       return this.createEmptySuite();
     }
 
-    const testOrganizationOptions: TestSuiteOrganizationOptions = {
-      testGrouping: this.testGrouping,
-      flattenSingleChildFolders: this.flattenSingleChildFolders
-    };
-
-    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(builtTests, testOrganizationOptions);
+    const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(builtTests);
 
     const testCountEvaluator = (test: TestInfo): TestDiscoveryCount => ({
       focused: test.activeState === 'focused' || test.activeState === 'focusedIn' ? 1 : 0,

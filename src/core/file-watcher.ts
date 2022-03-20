@@ -1,14 +1,6 @@
 import { join, relative } from 'path';
 import { debounce } from 'throttle-debounce';
-import {
-  commands,
-  EventEmitter,
-  FileChangeType,
-  FileSystemWatcher,
-  RelativePattern,
-  workspace,
-  WorkspaceFolder
-} from 'vscode';
+import { EventEmitter, FileChangeType, FileSystemWatcher, RelativePattern, workspace, WorkspaceFolder } from 'vscode';
 import { RetireEvent } from 'vscode-test-adapter-api';
 import { WATCHED_FILE_CHANGE_BATCH_DELAY } from '../constants';
 import { Disposable } from '../util/disposable/disposable';
@@ -17,7 +9,8 @@ import { Logger } from '../util/logging/logger';
 import { normalizePath } from '../util/utils';
 import { TestLocator } from './test-locator';
 import { TestStore } from './test-store';
-import { ExtensionCommands } from './vscode/extension-commands';
+import { Commands } from './vscode/commands/commands';
+import { ProjectCommand } from './vscode/commands/project-command';
 
 export interface FileWatcherOptions {
   retireTestsInChangedFiles?: boolean;
@@ -39,11 +32,12 @@ export class FileWatcher {
     private readonly testLocator: TestLocator,
     private readonly testStore: TestStore,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
+    private readonly projectCommands: Commands<ProjectCommand>,
     private readonly logger: Logger,
     fileWatcherOptions: FileWatcherOptions = {}
   ) {
-    this.disposables.push(logger);
     this.fileWatcherOptions = { ...defaultFileWatcherOptions, ...fileWatcherOptions };
+    this.disposables.push(logger);
     this.disposables.push(...this.createFileWatchers());
   }
 
@@ -65,7 +59,7 @@ export class FileWatcher {
       reloadTriggerFilesRelativePaths,
       debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, filePath => {
         this.logger.info(() => `Reloading due to monitored file changed: ${filePath}`);
-        commands.executeCommand(ExtensionCommands.Reset);
+        this.projectCommands.execute(ProjectCommand.Reset);
       })
     );
 

@@ -7,41 +7,50 @@ import { Logger } from '../../util/logging/logger';
 import { isChildPath } from '../../util/utils';
 import { TestGrouping } from '../base/test-grouping';
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos';
-import { ConfigSetting } from '../config/config-setting';
+import { ExternalConfigSetting } from '../config/config-setting';
 import { TestHelper } from '../test-helper';
 
-const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizationOptions> = {
-  testGrouping: TestGrouping.Folder,
+export interface TestSuiteFolderGroupingOptions {
+  flattenSingleChildFolders?: boolean;
+  flattenSingleSuiteFiles?: boolean;
+}
+
+export interface TestSuiteOrganizerOptions extends TestSuiteFolderGroupingOptions {
+  testGrouping?: TestGrouping;
+  rootSuiteLabel?: string;
+}
+
+const defaultTestSuiteFolderGroupingOptions: Required<TestSuiteFolderGroupingOptions> = {
   flattenSingleChildFolders: true,
   flattenSingleSuiteFiles: true
 };
 
-interface TestSuiteFolderGroupingOptions {
-  flattenSingleChildFolders: boolean;
-  flattenSingleSuiteFiles: boolean;
-}
-
-export interface TestSuiteOrganizationOptions extends Partial<TestSuiteFolderGroupingOptions> {
-  testGrouping?: TestGrouping;
-}
+const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizerOptions> = {
+  ...defaultTestSuiteFolderGroupingOptions,
+  testGrouping: TestGrouping.Folder,
+  rootSuiteLabel: 'Karma tests'
+};
 
 export class TestSuiteOrganizer implements Disposable {
   private readonly testsBasePath: string;
+  private readonly options: Required<TestSuiteOrganizerOptions>;
   private readonly disposables: Disposable[] = [];
 
   public constructor(
     private readonly rootPath: string,
     testsBasePath: string,
     private readonly testHelper: TestHelper,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    options?: TestSuiteOrganizerOptions
   ) {
+    this.options = { ...defaultTestSuiteOrganizerOptions, ...options };
     this.testsBasePath = isChildPath(rootPath, testsBasePath) ? testsBasePath : rootPath;
     this.disposables.push(logger);
   }
 
-  public organizeTests(tests: (TestInfo | TestSuiteInfo)[], options?: TestSuiteOrganizationOptions): TestSuiteInfo {
-    const allOptions: Required<TestSuiteOrganizationOptions> = {
-      ...defaultTestSuiteOrganizerOptions,
+  public organizeTests(tests: (TestInfo | TestSuiteInfo)[], options?: TestSuiteFolderGroupingOptions): TestSuiteInfo {
+    const groupingOptions: Required<TestSuiteFolderGroupingOptions> = {
+      ...this.options,
       ...options
     };
 
@@ -60,11 +69,13 @@ export class TestSuiteOrganizer implements Disposable {
     });
 
     const groupedMappedTests: AnyTestInfo[] =
-      allOptions.testGrouping === TestGrouping.Folder ? this.groupByFolder(mappedTests, allOptions) : mappedTests;
+      this.options.testGrouping === TestGrouping.Folder
+        ? this.groupByFolder(mappedTests, groupingOptions)
+        : mappedTests;
 
     this.sortTestTree(groupedMappedTests);
 
-    const rootSuite = this.createRootSuite();
+    const rootSuite = this.createRootSuite(this.options.rootSuiteLabel);
     rootSuite.children.push(...groupedMappedTests);
 
     if (unmappedTests.length > 0) {
@@ -73,11 +84,11 @@ export class TestSuiteOrganizer implements Disposable {
         `for the tests in this group. This can occur if the tests: \n\n` +
         `- Use parameterization \n` +
         `- Use computed test descriptions \n` +
-        `- Are in test files not captured by your '${EXTENSION_CONFIG_PREFIX}.${ConfigSetting.TestFiles}' setting \n` +
+        `- Are in test files not captured by your '${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.TestFiles}' setting \n` +
         `- Were otherwise not successfully discovered by ${EXTENSION_NAME}` +
         `\n\n` +
         `To exclude unmapped tests from being displayed, set the ` +
-        `'${EXTENSION_CONFIG_PREFIX}.${ConfigSetting.ShowUnmappedTests}' setting to false.`;
+        `'${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ShowUnmappedTests}' setting to false.`;
 
       const unmappedTestsSuite: TestSuiteInfo = {
         id: '*',
@@ -176,12 +187,12 @@ export class TestSuiteOrganizer implements Disposable {
     return flattenedTestSuite;
   }
 
-  private createRootSuite(): TestSuiteInfo {
+  private createRootSuite(label: string): TestSuiteInfo {
     const rootSuite: TestSuiteInfo = {
       type: TestType.Suite,
       id: ':',
       activeState: 'default',
-      label: 'Karma tests',
+      label,
       name: '',
       fullName: '', // To prevent being runnable with grep pattern of fullName
       children: [],

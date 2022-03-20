@@ -1,6 +1,5 @@
 import { debounce } from 'throttle-debounce';
 import {
-  commands,
   ConfigurationChangeEvent,
   debug,
   DebugSession,
@@ -26,18 +25,21 @@ import {
   CONFIG_FILE_CHANGE_BATCH_DELAY,
   DEBUG_SESSION_START_TIMEOUT,
   EXTENSION_CONFIG_PREFIX,
-  EXTENSION_NAME
+  EXTENSION_NAME,
+  EXTENSION_OUTPUT_CHANNEL_NAME
 } from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
 import { CancellationRequestedError } from './core/cancellation-requested-error';
-import { ConfigSetting } from './core/config/config-setting';
+import { ConfigSetting, ExternalConfigSetting } from './core/config/config-setting';
 import { ConfigStore } from './core/config/config-store';
 import { ExtensionConfig } from './core/config/extension-config';
+import { LayeredConfigStore } from './core/config/layered-config-store';
 import { Debugger } from './core/debugger';
 import { MainFactory } from './core/main-factory';
 import { TestLocator } from './core/test-locator';
 import { TestStore } from './core/test-store';
-import { ExtensionCommands } from './core/vscode/extension-commands';
+import { Commands } from './core/vscode/commands/commands';
+import { ProjectCommand } from './core/vscode/commands/project-command';
 import { MessageType, Notifications, StatusType } from './core/vscode/notifications';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
 import { Disposable } from './util/disposable/disposable';
@@ -49,6 +51,8 @@ import { SimpleLogger } from './util/logging/simple-logger';
 import { getCircularReferenceReplacer } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
+  private config: ExtensionConfig;
+  private logger: SimpleLogger;
   private testStore?: TestStore;
   private testLocator?: TestLocator;
   private isTestProcessRunning: boolean = false;
@@ -57,23 +61,52 @@ export class Adapter implements TestAdapter, Disposable {
   private readonly initDisposables: Disposable[] = [];
   private readonly disposables: Disposable[] = [];
 
-  private readonly retireEmitter = new EventEmitter<RetireEvent>();
+  private readonly outputChannelLog: OutputChannelLog;
+  private readonly projectCommands: Commands<ProjectCommand>;
+  private readonly notifications: Notifications;
   private readonly testLoadEmitter = new EventEmitter<TestLoadEvent>();
   private readonly testRunEmitter = new EventEmitter<TestRunEvent | TestResultEvent>();
-  private readonly autorunEmitter = new EventEmitter<void>();
+  private readonly retireEmitter = new EventEmitter<RetireEvent>();
 
-  private config!: ExtensionConfig;
-  private logger!: SimpleLogger;
   private debugger!: Debugger;
-  private notifications!: Notifications;
   private testManager!: TestManager;
   private factory!: MainFactory;
 
   constructor(
     public readonly workspaceFolder: WorkspaceFolder,
-    private readonly extensionOutputChannelLog: OutputChannelLog
+    private readonly projectNameSpace: string,
+    private readonly configOverrides: ConfigStore<ConfigSetting>,
+    outputChannelLog?: OutputChannelLog
   ) {
-    this.init();
+    let channelLog = outputChannelLog;
+
+    if (!channelLog) {
+      channelLog = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME} (${projectNameSpace})`);
+      this.disposables.push(channelLog);
+    }
+    this.outputChannelLog = channelLog;
+    this.config = this.createConfig();
+    this.logger = new SimpleLogger(this.outputChannelLog, Adapter.name, this.config.logLevel);
+
+    this.logger.debug(() => 'Creating project commands handler');
+    this.projectCommands = new Commands<ProjectCommand>(
+      new SimpleLogger(this.logger, Commands.name),
+      `${EXTENSION_CONFIG_PREFIX}.${this.projectNameSpace}`
+    );
+    this.projectCommands.register(ProjectCommand.ShowLog, () => this.outputChannelLog.show());
+    this.projectCommands.register(ProjectCommand.Reload, () => this.reload());
+    this.projectCommands.register(ProjectCommand.Reset, () => this.reset());
+    this.disposables.push(this.projectCommands);
+
+    this.logger.debug(() => 'Creating notifications handler');
+    this.notifications = new Notifications(
+      window.createStatusBarItem(),
+      this.projectCommands,
+      new SimpleLogger(this.logger, Notifications.name)
+    );
+    this.disposables.push(this.notifications);
+
+    this.init(this.config, this.logger);
 
     const debouncedConfigChangeHandler = debounce(
       CONFIG_FILE_CHANGE_BATCH_DELAY,
@@ -84,38 +117,30 @@ export class Adapter implements TestAdapter, Disposable {
     this.disposables.push(
       this.testLoadEmitter,
       this.testRunEmitter,
-      this.autorunEmitter,
-      workspace.onDidChangeConfiguration(debouncedConfigChangeHandler),
-      commands.registerCommand(`${ExtensionCommands.ShowLog}`, () => this.extensionOutputChannelLog.show()),
-      commands.registerCommand(`${ExtensionCommands.Reload}`, () => this.reload()),
-      commands.registerCommand(`${ExtensionCommands.Reset}`, () => this.reset()),
-      commands.registerCommand(`${ExtensionCommands.ExecuteFunction}`, (fn: () => void) => fn())
+      workspace.onDidChangeConfiguration(debouncedConfigChangeHandler)
     );
   }
 
-  private init() {
-    this.config = this.createConfig();
+  private init(config?: ExtensionConfig, logger?: SimpleLogger) {
+    this.config = config ?? this.createConfig();
     this.initDisposables.push(this.config);
 
-    this.logger = new SimpleLogger(this.extensionOutputChannelLog, Adapter.name, this.config.logLevel);
+    this.logger = logger ?? new SimpleLogger(this.outputChannelLog, Adapter.name, this.config.logLevel);
     this.initDisposables.push(this.logger);
     this.logger.debug(() => 'Initializing adapter');
 
     this.logger.debug(
-      () => `Using extension configuration: ${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
+      () =>
+        `Initializing with extension configuration: ` +
+        `${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
     );
-
-    this.logger.debug(() => 'Creating notifications manager');
-    this.notifications = new Notifications(
-      window.createStatusBarItem(),
-      new SimpleLogger(this.logger, Notifications.name)
-    );
-    this.initDisposables.push(this.notifications);
 
     this.logger.debug(() => 'Creating main factory');
     this.factory = new MainFactory(
       this.workspaceFolder,
+      this.projectNameSpace,
       this.config,
+      this.projectCommands,
       this.notifications,
       this.testLoadEmitter,
       this.testRunEmitter as EventEmitter<TestRunEvent>,
@@ -390,9 +415,13 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   private createConfig(): ExtensionConfig {
-    const config: ConfigStore = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, this.workspaceFolder.uri);
-    const logLevel = config.get<LogLevel>(ConfigSetting.LogLevel);
-    const configLogger = new SimpleLogger(this.extensionOutputChannelLog, ExtensionConfig.name, logLevel);
+    const baseConfig: ConfigStore<ConfigSetting> = workspace.getConfiguration(
+      EXTENSION_CONFIG_PREFIX,
+      this.workspaceFolder.uri
+    );
+    const config: ConfigStore<ConfigSetting> = new LayeredConfigStore(baseConfig, this.configOverrides);
+    const logLevel = config.get<LogLevel>(ExternalConfigSetting.LogLevel);
+    const configLogger = new SimpleLogger(this.outputChannelLog, ExtensionConfig.name, logLevel);
     return new ExtensionConfig(config, this.workspaceFolder.uri.path, configLogger);
   }
 
@@ -404,7 +433,7 @@ export class Adapter implements TestAdapter, Disposable {
       return;
     }
 
-    const hasRelevantSettingsChange = Object.values(ConfigSetting).some(setting => {
+    const hasRelevantSettingsChange = Object.values(ExternalConfigSetting).some(setting => {
       const settingChanged = configChangeEvent.affectsConfiguration(
         `${EXTENSION_CONFIG_PREFIX}.${setting}`,
         this.workspaceFolder.uri
@@ -458,11 +487,8 @@ export class Adapter implements TestAdapter, Disposable {
     return this.retireEmitter.event;
   }
 
-  get autorun(): Event<void> | undefined {
-    return this.autorunEmitter.event;
-  }
-
   public async dispose(): Promise<void> {
+    await this.cancel();
     await Disposer.dispose(this.initDisposables, this.disposables);
   }
 }

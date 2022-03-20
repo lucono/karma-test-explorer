@@ -45,8 +45,10 @@ import { RegexTestFileParser } from './parser/regex-test-file-parser';
 import { TestHelper } from './test-helper';
 import { TestLocator, TestLocatorOptions } from './test-locator';
 import { StoredTestResolver, TestStore } from './test-store';
-import { TestSuiteOrganizer } from './util/test-suite-organizer';
+import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from './util/test-suite-organizer';
 import { TestTreeProcessor } from './util/test-tree-processor';
+import { Commands } from './vscode/commands/commands';
+import { ProjectCommand } from './vscode/commands/project-command';
 import { Notifications } from './vscode/notifications';
 import { OutputChannelLog } from './vscode/output-channel-log';
 
@@ -63,7 +65,9 @@ export class MainFactory {
 
   constructor(
     private readonly workspaceFolder: WorkspaceFolder,
+    private readonly projectNameSpace: string,
     private readonly config: ExtensionConfig,
+    private readonly projectCommands: Commands<ProjectCommand>,
     private readonly notifications: Notifications,
     private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
     private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
@@ -77,18 +81,6 @@ export class MainFactory {
       config.projectType !== ProjectType.Karma
         ? getDefaultAngularProject(this.config.projectRootPath, this.config.defaultAngularProjectName)
         : undefined;
-
-    if (config.projectType === ProjectType.Angular && !this.angularProject) {
-      this.logger.warn(
-        () => `Project type is configured as ${ProjectType.Angular} but no angular project configuration was found`
-      );
-    }
-
-    this.logger.info(
-      () =>
-        `Using project type: ${this.angularProject ? 'Angular' : 'Karma'}` +
-        `${!config.projectType ? ` (auto-detected)` : ''}`
-    );
 
     const karmaConfigPath = this.angularProject?.karmaConfigPath ?? this.config.userKarmaConfFilePath;
 
@@ -129,7 +121,7 @@ export class MainFactory {
     this.testStore = new TestStore(this.createLogger(TestStore.name));
     this.disposables.push(this.testStore);
 
-    this.testServerLog = new OutputChannelLog(KARMA_SERVER_OUTPUT_CHANNEL_NAME, {
+    this.testServerLog = new OutputChannelLog(`${KARMA_SERVER_OUTPUT_CHANNEL_NAME} (${this.projectNameSpace})`, {
       enabled: config.karmaLogLevel !== KarmaLogLevel.DISABLE
     });
     this.disposables.push(this.testServerLog);
@@ -157,6 +149,7 @@ export class MainFactory {
       this.getTestLocator(),
       this.testStore,
       this.testRetireEventEmitter,
+      this.projectCommands,
       this.createLogger(FileWatcher.name),
       fileWatcherOptions
     );
@@ -173,11 +166,18 @@ export class MainFactory {
       this.logger.info(() => `Auto-watch is unavailable for the current test framework: ${this.testFramework.name}`);
     }
 
+    const testSuiteOrganizerOptions: TestSuiteOrganizerOptions = {
+      testGrouping: this.config.testGrouping,
+      flattenSingleChildFolders: this.config.flattenSingleChildFolders,
+      rootSuiteLabel: this.projectNameSpace
+    };
+
     const testSuiteOrganizer = new TestSuiteOrganizer(
       this.config.projectRootPath,
-      this.config.testsBasePath,
+      this.config.testsBasePath ?? this.config.projectSubFolderPath,
       this.testHelper,
-      this.createLogger(TestSuiteOrganizer.name)
+      this.createLogger(TestSuiteOrganizer.name),
+      testSuiteOrganizerOptions
     );
 
     const testTreeProcessor = new TestTreeProcessor(this.createLogger(TestTreeProcessor.name));
@@ -200,8 +200,6 @@ export class MainFactory {
       testBuilder,
       testSuiteOrganizer,
       testTreeProcessor,
-      this.config.testGrouping,
-      this.config.flattenSingleChildFolders,
       this.notifications,
       this.createLogger(TestDiscoveryProcessor.name)
     );
@@ -247,6 +245,7 @@ export class MainFactory {
       portManager,
       this.config.karmaPort,
       this.config.defaultSocketConnectionPort,
+      this.projectCommands,
       this.notifications,
       this.createLogger(DefaultTestManager.name),
       this.config.defaultDebugPort
@@ -280,6 +279,7 @@ export class MainFactory {
     const testDefinitionProvider = this.createTestDefinitionProvider();
 
     return new TestLocator(
+      this.config.projectSubFolderPath,
       [...this.config.testFiles],
       testDefinitionProvider,
       fileHandler,
@@ -383,7 +383,6 @@ export class MainFactory {
       testSuiteOrganizer,
       suiteTestResultProcessor,
       this.testLocator,
-      this.config.testGrouping,
       testResolver,
       this.fileHandler,
       this.testHelper,
@@ -400,7 +399,6 @@ export class MainFactory {
         testSuiteOrganizer,
         suiteTestResultProcessor,
         this.testLocator,
-        this.config.testGrouping,
         testResolver,
         this.fileHandler,
         this.testHelper,

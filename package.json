@@ -496,6 +496,32 @@
           "default": ""
         }
       }
+    },
+    "commands": [
+      {
+        "command": "karmaTestExplorer.AddProject",
+        "title": "Add project…",
+        "icon": "$(add)"
+      },
+      {
+        "command": "karmaTestExplorer.RemoveProject",
+        "title": "Remove project…",
+        "icon": "$(remove)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "karmaTestExplorer.AddProject",
+          "group": "navigation@0",
+          "when": "view == test-explorer && karmaTestExplorer.projectsAvailableToAdd"
+        },
+        {
+          "command": "karmaTestExplorer.RemoveProject",
+          "group": "navigation@0",
+          "when": "view == test-explorer && karmaTestExplorer.projectsAvailableToRemove"
+        }
+      ]
     }
   }
 }

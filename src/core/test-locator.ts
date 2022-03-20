@@ -6,7 +6,7 @@ import { Disposer } from '../util/disposable/disposer';
 import { FileHandler } from '../util/file-handler';
 import { DeferredPromise } from '../util/future/deferred-promise';
 import { Logger } from '../util/logging/logger';
-import { normalizePath } from '../util/utils';
+import { isChildPath, normalizePath } from '../util/utils';
 import { TestDefinition } from './base/test-definition';
 import { TestDefinitionProvider } from './base/test-definition-provider';
 
@@ -28,6 +28,7 @@ export class TestLocator implements Disposable {
   private readonly disposables: Disposable[] = [];
 
   public constructor(
+    private readonly rootPath: string,
     private readonly fileGlobs: string[],
     private readonly testDefinitionProvider: TestDefinitionProvider,
     private readonly fileHandler: FileHandler,
@@ -66,10 +67,21 @@ export class TestLocator implements Disposable {
       }
 
       try {
-        const filesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
+        const requestedFilesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
+        const filesToRefresh = requestedFilesToRefresh.filter(file => isChildPath(this.rootPath, file));
         let loadedFileCount: number = 0;
 
-        this.logger.trace(() => `List of file(s) to refresh: ${JSON.stringify(filesToRefresh)}`);
+        this.logger.debug(
+          () =>
+            `Requested --> filtered file count to refresh: ` +
+            `${requestedFilesToRefresh.length} --> ${filesToRefresh.length}`
+        );
+
+        this.logger.trace(
+          () =>
+            `Requested list of file(s) to refresh: ${JSON.stringify(requestedFilesToRefresh, null, 2)} \n` +
+            `--> Filtered list of file(s) to refresh: ${JSON.stringify(filesToRefresh, null, 2)}`
+        );
 
         for (const file of filesToRefresh) {
           try {

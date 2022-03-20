@@ -1,3 +1,4 @@
+import { Promise as RichPromise } from 'bluebird';
 import { ChildProcess, spawn, SpawnOptions } from 'child_process';
 import treeKill from 'tree-kill';
 import { Disposable } from '../disposable/disposable';
@@ -22,6 +23,8 @@ const DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS: CommandLineProcessHandlerOpt
   failOnStandardError: false
 };
 
+const allActiveProcesses: Set<CommandLineProcessHandler> = new Set();
+
 export class CommandLineProcessHandler implements Disposable {
   private readonly uid: string;
   private childProcess: ChildProcess | undefined;
@@ -45,6 +48,7 @@ export class CommandLineProcessHandler implements Disposable {
     processLog: CommandLineProcessLog | CommandLineProcessLogOutput = CommandLineProcessLogOutput.Parent,
     options?: CommandLineProcessHandlerOptions
   ) {
+    allActiveProcesses.add(this);
     this.uid = generateRandomId();
     const deferredProcessExecution = new DeferredExecution();
     const commandWithArgs = `${command} ${processArguments.join(' ')}`;
@@ -140,7 +144,9 @@ export class CommandLineProcessHandler implements Disposable {
   }
 
   public async stop(): Promise<void> {
-    return this.kill('SIGTERM');
+    const futureTermination = this.kill('SIGTERM');
+    allActiveProcesses.delete(this);
+    return futureTermination;
   }
 
   private async kill(signal: string = 'SIGKILL'): Promise<void> {
@@ -161,7 +167,7 @@ export class CommandLineProcessHandler implements Disposable {
     const runningProcess = this.childProcess!;
     this.logger.debug(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
-    const futureProcessTermination = new Promise<void>((resolve, reject) => {
+    const futureProcessTermination = new RichPromise<void>((resolve, reject) => {
       const processPid = runningProcess.pid;
 
       if (!processPid) {
@@ -205,5 +211,11 @@ export class CommandLineProcessHandler implements Disposable {
   public async dispose() {
     this.stop();
     await Disposer.dispose(this.disposables);
+  }
+
+  public static async terminateAll() {
+    const futureProcessTerminations = [...allActiveProcesses].map(processHandler => processHandler.kill());
+    const futureTerminationCompletion = RichPromise.allSettled(futureProcessTerminations);
+    await futureTerminationCompletion;
   }
 }
