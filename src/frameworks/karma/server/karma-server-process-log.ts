@@ -1,7 +1,7 @@
 import { LogAppender } from '../../../util/logging/log-appender';
-import { CommandLineProcessLog } from '../../../util/process/command-line-process-log';
+import { ProcessLog } from '../../../util/process/process-log';
 
-export class KarmaServerProcessLog implements CommandLineProcessLog {
+export class KarmaServerProcessLog implements ProcessLog {
   public constructor(private readonly logOutput: LogAppender) {}
 
   public output(data: () => string) {

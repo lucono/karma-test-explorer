@@ -1,11 +1,12 @@
-import { Command, commands, MarkdownString, window } from 'vscode';
-import { EXTENSION_NAME, STATUS_BAR_MESASGE_MAX_DURATION, STATUS_BAR_MESASGE_MIN_DURATION } from '../../constants';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { DeferredPromise } from '../../util/future/deferred-promise';
-import { Logger } from '../../util/logging/logger';
-import { getPropertyWithValue } from '../../util/utils';
-import { ExtensionCommands } from './extension-commands';
+import { commands, window } from 'vscode';
+import { STATUS_BAR_MESASGE_MAX_DURATION, STATUS_BAR_MESASGE_MIN_DURATION } from '../../../constants';
+import { Disposable } from '../../../util/disposable/disposable';
+import { Disposer } from '../../../util/disposable/disposer';
+import { DeferredPromise } from '../../../util/future/deferred-promise';
+import { Logger } from '../../../util/logging/logger';
+import { getPropertyWithValue } from '../../../util/utils';
+import { ExtensionCommands } from '../commands/extension-commands';
+import { StatusDisplay } from './status-display';
 
 export enum MessageType {
   Info = 'Info',
@@ -35,37 +36,35 @@ export interface NotifyOptions {
   dismissAction?: boolean;
 }
 
-const SHOW_LOG_NOTIFICATION_ACTION: NotificationAction = {
-  label: 'Show Log',
-  description: 'Click to show log',
-  handler: { command: ExtensionCommands.ShowLog }
-};
-
-const DISMISS_NOTIFICATION_ACTION: NotificationAction = {
-  label: 'Dismiss',
-  handler: () => {
-    // Do nothing
-  }
-};
-
 const DEFAULT_NOTIFY_OPTIONS: NotifyOptions = {
   showLogAction: true,
   dismissAction: true
 };
 
-interface StatusDisplay extends Disposable {
-  text: string;
-  tooltip?: string | MarkdownString;
-  command: string | Command | undefined;
-  readonly show: () => void;
-  readonly hide: () => void;
+export interface NotificationsOptions {
+  showLogCommand?: string;
 }
 
-export class Notifications implements Disposable {
+export class NotificationHandler implements Disposable {
+  private readonly disposables: Disposable[] = [];
+  private readonly showLogNotificationAction?: NotificationAction;
+  private readonly dismissNotificationAction: NotificationAction;
   private deferredStatusDismissal?: DeferredPromise;
-  private disposables: Disposable[] = [];
 
-  public constructor(private readonly statusDisplay: StatusDisplay, private readonly logger: Logger) {
+  public constructor(
+    private readonly statusDisplay: StatusDisplay,
+    private readonly logger: Logger,
+    options?: NotificationsOptions
+  ) {
+    if (options?.showLogCommand) {
+      this.showLogNotificationAction = {
+        label: 'Show Log',
+        description: 'Click to show log',
+        handler: { command: options?.showLogCommand }
+      };
+    }
+
+    this.dismissNotificationAction = { label: 'Dismiss', handler: () => ({}) };
     this.disposables.push(statusDisplay, logger);
   }
 
@@ -85,11 +84,11 @@ export class Notifications implements Disposable {
 
     const allActions: NotificationAction[] = [...actions];
 
-    if (notifyOptions.showLogAction) {
-      allActions.push(SHOW_LOG_NOTIFICATION_ACTION);
+    if (notifyOptions.showLogAction && this.showLogNotificationAction !== undefined) {
+      allActions.push(this.showLogNotificationAction);
     }
     if (notifyOptions.dismissAction) {
-      allActions.push(DISMISS_NOTIFICATION_ACTION);
+      allActions.push(this.dismissNotificationAction);
     }
 
     const actionLabels = allActions.map(action => action.label);
@@ -119,12 +118,14 @@ export class Notifications implements Disposable {
     statusType: StatusType,
     message: string,
     dismiss?: Thenable<any>,
-    action: NotificationAction = SHOW_LOG_NOTIFICATION_ACTION
+    action: NotificationAction | undefined = this.showLogNotificationAction
   ) {
     const statusName = getPropertyWithValue(StatusType, statusType);
-    const tooltip = action.description ?? action.label;
+    const tooltip = action?.description ?? action?.label;
 
-    this.logger.trace(() => `Setting '${statusName}' status with message '${message}' and tooltip: ${tooltip}`);
+    this.logger.trace(
+      () => `Setting '${statusName}' status with message '${message}' and tooltip: ${tooltip ?? '<none>'}`
+    );
 
     if (this.deferredStatusDismissal?.promise().isResolved() === false) {
       this.logger.trace(() => 'Existing status is yet to dismiss - Will cancel future dismissal');
@@ -132,24 +133,26 @@ export class Notifications implements Disposable {
     }
 
     this.statusDisplay.hide();
-    this.statusDisplay.text = `$(${statusType}) ${EXTENSION_NAME} - ${message}`;
+    this.statusDisplay.text = `$(${statusType}) ${message}`;
     this.statusDisplay.tooltip = tooltip;
 
-    const clickCommand =
-      'command' in action.handler
-        ? { title: action.label, ...action.handler }
-        : { title: 'Click', command: ExtensionCommands.ExecuteFunction, arguments: [action.handler] };
+    if (action !== undefined) {
+      const clickCommand =
+        'command' in action.handler
+          ? { title: action.label, ...action.handler }
+          : { title: 'Click', command: ExtensionCommands.ExecuteFunction, arguments: [action.handler] };
 
-    const clickHandler = () => {
-      this.logger.debug(() => `User clicked status: ${message} (${tooltip})`);
-      this.executeAction(clickCommand);
-    };
+      const clickHandler = () => {
+        this.logger.debug(() => `User clicked status: ${message} (${tooltip})`);
+        this.executeAction(clickCommand);
+      };
 
-    this.statusDisplay.command = {
-      title: clickCommand.title,
-      command: ExtensionCommands.ExecuteFunction,
-      arguments: [clickHandler]
-    };
+      this.statusDisplay.command = {
+        title: clickCommand.title,
+        command: ExtensionCommands.ExecuteFunction,
+        arguments: [clickHandler]
+      };
+    }
 
     this.statusDisplay.show();
 

@@ -5,7 +5,7 @@
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 
-This extension runs your Karma or Angular tests in Visual Studio Code using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer), and supports the Jasmine and Mocha test frameworks. It is based on [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer), with various significant [enhancements](./docs/documentation.md#why-this-extension).
+This extension runs your Karma or Angular tests in Visual Studio Code using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer), and supports the Jasmine and Mocha test frameworks. It is based on [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer), with various significant [enhancements](#why-this-extension).
 
 ![Karma Test Explorer screenshot](./docs/img/sidebar.png)
 
@@ -13,6 +13,20 @@ It displays rich information about your tests in the Testing side bar (left imag
 
 ---
 Please take a minute to rate this extension in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and star it on [GitHub](https://github.com/lucono/karma-test-explorer/stargazers). For issues, questions, or feature requests, see [Reporting Issues](./docs/documentation.md#reporting-issues).
+
+---
+
+## Why this Extension
+
+Karma Test Explorer is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension and is a major rewrite aimed at facilitating various significant enhancements and new features (such as those in the initial release [changelog](./CHANGELOG.md#010---sep-28-2021)). 
+
+Its core focus is on robust support for:
+
+- Large projects with thousands of tests
+- Remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
+- Flexibility to support a wide range of testing scenarios and workflows
+- Simplicity to "just work" - without any or much configuration
+- Reliability, usability, and team productivity
 
 ---
 

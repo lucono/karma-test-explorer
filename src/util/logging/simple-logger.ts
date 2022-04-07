@@ -1,6 +1,4 @@
 import { DEFAULT_LOG_LEVEL } from '../../constants';
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
 import { getPropertyWithValue } from '../utils';
 import { LogAppender } from './log-appender';
 import { LogLevel, LogLevels } from './log-level';
@@ -8,7 +6,6 @@ import { Logger } from './logger';
 
 export class SimpleLogger implements Logger {
   private readonly appender: LogAppender;
-  private readonly disposables: Disposable[] = [];
   private readonly logLevel: LogLevel;
 
   public constructor(logger: SimpleLogger | LogAppender, private readonly loggerName: string, logLevel?: LogLevel) {
@@ -63,6 +60,6 @@ export class SimpleLogger implements Logger {
   }
 
   public async dispose() {
-    await Disposer.dispose(this.disposables);
+    // Nothing to dispose
   }
 }

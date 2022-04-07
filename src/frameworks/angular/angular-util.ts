@@ -4,34 +4,38 @@ import { AngularProject } from './angular-project';
 
 export const getDefaultAngularProject = (
   workspaceRootPath: string,
-  configuredDefaultProject: string = ''
+  preferredDefaultProject?: string,
+  angularProjectList?: AngularProject[]
 ): AngularProject | undefined => {
-  const angularProjects = getAllAngularProjects(workspaceRootPath);
-  let defaultProject: AngularProject | undefined;
-
-  if (configuredDefaultProject !== '') {
-    defaultProject = angularProjects.find(project => project.name === configuredDefaultProject);
-  }
-  if (defaultProject === undefined) {
-    defaultProject = angularProjects.find(project => project.isDefaultProject);
-  }
-  if (defaultProject === undefined && angularProjects.length > 0) {
-    defaultProject = angularProjects[0];
-  }
-  return defaultProject;
+  const defaultProjects = getDefaultAngularProjects(
+    workspaceRootPath,
+    preferredDefaultProject ? [preferredDefaultProject] : [],
+    angularProjectList
+  );
+  return defaultProjects[0];
 };
 
-const getAngularJsonConfigPath = (workspaceRootPath: string): string | undefined => {
-  const angularJsonConfigPath = join(workspaceRootPath, 'angular.json');
-  return existsSync(angularJsonConfigPath) ? angularJsonConfigPath : undefined;
+export const getDefaultAngularProjects = (
+  workspaceRootPath: string,
+  preferredDefaultProjects: string[] = [],
+  angularProjectList?: AngularProject[]
+): AngularProject[] => {
+  const angularProjects = angularProjectList ?? getAllAngularProjects(workspaceRootPath);
+  let defaultProjects: AngularProject[] = [];
+
+  if (preferredDefaultProjects.length > 0) {
+    defaultProjects = angularProjects.filter(project => preferredDefaultProjects.includes(project.name));
+  }
+  if (defaultProjects.length === 0) {
+    defaultProjects = angularProjects.filter(project => project.isDefaultProject);
+  }
+  if (defaultProjects.length === 0 && angularProjects.length > 0) {
+    defaultProjects = [angularProjects[0]];
+  }
+  return defaultProjects;
 };
 
-const getAngularCliJsonConfigPath = (workspaceRootPath: string): string | undefined => {
-  const angularCliJsonConfigPath = join(workspaceRootPath, '.angular-cli.json');
-  return existsSync(angularCliJsonConfigPath) ? angularCliJsonConfigPath : undefined;
-};
-
-const getAllAngularProjects = (workspaceRootPath: string): AngularProject[] => {
+export const getAllAngularProjects = (workspaceRootPath: string): AngularProject[] => {
   const angularJsonPath = getAngularJsonConfigPath(workspaceRootPath);
   const angularCliJsonPath = getAngularCliJsonConfigPath(workspaceRootPath);
   let projects: AngularProject[] = [];
@@ -42,6 +46,16 @@ const getAllAngularProjects = (workspaceRootPath: string): AngularProject[] => {
     projects = mapAngularCliJsonObject(workspaceRootPath, angularCliJsonPath);
   }
   return projects;
+};
+
+const getAngularJsonConfigPath = (workspaceRootPath: string): string | undefined => {
+  const angularJsonConfigPath = join(workspaceRootPath, 'angular.json');
+  return existsSync(angularJsonConfigPath) ? angularJsonConfigPath : undefined;
+};
+
+const getAngularCliJsonConfigPath = (workspaceRootPath: string): string | undefined => {
+  const angularCliJsonConfigPath = join(workspaceRootPath, '.angular-cli.json');
+  return existsSync(angularCliJsonConfigPath) ? angularCliJsonConfigPath : undefined;
 };
 
 const mapAngularCliJsonObject = (workspaceRootPath: string, angularCliJsonPath: string): AngularProject[] => {

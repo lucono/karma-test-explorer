@@ -1,15 +1,12 @@
 import { join } from 'path';
-import { ServerStopExecutor, TestServerExecutor } from '../../api/test-server-executor';
+import { TestServerExecutor } from '../../api/test-server-executor';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
-import { DeferredExecution } from '../../util/future/deferred-execution';
-import { Execution } from '../../util/future/execution';
 import { SimpleLogger } from '../../util/logging/simple-logger';
-import {
-  CommandLineProcessHandler,
-  CommandLineProcessHandlerOptions
-} from '../../util/process/command-line-process-handler';
-import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
+import { Process } from '../../util/process/process';
+import { ProcessHandler } from '../../util/process/process-handler';
+import { ProcessLog } from '../../util/process/process-log';
+import { SimpleProcessOptions } from '../../util/process/simple-process';
 import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
 import { AngularProject } from './angular-project';
@@ -17,7 +14,7 @@ import { AngularProject } from './angular-project';
 export interface AngularTestServerExecutorOptions {
   environment?: Record<string, string | undefined>;
   angularProcessCommand?: string;
-  serverProcessLog?: CommandLineProcessLog;
+  serverProcessLog?: ProcessLog;
   failOnStandardError?: boolean;
   allowGlobalPackageFallback?: boolean;
 }
@@ -29,20 +26,15 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     private readonly angularProject: AngularProject,
     private readonly workspaceRootPath: string,
     private readonly baseKarmaConfigFile: string,
+    private readonly processHandler: ProcessHandler,
     private readonly logger: SimpleLogger,
     private readonly options: AngularTestServerExecutorOptions = {}
   ) {}
 
-  public executeServerStart(
-    karmaPort: number,
-    karmaSocketPort: number,
-    debugPort?: number
-  ): Execution<ServerStopExecutor> {
+  public executeServerStart(karmaPort: number, karmaSocketPort: number, debugPort?: number): Process {
     this.logger.debug(
       () => `Executing server start with karma port '${karmaPort}' and karma socket port '${karmaSocketPort}'`
     );
-
-    const deferredServerExecution = new DeferredExecution<ServerStopExecutor>();
 
     const environment: Record<string, string> = {
       ...this.options?.environment,
@@ -55,11 +47,13 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       environment[KarmaEnvironmentVariable.DebugPort] = `${debugPort}`;
     }
 
-    const runOptions: CommandLineProcessHandlerOptions = {
+    const runOptions: SimpleProcessOptions = {
       cwd: this.angularProject.rootPath,
       shell: false,
       env: environment,
-      failOnStandardError: this.options.failOnStandardError
+      failOnStandardError: this.options.failOnStandardError,
+      parentProcessName: AngularTestServerExecutor.name,
+      processLog: this.options.serverProcessLog
     };
 
     const angularLocalInstallPath = getPackageInstallPathForProjectRoot(
@@ -99,40 +93,10 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       '--no-watch'
     ];
 
-    const commandLineProcessLogger = new SimpleLogger(
-      this.logger,
-      `${AngularTestServerExecutor.name}::${CommandLineProcessHandler.name}`
-    );
-
-    const angularProcess = new CommandLineProcessHandler(
-      command,
-      processArguments,
-      commandLineProcessLogger,
-      this.options.serverProcessLog,
-      runOptions
-    );
+    const angularProcess = this.processHandler.spawn(command, processArguments, runOptions);
     this.disposables.push(angularProcess);
 
-    const serverStopper: ServerStopExecutor = {
-      executeServerStop: async () => angularProcess.stop()
-    };
-
-    angularProcess
-      .execution()
-      .started()
-      .then(() => deferredServerExecution.start(serverStopper));
-
-    angularProcess
-      .execution()
-      .ended()
-      .then(() => deferredServerExecution.end());
-
-    angularProcess
-      .execution()
-      .failed()
-      .then(reason => deferredServerExecution.fail(reason));
-
-    return deferredServerExecution.execution();
+    return angularProcess;
   }
 
   public async dispose() {

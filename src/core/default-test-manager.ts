@@ -9,11 +9,12 @@ import { Disposer } from '../util/disposable/disposer';
 import { DeferredPromise } from '../util/future/deferred-promise';
 import { Execution } from '../util/future/execution';
 import { Logger } from '../util/logging/logger';
-import { PortAcquisitionManager } from '../util/port-acquisition-manager';
+import { PortAcquisitionClient } from '../util/port/port-acquisition-client';
 import { TestType } from './base/test-infos';
 import { CancellationRequestedError } from './cancellation-requested-error';
-import { ExtensionCommands } from './vscode/extension-commands';
-import { MessageType, Notifications, StatusType } from './vscode/notifications';
+import { Commands } from './vscode/commands/commands';
+import { ProjectCommand } from './vscode/commands/project-command';
+import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler';
 
 export class DefaultTestManager implements TestManager {
   private disposables: Disposable[] = [];
@@ -26,14 +27,15 @@ export class DefaultTestManager implements TestManager {
     private readonly testServer: TestServer,
     private readonly testRunner: TestRunner,
     private readonly karmaTestListener: KarmaTestListener,
-    private readonly portManager: PortAcquisitionManager,
+    private readonly portAcquisitionClient: PortAcquisitionClient,
     private readonly defaultKarmaPort: number,
     private readonly defaultKarmaSocketConnectionPort: number,
-    private readonly notifications: Notifications,
+    private readonly projectCommands: Commands<ProjectCommand>,
+    private readonly notificationHandler: NotificationHandler,
     private readonly logger: Logger,
     private readonly defaultDebugPort?: number
   ) {
-    this.disposables.push(testServer, testRunner, karmaTestListener, portManager, notifications, logger);
+    this.disposables.push(testServer, testRunner, karmaTestListener, portAcquisitionClient, logger);
   }
 
   public async restart(): Promise<void> {
@@ -82,7 +84,7 @@ export class DefaultTestManager implements TestManager {
       const deferredListenerSocketPortRelease: DeferredPromise = new DeferredPromise();
       const deferredDebugPortRelease: DeferredPromise = new DeferredPromise();
 
-      const serverKarmaPort = await this.portManager.findAvailablePort(
+      const serverKarmaPort = await this.portAcquisitionClient.findAvailablePort(
         this.defaultKarmaPort,
         deferredKarmaPortRelease.promise()
       );
@@ -91,7 +93,7 @@ export class DefaultTestManager implements TestManager {
         () => `Using requested --> available karma port: ${this.defaultKarmaPort} --> ${serverKarmaPort}`
       );
 
-      const karmerListenerSocketPort = await this.portManager.findAvailablePort(
+      const karmerListenerSocketPort = await this.portAcquisitionClient.findAvailablePort(
         this.defaultKarmaSocketConnectionPort,
         deferredListenerSocketPortRelease.promise()
       );
@@ -104,7 +106,10 @@ export class DefaultTestManager implements TestManager {
 
       const debugPort =
         this.defaultDebugPort !== undefined
-          ? await this.portManager.findAvailablePort(this.defaultDebugPort, deferredDebugPortRelease.promise())
+          ? await this.portAcquisitionClient.findAvailablePort(
+              this.defaultDebugPort,
+              deferredDebugPortRelease.promise()
+            )
           : undefined;
 
       if (debugPort !== undefined) {
@@ -123,7 +128,7 @@ export class DefaultTestManager implements TestManager {
         debugPort
       );
 
-      this.notifications.notifyStatus(StatusType.Busy, 'Starting Karma...', futureReadyForTesting);
+      this.notificationHandler.notifyStatus(StatusType.Busy, 'Starting Karma', futureReadyForTesting);
 
       // --- Handle Karma server events ---
 
@@ -188,12 +193,15 @@ export class DefaultTestManager implements TestManager {
 
           if (!actionWasRunning) {
             const showMessageAndOptions = () => {
-              this.notifications.notify(MessageType.Warning, rejectionMsg, [
-                { label: 'Restart Karma', handler: { command: ExtensionCommands.Reload } }
+              this.notificationHandler.notify(MessageType.Warning, rejectionMsg, [
+                {
+                  label: 'Restart Karma',
+                  handler: { command: this.projectCommands.getCommandName(ProjectCommand.Reset) }
+                }
               ]);
             };
 
-            this.notifications.notifyStatus(StatusType.Warning, rejectionMsg, undefined, {
+            this.notificationHandler.notifyStatus(StatusType.Warning, rejectionMsg, undefined, {
               label: 'More Options',
               description: 'Click for more options',
               handler: showMessageAndOptions.bind(this)
@@ -247,9 +255,9 @@ export class DefaultTestManager implements TestManager {
       }
       this.logger.info(() => 'Discovering tests');
 
-      this.notifications.notifyStatus(
+      this.notificationHandler.notifyStatus(
         StatusType.Busy,
-        'Discovering tests...',
+        'Discovering tests',
         deferredTestDiscoveryCompletion.promise()
       );
 
@@ -262,7 +270,10 @@ export class DefaultTestManager implements TestManager {
       const testCount = testSuiteInfo.testCount;
 
       this.logger.debug(() => `Discovered ${testCount} total tests`);
-      this.notifications.notifyStatus(StatusType.Done, `Discovered ${testCount} ${testCount === 1 ? 'test' : 'tests'}`);
+      this.notificationHandler.notifyStatus(
+        StatusType.Done,
+        `Discovered ${testCount} ${testCount === 1 ? 'test' : 'tests'}`
+      );
 
       return testSuiteInfo;
     } catch (error) {
@@ -299,7 +310,7 @@ export class DefaultTestManager implements TestManager {
       }
 
       this.logger.debug(() => 'Proceeding to run tests');
-      this.notifications.notifyStatus(StatusType.Busy, 'Running tests...', deferredTestRunCompletion.promise());
+      this.notificationHandler.notifyStatus(StatusType.Busy, 'Running tests', deferredTestRunCompletion.promise());
 
       const karmaPort: number = this.testServer.getServerPort()!;
       const uniqueTests = this.removeTestOverlaps(tests);
@@ -307,7 +318,7 @@ export class DefaultTestManager implements TestManager {
       const futureTestRunCompletion = this.testRunner.runTests(karmaPort, uniqueTests);
       await RichPromise.race([futureTestRunCompletion, this.systemFailure]);
 
-      this.notifications.notifyStatus(StatusType.Done, 'Done running tests');
+      this.notificationHandler.notifyStatus(StatusType.Done, 'Done running tests');
     } finally {
       this.actionIsRunning = false;
       deferredTestRunCompletion.fulfill();
@@ -320,7 +331,7 @@ export class DefaultTestManager implements TestManager {
     const systemIsStoppingDeferred = new DeferredPromise<void>();
     this.systemCurrentlyStopping = systemIsStoppingDeferred.promise();
 
-    this.notifications.notifyStatus(StatusType.Busy, 'Stopping Karma...', this.systemCurrentlyStopping);
+    this.notificationHandler.notifyStatus(StatusType.Busy, 'Stopping Karma', this.systemCurrentlyStopping);
 
     if (this.karmaTestListener.isRunning()) {
       this.logger.debug(() => 'Stopping karma event listener');

@@ -1,5 +1,6 @@
+import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../../../constants';
 import { TestStatus } from '../../../core/base/test-status';
-import { Notifications, StatusType } from '../../../core/vscode/notifications';
+import { NotificationHandler, StatusType } from '../../../core/vscode/notifications/notification-handler';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredExecution } from '../../../util/future/deferred-execution';
@@ -9,6 +10,7 @@ import { MultiEventHandler } from '../../../util/multi-event-handler';
 import { KarmaAutoWatchTestEventProcessor } from './karma-auto-watch-test-event-processor';
 import { KarmaEvent, KarmaEventName } from './karma-event';
 import { KarmaTestEventProcessor, TestEventProcessingOptions } from './karma-test-event-processor';
+import { DebugStatusResolver } from './karma-test-listener';
 import { LightSpecCompleteResponse, SpecCompleteResponse } from './spec-complete-response';
 import { TestRunStatus } from './test-run-status';
 
@@ -38,20 +40,35 @@ export class KarmaTestRunProcessor implements Disposable {
   public constructor(
     private readonly primaryTestEventProcessor: KarmaTestEventProcessor,
     private readonly watchModeTestEventProcessor: KarmaAutoWatchTestEventProcessor | undefined,
-    private readonly notifications: Notifications,
+    private readonly notificationHandler: NotificationHandler,
+    private readonly debugStatusResolver: DebugStatusResolver,
+    private readonly testDiscoveryEventProcessingOptions: TestEventProcessingOptions,
+    private readonly testRunEventProcessingOptions: TestEventProcessingOptions,
     private readonly logger: SimpleLogger
   ) {
     this.eventHandler = this.createEventHandler();
     this.disposables.push(logger);
   }
 
-  public processTestRun(
+  public processTestDiscovery(testRunId: string, testNames: string[]): Execution<void, SpecCompleteResponse[]> {
+    return this.processTest(testRunId, testNames, this.testDiscoveryEventProcessingOptions);
+  }
+
+  public processTestRun(testRunId: string, testNames: string[]): Execution<void, SpecCompleteResponse[]> {
+    return this.processTest(testRunId, testNames, this.testRunEventProcessingOptions);
+  }
+
+  private processTest(
     testRunId: string,
     testNames: string[],
     testEventProcessingOptions: TestEventProcessingOptions
   ): Execution<void, SpecCompleteResponse[]> {
     const deferredSpecCaptureExecution = new DeferredExecution<void, SpecCompleteResponse[]>();
     const futureSpecCaptureExecution = deferredSpecCaptureExecution.execution();
+
+    const testEventIntervalTimeout = this.debugStatusResolver.isDebugging()
+      ? undefined
+      : KARMA_TEST_EVENT_INTERVAL_TIMEOUT;
 
     const testRunStartHandler = (startedTestRunId?: string) => {
       if (startedTestRunId !== testRunId) {
@@ -74,12 +91,12 @@ export class KarmaTestRunProcessor implements Disposable {
         return;
       }
       this.logger.debug(() => `Starting test capture session for current requested test run Id: ${testRunId}`);
-
       deferredSpecCaptureExecution.start();
-      const futureProcessingResults = this.primaryTestEventProcessor.processTestEvents(
-        testNames,
-        testEventProcessingOptions
-      );
+
+      const futureProcessingResults = this.primaryTestEventProcessor.processTestEvents(testNames, {
+        ...testEventProcessingOptions,
+        testEventIntervalTimeout
+      });
 
       futureProcessingResults.then(results => deferredSpecCaptureExecution.end(results.processedSpecs));
 
@@ -197,9 +214,9 @@ export class KarmaTestRunProcessor implements Disposable {
       if (!this.primaryTestEventProcessor.isProcessing() && this.watchModeTestEventProcessor) {
         const futureWatchModeProcessingCompletion = this.watchModeTestEventProcessor.beginProcessing();
 
-        this.notifications.notifyStatus(
+        this.notificationHandler.notifyStatus(
           StatusType.Busy,
-          'Watch mode running tests in background...',
+          'Running tests in background',
           futureWatchModeProcessingCompletion
         );
       }

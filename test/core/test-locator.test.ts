@@ -61,8 +61,9 @@ describe('TestLocator', () => {
     describe.each(fileGlobTestData)('and $globPathStyle style globs', ({ mockFileGlobs }) => {
       let testLocator: TestLocator;
 
-      beforeEach(() => {
-        testLocator = new TestLocator(mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
+      beforeEach(async () => {
+        testLocator = new TestLocator('/', mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
+        await testLocator.refreshFiles();
       });
 
       describe('the get test definitions method', () => {
@@ -100,10 +101,7 @@ describe('TestLocator', () => {
       describe('and using more complex test file content with nesting and some identical descriptions', () => {
         const mockTestFilePath = 'path/to/random/test/file';
 
-        beforeEach(() => {
-          mockResolvedGlobFiles = [mockTestFilePath];
-          testLocator = new TestLocator(mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
-
+        beforeEach(async () => {
           mockTestFileParser.parseFileText.mockReturnValue(<RegexTestFileParserResult>{
             Suite: [
               {
@@ -152,6 +150,10 @@ describe('TestLocator', () => {
               }
             ]
           });
+
+          mockResolvedGlobFiles = [mockTestFilePath];
+          testLocator = new TestLocator('/', mockFileGlobs, testDefinitionProvider, mockFileHandler, mockLogger);
+          await testLocator.refreshFiles();
         });
 
         describe('the get test definitions method', () => {

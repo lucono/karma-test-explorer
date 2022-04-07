@@ -4,7 +4,8 @@ import { ExtensionConfig } from '../../core/config/extension-config';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { SimpleLogger } from '../../util/logging/simple-logger';
-import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
+import { ProcessHandler } from '../../util/process/process-handler';
+import { ProcessLog } from '../../util/process/process-log';
 import { AngularTestServerExecutor, AngularTestServerExecutorOptions } from '../angular/angular-test-server-executor';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
 import { AngularProject } from './angular-project';
@@ -17,7 +18,6 @@ export type AngularFactoryConfig = Pick<
   | 'baseKarmaConfFilePath'
   | 'browser'
   | 'customLauncher'
-  | 'defaultAngularProjectName'
   | 'environment'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
@@ -32,7 +32,8 @@ export class AngularFactory implements Partial<TestFactory> {
   public constructor(
     private readonly factoryConfig: AngularFactoryConfig,
     private readonly angularProject: AngularProject,
-    private readonly serverProcessLog: CommandLineProcessLog,
+    private readonly processHandler: ProcessHandler,
+    private readonly serverProcessLog: ProcessLog,
     private readonly logger: SimpleLogger
   ) {
     this.disposables.push(this.logger);
@@ -43,7 +44,7 @@ export class AngularFactory implements Partial<TestFactory> {
 
     this.logger.info(
       () =>
-        `Using default Angular project '${this.angularProject.name}' ` +
+        `Using Angular project '${this.angularProject.name}' ` +
         `at root path '${this.angularProject.rootPath}' ` +
         `and karma config file '${this.angularProject.karmaConfigPath}'`
     );
@@ -71,6 +72,7 @@ export class AngularFactory implements Partial<TestFactory> {
       this.angularProject,
       this.factoryConfig.projectRootPath,
       this.factoryConfig.baseKarmaConfFilePath,
+      this.processHandler,
       new SimpleLogger(this.logger, AngularTestServerExecutor.name),
       options
     );

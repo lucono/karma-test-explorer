@@ -4,11 +4,8 @@ import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Execution } from '../../../util/future/execution';
 import { SimpleLogger } from '../../../util/logging/simple-logger';
-import {
-  CommandLineProcessHandler,
-  CommandLineProcessHandlerOptions,
-  CommandLineProcessLogOutput
-} from '../../../util/process/command-line-process-handler';
+import { ProcessHandler } from '../../../util/process/process-handler';
+import { SimpleProcessOptions } from '../../../util/process/simple-process';
 import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
@@ -23,12 +20,13 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
 
   public constructor(
     private readonly projectRootPath: string,
-    private readonly options: KarmaCommandLineTestRunExecutorOptions,
-    private readonly logger: SimpleLogger
+    private readonly processHandler: ProcessHandler,
+    private readonly logger: SimpleLogger,
+    private readonly options: KarmaCommandLineTestRunExecutorOptions
   ) {}
 
   public executeTestRun(karmaPort: number, clientArgs: string[]): Execution {
-    const runOptions: CommandLineProcessHandlerOptions = {
+    const runOptions: SimpleProcessOptions = {
       cwd: this.projectRootPath,
       shell: false,
       env: this.options.environment,
@@ -66,18 +64,7 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
     const escapedClientArgs: string[] = clientArgs.map(arg => this.shellEscape(arg));
     processArguments = [...processArguments, 'run', '--port', `${karmaPort}`, '--', ...escapedClientArgs];
 
-    const commandLineProcessLogger = new SimpleLogger(
-      this.logger,
-      `${KarmaCommandLineTestRunExecutor.name}::${CommandLineProcessHandler.name}`
-    );
-
-    const karmaServerProcess = new CommandLineProcessHandler(
-      command,
-      processArguments,
-      commandLineProcessLogger,
-      CommandLineProcessLogOutput.None,
-      runOptions
-    );
+    const karmaServerProcess = this.processHandler.spawn(command, processArguments, runOptions);
 
     return karmaServerProcess.execution();
   }

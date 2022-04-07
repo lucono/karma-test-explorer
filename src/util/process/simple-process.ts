@@ -1,3 +1,4 @@
+import { Promise as RichPromise } from 'bluebird';
 import { ChildProcess, spawn, SpawnOptions } from 'child_process';
 import treeKill from 'tree-kill';
 import { Disposable } from '../disposable/disposable';
@@ -6,64 +7,62 @@ import { DeferredExecution } from '../future/deferred-execution';
 import { Execution } from '../future/execution';
 import { Logger } from '../logging/logger';
 import { generateRandomId } from '../utils';
-import { CommandLineProcessLog } from './command-line-process-log';
+import { Process } from './process';
+import { ProcessLog } from './process-log';
 
-export enum CommandLineProcessLogOutput {
+export enum SimpleProcessLogOutput {
   Parent = 'Parent',
   None = 'None'
 }
 
-export interface CommandLineProcessHandlerOptions extends SpawnOptions {
+export interface SimpleProcessOptions extends SpawnOptions {
   failOnStandardError?: boolean;
+  processLog?: ProcessLog | SimpleProcessLogOutput;
+  parentProcessName?: string;
 }
 
-const DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS: CommandLineProcessHandlerOptions = {
+const DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS: SimpleProcessOptions = {
   windowsHide: true,
-  failOnStandardError: false
+  failOnStandardError: false,
+  processLog: SimpleProcessLogOutput.Parent
 };
 
-export class CommandLineProcessHandler implements Disposable {
+const allActiveProcesses: Set<SimpleProcess> = new Set();
+
+export class SimpleProcess implements Process {
   private readonly uid: string;
-  private childProcess: ChildProcess | undefined;
+  private childProcess: ChildProcess;
   private processExecution: Execution;
   private isRunning: boolean = false;
   private processCurrentlyStopping: Promise<void> | undefined;
   private disposables: Disposable[] = [];
 
-  // FIXME: Don't automatically run on instantiation. Use immutable UID that is
-  // created on instantiation for the life of the object. Use start() method that
-  // will execute the process and return a promise of successful start, which if
-  // resolves successfully, returns a handle to an object for stopping the process.
-  // Remove the stop method from the actual handler object, which is replaced by
-  // the return value of the resolved call to the start() method. The methods
-  // should probably not be start and stop, but run() and terminate() instead.
-
   public constructor(
     command: string,
     processArguments: string[],
     private readonly logger: Logger,
-    processLog: CommandLineProcessLog | CommandLineProcessLogOutput = CommandLineProcessLogOutput.Parent,
-    options?: CommandLineProcessHandlerOptions
+    options?: SimpleProcessOptions
   ) {
+    allActiveProcesses.add(this);
     this.uid = generateRandomId();
     const deferredProcessExecution = new DeferredExecution();
     const commandWithArgs = `${command} ${processArguments.join(' ')}`;
 
-    const runOptions: CommandLineProcessHandlerOptions = {
+    const runOptions: SimpleProcessOptions = {
       ...DEFAULT_COMMAND_LINE_PROCESS_HANDLER_OPTIONS,
       ...options
     };
-    const parentProcessLog: CommandLineProcessLog = {
+    const parentProcessLog: ProcessLog = {
       output: data => logger.info(() => `[Process ${this.uid}][stdout]: ${data()}`),
       error: data => logger.error(() => `[Process ${this.uid}][stderr]: ${data()}`)
     };
 
     const childProcessLog =
-      processLog === CommandLineProcessLogOutput.Parent
+      runOptions.processLog === SimpleProcessLogOutput.Parent
         ? parentProcessLog
-        : processLog === CommandLineProcessLogOutput.None
+        : runOptions.processLog === SimpleProcessLogOutput.None
         ? undefined
-        : processLog;
+        : runOptions.processLog;
 
     this.logger.debug(
       () =>
@@ -140,10 +139,16 @@ export class CommandLineProcessHandler implements Disposable {
   }
 
   public async stop(): Promise<void> {
-    return this.kill('SIGTERM');
+    return this.terminate('SIGTERM');
   }
 
-  private async kill(signal: string = 'SIGKILL'): Promise<void> {
+  public async kill(): Promise<void> {
+    return this.terminate('SIGKILL');
+  }
+
+  private async terminate(signal: string): Promise<void> {
+    allActiveProcesses.delete(this);
+
     if (!this.isProcessRunning()) {
       this.logger.info(() => `Process ${this.uid} - Request to kill process - Process already exited`);
       return;
@@ -161,7 +166,7 @@ export class CommandLineProcessHandler implements Disposable {
     const runningProcess = this.childProcess!;
     this.logger.debug(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
-    const futureProcessTermination = new Promise<void>((resolve, reject) => {
+    const futureProcessTermination = new RichPromise<void>((resolve, reject) => {
       const processPid = runningProcess.pid;
 
       if (!processPid) {
@@ -203,7 +208,13 @@ export class CommandLineProcessHandler implements Disposable {
   }
 
   public async dispose() {
-    this.stop();
+    this.kill();
     await Disposer.dispose(this.disposables);
+  }
+
+  public static async terminateAll() {
+    const futureProcessTerminations = [...allActiveProcesses].map(processHandler => processHandler.kill());
+    const futureTerminationCompletion = RichPromise.allSettled(futureProcessTerminations);
+    await futureTerminationCompletion;
   }
 }

@@ -1,23 +1,30 @@
 import { getPorts } from 'portfinder';
-import { Disposable } from './disposable/disposable';
-import { Disposer } from './disposable/disposer';
-import { Logger } from './logging/logger';
+import { Disposable } from '../disposable/disposable';
+import { Disposer } from '../disposable/disposer';
+import { Logger } from '../logging/logger';
+import { MultiLogger } from '../logging/multi-logger';
 
 export class PortAcquisitionManager implements Disposable {
   private assignedPorts: Set<number> = new Set();
 
   public constructor(private readonly logger: Logger) {}
 
-  public async findAvailablePort(basePort: number, futurePortRelease: Promise<unknown>): Promise<number> {
-    const singlePortArray: number[] = await this.findAvailablePorts(basePort, futurePortRelease, 1);
+  public async findAvailablePort(
+    basePort: number,
+    futurePortRelease: Promise<unknown>,
+    clientLogger?: Logger
+  ): Promise<number> {
+    const singlePortArray: number[] = await this.findAvailablePorts(basePort, futurePortRelease, 1, clientLogger);
     return singlePortArray[0];
   }
 
   public async findAvailablePorts(
     basePort: number,
     futurePortRelease: Promise<unknown>,
-    portCount: number = 1
+    portCount: number = 1,
+    clientLogger?: Logger
   ): Promise<number[]> {
+    const requestLogger = new MultiLogger(clientLogger, this.logger);
     const foundPorts: number[] = [];
     let nextBasePort = basePort;
 
@@ -42,14 +49,15 @@ export class PortAcquisitionManager implements Disposable {
     foundPorts.forEach(port => this.assignedPorts.add(port));
 
     futurePortRelease.then(() => {
-      this.logger.debug(() => `Releasing ports: ${foundPorts.join(', ')}`);
+      requestLogger.debug(() => `Releasing ports: ${foundPorts.join(', ')}`);
       foundPorts.forEach(port => this.assignedPorts.delete(port));
     });
 
-    this.logger.debug(
+    requestLogger.debug(
       () => `Request for ${portCount} port(s) at base port ${basePort} acquired: ${foundPorts.join(', ')}`
     );
-    this.logger.trace(() => `Current assigned ports: ${[...this.assignedPorts].join(', ')}`);
+    requestLogger.trace(() => `Current assigned ports: ${[...this.assignedPorts].join(', ')}`);
+    requestLogger.dispose();
 
     return foundPorts;
   }

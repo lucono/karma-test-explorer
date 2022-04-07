@@ -1,8 +1,7 @@
 import { EventEmitter } from 'vscode';
-import { TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
+import { RetireEvent, TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
 import { TestDefinition } from '../../../core/base/test-definition';
 import { TestResultEvent } from '../../../core/base/test-events';
-import { TestGrouping } from '../../../core/base/test-grouping';
 import { TestType } from '../../../core/base/test-infos';
 import { TestResults } from '../../../core/base/test-results';
 import { TestState } from '../../../core/base/test-state';
@@ -10,7 +9,7 @@ import { TestStatus } from '../../../core/base/test-status';
 import { TestHelper } from '../../../core/test-helper';
 import { TestLocator } from '../../../core/test-locator';
 import { StoredTestResolver } from '../../../core/test-store';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
+import { TestSuiteFolderGroupingOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { FileHandler } from '../../../util/file-handler';
@@ -25,27 +24,30 @@ import { TestBuilder } from './test-builder';
 const defaultEventProcessingOptions: TestEventProcessingOptions = {
   filterTestEvents: [],
   emitTestEvents: Object.values(TestStatus),
-  emitTestStats: true
+  emitTestStats: true,
+  retireExcludedTests: false
 };
 
 export interface TestEventProcessingOptions {
-  filterTestEvents?: TestStatus[];
-  emitTestEvents?: TestStatus[];
-  emitTestStats?: boolean;
-  testEventIntervalTimeout?: number;
+  readonly filterTestEvents?: TestStatus[];
+  readonly emitTestEvents?: TestStatus[];
+  readonly emitTestStats?: boolean;
+  readonly retireExcludedTests?: boolean;
+  readonly testEventIntervalTimeout?: number;
 }
 
 export interface TestEventProcessingResults {
-  processedSpecs: SpecCompleteResponse[];
-  filteredEvents: TestEvent[];
+  readonly processedSpecs: SpecCompleteResponse[];
+  readonly filteredEvents: TestEvent[];
 }
 
 interface ProcessingInfo {
-  testNames: string[];
-  eventProcessingOptions: TestEventProcessingOptions;
-  processedTestResults: Map<string, SpecCompleteResponse>;
-  filteredTestResultEvents: Map<string, TestEvent>;
-  deferredProcessingResults: DeferredPromise<TestEventProcessingResults>;
+  readonly testNames: string[];
+  readonly eventProcessingOptions: TestEventProcessingOptions;
+  readonly processedTestResults: Map<string, SpecCompleteResponse>;
+  readonly filteredTestResultEvents: Map<string, TestEvent>;
+  readonly excludedTestResults: SpecCompleteResponse[];
+  readonly deferredProcessingResults: DeferredPromise<TestEventProcessingResults>;
 }
 
 export class KarmaTestEventProcessor {
@@ -54,11 +56,11 @@ export class KarmaTestEventProcessor {
 
   public constructor(
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
+    private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     private readonly testBuilder: TestBuilder,
     private readonly testSuiteOrganizer: TestSuiteOrganizer,
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testLocator: TestLocator,
-    private readonly testGrouping: TestGrouping,
     private readonly testResolver: StoredTestResolver,
     private readonly fileHandler: FileHandler,
     private readonly testHelper: TestHelper,
@@ -86,7 +88,8 @@ export class KarmaTestEventProcessor {
       eventProcessingOptions,
       deferredProcessingResults,
       processedTestResults: new Map(),
-      filteredTestResultEvents: new Map()
+      filteredTestResultEvents: new Map(),
+      excludedTestResults: []
     };
 
     const testEventIntervalTimeout = eventProcessingOptions.testEventIntervalTimeout;
@@ -112,6 +115,7 @@ export class KarmaTestEventProcessor {
         filteredEvents: Array.from(this.currentProcessingInfo.filteredTestResultEvents.values())
       };
       this.currentProcessingInfo.deferredProcessingResults!.fulfill(processedResults);
+      this.retireExcludedTests();
       this.emitTestSuiteEvents();
     }
 
@@ -155,6 +159,7 @@ export class KarmaTestEventProcessor {
 
     if (!this.isIncludedTest(testResult)) {
       this.logger.debug(() => `Skipping spec id '${testId}' - Not included in current test run`);
+      this.currentProcessingInfo?.excludedTestResults.push(testResult);
       return;
     }
     const processedTest = this.currentProcessingInfo!.processedTestResults.get(testId);
@@ -282,6 +287,23 @@ export class KarmaTestEventProcessor {
     this.testResultEventEmitter.fire(testResultEvent);
   }
 
+  private retireExcludedTests() {
+    if (!this.currentProcessingInfo?.eventProcessingOptions.retireExcludedTests) {
+      return;
+    }
+    const excludedTestIds = this.currentProcessingInfo.excludedTestResults.map(excludedSpec => excludedSpec.id);
+
+    if (excludedTestIds.length === 0) {
+      return;
+    }
+
+    this.logger.debug(() => `Retiring ${excludedTestIds.length ?? 0} excluded test ids`);
+    this.logger.trace(() => `Excluded test ids to retire: ${JSON.stringify(excludedTestIds)}`);
+
+    const testRetireEvent: RetireEvent = { tests: excludedTestIds };
+    this.testRetireEventEmitter.fire(testRetireEvent);
+  }
+
   private emitTestSuiteEvents() {
     if (!this.currentProcessingInfo?.eventProcessingOptions.emitTestStats) {
       return;
@@ -301,16 +323,15 @@ export class KarmaTestEventProcessor {
     const passedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Success]);
     const skippedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Skipped]);
 
-    const testOrganizationOptions: TestSuiteOrganizationOptions = {
-      testGrouping: this.testGrouping,
+    const folderGroupingOptions: TestSuiteFolderGroupingOptions = {
       flattenSingleChildFolders: false,
       flattenSingleSuiteFiles: false
     };
 
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(failedTests, testOrganizationOptions),
-      Success: this.testSuiteOrganizer.organizeTests(passedTests, testOrganizationOptions),
-      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, testOrganizationOptions)
+      Failed: this.testSuiteOrganizer.organizeTests(failedTests, folderGroupingOptions),
+      Success: this.testSuiteOrganizer.organizeTests(passedTests, folderGroupingOptions),
+      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, folderGroupingOptions)
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);

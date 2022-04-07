@@ -68,18 +68,24 @@ export class FileHandler implements Disposable {
   }
 
   public async resolveFileGlobs(filePatterns: string[], globOptions: globby.GlobbyOptions = {}): Promise<string[]> {
-    const searchOptions = { ...DEFAULT_GLOB_OPTIONS, ...this.fileHandlerOptions, ...globOptions };
-    const files = (await globby(filePatterns, searchOptions)).map(file => normalizePath(file));
+    try {
+      const searchOptions = { ...DEFAULT_GLOB_OPTIONS, ...this.fileHandlerOptions, ...globOptions };
+      const files = (await globby(filePatterns, searchOptions)).map(file => normalizePath(file));
 
-    this.logger.debug(() => `Resolved ${files.length} file(s) from file patterns: ${JSON.stringify(filePatterns)}`);
+      this.logger.debug(() => `Resolved ${files.length} file(s) from file patterns: ${JSON.stringify(filePatterns)}`);
 
-    this.logger.trace(
-      () =>
-        `List of resolved files from file patterns: ${JSON.stringify(filePatterns)} ` +
-        `using options: ${JSON.stringify(searchOptions, null, 2)} ` +
-        `are: ${JSON.stringify(files, null, 2)}`
-    );
-    return files;
+      this.logger.trace(
+        () =>
+          `List of resolved files from file patterns: ${JSON.stringify(filePatterns)} ` +
+          `using options: ${JSON.stringify(searchOptions, null, 2)} ` +
+          `are: ${JSON.stringify(files, null, 2)}`
+      );
+      return files;
+    } catch (error) {
+      const errorMsg = `Failed to resolve files from file patterns: ${JSON.stringify(filePatterns)}: \n${error}`;
+      this.logger.error(() => errorMsg);
+      throw new Error(errorMsg);
+    }
   }
 
   public getFileRelativePath(fileAbsolutePath: string) {

@@ -3,7 +3,7 @@ import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { TestGrouping } from '../../../src/core/base/test-grouping';
 import { TestSuiteType, TestType } from '../../../src/core/base/test-infos';
 import { TestHelper } from '../../../src/core/test-helper';
-import { TestSuiteOrganizationOptions, TestSuiteOrganizer } from '../../../src/core/util/test-suite-organizer';
+import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from '../../../src/core/util/test-suite-organizer';
 import '../../../src/types/vscode-test-adapter-api';
 import { Logger } from '../../../src/util/logging/logger';
 import { asTestSuiteWithUnixStylePaths as withUnixPaths } from '../../test-util';
@@ -27,7 +27,7 @@ describe('TestSuiteOrganizer', () => {
 
   describe('organizeTests method', () => {
     let originalTests: (TestInfo | TestSuiteInfo)[];
-    let organizationOptions: TestSuiteOrganizationOptions;
+    let organizationOptions: TestSuiteOrganizerOptions;
 
     beforeEach(() => {
       originalTests = [
@@ -69,7 +69,7 @@ describe('TestSuiteOrganizer', () => {
           expect.objectContaining({
             type: TestType.Suite,
             id: ':',
-            label: 'Karma tests',
+            label: 'Karma Tests',
             name: '',
             fullName: ''
           })
@@ -93,7 +93,7 @@ describe('TestSuiteOrganizer', () => {
           expect.objectContaining({
             type: TestType.Suite,
             id: ':',
-            label: 'Karma tests',
+            label: 'Karma Tests',
             name: '',
             fullName: ''
           })
