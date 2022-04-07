@@ -33,6 +33,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 ### Fixed
 
 - Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/25) in which the Karma server is not always terminated after VSCode is closed
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/22) with unexpected test pass/fail highlighting behavior
 - Addressed [CVE-2022-21704](https://github.com/advisories/GHSA-82v2-mx6x-wq7q), [CVE-2022-21676](https://github.com/advisories/GHSA-273r-mgr4-v34f), and [CVE-2022-21670](https://github.com/advisories/GHSA-6vfc-qv3f-vr6c) security vulnerabilities from transitive dependencies
 
 
