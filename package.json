@@ -5,7 +5,7 @@
   "icon": "docs/img/extension-icon-128.png",
   "author": "Lucas Ononiwu",
   "publisher": "lucono",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "license": "MIT",
   "homepage": "https://github.com/lucono/karma-test-explorer",
   "repository": {
@@ -64,7 +64,8 @@
     "tslib": "^2.3.1",
     "vscode-test-adapter-api": "^1.9.0",
     "vscode-test-adapter-util": "^0.7.1",
-    "which": "^2.0.2"
+    "which": "^2.0.2",
+    "minimist": "^1.2.6"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.36",
@@ -82,7 +83,7 @@
     "@types/which": "^2.0.1",
     "@typescript-eslint/eslint-plugin": "^5.14.0",
     "@typescript-eslint/parser": "^5.14.0",
-    "esbuild": "^0.14.25",
+    "esbuild": "^0.14.32",
     "eslint": "^8.11.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-jest": "^26.1.1",
@@ -94,7 +95,8 @@
     "prettier-plugin-organize-imports": "^2.3.4",
     "ts-jest": "^27.1.3",
     "typescript": "^4.6.2",
-    "vsce": "^2.7.0"
+    "vsce": "^2.7.0",
+    "simple-get": "^3.1.1"
   },
   "engines": {
     "vscode": "^1.63.0"
@@ -133,10 +135,20 @@
           "scope": "resource"
         },
         "karmaTestExplorer.defaultAngularProjectName": {
+          "deprecationMessage": "This is deprecated. Use the `karmaTestExplorer.defaultAngularProjects` setting instead",
           "description": "The default Angular project to be loaded for testing. If not specified, the default project specified in `angular.json` is loaded instead",
           "type": "string",
           "scope": "resource",
           "default": ""
+        },
+        "karmaTestExplorer.defaultAngularProjects": {
+          "description": "The projects in the Angular workspace to be loaded by default for testing. If not specified, the default project specified in `angular.json` is loaded instead",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "scope": "resource",
+          "default": []
         },
         "karmaTestExplorer.angularProcessCommand": {
           "description": "The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default",
@@ -234,7 +246,7 @@
           ]
         },
         "karmaTestExplorer.testsBasePath": {
-          "description": "The base folder containing the test files (relative to `projectRootPath`)",
+          "description": "The base folder containing the test files (relative to `projectRootPath` for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects)",
           "type": "string",
           "scope": "resource",
           "default": ""
@@ -499,27 +511,19 @@
     },
     "commands": [
       {
-        "command": "karmaTestExplorer.AddProject",
-        "title": "Add project…",
-        "icon": "$(add)"
-      },
-      {
-        "command": "karmaTestExplorer.RemoveProject",
-        "title": "Remove project…",
-        "icon": "$(remove)"
+        "command": "karmaTestExplorer.SelectProjects",
+        "title": "Select projects for testing…",
+        "icon": "$(folder)",
+        "category": "Karma Test Explorer",
+        "enablement": "karmaTestExplorer.allowProjectSelection"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "karmaTestExplorer.AddProject",
+          "command": "karmaTestExplorer.SelectProjects",
           "group": "navigation@0",
-          "when": "view == test-explorer && karmaTestExplorer.projectsAvailableToAdd"
-        },
-        {
-          "command": "karmaTestExplorer.RemoveProject",
-          "group": "navigation@0",
-          "when": "view == test-explorer && karmaTestExplorer.projectsAvailableToRemove"
+          "when": "view == test-explorer && karmaTestExplorer.allowProjectSelection"
         }
       ]
     }

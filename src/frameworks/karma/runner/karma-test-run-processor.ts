@@ -1,6 +1,6 @@
 import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../../../constants';
 import { TestStatus } from '../../../core/base/test-status';
-import { Notifications, StatusType } from '../../../core/vscode/notifications';
+import { NotificationHandler, StatusType } from '../../../core/vscode/notifications/notification-handler';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredExecution } from '../../../util/future/deferred-execution';
@@ -40,7 +40,7 @@ export class KarmaTestRunProcessor implements Disposable {
   public constructor(
     private readonly primaryTestEventProcessor: KarmaTestEventProcessor,
     private readonly watchModeTestEventProcessor: KarmaAutoWatchTestEventProcessor | undefined,
-    private readonly notifications: Notifications,
+    private readonly notificationHandler: NotificationHandler,
     private readonly debugStatusResolver: DebugStatusResolver,
     private readonly testDiscoveryEventProcessingOptions: TestEventProcessingOptions,
     private readonly testRunEventProcessingOptions: TestEventProcessingOptions,
@@ -214,9 +214,9 @@ export class KarmaTestRunProcessor implements Disposable {
       if (!this.primaryTestEventProcessor.isProcessing() && this.watchModeTestEventProcessor) {
         const futureWatchModeProcessingCompletion = this.watchModeTestEventProcessor.beginProcessing();
 
-        this.notifications.notifyStatus(
+        this.notificationHandler.notifyStatus(
           StatusType.Busy,
-          'Watch mode running tests in background...',
+          'Running tests in background',
           futureWatchModeProcessingCompletion
         );
       }

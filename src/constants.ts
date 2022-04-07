@@ -4,7 +4,7 @@ import { LogLevel } from './util/logging/log-level';
 export const EXTENSION_NAME = 'Karma Test Explorer';
 export const EXTENSION_CONFIG_PREFIX = 'karmaTestExplorer';
 export const EXTENSION_OUTPUT_CHANNEL_NAME = EXTENSION_NAME;
-export const DEFAULT_LOG_LEVEL = LogLevel.DEBUG;
+export const DEFAULT_LOG_LEVEL = LogLevel.INFO;
 export const DEBUG_SESSION_START_TIMEOUT = 1000 * 15;
 export const STATUS_BAR_MESASGE_MIN_DURATION = 1000 * 60;
 export const STATUS_BAR_MESASGE_MAX_DURATION = 1000 * 60 * 15;

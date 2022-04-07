@@ -69,7 +69,7 @@ describe('TestSuiteOrganizer', () => {
           expect.objectContaining({
             type: TestType.Suite,
             id: ':',
-            label: 'Karma tests',
+            label: 'Karma Tests',
             name: '',
             fullName: ''
           })
@@ -93,7 +93,7 @@ describe('TestSuiteOrganizer', () => {
           expect.objectContaining({
             type: TestType.Suite,
             id: ':',
-            label: 'Karma tests',
+            label: 'Karma Tests',
             name: '',
             fullName: ''
           })

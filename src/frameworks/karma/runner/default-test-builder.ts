@@ -2,7 +2,7 @@ import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants';
 import { TestDefinition, TestDefinitionState } from '../../../core/base/test-definition';
 import { TestType } from '../../../core/base/test-infos';
-import { ExternalConfigSetting } from '../../../core/config/config-setting';
+import { WorkspaceConfigSetting } from '../../../core/config/config-setting';
 import { TestHelper } from '../../../core/test-helper';
 import { TestDefinitionInfo, TestLocator } from '../../../core/test-locator';
 import { TestActiveState } from '../../../types/vscode-test-adapter-api';
@@ -132,7 +132,7 @@ export class DefaultTestBuilder implements TestBuilder {
           `within your project. This can occur if the test uses parameterization ` +
           `or a computed test description, or if the file in which this test is ` +
           `defined is not captured by the glob pattern specified by your ` +
-          `'${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.TestFiles}' setting.`;
+          `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.TestFiles}' setting.`;
       } else if (matchingTestDefinitions.length > 1) {
         errored = true;
         let duplicateSpecCounter = 0;
@@ -181,7 +181,7 @@ export class DefaultTestBuilder implements TestBuilder {
       if (!this.options.showUnmappedTests) {
         this.logger.debug(
           () =>
-            `'${ExternalConfigSetting.ShowUnmappedTests}' setting is false - ` +
+            `'${WorkspaceConfigSetting.ShowUnmappedTests}' setting is false - ` +
             `Skipping spec with undetermined source file and spec Id: ${spec.id}`
         );
         return undefined;
@@ -193,7 +193,7 @@ export class DefaultTestBuilder implements TestBuilder {
     if (this.options.excludeDisabledTests && testDefinition?.disabled === true) {
       this.logger.debug(
         () =>
-          `'${ExternalConfigSetting.ExcludeDisabledTests}' setting is true - ` +
+          `'${WorkspaceConfigSetting.ExcludeDisabledTests}' setting is true - ` +
           `Skipping disabled test with spec Id: ${spec.id}`
       );
       return undefined;
@@ -213,7 +213,7 @@ export class DefaultTestBuilder implements TestBuilder {
     if (this.options.showOnlyFocusedTests && !testIsFocusable) {
       this.logger.debug(
         () =>
-          `'${ExternalConfigSetting.ShowOnlyFocusedTests}' setting is true - ` +
+          `'${WorkspaceConfigSetting.ShowOnlyFocusedTests}' setting is true - ` +
           `Skipping unfocusable test with spec Id: ${spec.id}`
       );
       return undefined;

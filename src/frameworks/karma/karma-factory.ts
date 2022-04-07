@@ -8,7 +8,8 @@ import { ExtensionConfig, TestTriggerMethod } from '../../core/config/extension-
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { SimpleLogger } from '../../util/logging/simple-logger';
-import { CommandLineProcessLog } from '../../util/process/command-line-process-log';
+import { ProcessHandler } from '../../util/process/process-handler';
+import { ProcessLog } from '../../util/process/process-log';
 import { KarmaEnvironmentVariable } from './karma-environment-variable';
 import {
   KarmaCommandLineTestRunExecutor,
@@ -48,7 +49,8 @@ export class KarmaFactory implements TestFactory, Disposable {
   public constructor(
     private readonly testFramework: TestFramework,
     private readonly factoryConfig: KarmaFactoryConfig,
-    private readonly serverProcessLog: CommandLineProcessLog,
+    private readonly processHandler: ProcessHandler,
+    private readonly serverProcessLog: ProcessLog,
     private readonly logger: SimpleLogger
   ) {
     this.disposables.push(this.logger);
@@ -115,8 +117,9 @@ export class KarmaFactory implements TestFactory, Disposable {
 
     const testRunExecutor = new KarmaCommandLineTestRunExecutor(
       this.factoryConfig.projectRootPath,
-      options,
-      this.createLogger(KarmaCommandLineTestRunExecutor.name)
+      this.processHandler,
+      this.createLogger(KarmaCommandLineTestRunExecutor.name),
+      options
     );
     this.disposables.push(testRunExecutor);
     return testRunExecutor;
@@ -148,8 +151,9 @@ export class KarmaFactory implements TestFactory, Disposable {
       this.factoryConfig.projectRootPath,
       this.factoryConfig.baseKarmaConfFilePath,
       this.factoryConfig.userKarmaConfFilePath,
-      options,
-      this.createLogger(KarmaCommandLineTestServerExecutor.name)
+      this.processHandler,
+      this.createLogger(KarmaCommandLineTestServerExecutor.name),
+      options
     );
     this.disposables.push(testServerExecutor);
     return testServerExecutor;

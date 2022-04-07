@@ -1,22 +1,19 @@
 import { join } from 'path';
-import { ServerStopExecutor, TestServerExecutor } from '../../../api/test-server-executor';
+import { TestServerExecutor } from '../../../api/test-server-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { Execution } from '../../../util/future/execution';
 import { SimpleLogger } from '../../../util/logging/simple-logger';
-import {
-  CommandLineProcessHandler,
-  CommandLineProcessHandlerOptions
-} from '../../../util/process/command-line-process-handler';
-import { CommandLineProcessLog } from '../../../util/process/command-line-process-log';
+import { Process } from '../../../util/process/process';
+import { ProcessHandler } from '../../../util/process/process-handler';
+import { ProcessLog } from '../../../util/process/process-log';
+import { SimpleProcessOptions } from '../../../util/process/simple-process';
 import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 
 export interface KarmaCommandLineTestServerExecutorOptions {
   environment: { readonly [key: string]: string | undefined };
   karmaProcessCommand?: string;
-  serverProcessLog?: CommandLineProcessLog;
+  serverProcessLog?: ProcessLog;
   failOnStandardError?: boolean;
   allowGlobalPackageFallback?: boolean;
 }
@@ -28,17 +25,14 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     private readonly projectRootPath: string,
     private readonly baseKarmaConfigFile: string,
     private readonly userKarmaConfigFile: string,
-    private readonly options: KarmaCommandLineTestServerExecutorOptions,
-    private readonly logger: SimpleLogger
+    private readonly processHandler: ProcessHandler,
+    private readonly logger: SimpleLogger,
+    private readonly options: KarmaCommandLineTestServerExecutorOptions
   ) {
     this.disposables.push(logger);
   }
 
-  public executeServerStart(
-    karmaPort: number,
-    karmaSocketPort: number,
-    debugPort?: number
-  ): Execution<ServerStopExecutor> {
+  public executeServerStart(karmaPort: number, karmaSocketPort: number, debugPort?: number): Process {
     this.logger.debug(
       () => `Executing server start with karma port '${karmaPort}' and karma socket port '${karmaSocketPort}'`
     );
@@ -54,11 +48,13 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       environment[KarmaEnvironmentVariable.DebugPort] = `${debugPort}`;
     }
 
-    const runOptions: CommandLineProcessHandlerOptions = {
+    const runOptions: SimpleProcessOptions = {
       cwd: this.projectRootPath,
       shell: false,
       env: environment,
-      failOnStandardError: this.options.failOnStandardError
+      failOnStandardError: this.options.failOnStandardError,
+      parentProcessName: KarmaCommandLineTestServerExecutor.name,
+      processLog: this.options.serverProcessLog
     };
 
     const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
@@ -91,42 +87,10 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
 
     processArguments = [...processArguments, 'start', this.baseKarmaConfigFile, '--no-single-run'];
 
-    const commandLineProcessLogger = new SimpleLogger(
-      this.logger,
-      `${KarmaCommandLineTestServerExecutor.name}::${CommandLineProcessHandler.name}`
-    );
-
-    const karmaServerProcess = new CommandLineProcessHandler(
-      command,
-      processArguments,
-      commandLineProcessLogger,
-      this.options.serverProcessLog,
-      runOptions
-    );
+    const karmaServerProcess = this.processHandler.spawn(command, processArguments, runOptions);
     this.disposables.push(karmaServerProcess);
 
-    const serverStopper: ServerStopExecutor = {
-      executeServerStop: async () => karmaServerProcess.stop()
-    };
-
-    const deferredServerExecution = new DeferredExecution<ServerStopExecutor>();
-
-    karmaServerProcess
-      .execution()
-      .started()
-      .then(() => deferredServerExecution.start(serverStopper));
-
-    karmaServerProcess
-      .execution()
-      .ended()
-      .then(() => deferredServerExecution.end());
-
-    karmaServerProcess
-      .execution()
-      .failed()
-      .then(reason => deferredServerExecution.fail(reason));
-
-    return deferredServerExecution.execution();
+    return karmaServerProcess;
   }
 
   public async dispose() {

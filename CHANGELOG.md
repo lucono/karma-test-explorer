@@ -7,13 +7,33 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
-  - [0.5.0 - Jan 23, 2021](#050---jan-23-2022)
+  - [0.6.0 - Apr 6, 2022](#060---apr-6-2022)
+  - [0.5.0 - Jan 23, 2022](#050---jan-23-2022)
   - [0.4.0 - Dec 5, 2021](#040---dec-5-2021)
   - [0.3.0 - Nov 6, 2021](#030---nov-6-2021)
   - [0.2.1 - Oct 24, 2021](#021---oct-24-2021)
   - [0.2.0 - Oct 13, 2021](#020---oct-13-2021)
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
+
+
+---
+## [0.6.0] - Apr 6, 2022
+
+### Added
+
+- Support for [requested](https://github.com/lucono/karma-test-explorer/issues/27) feature for simultaneous testing of multiple projects in an Angular workspace
+- New folder button on the test toolbar for choosing workspace projects loaded for testing in the UI
+- New `karmaTestExplorer.defaultAngularProjects` extension setting for specifying one or more projects in the Angular workspace that should be launched by default when the workspace is opened in VSCode
+
+### Changed
+
+- The `karmaTestExplorer.defaultAngularProjectName` extension setting has been deprecated in favor of the new `karmaTestExplorer.defaultAngularProjects` setting which supports specifying multiple default startup projects
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/25) in which the Karma server is not always terminated after VSCode is closed
+- Addressed [CVE-2022-21704](https://github.com/advisories/GHSA-82v2-mx6x-wq7q), [CVE-2022-21676](https://github.com/advisories/GHSA-273r-mgr4-v34f), and [CVE-2022-21670](https://github.com/advisories/GHSA-6vfc-qv3f-vr6c) security vulnerabilities from transitive dependencies
 
 
 ---

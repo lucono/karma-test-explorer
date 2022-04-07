@@ -1,16 +1,16 @@
 import { existsSync } from 'fs';
-import { basename, posix, resolve } from 'path';
+import { basename, posix, relative, resolve } from 'path';
 import { workspace, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants';
+import { EXTENSION_CONFIG_PREFIX } from './constants';
 import { ProjectType } from './core/base/project-type';
-import { ConfigSetting, ExternalConfigSetting } from './core/config/config-setting';
+import { ConfigSetting, InternalConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
 import { SimpleMutableConfigStore } from './core/config/simple-mutable-config-store';
 import { AngularProject } from './frameworks/angular/angular-project';
-import { getAllAngularProjects, getDefaultAngularProject } from './frameworks/angular/angular-util';
+import { getAllAngularProjects, getDefaultAngularProjects } from './frameworks/angular/angular-util';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
 import { Logger } from './util/logging/logger';
-import { normalizePath } from './util/utils';
+import { asNonBlankStringOrUndefined, normalizePath } from './util/utils';
 import { WorkspaceProject, WorkspaceType } from './workspace';
 
 export class ProjectFactory implements Disposable {
@@ -32,21 +32,30 @@ export class ProjectFactory implements Disposable {
     const folderConfig = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, workspaceFolder.uri);
     const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
     const projectRootPath = normalizePath(
-      resolve(workspaceFolderPath, folderConfig.get(ExternalConfigSetting.ProjectRootPath)!)
+      resolve(workspaceFolderPath, folderConfig.get(WorkspaceConfigSetting.ProjectRootPath)!)
     );
-    const projectType = folderConfig.get(ExternalConfigSetting.ProjectType);
-    const defaultAngularProjectName = folderConfig.get<string>(ExternalConfigSetting.DefaultAngularProjectName)!;
     const projectFolderName = basename(projectRootPath);
+    const projectType = folderConfig.get(WorkspaceConfigSetting.ProjectType);
+
+    let defaultAngularProjects: string[] = folderConfig.get<string[]>(WorkspaceConfigSetting.DefaultAngularProjects)!;
+
+    if (defaultAngularProjects.length === 0) {
+      const deprecatedDefaultAngularProject = asNonBlankStringOrUndefined(
+        folderConfig.get<string>(WorkspaceConfigSetting.DefaultAngularProjectName)!
+      );
+      defaultAngularProjects = deprecatedDefaultAngularProject ? [deprecatedDefaultAngularProject] : [];
+    }
+
     const shouldEnableAdapterForFolder = this.shouldActivateAdapterForWorkspaceFolder(
       workspaceFolderPath,
       folderConfig
     );
 
     if (workspaceFolder.uri.scheme !== 'file' || !shouldEnableAdapterForFolder) {
-      this.logger.info(() => `Not enabling ${EXTENSION_NAME} for workspace folder: ${workspaceFolderPath}`);
+      this.logger.info(() => `Including projects in workspace folder: ${workspaceFolderPath}`);
       return [];
     }
-    this.logger.info(() => `Enabling ${EXTENSION_NAME} for workspace folder: ${workspaceFolderPath}`);
+    this.logger.info(() => `Excluding projects in workspace folder: ${workspaceFolderPath}`);
 
     const angularProjects: AngularProject[] = getAllAngularProjects(projectRootPath);
 
@@ -56,14 +65,16 @@ export class ProjectFactory implements Disposable {
         `${JSON.stringify(angularProjects.map(project => project.name))}`
     );
 
-    const activeAngularProject = getDefaultAngularProject(projectRootPath, defaultAngularProjectName, angularProjects);
+    const activeAngularProjects = getDefaultAngularProjects(projectRootPath, defaultAngularProjects, angularProjects);
 
     this.logger.debug(
-      () => `Active Angular project found for workspace folder ${workspaceFolderPath}: ${activeAngularProject?.name}`
+      () =>
+        `Active Angular projects found for workspace folder ${workspaceFolderPath}: ` +
+        `${JSON.stringify(activeAngularProjects.map(project => project.name))}`
     );
 
     const resolvedProjectType =
-      projectType !== ProjectType.Karma && activeAngularProject !== undefined ? ProjectType.Angular : ProjectType.Karma;
+      projectType !== ProjectType.Karma && activeAngularProjects.length > 0 ? ProjectType.Angular : ProjectType.Karma;
 
     if (projectType === ProjectType.Angular && resolvedProjectType !== ProjectType.Angular) {
       this.logger.warn(
@@ -89,37 +100,48 @@ export class ProjectFactory implements Disposable {
         const angularProjectPath = normalizePath(resolve(projectRootPath, angularProject.rootPath));
 
         const projectConfig = new SimpleMutableConfigStore<ConfigSetting>(EXTENSION_CONFIG_PREFIX, {
-          projectType: ProjectType.Angular,
-          projectRootPath: projectRootPath,
-          projectSubFolderPath: angularProjectPath,
-          defaultAngularProjectName: angularProject.name
+          [WorkspaceConfigSetting.ProjectType]: ProjectType.Angular,
+          [WorkspaceConfigSetting.ProjectRootPath]: projectRootPath,
+          [InternalConfigSetting.ProjectSubFolderPath]: angularProjectPath,
+          [InternalConfigSetting.SelectedAngularProject]: angularProject.name
         });
 
         const project: WorkspaceProject = {
           name: `${projectNameSpace}${angularProject.name}`,
+          displayName: angularProject.name,
+          type: ProjectType.Angular,
           workspaceFolder: workspaceFolder,
           workspaceFolderPath: workspaceFolderPath,
+          projectPath: angularProjectPath,
+          shortProjectPath: relative(workspaceFolderPath, angularProjectPath),
           config: projectConfig,
-          isDefault: angularProject === activeAngularProject
+          isDefault: activeAngularProjects.includes(angularProject)
         };
         workspaceFolderProjects.push(project);
       });
     } else {
       const projectConfig = new SimpleMutableConfigStore<ConfigSetting>(EXTENSION_CONFIG_PREFIX, {
-        projectType: ProjectType.Karma,
-        projectRootPath: projectRootPath,
-        projectSubFolderPath: projectRootPath
+        [WorkspaceConfigSetting.ProjectType]: ProjectType.Karma,
+        [WorkspaceConfigSetting.ProjectRootPath]: projectRootPath,
+        [InternalConfigSetting.ProjectSubFolderPath]: projectRootPath
       });
 
       const project: WorkspaceProject = {
-        name: `${projectFolderName}`,
+        name: projectFolderName,
+        displayName: '(Karma Tests)',
+        type: ProjectType.Karma,
         workspaceFolder: workspaceFolder,
         workspaceFolderPath: workspaceFolderPath,
+        projectPath: projectRootPath,
+        shortProjectPath: relative(workspaceFolderPath, projectRootPath),
         config: projectConfig,
         isDefault: true
       };
       workspaceFolderProjects.push(project);
     }
+    workspaceFolderProjects.sort((project1, project2) =>
+      project1.name.toLocaleLowerCase().localeCompare(project2.name.toLocaleLowerCase())
+    );
     return workspaceFolderProjects;
   }
 
@@ -127,35 +149,35 @@ export class ProjectFactory implements Disposable {
     workspaceFolderPath: string,
     config: WorkspaceConfiguration
   ): boolean {
-    const enableExtension = config.get<boolean | null>(ExternalConfigSetting.EnableExtension);
+    const enableExtension = config.get<boolean | null>(WorkspaceConfigSetting.EnableExtension);
 
     if (typeof enableExtension === 'boolean') {
       this.logger.debug(
         () =>
-          `${enableExtension ? 'Activating' : 'Not activating'} adapter for ` +
-          `workspace folder '${workspaceFolderPath}' because the extension has ` +
-          `been explicitly ${enableExtension ? 'enabled' : 'disabled'} by setting ` +
-          `the '${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.EnableExtension}' ` +
+          `${enableExtension ? 'Including' : 'Excluding'} projects in workspace ` +
+          `folder '${workspaceFolderPath}' because the extension has been ` +
+          `explicitly ${enableExtension ? 'enabled' : 'disabled'} by setting the ` +
+          `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.EnableExtension}' ` +
           `setting to ${enableExtension ? 'true' : 'false'}`
       );
       return enableExtension;
     }
 
-    const configuredExtensionSetting = Object.values(ExternalConfigSetting).find(
+    const configuredExtensionSetting = Object.values(WorkspaceConfigSetting).find(
       configSetting => config.inspect(configSetting)?.workspaceFolderValue ?? false
     );
 
     if (configuredExtensionSetting !== undefined) {
       this.logger.debug(
         () =>
-          `Activating adapter for workspace folder '${workspaceFolderPath}' ` +
+          `Including projects in workspace folder '${workspaceFolderPath}' ` +
           `because it has one or more extension settings configured: ` +
           `${configuredExtensionSetting}`
       );
       return true;
     }
 
-    const projectRootPath = config.get<string>(ExternalConfigSetting.ProjectRootPath) ?? '';
+    const projectRootPath = config.get<string>(WorkspaceConfigSetting.ProjectRootPath) ?? '';
     const projectPackageJsonFilePath = posix.join(workspaceFolderPath, projectRootPath, 'package.json');
     const workspacePackageJsonFilePath = posix.join(workspaceFolderPath, 'package.json');
 
@@ -184,7 +206,7 @@ export class ProjectFactory implements Disposable {
     if (packageJson && Object.keys(packageJson.devDependencies).includes('karma')) {
       this.logger.debug(
         () =>
-          `Activating adapter for workspace folder '${workspaceFolderPath}' ` +
+          `Including projects in workspace folder '${workspaceFolderPath}' ` +
           `because related package.json file '${packageJsonFilePath}' has a karma dev dependency`
       );
       return true;

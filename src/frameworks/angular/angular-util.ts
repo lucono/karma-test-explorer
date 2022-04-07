@@ -4,22 +4,35 @@ import { AngularProject } from './angular-project';
 
 export const getDefaultAngularProject = (
   workspaceRootPath: string,
-  configuredDefaultProject: string = '',
+  preferredDefaultProject?: string,
   angularProjectList?: AngularProject[]
 ): AngularProject | undefined => {
-  const angularProjects = angularProjectList ?? getAllAngularProjects(workspaceRootPath);
-  let defaultProject: AngularProject | undefined;
+  const defaultProjects = getDefaultAngularProjects(
+    workspaceRootPath,
+    preferredDefaultProject ? [preferredDefaultProject] : [],
+    angularProjectList
+  );
+  return defaultProjects[0];
+};
 
-  if (configuredDefaultProject !== '') {
-    defaultProject = angularProjects.find(project => project.name === configuredDefaultProject);
+export const getDefaultAngularProjects = (
+  workspaceRootPath: string,
+  preferredDefaultProjects: string[] = [],
+  angularProjectList?: AngularProject[]
+): AngularProject[] => {
+  const angularProjects = angularProjectList ?? getAllAngularProjects(workspaceRootPath);
+  let defaultProjects: AngularProject[] = [];
+
+  if (preferredDefaultProjects.length > 0) {
+    defaultProjects = angularProjects.filter(project => preferredDefaultProjects.includes(project.name));
   }
-  if (defaultProject === undefined) {
-    defaultProject = angularProjects.find(project => project.isDefaultProject);
+  if (defaultProjects.length === 0) {
+    defaultProjects = angularProjects.filter(project => project.isDefaultProject);
   }
-  if (defaultProject === undefined && angularProjects.length > 0) {
-    defaultProject = angularProjects[0];
+  if (defaultProjects.length === 0 && angularProjects.length > 0) {
+    defaultProjects = [angularProjects[0]];
   }
-  return defaultProject;
+  return defaultProjects;
 };
 
 export const getAllAngularProjects = (workspaceRootPath: string): AngularProject[] => {

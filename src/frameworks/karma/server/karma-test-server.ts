@@ -1,14 +1,14 @@
 import { TestServer } from '../../../api/test-server';
-import { ServerStopExecutor, TestServerExecutor } from '../../../api/test-server-executor';
+import { TestServerExecutor } from '../../../api/test-server-executor';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { DeferredExecution } from '../../../util/future/deferred-execution';
 import { Execution } from '../../../util/future/execution';
 import { Logger } from '../../../util/logging/logger';
+import { Process } from '../../../util/process/process';
 
 type ServerExecutionInfo = {
-  serverExecution: Execution<ServerStopExecutor>;
-  serverStopper: ServerStopExecutor;
+  serverProcess: Process;
   serverPort: number;
 };
 
@@ -16,7 +16,7 @@ export class KarmaTestServer implements TestServer {
   private serverExecutionInfo?: ServerExecutionInfo;
   private disposables: Disposable[] = [];
 
-  public constructor(private readonly serverExecutionHandler: TestServerExecutor, private readonly logger: Logger) {
+  public constructor(private readonly testServerExecutor: TestServerExecutor, private readonly logger: Logger) {
     this.disposables.push(logger);
   }
 
@@ -32,30 +32,28 @@ export class KarmaTestServer implements TestServer {
 
         this.logger.info(() => 'Starting karma server');
 
-        const serverProcessExecution = this.serverExecutionHandler.executeServerStart(
-          karmaPort,
-          karmaSocketPort,
-          debugPort
-        );
-        const serverStopper: ServerStopExecutor = await serverProcessExecution.started();
-
+        const serverProcess = this.testServerExecutor.executeServerStart(karmaPort, karmaSocketPort, debugPort);
+        await serverProcess.execution().started();
         const serverExecutionInfo: ServerExecutionInfo = {
-          serverExecution: serverProcessExecution,
-          serverStopper,
+          serverProcess: serverProcess,
           serverPort: karmaPort
         };
 
         this.setServerInfo(serverExecutionInfo);
 
-        serverProcessExecution.ended().then(() => {
-          this.clearServerInfo(serverExecutionInfo);
-          this.logger.debug(() => 'Karma server process terminated');
-          deferredServerExecution.end();
-        });
+        serverProcess
+          .execution()
+          .ended()
+          .then(() => {
+            this.clearServerInfo(serverExecutionInfo);
+            this.logger.debug(() => 'Karma server process terminated');
+            deferredServerExecution.end();
+          });
 
-        serverProcessExecution.failed().then(reason => {
-          deferredServerExecution.fail(reason);
-        });
+        serverProcess
+          .execution()
+          .failed()
+          .then(reason => deferredServerExecution.fail(reason));
 
         deferredServerExecution.start();
       } catch (error) {
@@ -77,15 +75,14 @@ export class KarmaTestServer implements TestServer {
       return;
     }
     const serverExecutionInfo = this.serverExecutionInfo!;
-    const serverExecution = serverExecutionInfo.serverExecution;
-    const serverStopper = serverExecutionInfo.serverStopper!;
-    const serverPort = serverExecutionInfo.serverPort!;
+    const serverProcess = serverExecutionInfo.serverProcess;
+    const serverPort = serverExecutionInfo.serverPort;
 
     this.logger.info(() => `Killing Karma server on port ${serverPort}`);
     this.clearServerInfo(serverExecutionInfo);
 
-    await serverStopper.executeServerStop();
-    await serverExecution.ended();
+    serverProcess.kill();
+    await serverProcess.execution().ended();
 
     this.logger.debug(() => `Karma server on port ${serverPort} killed`);
   }

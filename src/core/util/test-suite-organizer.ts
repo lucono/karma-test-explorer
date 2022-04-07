@@ -7,7 +7,7 @@ import { Logger } from '../../util/logging/logger';
 import { isChildPath } from '../../util/utils';
 import { TestGrouping } from '../base/test-grouping';
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos';
-import { ExternalConfigSetting } from '../config/config-setting';
+import { WorkspaceConfigSetting } from '../config/config-setting';
 import { TestHelper } from '../test-helper';
 
 export interface TestSuiteFolderGroupingOptions {
@@ -28,7 +28,7 @@ const defaultTestSuiteFolderGroupingOptions: Required<TestSuiteFolderGroupingOpt
 const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizerOptions> = {
   ...defaultTestSuiteFolderGroupingOptions,
   testGrouping: TestGrouping.Folder,
-  rootSuiteLabel: 'Karma tests'
+  rootSuiteLabel: 'Karma Tests'
 };
 
 export class TestSuiteOrganizer implements Disposable {
@@ -81,14 +81,17 @@ export class TestSuiteOrganizer implements Disposable {
     if (unmappedTests.length > 0) {
       const filelessTestsSuiteMessage =
         `${EXTENSION_NAME} could not find the test sources in your project ` +
-        `for the tests in this group. This can occur if the tests: \n\n` +
+        `for the tests in this group. This can occur if the tests:` +
+        `\n\n` +
         `- Use parameterization \n` +
         `- Use computed test descriptions \n` +
-        `- Are in test files not captured by your '${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.TestFiles}' setting \n` +
+        `- Are in test files not captured by your ` +
+        `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.TestFiles}' setting \n` +
         `- Were otherwise not successfully discovered by ${EXTENSION_NAME}` +
         `\n\n` +
         `To exclude unmapped tests from being displayed, set the ` +
-        `'${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ShowUnmappedTests}' setting to false.`;
+        `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.ShowUnmappedTests}' ` +
+        `setting to false.`;
 
       const unmappedTestsSuite: TestSuiteInfo = {
         id: '*',

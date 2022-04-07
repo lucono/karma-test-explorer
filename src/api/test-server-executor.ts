@@ -1,10 +1,6 @@
 import { Disposable } from '../util/disposable/disposable';
-import { Execution } from '../util/future/execution';
+import { Process } from '../util/process/process';
 
 export interface TestServerExecutor extends Disposable {
-  executeServerStart(karmaPort: number, karmaSocketPort: number, debugPort?: number): Execution<ServerStopExecutor>;
-}
-
-export interface ServerStopExecutor {
-  executeServerStop(): Promise<void>;
+  executeServerStart(karmaPort: number, karmaSocketPort: number, debugPort?: number): Process;
 }

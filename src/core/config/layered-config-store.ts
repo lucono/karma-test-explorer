@@ -1,10 +1,10 @@
 import { ConfigStore } from './config-store';
 
 export class LayeredConfigStore<K extends string = string> implements ConfigStore<K> {
-  private readonly layeredConfigs: ConfigStore[];
+  private readonly layeredConfigs: ConfigStore<K>[];
 
-  public constructor(baseConfig: ConfigStore, ...layeredConfigs: ConfigStore[]) {
-    this.layeredConfigs = [baseConfig, ...layeredConfigs].reverse();
+  public constructor(...layeredConfigs: (ConfigStore<K> | undefined)[]) {
+    this.layeredConfigs = layeredConfigs.filter(store => store !== undefined).reverse() as ConfigStore<K>[];
   }
 
   public get<T>(key: K): T {
@@ -16,6 +16,6 @@ export class LayeredConfigStore<K extends string = string> implements ConfigStor
   }
 
   public inspect<T>(key: K): { defaultValue?: T | undefined } | undefined {
-    return this.layeredConfigs[0].inspect(key);
+    return this.layeredConfigs.find(config => config.inspect(key) !== undefined)?.inspect(key);
   }
 }

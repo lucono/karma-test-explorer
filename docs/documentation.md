@@ -3,7 +3,6 @@
 ## Contents
 
 - [Overview](#overview)
-- [Why this Extension](#why-this-extension)
 - [Features](#features)
 - [Extension Setup](#extension-setup)
 - [Extension Activation Rules](#extension-activation-rules)
@@ -12,6 +11,7 @@
 - [Extension Settings](#extension-settings)
 - [Specifying Test Files](#specifying-test-files)
 - [Specifying a Test Framework](#specifying-a-test-framework)
+- [Testing Multiple Projects](#testing-multiple-projects)
 - [Non-Headless Testing](#non-headless-testing)
 - [Testing in a Development Container](#testing-in-a-development-container)
 - [Output Panels](#output-panels)
@@ -32,20 +32,6 @@ Rich information about your tests will be displayed in the Testing side bar, inc
 ![Karma Test Explorer screenshot](img/sidebar.png)
 
 Duplicated tests in your project are also detected and convniently flagged for action.
-
----
-
-## Why this Extension
-
-Karma Test Explorer is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension and is a major rewrite aimed at facilitating various significant enhancements and new features (such as some of those in the initial release [changelog](../CHANGELOG.md#010---sep-28-2021)). 
-
-Its core focus is on robust support for:
-
-- Large projects with thousands of tests
-- Remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
-- Flexibility to support a wide range of testing scenarios and workflows
-- Simplicity to "just work" - without any or much configuration
-- Reliability, usability, and team productivity
 
 ---
 
@@ -134,7 +120,7 @@ Projects which DO NOT have an `angular.json` or `.angular-cli.json` file in the 
 
 ### Angular Projects
 
-Projects with an `angular.json` or `.angular-cli.json` file in the project root are loaded as Angular projects. Use the `karmaTestExplorer.defaultAngularProjectName` setting to specify which configured Angular project should be loaded for testing. Otherwise, the project specified as default in the `angular.json` config will be chosen.
+Projects with an `angular.json` or `.angular-cli.json` file in the project root are loaded as Angular projects. Use the `karmaTestExplorer.defaultAngularProjects` setting to specify which Angular projects should automatically be loaded for testing whenever the workspace is initially opened in VSCode. Otherwise, the project specified as default in the `angular.json` config will be chosen.
 
 Note that if no angular config file is found for a project that is explicitly configured as an Angular project using the `karmaTestExplorer.projectType` setting, then the project will be loaded instead as a plain Karma project.
 
@@ -164,7 +150,7 @@ Setting                                       | Description
 `karmaTestExplorer.enableExtension` | Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision
 `karmaTestExplorer.projectRootPath` | The working directory where the project is located (relative to the root folder)
 `karmaTestExplorer.projectType` | The type of the project. This will be auto-detected if not specified. Specify the right project type if not correctly auto-detected
-`karmaTestExplorer.defaultAngularProjectName` | Only applies to Angular projects. This is the default Angular project to be loaded for testing. If not specified, the default project specified in `angular.json` is loaded instead
+`karmaTestExplorer.defaultAngularProjects` | The projects in the Angular workspace to be loaded by default for testing. If not specified, the default project specified in `angular.json` is loaded instead
 `karmaTestExplorer.testFramework` | The test framework used by the project. The framework will be auto-detected if none is specified. Specify the right test framework if it is not correctly auto-detected
 `karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to `projectRootPath`)
 `karmaTestExplorer.testGrouping` | How tests should be grouped in the Test view side bar
@@ -186,7 +172,7 @@ Setting                                       | Description
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.testTriggerMethod` | Experimental. Specifies how test runs are triggered by default, either through the Karma CLI or Http interface. You will usually not need to use this setting unless working around specific issues
 `karmaTestExplorer.failOnStandardError` | Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues
-`karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to `projectRootPath`)
+`karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to `projectRootPath` for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects)
 `karmaTestExplorer.testFiles` | The path glob patterns identifying the test files (relative to `projectRootPath`)
 `karmaTestExplorer.excludeFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to `projectRootPath`)
 `karmaTestExplorer.reloadOnKarmaConfigChange` | Enables reloading of Karma on changes to the Karma configuration file
@@ -255,6 +241,12 @@ Value | Description
 Most times however, you will not need to set this config option at all as Karma Test Explorer will be able to automatically detect the right test framework in use by your project. Note also that specifying a framework value that is different from the one actually in use by your project will usually result in your tests not being successfully discovered.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
+
+## Testing Multiple Projects
+
+When multiple Karma or Angular projects are available in the workspace, either as a result of a multi-folder workspace or an Angular workspace with multiple projects, a folder :file_folder: button will be available on the Test view toolbar which can be used for selecting and loading any number of the projects for testing in the UI. The folder button is not available when there is only a single Karma or Angular project in the open VSCode workspace.
 
 ---
 

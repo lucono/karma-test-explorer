@@ -31,6 +31,7 @@ export class SimpleMutableConfigStore<K extends string = string> implements Conf
     return this.configOverrides.has(this.toPrefixedKey(key));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public inspect<T>(key: K): { defaultValue?: T | undefined } | undefined {
     return undefined;
   }

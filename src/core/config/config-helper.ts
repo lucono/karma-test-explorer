@@ -11,8 +11,14 @@ import {
   KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
 } from '../../constants';
 import { Logger } from '../../util/logging/logger';
-import { expandEnvironment, transformProperties } from '../../util/utils';
-import { ConfigSetting, ExternalConfigSetting } from './config-setting';
+import {
+  asNonBlankStringOrUndefined,
+  expandEnvironment,
+  isChildPath,
+  normalizePath,
+  transformProperties
+} from '../../util/utils';
+import { ConfigSetting, WorkspaceConfigSetting } from './config-setting';
 import { ConfigStore } from './config-store';
 import { ContainerMode } from './extension-config';
 
@@ -26,8 +32,8 @@ export const getDefaultDebugPort = (
   if (browser || debuggerConfigName) {
     return;
   }
-  const defaultCustomLauncher = config.inspect<CustomLauncher>(ExternalConfigSetting.CustomLauncher)?.defaultValue;
-  const defaultDebuggerConfig = config.inspect<DebugConfiguration>(ExternalConfigSetting.DebuggerConfig)?.defaultValue;
+  const defaultCustomLauncher = config.inspect<CustomLauncher>(WorkspaceConfigSetting.CustomLauncher)?.defaultValue;
+  const defaultDebuggerConfig = config.inspect<DebugConfiguration>(WorkspaceConfigSetting.DebuggerConfig)?.defaultValue;
 
   if (customLauncher.base !== defaultCustomLauncher?.base || debuggerConfig.type !== defaultDebuggerConfig?.type) {
     return;
@@ -47,9 +53,9 @@ export const getDefaultDebugPort = (
 };
 
 export const getCustomLauncher = (config: ConfigStore<ConfigSetting>): CustomLauncher => {
-  const configuredLauncher: CustomLauncher = config.get(ExternalConfigSetting.CustomLauncher);
-  const configuredContainerMode: ContainerMode = config.get(ExternalConfigSetting.ContainerMode);
-  const isNonHeadlessMode = !!config.get(ExternalConfigSetting.NonHeadlessModeEnabled);
+  const configuredLauncher: CustomLauncher = config.get(WorkspaceConfigSetting.CustomLauncher);
+  const configuredContainerMode: ContainerMode = config.get(WorkspaceConfigSetting.ContainerMode);
+  const isNonHeadlessMode = !!config.get(WorkspaceConfigSetting.NonHeadlessModeEnabled);
 
   const isContainerMode =
     configuredContainerMode === ContainerMode.Enabled
@@ -120,16 +126,31 @@ export const getMergedDebuggerConfig = (
   return mergedDebuggerConfig;
 };
 
+export const getTestsBasePath = (
+  projectRootPath: string,
+  projectSubFolderPath: string,
+  config: ConfigStore<ConfigSetting>
+): string | undefined => {
+  const configuredTestsBasePath = asNonBlankStringOrUndefined(config.get(WorkspaceConfigSetting.TestsBasePath));
+  const deepestRootPath = isChildPath(projectRootPath, projectSubFolderPath) ? projectSubFolderPath : projectRootPath;
+
+  const resolvedTestsBasePath = configuredTestsBasePath
+    ? normalizePath(resolve(deepestRootPath, configuredTestsBasePath))
+    : undefined;
+
+  return resolvedTestsBasePath;
+};
+
 export const getCombinedEnvironment = (
   projectRootPath: string,
   config: ConfigStore<ConfigSetting>,
   logger: Logger
 ): Record<string, string> => {
-  const envMap: Record<string, string> = config.get(ExternalConfigSetting.Env) ?? {};
+  const envMap: Record<string, string> = config.get(WorkspaceConfigSetting.Env) ?? {};
   let environment: Record<string, string> = { ...envMap };
 
-  const envFile: string | undefined = stringSettingExists(config, ExternalConfigSetting.EnvFile)
-    ? resolve(projectRootPath, config.get<string>(ExternalConfigSetting.EnvFile)!)
+  const envFile: string | undefined = stringSettingExists(config, WorkspaceConfigSetting.EnvFile)
+    ? resolve(projectRootPath, config.get<string>(WorkspaceConfigSetting.EnvFile)!)
     : undefined;
 
   if (envFile) {
@@ -157,7 +178,7 @@ export const getCombinedEnvironment = (
   return environment;
 };
 
-export const stringSettingExists = (config: ConfigStore<ConfigSetting>, setting: ExternalConfigSetting): boolean => {
+export const stringSettingExists = (config: ConfigStore<ConfigSetting>, setting: WorkspaceConfigSetting): boolean => {
   const value: string | undefined = config.get(setting);
   return (value ?? '').trim().length > 0;
 };

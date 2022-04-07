@@ -5,10 +5,14 @@ import { DeferredExecution } from '../util/future/deferred-execution';
 import { Execution } from '../util/future/execution';
 import { Logger } from '../util/logging/logger';
 
+export interface DebuggerOptions {
+  readonly debuggerNamespace?: string;
+}
+
 export class Debugger implements Disposable {
   private activeDebugSession?: DebugSession;
 
-  public constructor(private readonly logger: Logger) {}
+  public constructor(private readonly logger: Logger, private readonly options?: DebuggerOptions) {}
 
   public startDebugSession(
     workspaceFolder: WorkspaceFolder,
@@ -17,9 +21,15 @@ export class Debugger implements Disposable {
   ): Execution<DebugSession> {
     const deferredDebugSessionExecution: DeferredExecution<DebugSession> = new DeferredExecution();
     const debugSessionExecution = deferredDebugSessionExecution.execution();
+    const debuggerNamespaceTag = this.options?.debuggerNamespace ? ` - ${this.options?.debuggerNamespace}` : '';
+
+    const actualDebuggerNameOrConfig =
+      typeof debuggerNameOrConfig === 'string'
+        ? debuggerNameOrConfig
+        : { ...debuggerNameOrConfig, name: `${debuggerNameOrConfig.name}${debuggerNamespaceTag}` };
 
     const debuggerConfigName =
-      typeof debuggerNameOrConfig === 'string' ? debuggerNameOrConfig : debuggerNameOrConfig.name;
+      typeof actualDebuggerNameOrConfig === 'string' ? actualDebuggerNameOrConfig : actualDebuggerNameOrConfig.name;
 
     try {
       const activeDebugSession = debug.activeDebugSession;
@@ -39,7 +49,7 @@ export class Debugger implements Disposable {
 
         debugSessionExecution.started().finally(() => debugStartSubscription.dispose());
 
-        debug.startDebugging(workspaceFolder, debuggerNameOrConfig).then(
+        debug.startDebugging(workspaceFolder, actualDebuggerNameOrConfig).then(
           isSessionStarted => {
             if (!isSessionStarted) {
               deferredDebugSessionExecution.fail(`Debug session '${debuggerConfigName}' failed to start`);
