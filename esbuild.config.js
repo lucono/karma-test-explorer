@@ -14,7 +14,6 @@ module.exports = {
   minifyIdentifiers: true,
   minifyWhitespace: true,
   minifySyntax: false,
-  minifyWhitespace: true,
   sourcemap: false,
   keepNames: true,
   tsconfig: './tsconfig.json'
