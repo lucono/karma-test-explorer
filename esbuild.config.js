@@ -11,8 +11,9 @@ module.exports = {
   format: 'cjs',
   platform: 'node',
   bundle: true,
-  minify: true,
+  minifyIdentifiers: true,
   minifyWhitespace: true,
+  minifySyntax: false,
   sourcemap: false,
   keepNames: true,
   tsconfig: './tsconfig.json'

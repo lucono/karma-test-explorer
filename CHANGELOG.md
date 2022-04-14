@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.6.1 - Apr 13, 2022](#061---apr-13-2022)
   - [0.6.0 - Apr 6, 2022](#060---apr-6-2022)
   - [0.5.0 - Jan 23, 2022](#050---jan-23-2022)
   - [0.4.0 - Dec 5, 2021](#040---dec-5-2021)
@@ -16,6 +17,13 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.6.1] - Apr 13, 2022
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/29) that prevented the extension from working for environments with Node v12 and lower
 
 ---
 ## [0.6.0] - Apr 6, 2022
