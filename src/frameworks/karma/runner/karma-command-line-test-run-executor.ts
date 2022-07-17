@@ -1,5 +1,7 @@
 import { join } from 'path';
 import { TestRunExecutor } from '../../../api/test-run-executor';
+import { EXTENSION_NAME } from '../../../constants';
+import { ExternalConfigSetting } from '../../../core/config/config-setting';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Execution } from '../../../util/future/execution';
@@ -33,22 +35,6 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       failOnStandardError: this.options.failOnStandardError
     };
 
-    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
-      'karma',
-      this.projectRootPath,
-      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
-      this.logger
-    );
-    const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
-
-    if (!karmaBinaryPath) {
-      throw new Error(
-        `Karma does not seem to be installed - ` +
-          `You may need to run 'npm install' in your project. ` +
-          `Please install it and try again.`
-      );
-    }
-
     const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
@@ -57,6 +43,23 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
     } else {
+      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+        'karma',
+        this.projectRootPath,
+        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+        this.logger
+      );
+      const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
+
+      if (!karmaBinaryPath) {
+        throw new Error(
+          `Karma does not seem to be installed - You may need ` +
+            `to install your project dependencies or specify the ` +
+            `right path to your project using the ${EXTENSION_NAME} ` +
+            `'${ExternalConfigSetting.Projects}' setting.`
+        );
+      }
+
       command = nodeExecutablePath ?? process.execPath;
       processArguments = [karmaBinaryPath];
     }

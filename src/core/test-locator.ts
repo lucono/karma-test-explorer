@@ -28,7 +28,7 @@ export class TestLocator implements Disposable {
   private readonly disposables: Disposable[] = [];
 
   public constructor(
-    private readonly rootPath: string,
+    private readonly basePath: string,
     private readonly fileGlobs: string[],
     private readonly testDefinitionProvider: TestDefinitionProvider,
     private readonly fileHandler: FileHandler,
@@ -68,7 +68,7 @@ export class TestLocator implements Disposable {
 
       try {
         const requestedFilesToRefresh = filePaths ?? (await this.getAbsoluteFilesForGlobs(this.fileGlobs));
-        const filesToRefresh = requestedFilesToRefresh.filter(file => isChildPath(this.rootPath, file));
+        const filesToRefresh = requestedFilesToRefresh.filter(file => isChildPath(this.basePath, file));
         let loadedFileCount: number = 0;
 
         this.logger.debug(

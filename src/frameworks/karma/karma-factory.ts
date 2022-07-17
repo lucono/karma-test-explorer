@@ -38,9 +38,9 @@ export type KarmaFactoryConfig = Pick<
   | 'karmaLogLevel'
   | 'karmaReporterLogLevel'
   | 'karmaProcessCommand'
-  | 'projectRootPath'
+  | 'projectPath'
   | 'testTriggerMethod'
-  | 'userKarmaConfFilePath'
+  | 'projectKarmaConfigFilePath'
 >;
 
 export class KarmaFactory implements TestFactory, Disposable {
@@ -48,7 +48,7 @@ export class KarmaFactory implements TestFactory, Disposable {
 
   public constructor(
     private readonly testFramework: TestFramework,
-    private readonly factoryConfig: KarmaFactoryConfig,
+    private readonly config: KarmaFactoryConfig,
     private readonly processHandler: ProcessHandler,
     private readonly serverProcessLog: ProcessLog,
     private readonly logger: SimpleLogger
@@ -87,7 +87,7 @@ export class KarmaFactory implements TestFactory, Disposable {
   }
 
   public createTestRunExecutor(): TestRunExecutor {
-    return this.factoryConfig.testTriggerMethod === TestTriggerMethod.Cli
+    return this.config.testTriggerMethod === TestTriggerMethod.Cli
       ? this.createKarmaCommandLineTestRunExecutor()
       : this.createKarmaHttpTestRunExecutor();
   }
@@ -105,18 +105,18 @@ export class KarmaFactory implements TestFactory, Disposable {
 
     const environment: Record<string, string | undefined> = {
       ...process.env,
-      ...this.factoryConfig.environment
+      ...this.config.environment
     };
 
     const options: KarmaCommandLineTestRunExecutorOptions = {
       environment,
-      karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
-      failOnStandardError: this.factoryConfig.failOnStandardError,
-      allowGlobalPackageFallback: this.factoryConfig.allowGlobalPackageFallback
+      karmaProcessCommand: this.config.karmaProcessCommand,
+      failOnStandardError: this.config.failOnStandardError,
+      allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
     };
 
     const testRunExecutor = new KarmaCommandLineTestRunExecutor(
-      this.factoryConfig.projectRootPath,
+      this.config.projectPath,
       this.processHandler,
       this.createLogger(KarmaCommandLineTestRunExecutor.name),
       options
@@ -130,27 +130,27 @@ export class KarmaFactory implements TestFactory, Disposable {
 
     const environment: Record<string, string | undefined> = {
       ...process.env,
-      ...this.factoryConfig.environment,
-      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.factoryConfig.autoWatchEnabled}`,
-      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.factoryConfig.autoWatchBatchDelay ?? ''}`,
-      [KarmaEnvironmentVariable.Browser]: this.factoryConfig.browser ?? '',
-      [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.factoryConfig.customLauncher),
-      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.factoryConfig.karmaLogLevel}`,
-      [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.factoryConfig.karmaReporterLogLevel}`
+      ...this.config.environment,
+      [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
+      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
+      [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
+      [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
+      [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
+      [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`
     };
 
     const options: KarmaCommandLineTestServerExecutorOptions = {
       environment,
       serverProcessLog: this.serverProcessLog,
-      karmaProcessCommand: this.factoryConfig.karmaProcessCommand,
-      failOnStandardError: this.factoryConfig.failOnStandardError,
-      allowGlobalPackageFallback: this.factoryConfig.allowGlobalPackageFallback
+      karmaProcessCommand: this.config.karmaProcessCommand,
+      failOnStandardError: this.config.failOnStandardError,
+      allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
     };
 
     const testServerExecutor = new KarmaCommandLineTestServerExecutor(
-      this.factoryConfig.projectRootPath,
-      this.factoryConfig.baseKarmaConfFilePath,
-      this.factoryConfig.userKarmaConfFilePath,
+      this.config.projectPath,
+      this.config.baseKarmaConfFilePath,
+      this.config.projectKarmaConfigFilePath,
       this.processHandler,
       this.createLogger(KarmaCommandLineTestServerExecutor.name),
       options

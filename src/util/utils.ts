@@ -1,7 +1,7 @@
 import dotenvExpand from 'dotenv-expand';
-import { getInstalledPathSync } from 'get-installed-path';
-import { dirname, isAbsolute, posix, relative, sep } from 'path';
-import which from 'which';
+import { dirname, isAbsolute, posix, win32 } from 'path';
+import { sync as which } from 'which';
+import { GeneralConfigSetting } from '../core/config/config-setting';
 import { Logger } from './logging/logger';
 
 export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T): string | undefined => {
@@ -54,7 +54,10 @@ export const asNonBlankStringOrUndefined = (value?: string): string | undefined 
 };
 
 export const toSingleUniqueArray = <T>(...arrays: (T[] | undefined)[]): T[] => {
-  const combinedArray = arrays.reduce((arr1: T[] | undefined = [], arr2: T[] | undefined = []) => [...arr1, ...arr2]);
+  const combinedArray = arrays.reduce(
+    (arr1: T[] | undefined = [], arr2: T[] | undefined = []) => [...arr1, ...arr2],
+    undefined
+  );
   return [...new Set(combinedArray)];
 };
 
@@ -75,19 +78,45 @@ export const normalizePath = (filePath: string): string => {
   return process.platform === 'win32'
     ? filePath
         .replace(/^[\/]?([A-Za-z]:)/, (_, drive) => drive.toUpperCase())
-        .split(sep)
+        .split(win32.sep)
         .join(posix.sep)
     : filePath;
 };
 
-export const isChildPath = (parentPath: string, childPath: string): boolean => {
-  const childFromParentRelativePath = relative(parentPath, childPath);
+export const isChildPath = (parentPath: string, childPath: string, treatSamePathAsChild: boolean = false): boolean => {
+  const childFromParentRelativePath = posix.relative(normalizePath(parentPath), normalizePath(childPath));
 
   return (
-    childPath !== parentPath &&
-    !isAbsolute(childFromParentRelativePath) &&
+    (treatSamePathAsChild || childPath !== parentPath) &&
+    !posix.isAbsolute(childFromParentRelativePath) &&
     !childFromParentRelativePath.startsWith('..')
   );
+};
+
+export const getLongestCommonPath = (filePaths: string[]): string | undefined => {
+  if (filePaths.some(filePath => !isAbsolute(filePath))) {
+    return undefined;
+  }
+  const findCommonPath = (path1: string, path2: string): string => {
+    const path1Segments = normalizePath(path1).split(posix.sep);
+    const path2Segments = normalizePath(path2).split(posix.sep);
+    const maxPathSegments = Math.min(path1Segments.length, path2Segments.length);
+    const commonPathSegments: string[] = [];
+
+    for (let pathIndex = 0; pathIndex < maxPathSegments; pathIndex++) {
+      if (path1Segments[pathIndex] !== path2Segments[pathIndex]) {
+        break;
+      }
+      commonPathSegments.push(path1Segments[pathIndex]);
+    }
+    return commonPathSegments.join(posix.sep);
+  };
+  const commonPathReducer = (commonPath: string | undefined, nextPath: string) => {
+    return commonPath === undefined ? nextPath : findCommonPath(commonPath, nextPath);
+  };
+
+  const longestCommonPath = filePaths.reduce(commonPathReducer, undefined);
+  return longestCommonPath;
 };
 
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
@@ -142,44 +171,51 @@ export const expandEnvironment = (
 };
 
 export const getPackageInstallPathForProjectRoot = (
-  packageName: string,
+  moduleName: string,
   projectRootPath: string,
   options?: { allowGlobalPackageFallback?: boolean },
   logger?: Logger
 ): string | undefined => {
-  let packageInstallPath: string | undefined;
+  let moduleInstallPath: string | undefined;
 
   try {
-    packageInstallPath = getInstalledPathSync(packageName, { local: true, cwd: projectRootPath });
-    logger?.debug(() => `Found '${packageName}' local package at: ${packageInstallPath}`);
+    const modulePackageJson = `${moduleName}/package.json`;
+    const modulePackageJsonPath = require.resolve(modulePackageJson, { paths: [projectRootPath] });
+    moduleInstallPath = dirname(modulePackageJsonPath);
+    logger?.debug(() => `Found '${moduleName}' module at: ${moduleInstallPath}`);
   } catch (error) {
     logger?.warn(
-      () => `Could not find '${packageName}' local package install in root path '${projectRootPath}': ${error}`
+      () => `Could not locate '${moduleName}' module globally or under project at '${projectRootPath}': ${error}`
     );
+    return;
   }
 
-  if (!packageInstallPath && options?.allowGlobalPackageFallback === true) {
-    try {
-      packageInstallPath = getInstalledPathSync(packageName);
-      logger?.debug(() => `Found '${packageName}' global package at: ${packageInstallPath}`);
-    } catch (error) {
-      logger?.warn(() => `Could not find '${packageName}' global package install: ${error}`);
-      return;
-    }
+  if (
+    !!moduleInstallPath &&
+    !isChildPath(projectRootPath, moduleInstallPath) &&
+    options?.allowGlobalPackageFallback === false
+  ) {
+    logger?.warn(
+      () =>
+        `Rejected resolved '${moduleName}' module located at '${moduleInstallPath}' ` +
+        `which is outside of project at '${projectRootPath}'` +
+        `and '${GeneralConfigSetting.AllowGlobalPackageFallback}' is not enabled`
+    );
+    return;
   }
 
-  return packageInstallPath;
+  return moduleInstallPath;
 };
 
 export const getNodeExecutablePath = (searchPath?: string): string => {
   const path = searchPath ?? process.env.PATH;
-  const npxExecutablePath = which.sync('npx', { all: false, nothrow: true, path });
+  const npxExecutablePath = which('npx', { all: false, nothrow: true, path });
 
   const npxNodeExecutablePath = npxExecutablePath
-    ? which.sync('node', { all: false, nothrow: true, path: dirname(npxExecutablePath) })
+    ? which('node', { all: false, nothrow: true, path: dirname(npxExecutablePath) })
     : undefined;
 
-  const nodeExecutablePath = which.sync('node', { all: false, nothrow: true, path });
+  const nodeExecutablePath = which('node', { all: false, nothrow: true, path });
 
   return npxNodeExecutablePath ?? nodeExecutablePath ?? process.execPath;
 };

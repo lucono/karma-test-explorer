@@ -3,7 +3,7 @@ import { ConfigStore } from './config-store';
 export class LayeredConfigStore<K extends string = string> implements ConfigStore<K> {
   private readonly layeredConfigs: ConfigStore<K>[];
 
-  public constructor(...layeredConfigs: (ConfigStore<K> | undefined)[]) {
+  public constructor(...layeredConfigs: (ConfigStore<string> | undefined)[]) {
     this.layeredConfigs = layeredConfigs.filter(store => store !== undefined).reverse() as ConfigStore<K>[];
   }
 

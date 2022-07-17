@@ -1,22 +1,31 @@
 import { existsSync } from 'fs';
 import { basename, posix, relative, resolve } from 'path';
-import { workspace, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
-import { EXTENSION_CONFIG_PREFIX } from './constants';
+import { workspace, WorkspaceFolder } from 'vscode';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants';
 import { ProjectType } from './core/base/project-type';
-import { ConfigSetting, InternalConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
-import { SimpleMutableConfigStore } from './core/config/simple-mutable-config-store';
-import { AngularProject } from './frameworks/angular/angular-project';
-import { getAllAngularProjects, getDefaultAngularProjects } from './frameworks/angular/angular-util';
+import {
+  ExternalConfigSetting,
+  GeneralConfigSetting,
+  InternalConfigSetting,
+  ProjectConfigSetting,
+  WorkspaceConfigSetting
+} from './core/config/config-setting';
+import { ConfigStore } from './core/config/config-store';
+import { LayeredConfigStore } from './core/config/layered-config-store';
+import { ProjectSpecificConfig, ProjectSpecificConfigSetting } from './core/config/project-specific-config';
+import { SimpleConfigStore } from './core/config/simple-config-store';
+import { AngularProjectInfo } from './frameworks/angular/angular-project-info';
+import { getAllAngularProjects } from './frameworks/angular/angular-util';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
 import { Logger } from './util/logging/logger';
-import { asNonBlankStringOrUndefined, normalizePath } from './util/utils';
-import { WorkspaceProject, WorkspaceType } from './workspace';
+import { asNonBlankStringOrUndefined, isChildPath, normalizePath } from './util/utils';
+import { WorkspaceProject } from './workspace';
 
 export class ProjectFactory implements Disposable {
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly workspaceType: WorkspaceType, private readonly logger: Logger) {
+  public constructor(private readonly logger: Logger) {
     this.disposables.push(logger);
   }
 
@@ -29,52 +38,107 @@ export class ProjectFactory implements Disposable {
   }
 
   private createProjectsForWorkspaceFolder(workspaceFolder: WorkspaceFolder): WorkspaceProject[] {
-    const folderConfig = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, workspaceFolder.uri);
-    const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
-    const projectRootPath = normalizePath(
-      resolve(workspaceFolderPath, folderConfig.get(WorkspaceConfigSetting.ProjectRootPath)!)
-    );
-    const projectFolderName = basename(projectRootPath);
-    const projectType = folderConfig.get(WorkspaceConfigSetting.ProjectType);
-
-    let defaultAngularProjects: string[] = folderConfig.get<string[]>(WorkspaceConfigSetting.DefaultAngularProjects)!;
-
-    if (defaultAngularProjects.length === 0) {
-      const deprecatedDefaultAngularProject = asNonBlankStringOrUndefined(
-        folderConfig.get<string>(WorkspaceConfigSetting.DefaultAngularProjectName)!
-      );
-      defaultAngularProjects = deprecatedDefaultAngularProject ? [deprecatedDefaultAngularProject] : [];
-    }
-
-    const shouldEnableAdapterForFolder = this.shouldActivateAdapterForWorkspaceFolder(
-      workspaceFolderPath,
-      folderConfig
-    );
-
-    if (workspaceFolder.uri.scheme !== 'file' || !shouldEnableAdapterForFolder) {
-      this.logger.info(() => `Including projects in workspace folder: ${workspaceFolderPath}`);
+    if (workspaceFolder.uri.scheme !== 'file') {
+      this.logger.debug(() => `Excluding projects in non-file scheme workspace folder: ${workspaceFolder.uri.fsPath}`);
       return [];
     }
-    this.logger.info(() => `Excluding projects in workspace folder: ${workspaceFolderPath}`);
+    const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
+    const workspaceConfig = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, workspaceFolder);
 
-    const angularProjects: AngularProject[] = getAllAngularProjects(projectRootPath);
+    const shouldEnableTestingForWorkspaceFolder = this.shouldEnableTestingForWorkspaceFolder(
+      workspaceFolderPath,
+      workspaceConfig
+    );
+
+    if (!shouldEnableTestingForWorkspaceFolder) {
+      this.logger.debug(
+        () =>
+          `Excluding projects in workspace folder - ` +
+          `None of the inclusion conditions were satisfied: ${workspaceFolderPath}`
+      );
+      return [];
+    }
+    this.logger.debug(
+      () =>
+        `Including projects in workspace folder - ` +
+        `One or more inclusion conditions were satisfied: ${workspaceFolderPath}`
+    );
+
+    let configuredProjects: (string | ProjectSpecificConfig)[] =
+      workspaceConfig.get(ExternalConfigSetting.Projects) ?? [];
+
+    if (configuredProjects.length === 0) {
+      const deprecatedProjectRootPath = asNonBlankStringOrUndefined(
+        workspaceConfig.get(ExternalConfigSetting.ProjectRootPath)
+      );
+      configuredProjects = deprecatedProjectRootPath ? [deprecatedProjectRootPath] : [''];
+    }
+
+    const workspaceFolderProjects = configuredProjects
+      .map(configuredProject => {
+        const projectSpecificSettings =
+          typeof configuredProject === 'string'
+            ? { [ExternalConfigSetting.ProjectRootPath]: configuredProject }
+            : configuredProject;
+
+        const projectSpecificConfig: ConfigStore<ProjectSpecificConfigSetting> = new SimpleConfigStore(
+          projectSpecificSettings,
+          EXTENSION_CONFIG_PREFIX
+        );
+
+        const projectFolderConfig: ConfigStore<WorkspaceConfigSetting> = new LayeredConfigStore(
+          workspaceConfig,
+          projectSpecificConfig
+        );
+
+        return this.createProjectsForConfiguredProjectFolder(projectFolderConfig, workspaceFolder);
+      })
+      .reduce((previousProjects, newProjects) => [...previousProjects, ...newProjects], []);
+
+    return workspaceFolderProjects;
+  }
+
+  private createProjectsForConfiguredProjectFolder(
+    projectFolderConfig: ConfigStore<WorkspaceConfigSetting>,
+    workspaceFolder: WorkspaceFolder // FIXME: Can this be reduced to workspace folder path string?
+  ): WorkspaceProject[] {
+    const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
+    const relativeProjectRootPath = projectFolderConfig.get<string>(ExternalConfigSetting.ProjectRootPath);
+    const absoluteProjectRootPath = normalizePath(resolve(workspaceFolderPath, relativeProjectRootPath));
+    const isProjectPathInWorkspaceFolder = isChildPath(workspaceFolderPath, absoluteProjectRootPath, true);
+
+    if (!isProjectPathInWorkspaceFolder) {
+      this.logger.debug(
+        () =>
+          `Excluding project root path '${relativeProjectRootPath}' ` +
+          `which has absolute path '${absoluteProjectRootPath}' - ` +
+          `Path is not under the workspace folder path '${workspaceFolderPath}'`
+      );
+      return [];
+    }
+
+    if (!existsSync(absoluteProjectRootPath)) {
+      this.logger.debug(
+        () =>
+          `Excluding project root path '${relativeProjectRootPath}' ` +
+          `which has absolute path '${absoluteProjectRootPath}' - ` +
+          `Path does not exist`
+      );
+      return [];
+    }
+
+    const projectRootPathFolderName = basename(absoluteProjectRootPath);
+    const projectType: ProjectType | undefined = projectFolderConfig.get(ExternalConfigSetting.ProjectType);
+    const angularProjectList: AngularProjectInfo[] = getAllAngularProjects(absoluteProjectRootPath);
 
     this.logger.debug(
       () =>
         `Angular projects found for workspace folder ${workspaceFolderPath}: ` +
-        `${JSON.stringify(angularProjects.map(project => project.name))}`
-    );
-
-    const activeAngularProjects = getDefaultAngularProjects(projectRootPath, defaultAngularProjects, angularProjects);
-
-    this.logger.debug(
-      () =>
-        `Active Angular projects found for workspace folder ${workspaceFolderPath}: ` +
-        `${JSON.stringify(activeAngularProjects.map(project => project.name))}`
+        `${JSON.stringify(angularProjectList.map(projectInfo => projectInfo.name))}`
     );
 
     const resolvedProjectType =
-      projectType !== ProjectType.Karma && activeAngularProjects.length > 0 ? ProjectType.Angular : ProjectType.Karma;
+      projectType !== ProjectType.Karma && angularProjectList.length > 0 ? ProjectType.Angular : ProjectType.Karma;
 
     if (projectType === ProjectType.Angular && resolvedProjectType !== ProjectType.Angular) {
       this.logger.warn(
@@ -95,77 +159,111 @@ export class ProjectFactory implements Disposable {
     const workspaceFolderProjects: WorkspaceProject[] = [];
 
     if (resolvedProjectType === ProjectType.Angular) {
-      angularProjects.forEach(angularProject => {
-        const projectNameSpace = this.workspaceType === WorkspaceType.MultiFolder ? `${projectFolderName}: ` : '';
-        const angularProjectPath = normalizePath(resolve(projectRootPath, angularProject.rootPath));
+      angularProjectList.forEach(angularChildProjectInfo => {
+        const angularProjectPath = normalizePath(resolve(absoluteProjectRootPath, angularChildProjectInfo.rootPath));
+        const karmaConfigPath = normalizePath(resolve(angularProjectPath, angularChildProjectInfo.karmaConfigPath));
 
-        const projectConfig = new SimpleMutableConfigStore<ConfigSetting>(EXTENSION_CONFIG_PREFIX, {
-          [WorkspaceConfigSetting.ProjectType]: ProjectType.Angular,
-          [WorkspaceConfigSetting.ProjectRootPath]: projectRootPath,
-          [InternalConfigSetting.ProjectSubFolderPath]: angularProjectPath,
-          [InternalConfigSetting.SelectedAngularProject]: angularProject.name
-        });
+        const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>(
+          {
+            [InternalConfigSetting.ProjectType]: ProjectType.Angular,
+            [InternalConfigSetting.ProjectName]: angularChildProjectInfo.name,
+            [InternalConfigSetting.ProjectPath]: angularProjectPath,
+            [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
+            [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
+          },
+          EXTENSION_CONFIG_PREFIX
+        );
+
+        const angularChildProjectConfig: ConfigStore<ProjectConfigSetting> = new LayeredConfigStore(
+          projectFolderConfig,
+          projectInternalSettings
+        );
 
         const project: WorkspaceProject = {
-          name: `${projectNameSpace}${angularProject.name}`,
-          displayName: angularProject.name,
+          shortName: angularChildProjectInfo.name,
+          longName: `${projectRootPathFolderName}: ${angularChildProjectInfo.name}`,
+          namespace: `${absoluteProjectRootPath}:${angularChildProjectInfo.name}`,
           type: ProjectType.Angular,
-          workspaceFolder: workspaceFolder,
+          workspaceFolder: workspaceFolder, // FIXME: Exclude? Could only workspace folder path be enough?
           workspaceFolderPath: workspaceFolderPath,
           projectPath: angularProjectPath,
+          topLevelProjectPath: absoluteProjectRootPath,
           shortProjectPath: relative(workspaceFolderPath, angularProjectPath),
-          config: projectConfig,
-          isDefault: activeAngularProjects.includes(angularProject)
+          config: angularChildProjectConfig,
+          isPrimary: angularChildProjectInfo.isDefaultProject
         };
         workspaceFolderProjects.push(project);
       });
     } else {
-      const projectConfig = new SimpleMutableConfigStore<ConfigSetting>(EXTENSION_CONFIG_PREFIX, {
-        [WorkspaceConfigSetting.ProjectType]: ProjectType.Karma,
-        [WorkspaceConfigSetting.ProjectRootPath]: projectRootPath,
-        [InternalConfigSetting.ProjectSubFolderPath]: projectRootPath
-      });
+      const karmaConfigPath = normalizePath(
+        resolve(absoluteProjectRootPath, projectFolderConfig.get(ExternalConfigSetting.KarmaConfFilePath)!)
+      );
+      const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>(
+        {
+          [InternalConfigSetting.ProjectType]: ProjectType.Karma,
+          [InternalConfigSetting.ProjectName]: projectRootPathFolderName,
+          [InternalConfigSetting.ProjectPath]: absoluteProjectRootPath,
+          [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
+          [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
+        },
+        EXTENSION_CONFIG_PREFIX
+      );
+
+      const projectConfig: ConfigStore<ProjectConfigSetting> = new LayeredConfigStore(
+        projectFolderConfig,
+        projectInternalSettings
+      );
 
       const project: WorkspaceProject = {
-        name: projectFolderName,
-        displayName: '(Karma Tests)',
+        shortName: projectRootPathFolderName,
+        longName: projectRootPathFolderName,
+        namespace: absoluteProjectRootPath,
         type: ProjectType.Karma,
         workspaceFolder: workspaceFolder,
         workspaceFolderPath: workspaceFolderPath,
-        projectPath: projectRootPath,
-        shortProjectPath: relative(workspaceFolderPath, projectRootPath),
+        projectPath: absoluteProjectRootPath,
+        topLevelProjectPath: absoluteProjectRootPath,
+        shortProjectPath: relative(workspaceFolderPath, absoluteProjectRootPath),
         config: projectConfig,
-        isDefault: true
+        isPrimary: true
       };
       workspaceFolderProjects.push(project);
     }
     workspaceFolderProjects.sort((project1, project2) =>
-      project1.name.toLocaleLowerCase().localeCompare(project2.name.toLocaleLowerCase())
+      project1.longName.toLocaleLowerCase().localeCompare(project2.longName.toLocaleLowerCase())
     );
     return workspaceFolderProjects;
   }
 
-  private shouldActivateAdapterForWorkspaceFolder(
+  private shouldEnableTestingForWorkspaceFolder(
     workspaceFolderPath: string,
-    config: WorkspaceConfiguration
+    workspaceConfig: ConfigStore<WorkspaceConfigSetting>
   ): boolean {
-    const enableExtension = config.get<boolean | null>(WorkspaceConfigSetting.EnableExtension);
+    const enableExtension = workspaceConfig.get<boolean | null>(ExternalConfigSetting.EnableExtension);
 
     if (typeof enableExtension === 'boolean') {
       this.logger.debug(
         () =>
-          `${enableExtension ? 'Including' : 'Excluding'} projects in workspace ` +
-          `folder '${workspaceFolderPath}' because the extension has been ` +
-          `explicitly ${enableExtension ? 'enabled' : 'disabled'} by setting the ` +
-          `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.EnableExtension}' ` +
-          `setting to ${enableExtension ? 'true' : 'false'}`
+          `${enableExtension ? 'Including' : 'Excluding'} projects ` +
+          `in workspace folder '${workspaceFolderPath}' - ` +
+          `'${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.EnableExtension}' ` +
+          `is set to ${enableExtension}`
       );
       return enableExtension;
+    } else {
+      this.logger.debug(
+        () =>
+          `Workspace folder '${workspaceFolderPath}' ` +
+          `does not explicitly enable or disable testing with the ` +
+          `'${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.EnableExtension}' ` +
+          `extension setting`
+      );
     }
 
-    const configuredExtensionSetting = Object.values(WorkspaceConfigSetting).find(
-      configSetting => config.inspect(configSetting)?.workspaceFolderValue ?? false
-    );
+    const configuredExtensionSetting = [
+      ...Object.values(GeneralConfigSetting),
+      ...Object.values(ExternalConfigSetting)
+    ].find(configSetting => workspaceConfig.inspect(configSetting)?.workspaceFolderValue ?? false);
 
     if (configuredExtensionSetting !== undefined) {
       this.logger.debug(
@@ -175,42 +273,46 @@ export class ProjectFactory implements Disposable {
           `${configuredExtensionSetting}`
       );
       return true;
+    } else {
+      this.logger.debug(() => `Workspace folder '${workspaceFolderPath}' has no ${EXTENSION_NAME} settings configured`);
     }
 
-    const projectRootPath = config.get<string>(WorkspaceConfigSetting.ProjectRootPath) ?? '';
-    const projectPackageJsonFilePath = posix.join(workspaceFolderPath, projectRootPath, 'package.json');
     const workspacePackageJsonFilePath = posix.join(workspaceFolderPath, 'package.json');
 
-    let packageJsonFilePath: string | undefined;
-
-    try {
-      if (existsSync(projectPackageJsonFilePath)) {
-        packageJsonFilePath = projectPackageJsonFilePath;
-      }
-    } catch (error) {
-      this.logger.debug(() => `Could not find a project package.json file at ${projectPackageJsonFilePath}`);
+    if (!existsSync(workspacePackageJsonFilePath)) {
+      this.logger.debug(
+        () =>
+          `Excluding projects in workspace folder '${workspaceFolderPath}' ` +
+          `because could not determine presence of a testable project - ` +
+          `No package.json file at '${workspacePackageJsonFilePath}'`
+      );
+      return false;
+    } else {
+      this.logger.debug(() => `Found a workspace package.json file at '${workspacePackageJsonFilePath}'`);
     }
 
-    try {
-      if (!packageJsonFilePath && existsSync(workspacePackageJsonFilePath)) {
-        packageJsonFilePath = workspacePackageJsonFilePath;
-      }
-    } catch (error) {
-      this.logger.debug(() => `Could not find a workspace package.json file at ${workspacePackageJsonFilePath}`);
-    }
-
-    const packageJson: { devDependencies: Record<string, string> } | undefined = packageJsonFilePath
-      ? require(projectPackageJsonFilePath)
-      : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const packageJson: { devDependencies: Record<string, string> } | undefined = require(workspacePackageJsonFilePath);
 
     if (packageJson && Object.keys(packageJson.devDependencies).includes('karma')) {
       this.logger.debug(
         () =>
           `Including projects in workspace folder '${workspaceFolderPath}' ` +
-          `because related package.json file '${packageJsonFilePath}' has a karma dev dependency`
+          `because workspace package.json file '${workspacePackageJsonFilePath}' ` +
+          `includes a karma dev dependency`
       );
       return true;
+    } else {
+      this.logger.debug(
+        () => `Could not confirm karma dev dependency in workspace package.json file '${workspacePackageJsonFilePath}'`
+      );
     }
+
+    this.logger.debug(
+      () =>
+        `Excluding projects in workspace folder '${workspaceFolderPath}' - ` +
+        `None of the activation conditions could be confirmed for the workspace`
+    );
     return false;
   }
 

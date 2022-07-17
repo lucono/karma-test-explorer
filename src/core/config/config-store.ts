@@ -1,7 +1,7 @@
 export interface ConfigStore<K extends string = string> {
   get<T>(key: K): T;
   has(key: K): boolean;
-  inspect<T>(key: K): { defaultValue?: T } | undefined;
+  inspect<T>(key: K): { defaultValue?: T; workspaceFolderValue?: T } | undefined;
 }
 
 export interface MutableConfigStore<K extends string = string> extends ConfigStore<K> {

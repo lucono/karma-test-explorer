@@ -4,6 +4,7 @@ import { CONFIG_FILE_CHANGE_BATCH_DELAY } from '../../constants';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { Logger } from '../../util/logging/logger';
+import { normalizePath } from '../../util/utils';
 
 interface ConfigChangeSubscription<T extends string> {
   readonly workspaceFolder: WorkspaceFolder;
@@ -83,7 +84,12 @@ export class ConfigChangeManager<T extends string> implements Disposable {
       return;
     }
 
-    this.logger.debug(() => `Config Settings Changed: ${JSON.stringify(changedSettings, null, 2)}`);
+    this.logger.debug(
+      () =>
+        `The following settings changed for workspace folder ` +
+        `'${normalizePath(configChangeSubscription.workspaceFolder.uri.fsPath)}': ` +
+        `${JSON.stringify(changedSettings, null, 2)}`
+    );
 
     if (configChangeSubscription.changeNotificationOptions?.showPrompt === false) {
       configChangeSubscription.changeHandler(changedSettings);

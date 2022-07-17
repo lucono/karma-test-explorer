@@ -3,8 +3,8 @@ import { TestDefinitionState } from '../../src/core/base/test-definition';
 import { TestDefinitionProvider } from '../../src/core/base/test-definition-provider';
 import { TestType } from '../../src/core/base/test-infos';
 import { TestNodeType } from '../../src/core/base/test-node';
-import { RegexTestDefinitionProvider } from '../../src/core/parser/regex-test-definition-provider';
-import { RegexTestFileParser, RegexTestFileParserResult } from '../../src/core/parser/regex-test-file-parser';
+import { RegexpTestDefinitionProvider } from '../../src/core/parser/regexp/regexp-test-definition-provider';
+import { RegexpTestFileParser, RegexpTestFileParserResult } from '../../src/core/parser/regexp/regexp-test-file-parser';
 import { TestLocator } from '../../src/core/test-locator';
 import { FileHandler } from '../../src/util/file-handler';
 import { Logger } from '../../src/util/logging/logger';
@@ -33,7 +33,7 @@ describe('TestLocator', () => {
       ? [{ globPathStyle: 'Windows back slash', mockFileGlobs: windowsBackSlashFileGlobs }]
       : [{ globPathStyle: 'Unix', mockFileGlobs: unixStyleFileGlobs }];
 
-  let mockTestFileParser: MockProxy<RegexTestFileParser>;
+  let mockTestFileParser: MockProxy<RegexpTestFileParser>;
   let testDefinitionProvider: TestDefinitionProvider;
   let mockFileHandler: MockProxy<FileHandler>;
   let mockLogger: MockProxy<Logger>;
@@ -44,10 +44,10 @@ describe('TestLocator', () => {
     mockLogger = mock<Logger>();
     mockFileHandler = mock<FileHandler>();
     mockFileHandler.resolveFileGlobs.mockImplementation(() => Promise.resolve(mockResolvedGlobFiles));
-    mockTestFileParser = mock<RegexTestFileParser>();
-    testDefinitionProvider = new RegexTestDefinitionProvider(mockTestFileParser, mockLogger);
+    mockTestFileParser = mock<RegexpTestFileParser>();
+    testDefinitionProvider = new RegexpTestDefinitionProvider(mockTestFileParser, mockLogger);
 
-    mockTestFileParser.parseFileText.mockReturnValue(<RegexTestFileParserResult>{
+    mockTestFileParser.parseFileText.mockReturnValue(<RegexpTestFileParserResult>{
       Suite: [{ type: TestNodeType.Suite, description: 'SuiteName', line: 1, state: TestDefinitionState.Default }],
       Test: [{ type: TestNodeType.Test, description: 'TestName', line: 2, state: TestDefinitionState.Default }]
     });
@@ -102,7 +102,7 @@ describe('TestLocator', () => {
         const mockTestFilePath = 'path/to/random/test/file';
 
         beforeEach(async () => {
-          mockTestFileParser.parseFileText.mockReturnValue(<RegexTestFileParserResult>{
+          mockTestFileParser.parseFileText.mockReturnValue(<RegexpTestFileParserResult>{
             Suite: [
               {
                 type: TestNodeType.Suite,

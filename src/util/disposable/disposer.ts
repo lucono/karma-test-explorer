@@ -2,6 +2,10 @@ import RichPromise from 'bluebird';
 import { Disposable } from './disposable';
 
 export class Disposer {
+  /**
+   * Disposes all supplied disposables and clears any arrays of Disposable supplied
+   * @param disposables
+   */
   public static async dispose(...disposables: ((Disposable | undefined)[] | Disposable | undefined)[]): Promise<void> {
     await RichPromise.allSettled(disposables.map(disposable => this.disposeItems(disposable)));
   }

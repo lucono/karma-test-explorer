@@ -1,39 +1,40 @@
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { Logger } from '../../util/logging/logger';
-import { escapeForRegExp, generateRandomId, stripJsComments } from '../../util/utils';
-import { TestDefinitionState } from '../base/test-definition';
-import { TestInterface } from '../base/test-framework';
-import { TestNode, TestNodeType } from '../base/test-node';
+import { Disposable } from '../../../util/disposable/disposable';
+import { Disposer } from '../../../util/disposable/disposer';
+import { Logger } from '../../../util/logging/logger';
+import { escapeForRegExp, generateRandomId, stripJsComments } from '../../../util/utils';
+import { TestDefinitionState } from '../../base/test-definition';
+import { TestInterface } from '../../base/test-framework';
+import { TestNode, TestNodeType } from '../../base/test-node';
 
-export type RegexTestFileParserResult = Record<TestNodeType, TestNode[]>;
+export type RegexpTestFileParserResult = Record<TestNodeType, TestNode[]>;
 
-export class RegexTestFileParser {
+export class RegexpTestFileParser implements Disposable {
   private disposables: Disposable[] = [];
 
   public constructor(private readonly testInterface: TestInterface, private readonly logger: Logger) {
     this.disposables.push(logger);
   }
 
-  public parseFileText(fileText: string): RegexTestFileParserResult {
+  public parseFileText(fileText: string): RegexpTestFileParserResult {
     const parseId = generateRandomId();
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file text: \n${fileText}`);
 
+    const startTime = new Date();
     const data = this.getTestFileData(fileText);
 
-    const fileInfo: RegexTestFileParserResult = {
+    const fileInfo: RegexpTestFileParserResult = {
       [TestNodeType.Suite]: [],
       [TestNodeType.Test]: []
     };
 
-    const testInterfaceParserRegex = this.getTestNodeRegex(this.testInterface); // TODO: Switch to AST parser
+    const testInterfaceParserRegexp = this.getTestNodeRegexp(this.testInterface);
     let matchResult: RegExpExecArray | null;
     let activeLineNumber: number | undefined;
 
-    while ((matchResult = testInterfaceParserRegex.exec(data)) != null) {
+    while ((matchResult = testInterfaceParserRegexp.exec(data)) != null) {
       activeLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : activeLineNumber;
       const nodeDefinition = this.getNodeTypeAndState(matchResult[4]);
-      const testDescription = matchResult[7]?.replace(/\\(['"`])/g, '$1'); // remove `\` from escaped quote chars
+      const testDescription = matchResult[7]?.replace(/\\(['"`])/g, '$1');
 
       if (!nodeDefinition || !testDescription || activeLineNumber === undefined) {
         continue;
@@ -45,11 +46,14 @@ export class RegexTestFileParser {
         state: nodeDefinition.state
       });
     }
+    const elapsedTime = (Date.now() - startTime.getTime()) / 1000;
 
     this.logger.trace(
-      () => `Parse operation ${parseId}: Parsed total ${fileInfo.Test.length} tests in ${fileInfo.Suite.length} suites`
+      () =>
+        `Parse operation ${parseId}: ` +
+        `Parsed ${fileInfo.Test.length} total tests ` +
+        `in ${elapsedTime.toFixed(2)} secs`
     );
-
     return fileInfo;
   }
 
@@ -81,7 +85,7 @@ export class RegexTestFileParser {
     return undefined;
   }
 
-  private getTestNodeRegex(testInterface: TestInterface): RegExp {
+  private getTestNodeRegexp(testInterface: TestInterface): RegExp {
     const suiteDescriptors = [
       ...testInterface.suiteTags.default,
       ...testInterface.suiteTags.focused,

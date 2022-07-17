@@ -133,6 +133,7 @@ export class NotificationHandler implements Disposable {
     }
 
     this.statusDisplay.hide();
+    this.statusDisplay.type = statusType;
     this.statusDisplay.text = `$(${statusType}) ${message}`;
     this.statusDisplay.tooltip = tooltip;
 

@@ -29,15 +29,15 @@ export class Commands<T extends string = string> {
     return `${this.commandPrefix}${command}`;
   }
 
-  public async dispose(): Promise<void> {
-    await Disposer.dispose(this.disposables);
-  }
-
   public static register(command: string, callback: (...args: any[]) => any, thisArg?: any): Disposable {
     return commands.registerCommand(command, callback, thisArg);
   }
 
   public static execute(command: string, ...args: any[]): Thenable<unknown> {
     return commands.executeCommand(command, ...args);
+  }
+
+  public async dispose(): Promise<void> {
+    await Disposer.dispose(this.disposables);
   }
 }

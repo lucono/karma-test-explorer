@@ -1,21 +1,28 @@
-export type ConfigSetting = InternalConfigSetting | WorkspaceConfigSetting | WorkspaceConfigSetting;
+export type WorkspaceConfigSetting = GeneralConfigSetting | ExternalConfigSetting;
+export type ProjectConfigSetting = GeneralConfigSetting | InternalConfigSetting;
 
 export enum InternalConfigSetting {
-  ProjectSubFolderPath = 'projectSubFolderPath',
-  SelectedAngularProject = 'selectedAngularProject'
+  ProjectName = 'internal_projectName',
+  ProjectType = 'internal_projectType',
+  ProjectPath = 'internal_projectPath',
+  ProjectInstallRootPath = 'internal_projectInstallRootPath',
+  ProjectKarmaConfigFilePath = 'internal_projectKarmaConfigFilePath'
 }
 
-export enum WorkspaceConfigSetting {
+export enum ExternalConfigSetting {
   EnableExtension = 'enableExtension',
-  ProjectRootPath = 'projectRootPath',
   ProjectType = 'projectType',
-  DefaultAngularProjects = 'defaultAngularProjects',
-  DefaultAngularProjectName = 'defaultAngularProjectName', // FIXME: Deprecated - remove
-  KarmaConfFilePath = 'karmaConfFilePath',
+  Projects = 'projects',
+  ProjectRootPath = 'projectRootPath', // FIXME: Deprecated - remove
+  KarmaConfFilePath = 'karmaConfFilePath'
+}
+
+export enum GeneralConfigSetting {
   KarmaPort = 'karmaPort',
   KarmaProcessCommand = 'karmaProcessCommand',
   AngularProcessCommand = 'angularProcessCommand',
   TestTriggerMethod = 'testTriggerMethod',
+  TestParsingMethod = 'testParsingMethod',
   Browser = 'browser',
   CustomLauncher = 'customLauncher',
   NonHeadlessModeEnabled = 'nonHeadlessModeEnabled',

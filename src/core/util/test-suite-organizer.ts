@@ -4,10 +4,10 @@ import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
 import { Logger } from '../../util/logging/logger';
-import { isChildPath } from '../../util/utils';
+import { getLongestCommonPath, isChildPath } from '../../util/utils';
 import { TestGrouping } from '../base/test-grouping';
 import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos';
-import { WorkspaceConfigSetting } from '../config/config-setting';
+import { GeneralConfigSetting } from '../config/config-setting';
 import { TestHelper } from '../test-helper';
 
 export interface TestSuiteFolderGroupingOptions {
@@ -16,6 +16,7 @@ export interface TestSuiteFolderGroupingOptions {
 }
 
 export interface TestSuiteOrganizerOptions extends TestSuiteFolderGroupingOptions {
+  testsBasePath?: string;
   testGrouping?: TestGrouping;
   rootSuiteLabel?: string;
 }
@@ -27,29 +28,27 @@ const defaultTestSuiteFolderGroupingOptions: Required<TestSuiteFolderGroupingOpt
 
 const defaultTestSuiteOrganizerOptions: Required<TestSuiteOrganizerOptions> = {
   ...defaultTestSuiteFolderGroupingOptions,
+  testsBasePath: '',
   testGrouping: TestGrouping.Folder,
   rootSuiteLabel: 'Karma Tests'
 };
 
 export class TestSuiteOrganizer implements Disposable {
-  private readonly testsBasePath: string;
   private readonly options: Required<TestSuiteOrganizerOptions>;
   private readonly disposables: Disposable[] = [];
 
   public constructor(
     private readonly rootPath: string,
-    testsBasePath: string,
     private readonly testHelper: TestHelper,
     private readonly logger: Logger,
     options?: TestSuiteOrganizerOptions
   ) {
     this.options = { ...defaultTestSuiteOrganizerOptions, ...options };
-    this.testsBasePath = isChildPath(rootPath, testsBasePath) ? testsBasePath : rootPath;
     this.disposables.push(logger);
   }
 
   public organizeTests(tests: (TestInfo | TestSuiteInfo)[], options?: TestSuiteFolderGroupingOptions): TestSuiteInfo {
-    const groupingOptions: Required<TestSuiteFolderGroupingOptions> = {
+    const groupingOptions: TestSuiteFolderGroupingOptions = {
       ...this.options,
       ...options
     };
@@ -86,11 +85,11 @@ export class TestSuiteOrganizer implements Disposable {
         `- Use parameterization \n` +
         `- Use computed test descriptions \n` +
         `- Are in test files not captured by your ` +
-        `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.TestFiles}' setting \n` +
+        `'${EXTENSION_CONFIG_PREFIX}.${GeneralConfigSetting.TestFiles}' setting \n` +
         `- Were otherwise not successfully discovered by ${EXTENSION_NAME}` +
         `\n\n` +
         `To exclude unmapped tests from being displayed, set the ` +
-        `'${EXTENSION_CONFIG_PREFIX}.${WorkspaceConfigSetting.ShowUnmappedTests}' ` +
+        `'${EXTENSION_CONFIG_PREFIX}.${GeneralConfigSetting.ShowUnmappedTests}' ` +
         `setting to false.`;
 
       const unmappedTestsSuite: TestSuiteInfo = {
@@ -115,6 +114,20 @@ export class TestSuiteOrganizer implements Disposable {
     tests: (TestInfo | TestSuiteInfo)[],
     groupingOptions: TestSuiteFolderGroupingOptions
   ): (TestFileSuiteInfo | TestFolderSuiteInfo)[] {
+    const testFileList = tests.map(test => test.file).filter(testFile => !!testFile) as string[];
+    const testFolderList = testFileList.map(testFile => dirname(testFile!));
+    const longestCommonTestFolder = getLongestCommonPath(testFolderList);
+    const specifiedTestsBasePath: string | undefined = this.options.testsBasePath || undefined;
+
+    const specifiedBasePathIsSameOrChildOfRootPath =
+      !!specifiedTestsBasePath && isChildPath(this.rootPath, specifiedTestsBasePath, true);
+
+    const testsBasePath: string = specifiedBasePathIsSameOrChildOfRootPath
+      ? specifiedTestsBasePath
+      : !!longestCommonTestFolder && isChildPath(this.rootPath, longestCommonTestFolder, true)
+      ? longestCommonTestFolder
+      : this.rootPath;
+
     const testFileSuitesByFilePath: Map<string, TestFileSuiteInfo> = new Map();
 
     tests.forEach(test => {
@@ -131,13 +144,13 @@ export class TestSuiteOrganizer implements Disposable {
       let testFileSuite: TestFileSuiteInfo | undefined = testFileSuitesByFilePath.get(test.file);
 
       if (!testFileSuite) {
-        testFileSuite = this.createTestFileSuite(test.file);
+        testFileSuite = this.createTestFileSuite(test.file, testsBasePath);
         testFileSuitesByFilePath.set(test.file, testFileSuite);
       }
       testFileSuite.children.push(test);
     });
 
-    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(this.testsBasePath);
+    const rootFolderSuite: TestFolderSuiteInfo = this.createFolderSuite(testsBasePath);
     rootFolderSuite.name = '.';
     rootFolderSuite.label = '.';
 
@@ -254,8 +267,8 @@ export class TestSuiteOrganizer implements Disposable {
     };
   }
 
-  private createTestFileSuite(absoluteFilePath: string): TestFileSuiteInfo {
-    const relativeFilePath = relative(this.testsBasePath, absoluteFilePath);
+  private createTestFileSuite(absoluteFilePath: string, basePath: string): TestFileSuiteInfo {
+    const relativeFilePath = relative(basePath, absoluteFilePath);
     const fileSuiteId = `${absoluteFilePath}:`;
     const fileSuiteLabel = basename(absoluteFilePath).replace(/^(test[_\.-])?([^\.]*)([_\.-]test)?(\..*)$/i, '$2');
 

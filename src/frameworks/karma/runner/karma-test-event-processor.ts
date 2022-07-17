@@ -115,8 +115,8 @@ export class KarmaTestEventProcessor {
         filteredEvents: Array.from(this.currentProcessingInfo.filteredTestResultEvents.values())
       };
       this.currentProcessingInfo.deferredProcessingResults!.fulfill(processedResults);
-      this.retireExcludedTests();
       this.emitTestSuiteEvents();
+      this.retireExcludedTests();
     }
 
     this.currentProcessingInfo = undefined;
@@ -306,8 +306,20 @@ export class KarmaTestEventProcessor {
 
   private emitTestSuiteEvents() {
     if (!this.currentProcessingInfo?.eventProcessingOptions.emitTestStats) {
+      this.logger.debug(
+        () =>
+          `Aggregate test stats will not be emitted ` +
+          `because emit test stats is disabled ` +
+          `for the current event processor`
+      );
       return;
     }
+    this.logger.debug(
+      () =>
+        `Aggregate test stats will be emitted ` +
+        `because emit test stats is enabled ` +
+        `for the current event processor`
+    );
 
     const capturedTests: TestCapture = {
       [TestStatus.Failed]: [],

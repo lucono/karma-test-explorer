@@ -1,4 +1,4 @@
-import { Event, EventEmitter, workspace, WorkspaceFolder } from 'vscode';
+import { Event, EventEmitter, WorkspaceFolder } from 'vscode';
 import {
   RetireEvent,
   TestAdapter,
@@ -9,12 +9,11 @@ import {
   TestRunStartedEvent,
   TestSuiteEvent
 } from 'vscode-test-adapter-api';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME, KARMA_SERVER_OUTPUT_CHANNEL_NAME } from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
-import { ConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
+import { GeneralConfigSetting, ProjectConfigSetting } from './core/config/config-setting';
 import { ConfigStore } from './core/config/config-store';
 import { ExtensionConfig } from './core/config/extension-config';
-import { LayeredConfigStore } from './core/config/layered-config-store';
 import { Debugger } from './core/debugger';
 import { KarmaTestExplorer } from './core/karma-test-explorer';
 import { MainFactory } from './core/main-factory';
@@ -23,6 +22,7 @@ import { ProjectCommand } from './core/vscode/commands/project-command';
 import { NotificationHandler } from './core/vscode/notifications/notification-handler';
 import { StatusDisplay } from './core/vscode/notifications/status-display';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
+import { KarmaLogLevel } from './frameworks/karma/karma-log-level';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
 import { LogLevel } from './util/logging/log-level';
@@ -31,15 +31,11 @@ import { PortAcquisitionClient } from './util/port/port-acquisition-client';
 import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
 import { getCircularReferenceReplacer } from './util/utils';
 
-export interface AdapterOptions {
-  projectNamespace?: string;
-  configDefaults?: ConfigStore<ConfigSetting>;
-  configOverrides?: ConfigStore<ConfigSetting>;
-  outputChannelLog?: OutputChannelLog;
-}
-
 export class Adapter implements TestAdapter, Disposable {
   private readonly outputChannelLog: OutputChannelLog;
+  private readonly testServerLog: OutputChannelLog;
+  private readonly logger: SimpleLogger;
+  private readonly config: ExtensionConfig;
   private readonly portAcquisitionClient: PortAcquisitionClient;
   private readonly debugger: Debugger;
   private readonly projectCommands: Commands<ProjectCommand>;
@@ -47,45 +43,56 @@ export class Adapter implements TestAdapter, Disposable {
   private readonly testLoadEmitter: EventEmitter<TestLoadEvent>;
   private readonly testRunEmitter: EventEmitter<TestRunEvent | TestResultEvent>;
   private readonly retireEmitter: EventEmitter<RetireEvent>;
+  private readonly disposables: Disposable[] = [];
 
-  private logger: SimpleLogger;
   private karmaTestExplorer: KarmaTestExplorer;
   private testExplorerDisposables: Disposable[] = [];
-  private readonly disposables: Disposable[] = [];
 
   constructor(
     public readonly workspaceFolder: WorkspaceFolder,
-    private readonly projectDisplayName: string,
+    private readonly projectShortName: string,
+    private readonly projectNamespace: string,
+    configStore: ConfigStore<ProjectConfigSetting>,
     portAcquisitionManager: PortAcquisitionManager,
-    projectStatusDisplay: StatusDisplay,
-    private readonly options?: AdapterOptions
+    projectStatusDisplay: StatusDisplay
   ) {
-    let channelLog = options?.outputChannelLog;
+    this.outputChannelLog = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME} (${this.projectNamespace})`);
+    this.disposables.push(this.outputChannelLog);
 
-    if (!channelLog) {
-      const channelNamespaceLabel = options?.projectNamespace ? ` (${options.projectNamespace})` : '';
-      channelLog = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME}${channelNamespaceLabel}`);
-      this.disposables.push(channelLog);
-    }
-    this.outputChannelLog = channelLog;
+    this.config = new ExtensionConfig(
+      configStore,
+      this.workspaceFolder.uri.path,
+      new SimpleLogger(
+        this.outputChannelLog,
+        ExtensionConfig.name,
+        configStore.get<LogLevel>(GeneralConfigSetting.LogLevel)
+      )
+    );
 
-    const config = this.createConfig();
-    this.logger = new SimpleLogger(this.outputChannelLog, Adapter.name, config.logLevel);
+    this.logger = new SimpleLogger(this.outputChannelLog, Adapter.name, this.config.logLevel);
+
+    this.logger.debug(() => 'Creating server output channel');
+    const serverOutputChannelName = `${KARMA_SERVER_OUTPUT_CHANNEL_NAME} (${this.projectNamespace})`;
+    this.testServerLog = new OutputChannelLog(serverOutputChannelName, {
+      enabled: this.config.karmaLogLevel !== KarmaLogLevel.DISABLE
+    });
+    this.disposables.push(this.testServerLog);
 
     this.logger.debug(() => 'Creating port acquisition client');
     this.portAcquisitionClient = new PortAcquisitionClient(
       portAcquisitionManager,
       this.createLogger(PortAcquisitionClient.name)
     );
+    this.disposables.push(this.portAcquisitionClient);
 
     this.logger.debug(() => 'Creating debugger');
     this.debugger = new Debugger(this.createLogger(Debugger.name), {
-      debuggerNamespace: options?.projectNamespace ? projectDisplayName : undefined
+      debuggerNamespace: projectShortName
     });
     this.disposables.push(this.debugger);
 
     this.logger.debug(() => 'Creating project commands handler');
-    const commandsNamespace = options?.projectNamespace ? `.${options.projectNamespace}` : '';
+    const commandsNamespace = `.${this.projectNamespace}`;
     this.projectCommands = new Commands<ProjectCommand>(
       this.createLogger(Commands.name),
       `${EXTENSION_CONFIG_PREFIX}${commandsNamespace}`
@@ -98,9 +105,7 @@ export class Adapter implements TestAdapter, Disposable {
     this.notificationHandler = new NotificationHandler(
       projectStatusDisplay,
       this.createLogger(NotificationHandler.name),
-      {
-        showLogCommand: this.projectCommands.getCommandName(ProjectCommand.ShowLog)
-      }
+      { showLogCommand: this.projectCommands.getCommandName(ProjectCommand.ShowLog) }
     );
     this.disposables.push(this.notificationHandler);
 
@@ -109,31 +114,25 @@ export class Adapter implements TestAdapter, Disposable {
     this.testRunEmitter = new EventEmitter();
     this.retireEmitter = new EventEmitter();
     this.disposables.push(this.testLoadEmitter, this.testRunEmitter, this.retireEmitter);
-
-    const { testExplorer, testExplorerDisposables } = this.createTestExplorer(config);
-    this.karmaTestExplorer = testExplorer;
-    this.testExplorerDisposables = testExplorerDisposables;
+    this.karmaTestExplorer = this.createTestExplorer();
   }
 
-  private createTestExplorer(config: ExtensionConfig): {
-    testExplorer: KarmaTestExplorer;
-    testExplorerDisposables: Disposable[];
-  } {
+  private createTestExplorer(): KarmaTestExplorer {
     this.logger.debug(() => 'Creating new test explorer');
     const testExplorerDisposables: Disposable[] = [];
 
     this.logger.debug(
       () =>
         `Re/creating test explorer with extension configuration: ` +
-        `${JSON.stringify(config, getCircularReferenceReplacer(), 2)}`
+        `${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
     );
 
     this.logger.debug(() => 'Creating main factory');
     const factory = new MainFactory(
       this.workspaceFolder,
-      this.projectDisplayName,
-      this.options?.projectNamespace,
-      config,
+      this.projectShortName,
+      this.projectNamespace,
+      this.config,
       this.debugger,
       this.portAcquisitionClient,
       this.projectCommands,
@@ -142,6 +141,7 @@ export class Adapter implements TestAdapter, Disposable {
       this.testRunEmitter as EventEmitter<TestRunEvent>,
       this.testRunEmitter as EventEmitter<TestResultEvent>,
       this.retireEmitter,
+      this.testServerLog,
       this.createLogger(MainFactory.name)
     );
     testExplorerDisposables.push(factory);
@@ -163,13 +163,13 @@ export class Adapter implements TestAdapter, Disposable {
     testExplorerDisposables.push(testManager);
 
     this.logger.debug(() => 'Getting file watcher from factory');
-    const fileWatcher = factory.createFileWatcher();
+    const fileWatcher = factory.createFileWatcher(); // FIXME: Fix non-intuitive side effect implementation for watching project files
     testExplorerDisposables.push(fileWatcher);
 
     this.logger.debug(() => 'Creating test explorer'); // FIXME: Add project path to log
     const testExplorer = new KarmaTestExplorer(
       this.workspaceFolder,
-      config,
+      this.config,
       testManager,
       testLocator,
       testStore,
@@ -179,32 +179,11 @@ export class Adapter implements TestAdapter, Disposable {
       this.testRunEmitter,
       this.retireEmitter,
       this.notificationHandler,
-      this.logger
+      this.createLogger(KarmaTestExplorer.name)
     );
 
-    return {
-      testExplorer: testExplorer,
-      testExplorerDisposables: testExplorerDisposables
-    };
-  }
-
-  private createConfig(): ExtensionConfig {
-    const baseConfig: ConfigStore<ConfigSetting> = workspace.getConfiguration(
-      EXTENSION_CONFIG_PREFIX,
-      this.workspaceFolder.uri
-    );
-    const configStore: ConfigStore<ConfigSetting> = new LayeredConfigStore(
-      this.options?.configDefaults,
-      baseConfig,
-      this.options?.configOverrides
-    );
-    const configuredLogLevel = configStore.get<LogLevel>(WorkspaceConfigSetting.LogLevel);
-
-    return new ExtensionConfig(
-      configStore,
-      this.workspaceFolder.uri.path,
-      new SimpleLogger(this.outputChannelLog, ExtensionConfig.name, configuredLogLevel)
-    );
+    this.testExplorerDisposables.push(...testExplorerDisposables);
+    return testExplorer;
   }
 
   private createLogger(loggerName: string): SimpleLogger {
@@ -214,15 +193,12 @@ export class Adapter implements TestAdapter, Disposable {
   private async reset(): Promise<void> {
     this.logger.info(() => `Resetting adapter`);
     await this.disposeTestExplorer();
-
-    const config = this.createConfig();
-    this.logger = new SimpleLogger(this.outputChannelLog, Adapter.name, config.logLevel);
-
-    const { testExplorer, testExplorerDisposables } = this.createTestExplorer(config);
-    this.karmaTestExplorer = testExplorer;
-    this.testExplorerDisposables = testExplorerDisposables;
-
+    this.karmaTestExplorer = this.createTestExplorer();
     this.load();
+  }
+
+  public async cancel(): Promise<void> {
+    return this.reset();
   }
 
   public async run(testIds: string[], isDebug?: boolean): Promise<void> {
@@ -235,10 +211,6 @@ export class Adapter implements TestAdapter, Disposable {
 
   public async load(): Promise<void> {
     return this.karmaTestExplorer.loadTests();
-  }
-
-  public async cancel(): Promise<void> {
-    return this.reset();
   }
 
   get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -256,6 +228,7 @@ export class Adapter implements TestAdapter, Disposable {
   private async disposeTestExplorer(): Promise<void> {
     await this.karmaTestExplorer.dispose();
     await Disposer.dispose(this.testExplorerDisposables);
+    this.testExplorerDisposables = [];
   }
 
   public async dispose(): Promise<void> {
