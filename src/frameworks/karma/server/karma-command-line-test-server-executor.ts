@@ -1,5 +1,7 @@
 import { join } from 'path';
 import { TestServerExecutor } from '../../../api/test-server-executor';
+import { EXTENSION_NAME } from '../../../constants';
+import { ExternalConfigSetting } from '../../../core/config/config-setting';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { SimpleLogger } from '../../../util/logging/simple-logger';
@@ -22,9 +24,9 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
   private disposables: Disposable[] = [];
 
   public constructor(
-    private readonly projectRootPath: string,
+    private readonly projectPath: string,
     private readonly baseKarmaConfigFile: string,
-    private readonly userKarmaConfigFile: string,
+    private readonly projectKarmaConfigFile: string,
     private readonly processHandler: ProcessHandler,
     private readonly logger: SimpleLogger,
     private readonly options: KarmaCommandLineTestServerExecutorOptions
@@ -41,7 +43,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       ...this.options.environment,
       [KarmaEnvironmentVariable.KarmaPort]: `${karmaPort}`,
       [KarmaEnvironmentVariable.KarmaSocketPort]: `${karmaSocketPort}`,
-      [KarmaEnvironmentVariable.UserKarmaConfigPath]: this.userKarmaConfigFile
+      [KarmaEnvironmentVariable.ProjectKarmaConfigPath]: this.projectKarmaConfigFile
     };
 
     if (debugPort !== undefined) {
@@ -49,29 +51,13 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     }
 
     const runOptions: SimpleProcessOptions = {
-      cwd: this.projectRootPath,
+      cwd: this.projectPath,
       shell: false,
       env: environment,
       failOnStandardError: this.options.failOnStandardError,
       parentProcessName: KarmaCommandLineTestServerExecutor.name,
       processLog: this.options.serverProcessLog
     };
-
-    const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
-      'karma',
-      this.projectRootPath,
-      { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
-      this.logger
-    );
-    const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
-
-    if (!karmaBinaryPath) {
-      throw new Error(
-        `Karma does not seem to be installed - ` +
-          `You may need to run 'npm install' in your project. ` +
-          `Please install it and try again.`
-      );
-    }
 
     const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
@@ -81,16 +67,42 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
     } else {
+      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+        'karma',
+        this.projectPath,
+        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
+        this.logger
+      );
+      const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
+
+      if (!karmaBinaryPath) {
+        throw new Error(
+          `Karma does not seem to be installed - You may need ` +
+            `to install your project dependencies or specify the ` +
+            `right path to your project using the ${EXTENSION_NAME} ` +
+            `'${ExternalConfigSetting.Projects}' setting.`
+        );
+      }
+
       command = nodeExecutablePath ?? process.execPath;
       processArguments = [karmaBinaryPath];
     }
 
     processArguments = [...processArguments, 'start', this.baseKarmaConfigFile, '--no-single-run'];
 
+    this.logKarmaLaunch();
     const karmaServerProcess = this.processHandler.spawn(command, processArguments, runOptions);
     this.disposables.push(karmaServerProcess);
 
     return karmaServerProcess;
+  }
+
+  private logKarmaLaunch() {
+    const launchMessage =
+      `------------------------------------\n` +
+      `${EXTENSION_NAME}: Launching Karma\n` +
+      `------------------------------------\n`;
+    this.options.serverProcessLog?.output(() => launchMessage);
   }
 
   public async dispose() {

@@ -1,4 +1,5 @@
 
+[![Open in Development Container](https://img.shields.io/static/v1?label=VS%20Code&message=Open%20in%20Container&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/lucono/karma-test-explorer)
 [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
 [![Rating](https://vsmarketplacebadge.apphb.com/rating-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
 [![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
@@ -9,7 +10,7 @@ This extension runs your Karma or Angular tests in Visual Studio Code using the 
 
 ![Karma Test Explorer screenshot](./docs/img/sidebar.png)
 
-It displays rich information about your tests in the Testing side bar (left image), including focused ⚡and disabled 💤 tests. It also detects duplicated tests in your project and convniently flags them for action. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image).
+It displays rich information about your tests in the Testing side bar (left image), including focused ⚡ and disabled 💤 tests. It also detects duplicated tests in your project and convniently flags them for action. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image).
 
 ---
 Please take a minute to rate this extension in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and star it on [GitHub](https://github.com/lucono/karma-test-explorer/stargazers). For issues, questions, or feature requests, see [Reporting Issues](./docs/documentation.md#reporting-issues).
@@ -18,15 +19,13 @@ Please take a minute to rate this extension in the [marketplace](https://marketp
 
 ## Why this Extension
 
-Karma Test Explorer is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension and is a major rewrite aimed at facilitating various significant enhancements and new features (such as those in the initial release [changelog](./CHANGELOG.md#010---sep-28-2021)). 
-
-Its core focus is on robust support for:
+Karma Test Explorer is based on the [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension and is a major rewrite aimed at facilitating various significant enhancements and new features, and robust support for:
 
 - Large projects with thousands of tests
 - Remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Flexibility to support a wide range of testing scenarios and workflows
-- Simplicity to "just work" - without any or much configuration
-- Reliability, usability, and team productivity
+- Smooth user experience to "just work" without any or much configuration
+- Reliability, usability, and productivity
 
 ---
 
@@ -34,11 +33,11 @@ Its core focus is on robust support for:
 
 - Angular and Karma project support
 - Jasmine and Mocha framework support
-- Watch mode with active pass-fail test updates
-- Detect and flag duplicated tests
-- Filter view to focus only on enabled tests
-- Option to run tests in a visible browser window
-- [More](./docs/documentation.md#features)
+- Multi-project and monorepo support
+- Active update of test pass-fail statuses
+- Duplicate test detection and flagging
+- Filter view to remove noise from disabled tests
+- [See more](./docs/documentation.md#features)
 
 ## Quick Start
 

@@ -26,7 +26,7 @@ export class FileWatcher {
 
   public constructor(
     private readonly workspaceFolder: WorkspaceFolder,
-    private readonly projectRootPath: string,
+    private readonly projectPath: string,
     private readonly testFilePatterns: readonly string[],
     private readonly reloadTriggerFiles: readonly string[],
     private readonly testLocator: TestLocator,
@@ -36,6 +36,7 @@ export class FileWatcher {
     private readonly logger: Logger,
     fileWatcherOptions: FileWatcherOptions = {}
   ) {
+    // FIXME: Fix non-intuitive all-private, side effect based implementation for watching project files
     this.fileWatcherOptions = { ...defaultFileWatcherOptions, ...fileWatcherOptions };
     this.disposables.push(logger);
     this.disposables.push(...this.createFileWatchers());
@@ -45,7 +46,7 @@ export class FileWatcher {
     this.logger.debug(() => 'Creating file watchers for monitored files');
 
     const reloadTriggerFilesRelativePaths = this.reloadTriggerFiles.map(triggerFile =>
-      normalizePath(relative(this.projectRootPath, triggerFile))
+      normalizePath(relative(this.projectPath, triggerFile))
     );
 
     this.logger.trace(
@@ -55,12 +56,15 @@ export class FileWatcher {
         `${JSON.stringify(reloadTriggerFilesRelativePaths, null, 2)}`
     );
 
+    const fileChangedHandler = (filePath: string) => {
+      this.logger.info(() => `Reloading due to monitored file changed: ${filePath}`);
+      this.projectCommands.execute(ProjectCommand.Reset);
+    };
+
     const reloadTriggerFilesWatchers = this.registerFileHandler(
+      // FIXME: Add file watcher functionality to prompt with changed file and custom message and actions to trigger handler?
       reloadTriggerFilesRelativePaths,
-      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, filePath => {
-        this.logger.info(() => `Reloading due to monitored file changed: ${filePath}`);
-        this.projectCommands.execute(ProjectCommand.Reset);
-      })
+      debounce(WATCHED_FILE_CHANGE_BATCH_DELAY, fileChangedHandler)
     );
 
     this.logger.debug(() => 'Creating file watchers for test file changes');
@@ -96,8 +100,8 @@ export class FileWatcher {
   ): FileSystemWatcher[] {
     const fileWatchers: FileSystemWatcher[] = [];
     const workspaceRootPath = normalizePath(this.workspaceFolder.uri.fsPath);
-    const relativeProjectRootPath = relative(workspaceRootPath, this.projectRootPath);
-    const isProjectRootSameAsWorkspace = this.projectRootPath === workspaceRootPath;
+    const relativeProjectRootPath = relative(workspaceRootPath, this.projectPath);
+    const isProjectRootSameAsWorkspace = this.projectPath === workspaceRootPath;
 
     this.logger.debug(() => `Registering file handler for files: ${JSON.stringify(filePatterns, null, 2)}`);
 
@@ -111,7 +115,7 @@ export class FileWatcher {
       this.logger.debug(
         () =>
           `Creating file watcher for file or pattern '${fileOrPattern}' ` +
-          `using base path: ${absoluteFileOrPattern.base}`
+          `using base path: ${absoluteFileOrPattern.baseUri.fsPath}`
       );
       const fileWatcher = workspace.createFileSystemWatcher(absoluteFileOrPattern);
       fileWatchers.push(fileWatcher);

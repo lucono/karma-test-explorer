@@ -48,16 +48,16 @@ export class PortAcquisitionManager implements Disposable {
 
     foundPorts.forEach(port => this.assignedPorts.add(port));
 
-    futurePortRelease.then(() => {
-      requestLogger.debug(() => `Releasing ports: ${foundPorts.join(', ')}`);
-      foundPorts.forEach(port => this.assignedPorts.delete(port));
-    });
-
     requestLogger.debug(
       () => `Request for ${portCount} port(s) at base port ${basePort} acquired: ${foundPorts.join(', ')}`
     );
     requestLogger.trace(() => `Current assigned ports: ${[...this.assignedPorts].join(', ')}`);
-    requestLogger.dispose();
+
+    futurePortRelease.then(() => {
+      requestLogger.debug(() => `Releasing ports: ${foundPorts.join(', ')}`);
+      foundPorts.forEach(port => this.assignedPorts.delete(port));
+      requestLogger.dispose();
+    });
 
     return foundPorts;
   }

@@ -17,21 +17,11 @@ import { SimpleLogger } from '../util/logging/simple-logger';
 import { ProcessHandler } from '../util/process/process-handler';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events';
 import { CancellationRequestedError } from './cancellation-requested-error';
-import { ConfigSetting } from './config/config-setting';
-import { ConfigStore } from './config/config-store';
 import { ExtensionConfig } from './config/extension-config';
 import { Debugger } from './debugger';
 import { TestLocator } from './test-locator';
 import { TestStore } from './test-store';
 import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler';
-import { OutputChannelLog } from './vscode/output-channel-log';
-
-export interface KarmaTestExplorerOptions {
-  projectNamespace?: string;
-  configDefaults?: ConfigStore<ConfigSetting>;
-  configOverrides?: ConfigStore<ConfigSetting>;
-  outputChannelLog?: OutputChannelLog;
-}
 
 export class KarmaTestExplorer implements Disposable {
   private readonly disposables: Disposable[] = [];

@@ -14,6 +14,8 @@
 - [Testing Multiple Projects](#testing-multiple-projects)
 - [Non-Headless Testing](#non-headless-testing)
 - [Testing in a Development Container](#testing-in-a-development-container)
+- [Customizing the Launcher and Browser](#customizing-the-launcher-and-browser)
+- [Providing Environment Variables](#providing-environment-variables)
 - [Output Panels](#output-panels)
 - [Known Issues and Limitations](#known-issues-and-limitations)
 - [Reporting Issues](#reporting-issues)
@@ -41,7 +43,7 @@ Duplicated tests in your project are also detected and convniently flagged for a
 
 - Angular and Karma project support
 - Jasmine and Mocha test framework support
-- Karma version 6 support
+- Multi project, monorepo and multi-root workspace support
 - Watch mode support with auto pass / fail test status update
 - Duplicate test detection and reporting
 - Non-Headless testing / use visible browser window
@@ -72,18 +74,18 @@ Duplicated tests in your project are also detected and convniently flagged for a
 |Prerequisite | Description|
 |:-------------|------------|
 |Test&nbsp;Browser | Karma Test Explorer requires a browser for running tests, which by default is the Chrome browser, though you can provide a custom launcher which uses a different browser. Whichever browser is used must be installed on the computer or container where VS Code will be running your project's tests|
-|Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, some of Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc, all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` would ensure they are all installed|
-|Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container, then the extension's installation mode in VS Code should be in the remote workspace|
+|Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, some of Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc, all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` or `yarn install` for instance, would ensure they are all installed|
+|Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container, then the extension's installation in VS Code should be in the remote workspace|
 
 ### 2. Configure Extension
 
 |Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | When&nbsp;Required | Config&nbsp;Setting
 |:-------|---------------|----------------
-|Specify project root path relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace root folder | `karmaTestExplorer.projectRootPath`
-|Specify `karma.conf.js` file path relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
+|Specify the path to the project relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace folder root | `karmaTestExplorer.projects`
+|Specify the path to the `karma.conf.js` file relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
 |Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
 |Ensure you DO NOT have any of these Test Explorer UI settings configured | Required to prevent conflict with Karma Test Explorer functionality | `testExplorer.useNativeTesting` and `testExplorer.onStart` and `testExplorer.onReload`
-|Provide any other relevant [settings](#extension-settings) | Optional but recommended - use the various other Karma Test Explorer configuration [options](#extension-settings) to further customize it to the needs of your project and team| See [all settings](#extension-settings)
+|Provide any other relevant [settings](#extension-settings) | Optionally, use any other Karma Test Explorer [settings](#extension-settings) that are relevant to your needs to further customize it to the your project and team| See [all settings](#extension-settings)
 
 ### 3. Run Your Tests
 
@@ -101,7 +103,7 @@ Note that Karma Test Explorer will briefly display updates (using available spac
 
 ## Extension Activation Rules
 
-The Karma Test Explorer extension is activated for a project workspace or folder based on the presence of any one of the following conditions:
+The Karma Test Explorer extension is activated for a project workspace or folder based on the presence of ANY one of the following conditions:
 
 - The project workspace has the `karmaTestExplorer.enableExtension` setting set to `true`. This setting is a maunal override of the extension's automatic activation rules to forcefully activate or deactivate the extension
 - The project workspace has one or more Karma Test Explorer extension settings (`karmaTestExplorer.*`) configured, except for `karmaTestExplorer.enableExtension` set to `false`
@@ -120,9 +122,7 @@ Projects which DO NOT have an `angular.json` or `.angular-cli.json` file in the 
 
 ### Angular Projects
 
-Projects with an `angular.json` or `.angular-cli.json` file in the project root are loaded as Angular projects. Use the `karmaTestExplorer.defaultAngularProjects` setting to specify which Angular projects should automatically be loaded for testing whenever the workspace is initially opened in VSCode. Otherwise, the project specified as default in the `angular.json` config will be chosen.
-
-Note that if no angular config file is found for a project that is explicitly configured as an Angular project using the `karmaTestExplorer.projectType` setting, then the project will be loaded instead as a plain Karma project.
+Projects with an `angular.json` or `.angular-cli.json` file in the project root are loaded as Angular projects. Note that if no angular config file is found for a project that is explicitly configured as an Angular project using the `karmaTestExplorer.projectType` setting, then the project will be loaded instead as a plain Karma project.
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
@@ -148,18 +148,17 @@ Though Karma Test Explorer comes with many configuration options that make it fl
 Setting                                       | Description
 -----------------------------------------------|---------------------------------------------------------------
 `karmaTestExplorer.enableExtension` | Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision
-`karmaTestExplorer.projectRootPath` | The working directory where the project is located (relative to the root folder)
+`karmaTestExplorer.projects` | This is a list, each entry of which is either a string of the relative path (relative to the workspace root folder) to a project for testing, or an object having a `projectRootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project - `projectType`, `karmaConfFilePath`, `testFramework`, `testFiles`, `excludeFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project
 `karmaTestExplorer.projectType` | The type of the project. This will be auto-detected if not specified. Specify the right project type if not correctly auto-detected
-`karmaTestExplorer.defaultAngularProjects` | The projects in the Angular workspace to be loaded by default for testing. If not specified, the default project specified in `angular.json` is loaded instead
-`karmaTestExplorer.testFramework` | The test framework used by the project. The framework will be auto-detected if none is specified. Specify the right test framework if it is not correctly auto-detected
-`karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to `projectRootPath`)
+`karmaTestExplorer.testFramework` | The test framework used by the project. This will be auto-detected if not specified. Specify the right test framework if not correctly auto-detected
+`karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to the project root path)
 `karmaTestExplorer.testGrouping` | How tests should be grouped in the Test view side bar
 `karmaTestExplorer.flattenSingleChildFolders` | Flattens paths consisting of single child folders when using folder-based test grouping
 `karmaTestExplorer.showTestDefinitionTypeIndicators` | Show test definition type indicators such as tests defined as focused or disabled
 `karmaTestExplorer.excludeDisabledTests` | Exclude disabled tests from the test view
 `karmaTestExplorer.showOnlyFocusedTests` | Show only focused tests in the test view. This is always true if using the Mocha test framework
 `karmaTestExplorer.showUnmappedTests` | Include tests in the test view which were returned by Karma but either not discovered or included in the set of test files configured for Karma Test Explorer
-`karmaTestExplorer.karmaPort` | The port to be used for the Karma server in VS Code
+`karmaTestExplorer.karmaPort` | The port to be used by default for the Karma server in VS Code. Whenever the port is not available, the next available port is used
 `karmaTestExplorer.browser` | The browser that will be launched by Karma for testing. This can also include any valid custom launcher defined in the Karma config file. This takes precedence over the `customLauncher` setting
 `karmaTestExplorer.customLauncher` | Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file
 `karmaTestExplorer.autoWatchEnabled` | Enables automatic re-run of tests when the files change
@@ -171,20 +170,21 @@ Setting                                       | Description
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.testTriggerMethod` | Experimental. Specifies how test runs are triggered by default, either through the Karma CLI or Http interface. You will usually not need to use this setting unless working around specific issues
+`karmaTestExplorer.testParsingMethod` | Specifies how tests are parsed by default, either using regular expression matching or an abstract syntax tree. You will usually not need to use this setting unless working around specific issues
 `karmaTestExplorer.failOnStandardError` | Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues
-`karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to `projectRootPath` for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects)
-`karmaTestExplorer.testFiles` | The path glob patterns identifying the test files (relative to `projectRootPath`)
-`karmaTestExplorer.excludeFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to `projectRootPath`)
+`karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to the project root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project
+`karmaTestExplorer.testFiles` | The path glob patterns identifying the test files (relative to the project root path)
+`karmaTestExplorer.excludeFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to the project root path). The `node_modules` folder is always excluded
 `karmaTestExplorer.reloadOnKarmaConfigChange` | Enables reloading of Karma on changes to the Karma configuration file
 `karmaTestExplorer.reloadOnChangedFiles` | The files which when modified will trigger a Karma reload
 `karmaTestExplorer.karmaReadyTimeout` | The duration in milliseconds after which the extension will stop listening and give up if Karma is not started, connected to the extension, and ready for testing
-`karmaTestExplorer.defaultSocketConnectionPort` | This is the port that will be used to connect Karma with the test explorer. When not specified, Karma Test Explorer will automatically use the first available port equal to, or higher than, 9999
+`karmaTestExplorer.defaultSocketConnectionPort` | The port that will be used for connecting Karma with the test explorer. When not specified, Karma Test Explorer will automatically use the first available port equal to, or higher than, 9999
 `karmaTestExplorer.debuggerConfigName` | The name of the launch configuration that will be used for debugging tests, which can be the name of any launch configuration defined or available in the VS Code `launch.json` file. This takes precedence over the `debuggerConfig` setting
 `karmaTestExplorer.debuggerConfig` | The debugger configuration to be used in debugging the Karma tests in VS Code. This is similar to a VS Code launch configuration entry in the `.vscode/launch.json` file
 `karmaTestExplorer.webRoot` | The web root to be used when debugging the Karma tests in VS Code. This takes precedence over the `webRoot` property in the `debuggerConfig` setting and supports using the `${workspaceFolder}` variable for the absolute workspace folder path. This setting is similar to the `webRoot` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
 `karmaTestExplorer.pathMapping` | The path mappings to be used when debugging the Karma tests in VS Code. These take precedence over any identical path mappings defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `pathMapping` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
 `karmaTestExplorer.sourceMapPathOverrides` | The source map path overrides to be used when debugging the Karma tests in VS Code. These take precedence over any identical source map path overrides defined in the `debuggerConfig` setting and support using the `${webRoot}` variable for the configured `webRoot` value, and the `${workspaceFolder}` variable for the absolute path of the workspace folder. This setting is similar to the `sourceMapPathOverrides` property of a VS Code launch configuration entry in the `.vscode/launch.json` file
-`karmaTestExplorer.containerMode` | Enables additional support for easier testing when running in a container. Can be either `auto` (the default when not set), `enabled`, or `disabled`
+`karmaTestExplorer.containerMode` | Enables additional support for easier testing when running in a container. If not specified, this will be enabled when the project is detected to be running in a container, or disabled otherwise
 `karmaTestExplorer.logLevel` | Sets the level of logging detail produced in the output panel of the extension. More detailed levels such as the `debug` level can be helpful when troubleshooting issues with running Karma or the extension
 `karmaTestExplorer.karmaLogLevel` | Sets the level of logging detail for the Karma server in its output channel, which can be helpful when troubleshooting issues with running Karma or the extension
 `karmaTestExplorer.karmaReporterLogLevel` | Sets the level of logging detail for the Karma Test Explorer reporter which logs additional details to the Karma server log related to the processing of test and browser events in Karma. This can be helpful when troubleshooting issues with how test and browser events are being processed in Karma and exchanged with the Karma Test Explorer. Set this to `disable` in order to not log any additional output from the reporter into the Karma server logs
@@ -246,7 +246,15 @@ Most times however, you will not need to set this config option at all as Karma 
 
 ## Testing Multiple Projects
 
-When multiple Karma or Angular projects are available in the workspace, either as a result of a multi-folder workspace or an Angular workspace with multiple projects, a folder :file_folder: button will be available on the Test view toolbar which can be used for selecting and loading any number of the projects for testing in the UI. The folder button is not available when there is only a single Karma or Angular project in the open VSCode workspace.
+Karma Test Explorer supports simultaneous multi-project testing for various multi-project setups and scenarios, including:
+
+Project Type | Description
+-------------|------------
+VS Code multi-root workspaces | For a multi-root workspace that is open in VS Code, all Karma and Angular projects in each root of the multi-root workspace will be available to load for testing
+Multi-project Angular workspaces | For each Angular project that is configured or automatically discovered by Karma Test Explorer in a VS Code workspace, all its sub-projects will be available to load for testing
+Monorepos and Embedded projects | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projects` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each
+
+In any scenario, whenever multiple Karma or Angular projects are available for testing, a folder button will be available on the Test view toolbar which can be used for selecting and loading any number of those projects for simultaneous testing in the UI. The folder button is not available when there is only a single project configured or detected for testing in the current VS Code workspace.
 
 ---
 
@@ -264,7 +272,7 @@ Also note that for regular headless testing, Karma Test Explorer supports any br
 
 With VS Code's Development Container feature, you can develop and run your project's Karma tests inside a container, using browsers installed in that container. However, launching Chrome and other Chromium browsers in a container environment often requires additional browser flags and other adjustments. Therefore, to fully support DevContainer-based setups and workflows, Karma Test Explorer provides a number of options to help make development and testing smoother and more seamless in those scenarios.
 
-### Use `karmaTestExplorer.containerMode`
+### Use Container Mode
 
 By default, Karma Test Explorer will automatically detect whether you are testing in a container environment, in which case it will activate `containerMode` which makes all necessary customizations required for smoother container-based development and testing. You can also manually enable this mode by setting the `karmaTestExplorer.containerMode` config setting to `enabled`. Because its default value when not set is `auto`, it should mostly not be necessary to manually set this option at all, unless in a situation where you are running in a container environment and find that Karma Test Explorer is not able to automatically detect it.
 
@@ -272,53 +280,72 @@ When in container mode, the adjustments made by Karma Test Explorer include inte
 
 ### Other Options for Testing in a Dev Container
 
-If for any reason, using the `karmaTestExplorer.containerMode` setting is not a viable option for your project (for example, if you're using a different browser and need to apply a different set of browser flags, or if the `--no-sandbox` browser flag which is internally added by the `containerMode` option would break or conflict with other functionality or setup in your project's container environment), then you might still be able to leverage Karma Test Explorer's several other flexible options to successfully achieve a working VS Code test setup for your project within your container environment, depending on what's viable and desirable for your project and team.
+If for any reason, using the `karmaTestExplorer.containerMode` setting is not a viable option for your project (for example, if you're using a different browser and need to apply a different set of browser flags, or if the `--no-sandbox` browser flag which is internally added by the `containerMode` option would break or conflict with other functionality or setup in your project's container environment), then you might still be able to leverage Karma Test Explorer's other customization options to successfully achieve a working VS Code test setup for your project within your container environment.
 
-#### Option 1 - Using `karmaTestExplorer.customLauncher`
+---
+
+## Customizing the Launcher and Browser
+
+### Use the `customLauncher` Option
 
 With the `karmaTestExplorer.customLauncher` config option, you can provide a custom launcher definition directly in your VS Code settings that Karma Test Explorer will use for running your project's Karma tests. This makes it possible to provide a customized launcher for testing your project in VS Code without needing to modify your project's Karma config file to define a new launcher or adapt an existing one for running your project's tests.
 
-In your VS Code project's settings file (`.vscode/settings.json`):
+For example, in your VS Code project's settings file:
 
 ```json
-{
-  "karmaTestExplorer.customLauncher": {
-    "base": "ChromeHeadless",
-    "flags": [
-      "--flag-required-in-my-container-environment",
-      "--another-required-flag",
-      "--yet-another-one"
-    ]
-  }
+"karmaTestExplorer.customLauncher": {
+  "base": "SomeBrowser",
+  "flags": [
+    "--some-launcher-flag",
+    "--another-flag"
+  ]
 }
 ```
 
-#### Option 2 - Using `karmaTestExplorer.browser`
+### Use the `browser` Option
 
-With the `karmaTestExplorer.browser` config option, you can specify the name of any custom launcher definition that would normally be available to Karma for test execution in your project, including any that are defined in the `customLaunchers` property of your project's Karma config file. This makes it possible and easy to reuse any custom launcher defined in your Karma config file that's already properly configured to work in your project's container environment.
+With the `karmaTestExplorer.browser` config option, you can specify the name of any custom launcher definition that would normally be available to Karma for test execution in your project, including any that are defined in the `customLaunchers` property of your project's Karma config file. This makes it possible and easy for testing your project in VS Code to reuse any custom launcher that's already defined in your Karma config file, and that's already properly configured to work in your project's environment.
 
-In your project's `karma.conf.js`:
+For example, in your project's `karma.conf.js`:
 
 ```js
 customLaunchers: {
-  MyContainerBrowserThatWorks: {
-    base: 'FirefoxHeadless',
-    flags: [ '--launcher-flag-that-works' ]
+  MyCustomLauncher: {
+    base: 'SomeBrowser',
+    flags: [ '--some-launcher-flag' ]
   }
 }
 ```
 
-In your VS Code project's settings file (`.vscode/settings.json`):
+And in your VS Code project's settings file:
 
 ```json
-{
-  "karmaTestExplorer.browser": "MyContainerBrowserThatWorks"
+"karmaTestExplorer.browser": "MyCustomLauncher"
+```
+
+<a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
+
+---
+
+## Providing Environment Variables
+
+The `karmaTestExplorer.env` and `karmaTestExplorer.envFile` config options can be used to provide any environment variables that are required by your test execution setup (such as for instance, using the `CHROME_PATH` or `CHROME_BIN` environment variable to specify the path to a custom browser process used for running your tests).
+
+Example, in your VS Code project's settings file:
+
+```json
+"karmaTestExplorer.env": {
+  "ENV_VAR_1": "env_var_1_value",
+  "ENV_VAR_2": "env_var_2_value",
+  "ENV_VAR_3": "env_var_3_value"
 }
 ```
 
-#### Option 3 - Using `karmaTestExplorer.env` or `karmaTestExplorer.envFile`
+Or to use variables in an external dot-env file:
 
-For more elaborate or highly custom project or environment setups that require a more intricate process for launching the test browser, the `karmaTestExplorer.env` and `karmaTestExplorer.envFile` config options make it possible to specify environment variables - such as `CHROME_PATH` and `CHROME_BIN` - which can point the Karma launcher to a custom script that can be used to provide any required prerequisites and perform whatever specific steps are required to launch the browser process or environment needed for running the tests.
+```json
+"karmaTestExplorer.envFile": "path/to/file.env"
+```
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 
@@ -326,7 +353,7 @@ For more elaborate or highly custom project or environment setups that require a
 
 ## Output Panels
 
-Karma Test Explorer adds the output channels described below to the Output panel of VS Code. Some or all of these channels can be disabled by setting their corresponding `logLevel` config option to `disable` in cases where this option is available.
+For each project for testing, Karma Test Explorer adds the output channels described below to the Output panel of VS Code. Some or all of these channels can be disabled by setting their corresponding `logLevel` config option to `disable` in cases where this option is available.
 
 Name | Description
 -----|-------------

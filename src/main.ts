@@ -1,14 +1,24 @@
 import RichPromise from 'bluebird';
 import { basename } from 'path';
-import { commands, extensions, QuickPickItem, QuickPickItemKind, window, workspace, WorkspaceFolder } from 'vscode';
+import {
+  commands,
+  ExtensionContext,
+  extensions,
+  QuickPickItem,
+  QuickPickItemKind,
+  window,
+  workspace,
+  WorkspaceFolder
+} from 'vscode';
 import { testExplorerExtensionId, TestHub } from 'vscode-test-adapter-api';
-import { Adapter, AdapterOptions } from './adapter';
+import { Adapter } from './adapter';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
 import { ConfigChangeManager } from './core/config/config-change-manager';
-import { ConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
+import { ExternalConfigSetting, GeneralConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
 import { ExtensionCommands } from './core/vscode/commands/extension-commands';
 import { MultiStatusDisplay } from './core/vscode/notifications/multi-status-display';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
+import { Preferences } from './core/vscode/preferences/preferences';
 import { ProjectFactory } from './project-factory';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
@@ -18,22 +28,25 @@ import { SimpleLogger } from './util/logging/simple-logger';
 import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
 import { SimpleProcess } from './util/process/simple-process';
 import { normalizePath } from './util/utils';
-import { WorkspaceProject, WorkspaceType } from './workspace';
+import { WorkspaceProject } from './workspace';
 
 interface SharedAdapterComponents {
   portAcquisitionManager: PortAcquisitionManager;
   multiStatusDisplay: MultiStatusDisplay;
 }
 
+const MAIN_LOG_LEVEL = LogLevel.DEBUG;
 const workspaceProjects: Set<WorkspaceProject> = new Set();
 const disposables: Disposable[] = [];
 
-export const activate = async () => {
-  const workspaceOutputChannel = new OutputChannelLog(EXTENSION_OUTPUT_CHANNEL_NAME);
-  const testExplorerExtension = extensions.getExtension<TestHub>(testExplorerExtensionId);
-  const logger: SimpleLogger = new SimpleLogger(workspaceOutputChannel, 'Main', LogLevel.DEBUG); // FIXME to INFO
+export const activate = async (extensionContext: ExtensionContext) => {
+  const workspaceOutputChannel = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME} (workspace)`);
+  disposables.push(workspaceOutputChannel);
 
-  disposables.push(workspaceOutputChannel, logger);
+  const logger: SimpleLogger = new SimpleLogger(workspaceOutputChannel, 'Main', MAIN_LOG_LEVEL);
+  disposables.push(logger);
+
+  const testExplorerExtension = extensions.getExtension<TestHub>(testExplorerExtensionId);
 
   if (!testExplorerExtension) {
     const errorMsg = 'ERROR: Could not find Test Explorer UI extension';
@@ -42,46 +55,37 @@ export const activate = async () => {
   }
   const testHub = testExplorerExtension.exports;
   const workspaceFolders = workspace.workspaceFolders ?? [];
-  const workspaceType = workspaceFolders.length > 1 ? WorkspaceType.MultiFolder : WorkspaceType.SingleFolder;
-  const projectFactory = new ProjectFactory(workspaceType, new SimpleLogger(logger, ProjectFactory.name));
+
+  const projectFactory = new ProjectFactory(new SimpleLogger(logger, ProjectFactory.name));
+  disposables.push(projectFactory);
 
   const allProjects = projectFactory.createProjectsForWorkspaceFolders(...workspaceFolders);
-  const isMultiProjectWorkspace = allProjects.length > 1;
-  const portAcquisitionManager = new PortAcquisitionManager(new SimpleLogger(logger, PortAcquisitionManager.name));
   const multiStatusDisplay = new MultiStatusDisplay(window.createStatusBarItem());
 
-  const configChangeManager = new ConfigChangeManager<ConfigSetting>(
+  const portAcquisitionManager = new PortAcquisitionManager(new SimpleLogger(logger, PortAcquisitionManager.name));
+  disposables.push(portAcquisitionManager);
+
+  const configChangeManager = new ConfigChangeManager<WorkspaceConfigSetting>(
     new SimpleLogger(logger, ConfigChangeManager.name),
     { configNamespace: EXTENSION_CONFIG_PREFIX }
   );
+  disposables.push(configChangeManager);
 
-  disposables.push(portAcquisitionManager, configChangeManager);
+  const preferences = new Preferences(
+    extensionContext,
+    new SimpleLogger(workspaceOutputChannel, Preferences.name, MAIN_LOG_LEVEL)
+  );
+  disposables.push(preferences);
 
   const sharedAdapterComponents: SharedAdapterComponents = {
     portAcquisitionManager,
     multiStatusDisplay
   };
-
-  processAddedProjects(
-    allProjects,
-    isMultiProjectWorkspace,
-    workspaceOutputChannel,
-    testHub,
-    sharedAdapterComponents,
-    logger
-  );
+  processAddedProjects(allProjects, preferences.lastLoadedProjectPaths, testHub, sharedAdapterComponents, logger);
 
   const processAddedWorkspaceFolders = (addedWorkspaceFolders: readonly WorkspaceFolder[]) => {
     const addedProjects = projectFactory.createProjectsForWorkspaceFolders(...addedWorkspaceFolders);
-
-    processAddedProjects(
-      addedProjects,
-      isMultiProjectWorkspace,
-      workspaceOutputChannel,
-      testHub,
-      sharedAdapterComponents,
-      logger
-    );
+    processAddedProjects(addedProjects, preferences.lastLoadedProjectPaths, testHub, sharedAdapterComponents, logger);
   };
 
   const processRemovedWorkspaceFolders = async (removedWorkspaceFolders: readonly WorkspaceFolder[]) => {
@@ -91,9 +95,18 @@ export const activate = async () => {
     await processRemovedProjects(removedProjects, testHub, logger);
   };
 
-  const processChangedWorkspaceFolders = async (changedWorkspaceFolders: readonly WorkspaceFolder[]) => {
-    await processRemovedWorkspaceFolders(changedWorkspaceFolders);
-    processAddedWorkspaceFolders(changedWorkspaceFolders);
+  const processChangedWorkspaceFolder = async (
+    reconfiguredWorkspaceFolder: WorkspaceFolder,
+    changedConfigSettings: WorkspaceConfigSetting[]
+  ) => {
+    logger.debug(
+      () =>
+        `Reloading workspace '${normalizePath(reconfiguredWorkspaceFolder.uri.fsPath)}' ` +
+        `due to changed settings: ${JSON.stringify(changedConfigSettings)}`
+    );
+
+    await processRemovedWorkspaceFolders([reconfiguredWorkspaceFolder]);
+    processAddedWorkspaceFolders([reconfiguredWorkspaceFolder]);
   };
 
   workspaceFolders.forEach(workspaceFolder => {
@@ -103,8 +116,8 @@ export const activate = async () => {
 
     configChangeManager.watchForConfigChange(
       workspaceFolder,
-      Object.values(WorkspaceConfigSetting),
-      async () => processChangedWorkspaceFolders([workspaceFolder]),
+      [...Object.values(GeneralConfigSetting), ...Object.values(ExternalConfigSetting)],
+      async changedConfigSettings => processChangedWorkspaceFolder(workspaceFolder, changedConfigSettings),
       { promptMessage: configChangePrompt }
     );
   });
@@ -113,21 +126,14 @@ export const activate = async () => {
     processAddedWorkspaceFolders(folderChangeEvent.added);
     processRemovedWorkspaceFolders(folderChangeEvent.removed);
   });
-  disposables.push(workspaceFolderChangeSubscription, workspaceOutputChannel);
+  disposables.push(workspaceFolderChangeSubscription);
 
   const selectProjectsCommand = commands.registerCommand(ExtensionCommands.SelectProjects, () =>
     processProjectCommand(
-      'Select workspace projects to include',
-      project =>
-        activateProject(
-          project,
-          isMultiProjectWorkspace,
-          workspaceOutputChannel,
-          testHub,
-          sharedAdapterComponents,
-          logger
-        ),
-      project => deactivateProject(project, testHub, logger)
+      'Select workspace projects for testing',
+      project => activateProject(project, testHub, sharedAdapterComponents, logger),
+      project => deactivateProject(project, testHub, logger),
+      preferences
     )
   );
   const executeFunctionCommand = commands.registerCommand(ExtensionCommands.ExecuteFunction, (fn: () => void) => fn());
@@ -138,32 +144,32 @@ export const activate = async () => {
 const processProjectCommand = async (
   actionPrompt: string,
   projectActivator: (selectedProject: WorkspaceProject) => void,
-  projectDeactivator: (selectedProject: WorkspaceProject) => void
+  projectDeactivator: (deselectedProject: WorkspaceProject) => void,
+  preferences: Preferences
 ) => {
   const allProjectsPickList: QuickPickItem[] = [];
-  const workspaceFolderPaths = new Set<string>([...workspaceProjects].map(project => project.workspaceFolderPath));
+  const topLevelProjectPaths = new Set<string>([...workspaceProjects].map(project => project.topLevelProjectPath));
+  const uniqueShortNames = new Set<string>([...workspaceProjects].map(project => project.shortName));
+  const isAllUniqueShortNames = uniqueShortNames.size === workspaceProjects.size;
 
-  workspaceFolderPaths.forEach(workspaceFolderPath => {
+  topLevelProjectPaths.forEach(topLevelProjectPath => {
     const projectPickList: QuickPickItem[] = [...workspaceProjects]
-      .filter(project => project.workspaceFolderPath === workspaceFolderPath)
+      .filter(project => project.topLevelProjectPath === topLevelProjectPath)
       .sort((project1, project2) =>
-        project1.isDefault === project2.isDefault
-          ? project1.name.toLocaleLowerCase().localeCompare(project2.name.toLocaleLowerCase())
-          : project1.isDefault
+        !!project1.adapter === !!project2.adapter
+          ? project1.longName.toLocaleLowerCase().localeCompare(project2.longName.toLocaleLowerCase())
+          : project1.adapter !== undefined
           ? -1
           : 1
       )
       .map(project => ({
-        label: project.name,
-        description:
-          `$(debug-stackframe-dot)` +
-          (project.shortProjectPath ? `${project.shortProjectPath}   ` : '') +
-          (project.isDefault ? '(default)' : ''),
+        label: isAllUniqueShortNames ? project.shortName : project.longName,
+        description: `$(debug-stackframe-dot)` + (project.shortProjectPath || '(root)'),
         picked: project.adapter !== undefined
       }));
 
     allProjectsPickList.push(
-      { label: basename(workspaceFolderPath), kind: QuickPickItemKind.Separator },
+      { label: basename(topLevelProjectPath), kind: QuickPickItemKind.Separator },
       ...projectPickList
     );
   });
@@ -176,23 +182,27 @@ const processProjectCommand = async (
   if (projectPicks === undefined) {
     return;
   }
-  const selectedProjectNames = projectPicks.map(projectPick => projectPick.label) ?? [];
+  const selectedProjectLabels = projectPicks.map(projectPick => projectPick.label);
+  const selectedProjects: WorkspaceProject[] = [];
+  const deselectedProjects: WorkspaceProject[] = [];
 
   workspaceProjects.forEach(project => {
-    const isProjectSelected = selectedProjectNames.includes(project.name);
+    const projectLabel = isAllUniqueShortNames ? project.shortName : project.longName;
+    const isProjectSelected = selectedProjectLabels.includes(projectLabel);
 
-    if (isProjectSelected && project.adapter === undefined) {
-      projectActivator(project);
-    } else if (!isProjectSelected && project.adapter !== undefined) {
-      projectDeactivator(project);
-    }
+    (isProjectSelected ? selectedProjects : deselectedProjects).push(project);
   });
+
+  deselectedProjects.forEach(project => projectDeactivator(project));
+  selectedProjects.forEach(project => projectActivator(project));
+
+  const selectedProjectPaths = selectedProjects.map(project => project.projectPath);
+  preferences.lastLoadedProjectPaths = selectedProjectPaths;
 };
 
 const processAddedProjects = (
   projects: readonly WorkspaceProject[],
-  isMultiProjectWorkspace: boolean,
-  workspaceOutputChannel: OutputChannelLog,
+  lastLoadedProjectPaths: readonly string[],
   testHub: TestHub,
   sharedAdapterComponents: SharedAdapterComponents,
   logger: Logger
@@ -200,15 +210,11 @@ const processAddedProjects = (
   projects.forEach(project => {
     workspaceProjects.add(project);
 
-    if (!project.adapter && project.isDefault) {
-      activateProject(
-        project,
-        isMultiProjectWorkspace,
-        workspaceOutputChannel,
-        testHub,
-        sharedAdapterComponents,
-        logger
-      );
+    const shouldActivateProject =
+      lastLoadedProjectPaths.length > 0 ? lastLoadedProjectPaths.includes(project.projectPath) : project.isPrimary;
+
+    if (shouldActivateProject) {
+      activateProject(project, testHub, sharedAdapterComponents, logger);
     }
   });
   updateMultiProjectContext();
@@ -225,8 +231,6 @@ const processRemovedProjects = async (projects: readonly WorkspaceProject[], tes
 
 const activateProject = (
   project: WorkspaceProject,
-  isMultiProjectWorkspace: boolean,
-  workspaceOutputChannel: OutputChannelLog,
   testHub: TestHub,
   sharedAdapterComponents: SharedAdapterComponents,
   logger: Logger
@@ -234,14 +238,7 @@ const activateProject = (
   if (project.adapter) {
     return;
   }
-  project.adapter = createProjectAdapter(
-    project,
-    isMultiProjectWorkspace,
-    workspaceOutputChannel,
-    testHub,
-    sharedAdapterComponents,
-    logger
-  );
+  project.adapter = createProjectAdapter(project, testHub, sharedAdapterComponents, logger);
 };
 
 const deactivateProject = async (project: WorkspaceProject, testHub: TestHub, logger: Logger) => {
@@ -249,47 +246,41 @@ const deactivateProject = async (project: WorkspaceProject, testHub: TestHub, lo
     logger.warn(() => `Request to deactivate project with no adapter`);
     return;
   }
-  logger.info(() => `Deactivating adapter for project: ${project.workspaceFolderPath} (${project.name})`);
+  logger.info(() => `Deactivating adapter for project: ${project.workspaceFolderPath} (${project.longName})`);
 
   testHub.unregisterTestAdapter(project.adapter);
   await project.adapter.dispose();
   project.adapter = undefined;
 
-  logger.debug(() => `Done deactivating adapter for project: ${project.workspaceFolderPath} (${project.name})`);
+  logger.debug(() => `Done deactivating adapter for project: ${project.workspaceFolderPath} (${project.longName})`);
 };
 
 const createProjectAdapter = (
   project: WorkspaceProject,
-  isMultiProjectWorkspace: boolean,
-  workspaceOutputChannel: OutputChannelLog,
   testHub: TestHub,
   sharedAdapterComponents: SharedAdapterComponents,
   logger: Logger
 ): Adapter | undefined => {
-  const adapterOptions: AdapterOptions = {
-    projectNamespace: isMultiProjectWorkspace ? project.name : undefined,
-    configOverrides: project.config,
-    outputChannelLog: !isMultiProjectWorkspace ? workspaceOutputChannel : undefined
-  };
-
+  const projectNamespace = project.longName;
   let projectAdapter: Adapter | undefined = undefined;
 
   try {
-    logger.info(() => `Activating adapter for project: ${project.workspaceFolderPath} (${project.name})`);
+    logger.info(() => `Activating adapter for project: ${project.workspaceFolderPath} (${project.longName})`);
 
     projectAdapter = new Adapter(
       project.workspaceFolder,
-      project.displayName,
+      project.shortName,
+      projectNamespace,
+      project.config,
       sharedAdapterComponents.portAcquisitionManager,
-      sharedAdapterComponents.multiStatusDisplay.createDisplay(project.displayName),
-      adapterOptions
+      sharedAdapterComponents.multiStatusDisplay.createDisplay(project.shortName)
     );
     testHub.registerTestAdapter(projectAdapter);
 
-    logger.debug(() => `Done activating adapter for project: ${project.workspaceFolderPath} (${project.name})`);
+    logger.debug(() => `Done activating adapter for project: ${project.workspaceFolderPath} (${project.longName})`);
   } catch (error) {
     logger.error(
-      () => `Failed to create adapater for project - ${project.workspaceFolderPath} (${project.name}): ${error}`
+      () => `Failed to create adapter for project - ${project.workspaceFolderPath} (${project.longName}): ${error}`
     );
   }
 

@@ -14,10 +14,10 @@ export const withUnixStyleSeparator = (filePath: string) => filePath.split(pathS
 
 export const asExtensionConfigWithUnixStylePaths = (extensionConfig: ExtensionConfig): ExtensionConfig => {
   const config = extensionConfig as Writeable<ExtensionConfig>;
-  config.projectRootPath = asUnixStylePath(extensionConfig.projectRootPath);
+  config.projectPath = asUnixStylePath(extensionConfig.projectPath);
   config.testsBasePath = asUnixStylePath(extensionConfig.testsBasePath);
   config.baseKarmaConfFilePath = asUnixStylePath(extensionConfig.baseKarmaConfFilePath);
-  config.userKarmaConfFilePath = asUnixStylePath(extensionConfig.userKarmaConfFilePath);
+  config.projectKarmaConfigFilePath = asUnixStylePath(extensionConfig.projectKarmaConfigFilePath);
 
   return extensionConfig;
 };

@@ -18,6 +18,8 @@ export class SuiteAggregateTestResultProcessor {
   ) {}
 
   public processTestResults(testResults: TestResults) {
+    this.logger.debug(() => `Aggregating new test results`);
+
     const testCountsBySuiteId: Map<string, { [key in TestStatus]?: number }> = new Map();
 
     const captureCountForSuiteAndStatus = (test: AnyTestInfo, testCount: number, testStatus: TestStatus) => {

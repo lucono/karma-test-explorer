@@ -77,13 +77,13 @@ describe('KarmaFactory', () => {
       });
 
       it('creates the test run executor with the configured project root path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).projectRootPath = 'some/project/root/path';
+        (mockConfig as Writeable<ExtensionConfig>).projectPath = 'some/project/root/path';
         expect(MockKarmaCommandLineTestRunExecutor).not.toHaveBeenCalled();
 
         new KarmaFactory(framework, mockConfig, mockProcessHandler, mockProcessLog, mockLogger).createTestRunExecutor();
 
         expect(MockKarmaCommandLineTestRunExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestRunExecutor.mock.calls[0][0]).toBe(mockConfig.projectRootPath);
+        expect(MockKarmaCommandLineTestRunExecutor.mock.calls[0][0]).toBe(mockConfig.projectPath);
       });
     });
 
@@ -146,7 +146,7 @@ describe('KarmaFactory', () => {
       });
 
       it('creates the test server executor with the configured project root path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).projectRootPath = 'some/project/root/path';
+        (mockConfig as Writeable<ExtensionConfig>).projectPath = 'some/project/root/path';
         expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 
         new KarmaFactory(
@@ -158,7 +158,7 @@ describe('KarmaFactory', () => {
         ).createTestServerExecutor();
 
         expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][0]).toBe(mockConfig.projectRootPath);
+        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][0]).toBe(mockConfig.projectPath);
       });
 
       it('creates the test server executor with the configured base karma config file path', () => {
@@ -178,7 +178,7 @@ describe('KarmaFactory', () => {
       });
 
       it('creates the test server executor with the configured user karma config file path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).userKarmaConfFilePath = 'some/user/karma/config/file/path';
+        (mockConfig as Writeable<ExtensionConfig>).projectKarmaConfigFilePath = 'some/user/karma/config/file/path';
         expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 
         new KarmaFactory(
@@ -190,7 +190,7 @@ describe('KarmaFactory', () => {
         ).createTestServerExecutor();
 
         expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][2]).toBe(mockConfig.userKarmaConfFilePath);
+        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][2]).toBe(mockConfig.projectKarmaConfigFilePath);
       });
     });
   });

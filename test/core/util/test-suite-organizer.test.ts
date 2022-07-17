@@ -16,7 +16,7 @@ describe('TestSuiteOrganizer', () => {
   beforeEach(() => {
     mockLogger = mock<Logger>();
     testHelper = new TestHelper(mockLogger, { showTestDefinitionTypeIndicators: false });
-    testSuiteOrganizer = new TestSuiteOrganizer('/', '/', testHelper, mockLogger);
+    testSuiteOrganizer = new TestSuiteOrganizer('/', testHelper, mockLogger, { testsBasePath: '/' });
 
     const organizeTests = testSuiteOrganizer.organizeTests.bind(testSuiteOrganizer);
 
@@ -43,12 +43,12 @@ describe('TestSuiteOrganizer', () => {
           children: [
             {
               id: 'spec2',
-              activeState: 'default',
               type: 'test',
+              activeState: 'default',
               file: '/path-1/path-2/component-2.spec.ts',
+              label: 'spec 2',
               name: 'spec 2',
-              fullName: 'suite two spec two',
-              label: 'spec 2'
+              fullName: 'suite two spec two'
             }
           ]
         }
@@ -80,9 +80,11 @@ describe('TestSuiteOrganizer', () => {
     describe('when organizing tests by folder', () => {
       beforeEach(() => {
         organizationOptions = {
+          ...organizationOptions,
           testGrouping: TestGrouping.Folder,
           flattenSingleChildFolders: false,
-          flattenSingleSuiteFiles: false
+          flattenSingleSuiteFiles: false,
+          testsBasePath: '/'
         };
       });
 
@@ -378,7 +380,7 @@ describe('TestSuiteOrganizer', () => {
       it('uses the specified tests base path as the root of the test tree if it is a sub-folder of the root path', () => {
         const rootPath = '/';
         const testsBasePath = '/path-1';
-        testSuiteOrganizer = new TestSuiteOrganizer(rootPath, testsBasePath, testHelper, mockLogger);
+        testSuiteOrganizer = new TestSuiteOrganizer(rootPath, testHelper, mockLogger, { testsBasePath });
 
         const organizedTestSuite = withUnixPaths(testSuiteOrganizer.organizeTests(originalTests, organizationOptions));
 

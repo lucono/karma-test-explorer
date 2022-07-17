@@ -36,7 +36,7 @@ assignees: ''
  - OS: (e.g. macOS)
  - Environment: (e.g. Dev Container with Guest OS and version)
  - Node Version: (e.g. 14.x)
- - VSCode Version: 
+ - VS Code Version: 
  - Karma Version:
  - Frameworks: (e.g. Angular, Jasmine, Mocha)
 

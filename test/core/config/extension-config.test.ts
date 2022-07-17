@@ -1,7 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { CustomLauncher } from 'karma';
 import { DebugConfiguration } from 'vscode';
-import { WorkspaceConfigSetting } from '../../../src/core/config/config-setting';
+import { GeneralConfigSetting } from '../../../src/core/config/config-setting';
 import { ConfigStore } from '../../../src/core/config/config-store';
 import { ExtensionConfig } from '../../../src/core/config/extension-config';
 import { Logger } from '../../../src/util/logging/logger';
@@ -18,9 +18,9 @@ describe('ExtensionConfig', () => {
     mockConfigValues = new Map();
     mockConfigDefaults = new Map();
 
-    mockConfigValues.set(WorkspaceConfigSetting.TestFiles, []);
-    mockConfigValues.set(WorkspaceConfigSetting.ExcludeFiles, []);
-    mockConfigValues.set(WorkspaceConfigSetting.ReloadOnChangedFiles, []);
+    mockConfigValues.set(GeneralConfigSetting.TestFiles, []);
+    mockConfigValues.set(GeneralConfigSetting.ExcludeFiles, []);
+    mockConfigValues.set(GeneralConfigSetting.ReloadOnChangedFiles, []);
 
     mockConfigStore = {
       has: mockConfigValues.has,
@@ -29,74 +29,16 @@ describe('ExtensionConfig', () => {
     };
   });
 
-  describe('`karmaConfFilePath` setting', () => {
-    describe('when set to a relative path', () => {
-      const karmaConfFilePath = 'relative/fake/path/to/karma/conf';
-
-      beforeEach(() => {
-        mockConfigValues.set(WorkspaceConfigSetting.KarmaConfFilePath, karmaConfFilePath);
-      });
-
-      describe('when a non-blank project root path is set', () => {
-        const projectRootPath = 'fake/project/root/path';
-
-        beforeEach(() => {
-          mockConfigValues.set(WorkspaceConfigSetting.ProjectRootPath, projectRootPath);
-        });
-
-        it('is relative to the workspace path and configured project root path', () => {
-          const workspacePath = '/fake/workspace/path';
-          const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, workspacePath, mockLogger));
-
-          expect(extensionConfig.userKarmaConfFilePath).toEqual(
-            `${workspacePath}/${projectRootPath}/${karmaConfFilePath}`
-          );
-        });
-      });
-
-      describe('when no project root path is set', () => {
-        const projectRootPath = '';
-
-        beforeEach(() => {
-          mockConfigValues.set(WorkspaceConfigSetting.ProjectRootPath, projectRootPath);
-        });
-
-        it('is located at the workspace path', () => {
-          const workspacePath = '/fake/workspace/path';
-          const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, workspacePath, mockLogger));
-          expect(extensionConfig.userKarmaConfFilePath).toEqual(`${workspacePath}/${karmaConfFilePath}`);
-        });
-      });
-    });
-
-    describe('when set to an absolute path', () => {
-      const karmaConfFilePath = '/absolute/fake/path/to/karma/conf';
-
-      beforeEach(() => {
-        mockConfigValues.set(WorkspaceConfigSetting.KarmaConfFilePath, karmaConfFilePath);
-      });
-
-      it('is the configured absolute path regardless of workspace and project root path', () => {
-        const workspacePath = '/fake/workspace/path';
-        const projectRootPath = 'fake/project/root/path';
-        mockConfigValues.set(WorkspaceConfigSetting.ProjectRootPath, projectRootPath);
-
-        const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, workspacePath, mockLogger));
-        expect(extensionConfig.userKarmaConfFilePath).toEqual(`${karmaConfFilePath}`);
-      });
-    });
-  });
-
   describe('`customLauncher` setting', () => {
     let customLauncherConfig: CustomLauncher;
     let customLauncherConfigDefault: CustomLauncher;
 
     beforeEach(() => {
       customLauncherConfig = { base: '', flags: [] };
-      mockConfigValues.set(WorkspaceConfigSetting.CustomLauncher, customLauncherConfig);
+      mockConfigValues.set(GeneralConfigSetting.CustomLauncher, customLauncherConfig);
 
       customLauncherConfigDefault = { base: '', flags: [] };
-      mockConfigDefaults.set(WorkspaceConfigSetting.CustomLauncher, customLauncherConfigDefault);
+      mockConfigDefaults.set(GeneralConfigSetting.CustomLauncher, customLauncherConfigDefault);
     });
 
     describe('when has a `base` that is same as the default', () => {
@@ -111,10 +53,10 @@ describe('ExtensionConfig', () => {
 
         beforeEach(() => {
           debuggerConfig = { name: '', type: '', request: '' };
-          mockConfigValues.set(WorkspaceConfigSetting.DebuggerConfig, debuggerConfig);
+          mockConfigValues.set(GeneralConfigSetting.DebuggerConfig, debuggerConfig);
 
           debuggerConfigDefault = { name: '', type: '', request: '' };
-          mockConfigDefaults.set(WorkspaceConfigSetting.DebuggerConfig, debuggerConfigDefault);
+          mockConfigDefaults.set(GeneralConfigSetting.DebuggerConfig, debuggerConfigDefault);
         });
 
         describe('has a `type` that is same as the default', () => {
@@ -193,7 +135,7 @@ describe('ExtensionConfig', () => {
 
   describe('when the `containerMode` setting is `enabled`', () => {
     beforeEach(() => {
-      mockConfigValues.set(WorkspaceConfigSetting.ContainerMode, 'enabled');
+      mockConfigValues.set(GeneralConfigSetting.ContainerMode, 'enabled');
     });
 
     describe('and a custom launcher', () => {
@@ -201,7 +143,7 @@ describe('ExtensionConfig', () => {
 
       beforeEach(() => {
         customLauncherConfig = { base: '', flags: [] };
-        mockConfigValues.set(WorkspaceConfigSetting.CustomLauncher, customLauncherConfig);
+        mockConfigValues.set(GeneralConfigSetting.CustomLauncher, customLauncherConfig);
       });
 
       describe('is configured with a base launcher name that contains the string "chrome" in any casing', () => {
@@ -265,7 +207,7 @@ describe('ExtensionConfig', () => {
 
     beforeEach(() => {
       configuredExcludeFiles = [];
-      mockConfigValues.set(WorkspaceConfigSetting.ExcludeFiles, configuredExcludeFiles);
+      mockConfigValues.set(GeneralConfigSetting.ExcludeFiles, configuredExcludeFiles);
     });
 
     it('includes the node_modules folder if it was not included in the configured exclusion list', () => {

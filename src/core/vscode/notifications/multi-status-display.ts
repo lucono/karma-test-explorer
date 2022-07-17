@@ -1,8 +1,17 @@
 import { EXTENSION_NAME } from '../../../constants';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
+import { StatusType } from './notification-handler';
 import { StatusDisplay } from './status-display';
 
+const STATUS_TYPE_DISPLAY_PRIORITY_ORDER: StatusType[] = [
+  StatusType.Error,
+  StatusType.Warning,
+  StatusType.Busy,
+  StatusType.Waiting,
+  StatusType.Done,
+  StatusType.Info
+];
 export class MultiStatusDisplay implements Disposable {
   private readonly allDisplays: Map<string, StatusDisplay> = new Map();
   private readonly shownDisplays: Set<StatusDisplay> = new Set();
@@ -42,23 +51,37 @@ export class MultiStatusDisplay implements Disposable {
   }
 
   private updateDisplay() {
+    const tooltipItemSeparator = '  ▪  ';
+    const messageItemSeparator = '$(debug-stackframe-dot)';
+
+    const statusSorter = (display1: StatusDisplay, display2: StatusDisplay) => {
+      const msg1Type: StatusType = display1.type ?? StatusType.Info;
+      const msg2Type: StatusType = display2.type ?? StatusType.Info;
+      const msg1Priority = STATUS_TYPE_DISPLAY_PRIORITY_ORDER.indexOf(msg1Type);
+      const msg2Priority = STATUS_TYPE_DISPLAY_PRIORITY_ORDER.indexOf(msg2Type);
+      return msg1Priority - msg2Priority;
+    };
+
     if (this.shownDisplays.size === 0) {
       this.aggregateStatusDisplay.hide();
       return;
     }
     if (this.shownDisplays.size === 1) {
       const singleDisplay = [...this.shownDisplays][0];
-      this.aggregateStatusDisplay.text = `${EXTENSION_NAME}$(debug-stackframe-dot)${singleDisplay.text}`;
+      this.aggregateStatusDisplay.text = `${EXTENSION_NAME}${messageItemSeparator}${singleDisplay.text}`;
       this.aggregateStatusDisplay.tooltip = singleDisplay.tooltip;
       this.aggregateStatusDisplay.command = singleDisplay.command;
     } else {
-      const combinedStatusMessages = [...this.shownDisplays]
-        .map(display => display.text)
-        .join('$(debug-stackframe-dot)');
-      const unifiedStatusMessage = `${EXTENSION_NAME}$(debug-stackframe-dot)${combinedStatusMessages}`;
+      const uniqueStatusMessages = new Set([...this.shownDisplays].sort(statusSorter).map(display => display.text));
+      const combinedStatusMessages = [...uniqueStatusMessages].join(messageItemSeparator);
 
-      this.aggregateStatusDisplay.text = unifiedStatusMessage;
-      this.aggregateStatusDisplay.tooltip = undefined;
+      const uniqueTooltips = new Set(
+        [...this.shownDisplays].sort(statusSorter).map(display => display.text.replace(/\$\([^()]+\)/g, '').trim())
+      );
+      const combinedTooltip = [...uniqueTooltips].join(tooltipItemSeparator);
+
+      this.aggregateStatusDisplay.text = `${EXTENSION_NAME}${messageItemSeparator}${combinedStatusMessages}`;
+      this.aggregateStatusDisplay.tooltip = `${EXTENSION_NAME}${tooltipItemSeparator}${combinedTooltip}`;
       this.aggregateStatusDisplay.command = undefined;
     }
     this.aggregateStatusDisplay.show();

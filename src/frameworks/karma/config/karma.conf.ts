@@ -2,7 +2,7 @@ import { Config as KarmaConfig } from 'karma';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { KarmaConfigurator } from './karma-configurator';
 
-const originalConfigPath = process.env[KarmaEnvironmentVariable.UserKarmaConfigPath] as string;
+const originalConfigPath = process.env[KarmaEnvironmentVariable.ProjectKarmaConfigPath] as string;
 const karmaConfigurator = new KarmaConfigurator();
 
 module.exports = (config: KarmaConfig) => {

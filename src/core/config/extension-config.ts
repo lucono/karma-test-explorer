@@ -18,7 +18,7 @@ import {
   getMergedDebuggerConfig,
   getTestsBasePath
 } from './config-helper';
-import { ConfigSetting, InternalConfigSetting, WorkspaceConfigSetting } from './config-setting';
+import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting';
 import { ConfigStore } from './config-store';
 
 export enum ContainerMode {
@@ -32,9 +32,20 @@ export enum TestTriggerMethod {
   Cli = 'cli'
 }
 
+export enum TestParsingMethod {
+  AST = 'ast',
+  RegExp = 'regexp'
+}
+
 export class ExtensionConfig implements Disposable {
-  public readonly projectRootPath: string;
-  public readonly projectSubFolderPath: string;
+  // Internal Settings
+  public readonly projectType: ProjectType;
+  public readonly projectName: string;
+  public readonly projectPath: string;
+  public readonly projectInstallRootPath: string;
+  public readonly projectKarmaConfigFilePath: string;
+
+  // General Settings
   public readonly autoWatchBatchDelay?: number;
   public readonly autoWatchEnabled: boolean;
   public readonly baseKarmaConfFilePath: string;
@@ -42,7 +53,6 @@ export class ExtensionConfig implements Disposable {
   public readonly customLauncher: Readonly<CustomLauncher>;
   public readonly debuggerConfig: Readonly<DebugConfiguration>;
   public readonly debuggerConfigName?: string;
-  public readonly selectedAngularProject?: string;
   public readonly envFile?: string;
   public readonly environment: Readonly<Record<string, string>>;
   public readonly excludeFiles: readonly string[];
@@ -59,12 +69,11 @@ export class ExtensionConfig implements Disposable {
   public readonly reloadOnChangedFiles: readonly string[];
   public readonly reloadOnKarmaConfigChange: boolean;
   public readonly testFiles: readonly string[];
-  public readonly projectType?: ProjectType;
   public readonly testFramework?: TestFrameworkName;
   public readonly testGrouping: TestGrouping;
   public readonly testsBasePath?: string;
-  public readonly userKarmaConfFilePath: string;
   public readonly testTriggerMethod: TestTriggerMethod;
+  public readonly testParsingMethod: TestParsingMethod;
   public readonly failOnStandardError: boolean;
   public readonly allowGlobalPackageFallback: boolean;
   public readonly excludeDisabledTests: boolean;
@@ -72,64 +81,63 @@ export class ExtensionConfig implements Disposable {
   public readonly showTestDefinitionTypeIndicators: boolean;
   public readonly showUnmappedTests: boolean;
 
-  public constructor(configStore: ConfigStore<ConfigSetting>, workspacePath: string, private readonly logger: Logger) {
+  public constructor(
+    configStore: ConfigStore<ProjectConfigSetting>,
+    workspacePath: string,
+    private readonly logger: Logger
+  ) {
     const normalizedWorkspacePath = normalizePath(workspacePath);
 
-    this.projectRootPath = normalizePath(
-      resolve(normalizedWorkspacePath, configStore.get(WorkspaceConfigSetting.ProjectRootPath)!)
-    );
-    this.projectSubFolderPath = normalizePath(
-      resolve(this.projectRootPath, configStore.get(InternalConfigSetting.ProjectSubFolderPath)!)
-    );
-    this.karmaPort = configStore.get(WorkspaceConfigSetting.KarmaPort)!;
-    this.karmaProcessCommand = asNonBlankStringOrUndefined(configStore.get(WorkspaceConfigSetting.KarmaProcessCommand));
-    this.angularProcessCommand = asNonBlankStringOrUndefined(
-      configStore.get(WorkspaceConfigSetting.AngularProcessCommand)
-    );
-    this.testTriggerMethod = configStore.get<TestTriggerMethod>(WorkspaceConfigSetting.TestTriggerMethod);
-    this.failOnStandardError = !!configStore.get(WorkspaceConfigSetting.FailOnStandardError);
-    this.testsBasePath = getTestsBasePath(this.projectRootPath, this.projectSubFolderPath, configStore);
-    this.defaultSocketConnectionPort = configStore.get(WorkspaceConfigSetting.DefaultSocketConnectionPort)!;
-    this.logLevel = configStore.get<LogLevel>(WorkspaceConfigSetting.LogLevel);
-    this.karmaLogLevel = configStore.get<KarmaLogLevel>(WorkspaceConfigSetting.KarmaLogLevel);
-    this.karmaReporterLogLevel = configStore.get<LogLevel>(WorkspaceConfigSetting.KarmaReporterLogLevel);
-    this.autoWatchEnabled = !!configStore.get(WorkspaceConfigSetting.AutoWatchEnabled);
-    this.autoWatchBatchDelay = configStore.get(WorkspaceConfigSetting.AutoWatchBatchDelay);
-    this.karmaReadyTimeout = configStore.get(WorkspaceConfigSetting.KarmaReadyTimeout)!;
+    // Internal Settings
+    this.projectType = configStore.get(InternalConfigSetting.ProjectType);
+    this.projectName = configStore.get(InternalConfigSetting.ProjectName);
+    this.projectPath = configStore.get(InternalConfigSetting.ProjectPath)!;
+    this.projectInstallRootPath = configStore.get(InternalConfigSetting.ProjectInstallRootPath)!;
+    this.projectKarmaConfigFilePath = configStore.get(InternalConfigSetting.ProjectKarmaConfigFilePath);
     this.baseKarmaConfFilePath = normalizePath(resolve(__dirname, './karma.conf'));
-    this.testGrouping = configStore.get(WorkspaceConfigSetting.TestGrouping)!;
-    this.flattenSingleChildFolders = !!configStore.get(WorkspaceConfigSetting.FlattenSingleChildFolders);
-    this.environment = getCombinedEnvironment(this.projectRootPath, configStore, logger);
-    this.projectType = configStore.get(WorkspaceConfigSetting.ProjectType);
-    this.testFramework = configStore.get(WorkspaceConfigSetting.TestFramework);
-    this.reloadOnKarmaConfigChange = !!configStore.get(WorkspaceConfigSetting.ReloadOnKarmaConfigChange);
-    this.selectedAngularProject = configStore.get(InternalConfigSetting.SelectedAngularProject);
+
+    // General Settings
+    this.karmaPort = configStore.get(GeneralConfigSetting.KarmaPort)!;
+    this.karmaProcessCommand = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.KarmaProcessCommand));
+    this.angularProcessCommand = asNonBlankStringOrUndefined(
+      configStore.get(GeneralConfigSetting.AngularProcessCommand)
+    );
+    this.testTriggerMethod = configStore.get<TestTriggerMethod>(GeneralConfigSetting.TestTriggerMethod);
+    this.testParsingMethod = configStore.get<TestParsingMethod>(GeneralConfigSetting.TestParsingMethod);
+    this.failOnStandardError = !!configStore.get(GeneralConfigSetting.FailOnStandardError);
+    this.testsBasePath = getTestsBasePath(this.projectPath, configStore);
+    this.defaultSocketConnectionPort = configStore.get(GeneralConfigSetting.DefaultSocketConnectionPort)!;
+    this.logLevel = configStore.get<LogLevel>(GeneralConfigSetting.LogLevel);
+    this.karmaLogLevel = configStore.get<KarmaLogLevel>(GeneralConfigSetting.KarmaLogLevel);
+    this.karmaReporterLogLevel = configStore.get<LogLevel>(GeneralConfigSetting.KarmaReporterLogLevel);
+    this.autoWatchEnabled = !!configStore.get(GeneralConfigSetting.AutoWatchEnabled);
+    this.autoWatchBatchDelay = configStore.get(GeneralConfigSetting.AutoWatchBatchDelay);
+    this.karmaReadyTimeout = configStore.get(GeneralConfigSetting.KarmaReadyTimeout)!;
+    this.testGrouping = configStore.get(GeneralConfigSetting.TestGrouping)!;
+    this.flattenSingleChildFolders = !!configStore.get(GeneralConfigSetting.FlattenSingleChildFolders);
+    this.environment = getCombinedEnvironment(this.projectPath, configStore, logger);
+    this.testFramework = configStore.get(GeneralConfigSetting.TestFramework);
+    this.reloadOnKarmaConfigChange = !!configStore.get(GeneralConfigSetting.ReloadOnKarmaConfigChange);
     this.customLauncher = getCustomLauncher(configStore);
-    this.browser = asNonBlankStringOrUndefined(configStore.get(WorkspaceConfigSetting.Browser));
-    this.testFiles = configStore
-      .get<string[]>(WorkspaceConfigSetting.TestFiles)
-      .map(fileGlob => normalizePath(fileGlob));
-    this.allowGlobalPackageFallback = !!configStore.get(WorkspaceConfigSetting.AllowGlobalPackageFallback);
-    this.excludeDisabledTests = !!configStore.get(WorkspaceConfigSetting.ExcludeDisabledTests);
-    this.showOnlyFocusedTests = !!configStore.get(WorkspaceConfigSetting.ShowOnlyFocusedTests);
-    this.showUnmappedTests = !!configStore.get(WorkspaceConfigSetting.ShowUnmappedTests);
-    this.showTestDefinitionTypeIndicators = !!configStore.get(WorkspaceConfigSetting.ShowTestDefinitionTypeIndicators);
-    this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(WorkspaceConfigSetting.DebuggerConfigName));
+    this.browser = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.Browser));
+    this.testFiles = configStore.get<string[]>(GeneralConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
+    this.allowGlobalPackageFallback = !!configStore.get(GeneralConfigSetting.AllowGlobalPackageFallback);
+    this.excludeDisabledTests = !!configStore.get(GeneralConfigSetting.ExcludeDisabledTests);
+    this.showOnlyFocusedTests = !!configStore.get(GeneralConfigSetting.ShowOnlyFocusedTests);
+    this.showUnmappedTests = !!configStore.get(GeneralConfigSetting.ShowUnmappedTests);
+    this.showTestDefinitionTypeIndicators = !!configStore.get(GeneralConfigSetting.ShowTestDefinitionTypeIndicators);
+    this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.DebuggerConfigName));
 
     this.debuggerConfig = getMergedDebuggerConfig(
       normalizedWorkspacePath,
-      configStore.get(WorkspaceConfigSetting.DebuggerConfig)!,
-      configStore.get(WorkspaceConfigSetting.WebRoot),
-      configStore.get(WorkspaceConfigSetting.PathMapping),
-      configStore.get(WorkspaceConfigSetting.SourceMapPathOverrides)
+      configStore.get(GeneralConfigSetting.DebuggerConfig)!,
+      configStore.get(GeneralConfigSetting.WebRoot),
+      configStore.get(GeneralConfigSetting.PathMapping),
+      configStore.get(GeneralConfigSetting.SourceMapPathOverrides)
     );
 
-    this.userKarmaConfFilePath = normalizePath(
-      resolve(this.projectRootPath, configStore.get(WorkspaceConfigSetting.KarmaConfFilePath))
-    );
-
-    this.reloadOnChangedFiles = (configStore.get<string[]>(WorkspaceConfigSetting.ReloadOnChangedFiles) || []).map(
-      filePath => normalizePath(resolve(this.projectRootPath, filePath))
+    this.reloadOnChangedFiles = (configStore.get<string[]>(GeneralConfigSetting.ReloadOnChangedFiles) || []).map(
+      filePath => normalizePath(resolve(this.projectPath, filePath))
     );
 
     this.defaultDebugPort = getDefaultDebugPort(
@@ -141,7 +149,7 @@ export class ExtensionConfig implements Disposable {
     );
 
     this.excludeFiles = toSingleUniqueArray(
-      configStore.get(WorkspaceConfigSetting.ExcludeFiles),
+      configStore.get(GeneralConfigSetting.ExcludeFiles),
       ALWAYS_EXCLUDED_TEST_FILE_GLOBS
     ).map(fileGlob => normalizePath(fileGlob));
   }

@@ -19,44 +19,38 @@ export class SimpleLogger implements Logger {
   }
 
   public error(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.ERROR)) {
-      this.log(LogLevel.ERROR, msgSource());
-    }
+    this.log(LogLevel.ERROR, msgSource);
   }
 
   public warn(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.WARN)) {
-      this.log(LogLevel.WARN, msgSource());
-    }
+    this.log(LogLevel.WARN, msgSource);
   }
 
   public info(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.INFO)) {
-      this.log(LogLevel.INFO, msgSource());
-    }
+    this.log(LogLevel.INFO, msgSource);
   }
 
   public debug(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.DEBUG)) {
-      this.log(LogLevel.DEBUG, msgSource());
-    }
+    this.log(LogLevel.DEBUG, msgSource);
   }
 
   public trace(msgSource: () => string) {
-    if (this.isLevelEnabled(LogLevel.TRACE)) {
-      this.log(LogLevel.TRACE, msgSource());
+    this.log(LogLevel.TRACE, msgSource);
+  }
+
+  private log(logLevel: LogLevel, msgSource: () => string): void {
+    if (!this.isLevelEnabled(logLevel)) {
+      return;
     }
+    const logMessage = msgSource();
+    const timeStamp = new Date().toISOString().replace('T', ' ').replace('Z', '');
+    const logLevelLabel = getPropertyWithValue(LogLevel, logLevel) || 'LOG';
+    const loggerNameDecoration = this.loggerName ? ` [${this.loggerName}]` : '';
+    this.appender.append(`[${timeStamp}] [${logLevelLabel}]${loggerNameDecoration}: ${logMessage}`);
   }
 
   private isLevelEnabled(logLevel: LogLevel): boolean {
     return LogLevels[this.logLevel] >= LogLevels[logLevel];
-  }
-
-  private log(logLevel: LogLevel, msg: string): void {
-    const timeStamp = new Date().toISOString().replace('T', ' ').replace('Z', '');
-    const logLevelLabel = getPropertyWithValue(LogLevel, logLevel) || 'LOG';
-    const loggerNameDecoration = this.loggerName ? ` [${this.loggerName}]` : '';
-    this.appender.append(`[${timeStamp}] [${logLevelLabel}]${loggerNameDecoration}: ${msg}`);
   }
 
   public async dispose() {

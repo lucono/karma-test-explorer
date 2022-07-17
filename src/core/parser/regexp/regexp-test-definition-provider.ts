@@ -1,24 +1,26 @@
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { Logger } from '../../util/logging/logger';
-import { TestDefinition, TestDefinitionState } from '../base/test-definition';
-import { TestDefinitionProvider } from '../base/test-definition-provider';
-import { TestType } from '../base/test-infos';
-import { TestNode, TestNodeType } from '../base/test-node';
-import { TestDefinitionInfo } from '../test-locator';
-import { RegexTestFileParser, RegexTestFileParserResult } from './regex-test-file-parser';
+import { Disposable } from '../../../util/disposable/disposable';
+import { Disposer } from '../../../util/disposable/disposer';
+import { Logger } from '../../../util/logging/logger';
+import { TestDefinition, TestDefinitionState } from '../../base/test-definition';
+import { TestDefinitionProvider } from '../../base/test-definition-provider';
+import { TestType } from '../../base/test-infos';
+import { TestNode, TestNodeType } from '../../base/test-node';
+import { TestDefinitionInfo } from '../../test-locator';
+import { RegexpTestFileParser, RegexpTestFileParserResult } from './regexp-test-file-parser';
 
-export class RegexTestDefinitionProvider implements TestDefinitionProvider {
-  private readonly fileInfoMap: Map<string, RegexTestFileParserResult> = new Map();
+export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
+  private readonly fileInfoMap: Map<string, RegexpTestFileParserResult> = new Map();
   private readonly specFilesBySuite: Map<string, string[]> = new Map();
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly testFileParser: RegexTestFileParser, private readonly logger: Logger) {
-    this.disposables.push(logger);
+  public constructor(private readonly testFileParser: RegexpTestFileParser, private readonly logger: Logger) {
+    this.disposables.push(testFileParser, logger);
   }
 
   public addFileContent(filePath: string, testContent: string): void {
     this.logger.trace(() => `Processing spec file: ${filePath}`);
+
+    this.removeFileContents([filePath]);
 
     const fileTestInfo = this.testFileParser.parseFileText(testContent);
     this.fileInfoMap.set(filePath, fileTestInfo);
@@ -31,11 +33,6 @@ export class RegexTestDefinitionProvider implements TestDefinitionProvider {
 
     const fileTopSuite = [fileTestInfo[TestNodeType.Suite][0].description];
     this.addSuiteFileToCache(fileTopSuite, filePath);
-  }
-
-  public updateFileContent(filePath: string, testContent: string): void {
-    this.removeFileContents([filePath]);
-    this.addFileContent(filePath, testContent);
   }
 
   public removeFileContents(filePaths: readonly string[]) {
@@ -149,7 +146,7 @@ export class RegexTestDefinitionProvider implements TestDefinitionProvider {
   }
 
   private getTestDefinitionNode(
-    testFileNodeList: RegexTestFileParserResult | undefined,
+    testFileNodeList: RegexpTestFileParserResult | undefined,
     testSuite: readonly string[],
     testDescription: string
   ): { testNode: Readonly<TestNode>; suiteNodes: Readonly<TestNode>[] } | undefined {

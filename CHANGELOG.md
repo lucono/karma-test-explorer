@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.0 - Jul 17, 2022](#070---jul-17-2022)
   - [0.6.1 - Apr 13, 2022](#061---apr-13-2022)
   - [0.6.0 - Apr 6, 2022](#060---apr-6-2022)
   - [0.5.0 - Jan 23, 2022](#050---jan-23-2022)
@@ -17,6 +18,28 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.7.0] - Jul 17, 2022
+
+### Added
+
+- Support for monorepo multi-project setups for testing. This is in addition to existing support for multi-project Angular workspaces, and VS Code multi-root workspaces
+- The last set of loaded projects for testing are now remembered and restored each time a workspace is reopened in VS Code
+- New Babel-based AST parser implementation for parsing test files
+- New `karmaTestExplorer.testParsingMethod` extension setting for specifying how tests should be parsed by default
+- New `karmaTestExplorer.projects` extension setting for specifying and configuring multiple individual projects within the workspace for testing
+
+### Changed
+
+- The `karmaTestExplorer.defaultAngularProjects` extension setting has been deprecated as the set of previously loaded projects are now restored each time the workspace is reopened
+- The `karmaTestExplorer.testsBasePath` extension setting, when no value is configured, now defaults to the longest common path of the tests discovered in the project
+- The new Babel-based AST parser, instead of regular expression matching, is now used for parsing test files by default
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/34) that prevented the extension from working for projects that use plug-n-play package managers and setups
+- Addressed [CVE-2021-43138](https://github.com/advisories/GHSA-fwr7-v2mv-hh25) security vulnerability from transitive dependencies
 
 ---
 ## [0.6.1] - Apr 13, 2022
@@ -32,7 +55,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 - Support for [requested](https://github.com/lucono/karma-test-explorer/issues/27) feature for simultaneous testing of multiple projects in an Angular workspace
 - New folder button on the test toolbar for choosing workspace projects loaded for testing in the UI
-- New `karmaTestExplorer.defaultAngularProjects` extension setting for specifying one or more projects in the Angular workspace that should be launched by default when the workspace is opened in VSCode
+- New `karmaTestExplorer.defaultAngularProjects` extension setting for specifying one or more projects in the Angular workspace that should be launched by default when the workspace is opened in VS Code
 
 ### Changed
 
@@ -40,7 +63,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Fixed
 
-- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/25) in which the Karma server is not always terminated after VSCode is closed
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/25) in which the Karma server is not always terminated after VS Code is closed
 - Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/22) with unexpected test pass/fail highlighting behavior
 - Addressed [CVE-2022-21704](https://github.com/advisories/GHSA-82v2-mx6x-wq7q), [CVE-2022-21676](https://github.com/advisories/GHSA-273r-mgr4-v34f), and [CVE-2022-21670](https://github.com/advisories/GHSA-6vfc-qv3f-vr6c) security vulnerabilities from transitive dependencies
 

@@ -1,13 +1,10 @@
 import { EventEmitter, WorkspaceFolder } from 'vscode';
 import { RetireEvent } from 'vscode-test-adapter-api';
 import { TestFactory } from '../api/test-factory';
-import { KARMA_SERVER_OUTPUT_CHANNEL_NAME, KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../constants';
+import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../constants';
 import { AngularFactory, AngularFactoryConfig } from '../frameworks/angular/angular-factory';
-import { AngularProject } from '../frameworks/angular/angular-project';
-import { getDefaultAngularProject } from '../frameworks/angular/angular-util';
 import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framework';
 import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-factory';
-import { KarmaLogLevel } from '../frameworks/karma/karma-log-level';
 import { DefaultTestBuilder, DefaultTestBuilderOptions } from '../frameworks/karma/runner/default-test-builder';
 import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
 import {
@@ -37,12 +34,14 @@ import { TestFramework } from './base/test-framework';
 import { TestFrameworkName } from './base/test-framework-name';
 import { TestStatus } from './base/test-status';
 import { CascadingTestFactory } from './cascading-test-factory';
-import { ExtensionConfig } from './config/extension-config';
+import { ExtensionConfig, TestParsingMethod } from './config/extension-config';
 import { Debugger } from './debugger';
 import { DefaultTestManager } from './default-test-manager';
 import { FileWatcher, FileWatcherOptions } from './file-watcher';
-import { RegexTestDefinitionProvider } from './parser/regex-test-definition-provider';
-import { RegexTestFileParser } from './parser/regex-test-file-parser';
+import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider';
+import { AstTestFileParser } from './parser/ast/ast-test-file-parser';
+import { RegexpTestDefinitionProvider } from './parser/regexp/regexp-test-definition-provider';
+import { RegexpTestFileParser } from './parser/regexp/regexp-test-file-parser';
 import { TestHelper } from './test-helper';
 import { TestLocator, TestLocatorOptions } from './test-locator';
 import { StoredTestResolver, TestStore } from './test-store';
@@ -51,22 +50,19 @@ import { TestTreeProcessor } from './util/test-tree-processor';
 import { Commands } from './vscode/commands/commands';
 import { ProjectCommand } from './vscode/commands/project-command';
 import { NotificationHandler } from './vscode/notifications/notification-handler';
-import { OutputChannelLog } from './vscode/output-channel-log';
 
 export class MainFactory {
   private readonly disposables: Disposable[] = [];
   private readonly testFramework: TestFramework;
-  private readonly angularProject?: AngularProject;
   private readonly processHandler: ProcessHandler;
   private readonly fileHandler: FileHandler;
   private readonly testLocator: TestLocator;
   private readonly testHelper: TestHelper;
   private readonly testStore: TestStore;
-  private readonly testServerLog: LogAppender;
 
   constructor(
     private readonly workspaceFolder: WorkspaceFolder,
-    private readonly projectDisplayName: string,
+    private readonly projectShortName: string,
     private readonly projectNameSpace: string | undefined,
     private readonly config: ExtensionConfig,
     private readonly testDebugger: Debugger,
@@ -77,19 +73,15 @@ export class MainFactory {
     private readonly testRunEventEmitter: EventEmitter<TestRunEvent>,
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
+    private readonly testServerLog: LogAppender,
     private readonly logger: SimpleLogger
   ) {
     this.disposables.push(logger);
 
-    this.angularProject =
-      config.projectType !== ProjectType.Karma
-        ? getDefaultAngularProject(this.config.projectRootPath, this.config.selectedAngularProject)
-        : undefined;
-
     this.fileHandler = new FileHandler(this.createLogger(FileHandler.name), {
-      cwd: this.config.projectRootPath
+      cwd: this.config.projectPath
     });
-    const karmaConfigPath = this.angularProject?.karmaConfigPath ?? this.config.userKarmaConfFilePath;
+    const karmaConfigPath = this.config.projectKarmaConfigFilePath;
 
     const configuredTestFramework: TestFramework | undefined =
       this.config.testFramework === TestFrameworkName.MochaBDD
@@ -123,20 +115,13 @@ export class MainFactory {
     this.logger.debug(() => 'Creating test store');
     this.testStore = new TestStore(this.createLogger(TestStore.name));
     this.disposables.push(this.testStore);
-
-    const outputChannelNamespaceLabel = this.projectNameSpace ? ` (${this.projectNameSpace})` : '';
-
-    this.testServerLog = new OutputChannelLog(`${KARMA_SERVER_OUTPUT_CHANNEL_NAME}${outputChannelNamespaceLabel}`, {
-      enabled: config.karmaLogLevel !== KarmaLogLevel.DISABLE
-    });
-    this.disposables.push(this.testServerLog);
   }
 
   public createFileWatcher(): FileWatcher {
     const reloadTriggerFiles = [...this.config.reloadOnChangedFiles];
 
     if (this.config.reloadOnKarmaConfigChange) {
-      reloadTriggerFiles.push(this.config.userKarmaConfFilePath);
+      reloadTriggerFiles.push(this.config.projectKarmaConfigFilePath);
     }
     if (this.config.envFile) {
       reloadTriggerFiles.push(this.config.envFile);
@@ -148,7 +133,7 @@ export class MainFactory {
 
     const fileWatcher = new FileWatcher(
       this.workspaceFolder,
-      this.config.projectRootPath,
+      this.config.projectPath,
       this.config.testFiles,
       reloadTriggerFiles,
       this.getTestLocator(),
@@ -172,18 +157,18 @@ export class MainFactory {
     }
 
     const testSuiteOrganizerOptions: TestSuiteOrganizerOptions = {
+      testsBasePath: this.config.testsBasePath,
       testGrouping: this.config.testGrouping,
       flattenSingleChildFolders: this.config.flattenSingleChildFolders,
       rootSuiteLabel: this.projectNameSpace
-        ? this.projectDisplayName
-        : this.angularProject
+        ? this.projectShortName
+        : this.config.projectType === ProjectType.Angular
         ? 'Angular Tests'
         : 'Karma Tests'
     };
 
     const testSuiteOrganizer = new TestSuiteOrganizer(
-      this.config.projectRootPath,
-      this.config.testsBasePath ?? this.config.projectSubFolderPath,
+      this.config.projectPath,
       this.testHelper,
       this.createLogger(TestSuiteOrganizer.name),
       testSuiteOrganizerOptions
@@ -218,10 +203,8 @@ export class MainFactory {
     const prioritizedTestFactories: (Partial<TestFactory> & Disposable)[] = [];
     prioritizedTestFactories.push(this.createKarmaFactory(testServerProcessLog, watchModeEnabled));
 
-    if (this.angularProject) {
-      prioritizedTestFactories.push(
-        this.createAngularFactory(this.angularProject, testServerProcessLog, watchModeEnabled)
-      );
+    if (this.config.projectType === ProjectType.Angular) {
+      prioritizedTestFactories.push(this.createAngularFactory(testServerProcessLog, watchModeEnabled));
     }
 
     const karmaEventListener = this.createKarmaTestEventListener(
@@ -278,20 +261,16 @@ export class MainFactory {
     return this.processHandler;
   }
 
-  // public getDebugger(): Debugger {
-  //   return this.debugger;
-  // }
-
   private createTestLocator(fileHandler: FileHandler): TestLocator {
     const testLocatorOptions: TestLocatorOptions = {
       ignore: [...this.config.excludeFiles],
-      cwd: this.config.projectRootPath
+      cwd: this.config.projectPath
     };
 
     const testDefinitionProvider = this.createTestDefinitionProvider();
 
     return new TestLocator(
-      this.config.projectSubFolderPath,
+      this.config.projectPath,
       [...this.config.testFiles],
       testDefinitionProvider,
       fileHandler,
@@ -301,24 +280,46 @@ export class MainFactory {
   }
 
   private createTestDefinitionProvider(): TestDefinitionProvider {
-    const testFileParser: RegexTestFileParser = new RegexTestFileParser(
+    return this.config.testParsingMethod === TestParsingMethod.RegExp
+      ? this.createRegexpTestDefinitionProvider()
+      : this.createAstTestDefinitionProvider();
+  }
+
+  private createRegexpTestDefinitionProvider(): RegexpTestDefinitionProvider {
+    this.logger.debug(() => 'Creating Regex test definition provider');
+
+    const testFileParser: RegexpTestFileParser = new RegexpTestFileParser(
       this.testFramework.getTestInterface(),
-      new SimpleLogger(this.logger, RegexTestFileParser.name)
+      new SimpleLogger(this.logger, RegexpTestFileParser.name)
     );
 
-    const testDefinitionProvider: TestDefinitionProvider = new RegexTestDefinitionProvider(
+    const testDefinitionProvider = new RegexpTestDefinitionProvider(
       testFileParser,
-      this.createLogger(RegexTestDefinitionProvider.name)
+      this.createLogger(RegexpTestDefinitionProvider.name)
+    );
+    return testDefinitionProvider;
+  }
+
+  private createAstTestDefinitionProvider(): AstTestDefinitionProvider {
+    this.logger.debug(() => 'Creating AST test definition provider');
+
+    const testFileParser: AstTestFileParser = new AstTestFileParser(
+      this.testFramework.getTestInterface(),
+      new SimpleLogger(this.logger, AstTestFileParser.name)
     );
 
+    const testDefinitionProvider = new AstTestDefinitionProvider(
+      testFileParser,
+      this.createLogger(AstTestDefinitionProvider.name)
+    );
     return testDefinitionProvider;
   }
 
   private createKarmaFactory(serverProcessLog: ProcessLog, watchModeEnabled: boolean): KarmaFactory {
     const karmaFactoryConfig: KarmaFactoryConfig = {
-      projectRootPath: this.config.projectRootPath,
+      projectPath: this.config.projectPath,
       baseKarmaConfFilePath: this.config.baseKarmaConfFilePath,
-      userKarmaConfFilePath: this.config.userKarmaConfFilePath,
+      projectKarmaConfigFilePath: this.config.projectKarmaConfigFilePath,
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
       karmaLogLevel: this.config.karmaLogLevel,
@@ -341,14 +342,13 @@ export class MainFactory {
     );
   }
 
-  private createAngularFactory(
-    angularProject: AngularProject,
-    serverProcessLog: ProcessLog,
-    watchModeEnabled: boolean
-  ): AngularFactory {
+  private createAngularFactory(serverProcessLog: ProcessLog, watchModeEnabled: boolean): AngularFactory {
     const angularFactoryConfig: AngularFactoryConfig = {
-      projectRootPath: this.config.projectRootPath,
+      projectName: this.config.projectName,
+      projectPath: this.config.projectPath,
+      projectInstallRootPath: this.config.projectInstallRootPath,
       baseKarmaConfFilePath: this.config.baseKarmaConfFilePath,
+      projectKarmaConfigFilePath: this.config.projectKarmaConfigFilePath,
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
       karmaLogLevel: this.config.karmaLogLevel,
@@ -363,7 +363,6 @@ export class MainFactory {
 
     return new AngularFactory(
       angularFactoryConfig,
-      angularProject,
       this.processHandler,
       serverProcessLog,
       this.createLogger(AngularFactory.name)
