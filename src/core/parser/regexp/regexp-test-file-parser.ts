@@ -4,20 +4,21 @@ import { Logger } from '../../../util/logging/logger';
 import { escapeForRegExp, generateRandomId, stripJsComments } from '../../../util/utils';
 import { TestDefinitionState } from '../../base/test-definition';
 import { TestInterface } from '../../base/test-framework';
-import { TestNode, TestNodeType } from '../../base/test-node';
+import { TestFileParser } from '../test-file-parser';
+import { TestNode, TestNodeType } from './test-node';
 
 export type RegexpTestFileParserResult = Record<TestNodeType, TestNode[]>;
 
-export class RegexpTestFileParser implements Disposable {
+export class RegexpTestFileParser implements TestFileParser<RegexpTestFileParserResult> {
   private disposables: Disposable[] = [];
 
   public constructor(private readonly testInterface: TestInterface, private readonly logger: Logger) {
     this.disposables.push(logger);
   }
 
-  public parseFileText(fileText: string): RegexpTestFileParserResult {
+  public parseFileText(fileText: string, filePath: string): RegexpTestFileParserResult {
     const parseId = generateRandomId();
-    this.logger.trace(() => `Parse operation ${parseId}: Parsing file text: \n${fileText}`);
+    this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
     const startTime = new Date();
     const data = this.getTestFileData(fileText);
@@ -52,6 +53,7 @@ export class RegexpTestFileParser implements Disposable {
       () =>
         `Parse operation ${parseId}: ` +
         `Parsed ${fileInfo.Test.length} total tests ` +
+        `from file '${filePath}' ` +
         `in ${elapsedTime.toFixed(2)} secs`
     );
     return fileInfo;

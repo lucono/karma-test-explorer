@@ -1,4 +1,4 @@
-import { TestDefinitionState } from './test-definition';
+import { TestDefinitionState } from '../../base/test-definition';
 
 export enum TestNodeType {
   Suite = 'Suite',
@@ -7,7 +7,7 @@ export enum TestNodeType {
 
 export interface TestNode {
   type: TestNodeType;
-  state: TestDefinitionState;
   description: string;
+  state: TestDefinitionState;
   line: number;
 }

@@ -38,6 +38,8 @@ export class ProjectFactory implements Disposable {
   }
 
   private createProjectsForWorkspaceFolder(workspaceFolder: WorkspaceFolder): WorkspaceProject[] {
+    this.logger.debug(() => `Inspecting workspace folder for testing: ${workspaceFolder.uri.fsPath}`);
+
     if (workspaceFolder.uri.scheme !== 'file') {
       this.logger.debug(() => `Excluding projects in non-file scheme workspace folder: ${workspaceFolder.uri.fsPath}`);
       return [];

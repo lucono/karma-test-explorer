@@ -8,7 +8,6 @@ export enum TestDefinitionState {
 
 export interface TestDefinition {
   readonly type: TestType;
-  readonly description: string;
   readonly file: string;
   readonly line: number;
   readonly state: TestDefinitionState;

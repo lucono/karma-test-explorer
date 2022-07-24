@@ -111,8 +111,8 @@ export class KarmaTestEventProcessor {
       this.logger.debug(() => `Test event processor is currently processing - Concluding current processing`);
 
       const processedResults: TestEventProcessingResults = {
-        processedSpecs: Array.from(this.currentProcessingInfo.processedTestResults.values()),
-        filteredEvents: Array.from(this.currentProcessingInfo.filteredTestResultEvents.values())
+        processedSpecs: [...this.currentProcessingInfo.processedTestResults.values()],
+        filteredEvents: [...this.currentProcessingInfo.filteredTestResultEvents.values()]
       };
       this.currentProcessingInfo.deferredProcessingResults!.fulfill(processedResults);
       this.emitTestSuiteEvents();
@@ -327,7 +327,7 @@ export class KarmaTestEventProcessor {
       [TestStatus.Skipped]: []
     };
 
-    Array.from(this.currentProcessingInfo.processedTestResults.values()).forEach(processedSpec =>
+    [...this.currentProcessingInfo.processedTestResults.values()].forEach(processedSpec =>
       capturedTests[processedSpec.status].push(processedSpec)
     );
 

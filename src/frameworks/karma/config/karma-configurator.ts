@@ -115,7 +115,7 @@ export class KarmaConfigurator {
   }
 
   private addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined) {
-    if (!customLaucher || !debugPort) {
+    if (!customLaucher || debugPort === undefined) {
       return;
     }
     customLaucher.flags = customLaucher.flags?.map(flag =>

@@ -41,13 +41,13 @@ Duplicated tests in your project are also detected and convniently flagged for a
 
 ### Core Features
 
-- Angular and Karma project support
-- Jasmine and Mocha test framework support
-- Multi project, monorepo and multi-root workspace support
-- Watch mode support with auto pass / fail test status update
+- Rich visual test browsing, execution, and debugging
+- Angular, Karma, Jasmine, and Mocha support
+- Multi-project / monorepo / multi-root workspace support
+- Live update of pass-fail test statuses
+- Filter out noise from disabled tests or show only focused tests
 - Duplicate test detection and reporting
 - Non-Headless testing / use visible browser window
-- Show only focused tests or exclude disabled tests from the test view
 - Group and run tests by folder or by test suite
 - Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Specify or override environment variables for Karma
@@ -248,11 +248,11 @@ Most times however, you will not need to set this config option at all as Karma 
 
 Karma Test Explorer supports simultaneous multi-project testing for various multi-project setups and scenarios, including:
 
-Project Type | Description
+Multi-Project Setup | Description
 -------------|------------
-VS Code multi-root workspaces | For a multi-root workspace that is open in VS Code, all Karma and Angular projects in each root of the multi-root workspace will be available to load for testing
-Multi-project Angular workspaces | For each Angular project that is configured or automatically discovered by Karma Test Explorer in a VS Code workspace, all its sub-projects will be available to load for testing
-Monorepos and Embedded projects | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projects` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each
+VS Code multi-root workspace | For a multi-root workspace that is open in VS Code, all Karma and Angular projects in each root of the multi-root workspace will be available to load for testing
+Multi-project Angular workspace | For each Angular workspace that is configured or automatically discovered by Karma Test Explorer in a VS Code workspace, all its sub-projects will be available to load for testing
+Monorepo or Embedded project | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projects` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each
 
 In any scenario, whenever multiple Karma or Angular projects are available for testing, a folder button will be available on the Test view toolbar which can be used for selecting and loading any number of those projects for simultaneous testing in the UI. The folder button is not available when there is only a single project configured or detected for testing in the current VS Code workspace.
 
@@ -368,16 +368,6 @@ Karma&nbsp;Server | This output panel shows the Karma server log. The `karmaTest
 
 - Karma Test Explorer works best with the Test Explorer UI, and may not work properly if the `testExplorer.useNativeTesting` config setting is set to `true` to disable the Test Explorer UI in favor of VS Code's native testing UI
 - Watch mode is not yet supported for the Mocha test framework
-- Test descriptions that are computed are currently not supported. Test descriptions must be plain string literals in order to be available in the Test view side bar. For example:
-  ```ts
-  // Supported
-  it('supports plain literal test descriptions', ...
-  it(`supports plain literal test descriptions`, ...
-
-  // Not supported
-  it('does not support computed ' + someValue + ' test descriptions', ...
-  it(`does not support computed ${someValue} test descriptions`, ...
-  ```
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>
 

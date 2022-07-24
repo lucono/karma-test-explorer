@@ -7,6 +7,7 @@ import { TestHelper } from '../../../core/test-helper';
 import { TestDefinitionInfo, TestLocator } from '../../../core/test-locator';
 import { TestActiveState } from '../../../types/vscode-test-adapter-api';
 import { Logger } from '../../../util/logging/logger';
+import { regexJsonReplacer } from '../../../util/utils';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { TestBuilder } from './test-builder';
 
@@ -55,7 +56,7 @@ export class DefaultTestBuilder implements TestBuilder {
       this.logger.trace(
         () =>
           `Got ${matchingTestDefinitionResults.length} matching test definitions: ` +
-          `'${JSON.stringify(matchingTestDefinitionResults)}' ` +
+          `${JSON.stringify(matchingTestDefinitionResults, regexJsonReplacer, 2)} \n` +
           `for test location lookup of spec: ${JSON.stringify(spec, null, 2)}`
       );
 
@@ -80,7 +81,8 @@ export class DefaultTestBuilder implements TestBuilder {
 
       this.logger.trace(
         () =>
-          `Selected test definition: '${JSON.stringify(selectedTestDefinitionResult)}' ` +
+          `Selected test definition: ` +
+          `${JSON.stringify(selectedTestDefinitionResult, regexJsonReplacer, 2)} \n` +
           `for spec: ${JSON.stringify(spec, null, 2)}`
       );
 
@@ -89,24 +91,15 @@ export class DefaultTestBuilder implements TestBuilder {
       );
       const testDefinition = selectedTestDefinitionResult?.test;
       const suiteDefinitions = selectedTestDefinitionResult?.suite;
+      const test = this.buildTest(rootContainerSuite, focusContext, spec, spec.suite, testDefinition, suiteDefinitions);
 
-      const test = this.buildTest(
-        rootContainerSuite,
-        spec,
-        suiteDefinitions ?? spec.suite,
-        testDefinition,
-        focusContext
-      );
-      const isUnconflictedSpec = matchingTestDefinitionResults.length === 1;
-
-      const existingDuplicateTest = isUnconflictedSpec
-        ? singleDefinitionTestsByNormalizedId.get(normalizedSpecId)
-        : undefined;
-
+      const isUnconflictedSpec = matchingTestDefinitions.length === 1;
       let loadProblemMessage: string | undefined;
       let errored = false;
 
       if (isUnconflictedSpec) {
+        const existingDuplicateTest = singleDefinitionTestsByNormalizedId.get(normalizedSpecId);
+
         if (existingDuplicateTest) {
           loadProblemMessage =
             `"${spec.fullName}" \n\n` +
@@ -129,9 +122,9 @@ export class DefaultTestBuilder implements TestBuilder {
           `"${spec.fullName}" \n\n` +
           `--- \n\n` +
           `${EXTENSION_NAME} could not find the test source for the above test ` +
-          `within your project. This can occur if the test uses parameterization ` +
-          `or a computed test description, or if the file in which this test is ` +
-          `defined is not captured by the glob pattern specified by your ` +
+          `within your project. This can occur in some scenarios if the test uses ` +
+          `parameterization or a computed test description, or if the file in which ` +
+          `this test is defined is not captured by the glob pattern specified by your ` +
           `'${EXTENSION_CONFIG_PREFIX}.${GeneralConfigSetting.TestFiles}' setting.`;
       } else if (matchingTestDefinitions.length > 1) {
         errored = true;
@@ -167,10 +160,11 @@ export class DefaultTestBuilder implements TestBuilder {
 
   private buildTest(
     rootContainer: TestSuiteInfo,
+    focusContext: TestsFocusContext,
     spec: SpecCompleteResponse,
-    suiteChain: (TestDefinition | string)[],
-    testDefinition: TestDefinition | undefined,
-    focusContext: TestsFocusContext
+    suites: string[],
+    testDefinition?: TestDefinition,
+    suiteDefinitions?: TestDefinition[]
   ): TestInfo | undefined {
     // --- Handle unmapped tests and corresponding filter option ---
 
@@ -201,9 +195,9 @@ export class DefaultTestBuilder implements TestBuilder {
 
     // --- Handle preliminary known unfocusable tests and corresponding filter option ---
 
-    const hasAtLeastOneFocusableTestSuite = suiteChain.some(
-      suiteItem => typeof suiteItem === 'string' || suiteItem.state === TestDefinitionState.Focused
-    );
+    const hasAtLeastOneFocusableTestSuite =
+      !suiteDefinitions ||
+      suiteDefinitions.some(suiteDefinition => suiteDefinition.state === TestDefinitionState.Focused);
 
     const testIsFocusable =
       testDefinition === undefined ||
@@ -227,9 +221,9 @@ export class DefaultTestBuilder implements TestBuilder {
     let detachNode: (() => void) | undefined;
     let currentSuiteNode: TestSuiteInfo = rootContainer;
 
-    for (const suiteItem of suiteChain) {
-      const suiteDefinition = typeof suiteItem === 'string' ? undefined : suiteItem;
-      const suiteName = typeof suiteItem === 'string' ? suiteItem : suiteItem.description;
+    for (let suiteIndex = 0; suiteIndex < suites.length; suiteIndex++) {
+      const suiteDefinition = suiteDefinitions?.[suiteIndex];
+      const suiteName = suites[suiteIndex];
       const suiteFile = suiteDefinition?.file;
       const suiteLine = suiteDefinition?.line;
 

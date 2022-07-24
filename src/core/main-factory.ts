@@ -40,6 +40,12 @@ import { DefaultTestManager } from './default-test-manager';
 import { FileWatcher, FileWatcherOptions } from './file-watcher';
 import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider';
 import { AstTestFileParser } from './parser/ast/ast-test-file-parser';
+import { ForEachNodeProcessor } from './parser/ast/processors/for-each-node-processor';
+import { IfElseNodeProcessor } from './parser/ast/processors/if-else-node-processor';
+import { LoopNodeProcessor } from './parser/ast/processors/loop-node-processor';
+import { TestAndSuiteNodeProcessor } from './parser/ast/processors/test-and-suite-node-processor';
+import { TestDescriptionNodeProcessor } from './parser/ast/processors/test-description-node-processor';
+import { ProcessedSourceNode, SourceNodeProcessor } from './parser/ast/source-node-processor';
 import { RegexpTestDefinitionProvider } from './parser/regexp/regexp-test-definition-provider';
 import { RegexpTestFileParser } from './parser/regexp/regexp-test-file-parser';
 import { TestHelper } from './test-helper';
@@ -274,7 +280,7 @@ export class MainFactory {
       [...this.config.testFiles],
       testDefinitionProvider,
       fileHandler,
-      new SimpleLogger(this.logger, TestLocator.name),
+      this.createLogger(TestLocator.name),
       testLocatorOptions
     );
   }
@@ -290,7 +296,7 @@ export class MainFactory {
 
     const testFileParser: RegexpTestFileParser = new RegexpTestFileParser(
       this.testFramework.getTestInterface(),
-      new SimpleLogger(this.logger, RegexpTestFileParser.name)
+      this.createLogger(RegexpTestFileParser.name)
     );
 
     const testDefinitionProvider = new RegexpTestDefinitionProvider(
@@ -303,9 +309,24 @@ export class MainFactory {
   private createAstTestDefinitionProvider(): AstTestDefinitionProvider {
     this.logger.debug(() => 'Creating AST test definition provider');
 
+    const testDescriptionNodeProcessor = new TestDescriptionNodeProcessor(
+      this.createLogger(TestDescriptionNodeProcessor.name)
+    );
+
+    const sourceNodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[] = [
+      new TestAndSuiteNodeProcessor(
+        this.testFramework.getTestInterface(),
+        testDescriptionNodeProcessor,
+        this.createLogger(TestAndSuiteNodeProcessor.name)
+      ),
+      new ForEachNodeProcessor(this.createLogger(ForEachNodeProcessor.name)),
+      new LoopNodeProcessor(this.createLogger(LoopNodeProcessor.name)),
+      new IfElseNodeProcessor(this.createLogger(IfElseNodeProcessor.name))
+    ];
+
     const testFileParser: AstTestFileParser = new AstTestFileParser(
-      this.testFramework.getTestInterface(),
-      new SimpleLogger(this.logger, AstTestFileParser.name)
+      sourceNodeProcessors,
+      this.createLogger(AstTestFileParser.name)
     );
 
     const testDefinitionProvider = new AstTestDefinitionProvider(
@@ -458,7 +479,7 @@ export class MainFactory {
       debugStatusResolver,
       testDiscoveryEventProcessingOptions,
       testRunEventProcessingOptions,
-      new SimpleLogger(this.logger, KarmaTestRunProcessor.name)
+      this.createLogger(KarmaTestRunProcessor.name)
     );
 
     return new KarmaTestListener(testRunProcessor, this.createLogger(KarmaTestListener.name), {
