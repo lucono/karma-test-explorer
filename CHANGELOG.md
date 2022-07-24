@@ -7,7 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
-  - [0.7.1 - Jul 23, 2022](#071---jul-23-2022)
+  - [0.7.1 - Jul 24, 2022](#071---jul-24-2022)
   - [0.7.0 - Jul 17, 2022](#070---jul-17-2022)
   - [0.6.1 - Apr 13, 2022](#061---apr-13-2022)
   - [0.6.0 - Apr 6, 2022](#060---apr-6-2022)
@@ -21,7 +21,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
-## [0.7.1] - Jul 23, 2022
+## [0.7.1] - Jul 24, 2022
 
 ### Fixed
 
