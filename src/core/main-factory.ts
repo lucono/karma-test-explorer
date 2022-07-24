@@ -41,7 +41,8 @@ import { FileWatcher, FileWatcherOptions } from './file-watcher';
 import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider';
 import { AstTestFileParser } from './parser/ast/ast-test-file-parser';
 import { ForEachNodeProcessor } from './parser/ast/processors/for-each-node-processor';
-import { ForLoopNodeProcessor } from './parser/ast/processors/for-loop-node-processor';
+import { IfElseNodeProcessor } from './parser/ast/processors/if-else-node-processor';
+import { LoopNodeProcessor } from './parser/ast/processors/loop-node-processor';
 import { TestAndSuiteNodeProcessor } from './parser/ast/processors/test-and-suite-node-processor';
 import { TestDescriptionNodeProcessor } from './parser/ast/processors/test-description-node-processor';
 import { ProcessedSourceNode, SourceNodeProcessor } from './parser/ast/source-node-processor';
@@ -319,7 +320,8 @@ export class MainFactory {
         this.createLogger(TestAndSuiteNodeProcessor.name)
       ),
       new ForEachNodeProcessor(this.createLogger(ForEachNodeProcessor.name)),
-      new ForLoopNodeProcessor(this.createLogger(ForLoopNodeProcessor.name))
+      new LoopNodeProcessor(this.createLogger(LoopNodeProcessor.name)),
+      new IfElseNodeProcessor(this.createLogger(IfElseNodeProcessor.name))
     ];
 
     const testFileParser: AstTestFileParser = new AstTestFileParser(

@@ -1,6 +1,6 @@
+[![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
 [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
 [![Rating](https://vsmarketplacebadge.apphb.com/rating-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
-[![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 

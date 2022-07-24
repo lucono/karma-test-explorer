@@ -25,7 +25,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Fixed
 
-- Addresses long-standing issue where parameterized tests are not recognized, as well as tests with template or computed string descriptions. This support is provided by the new AST-based Test Definition Provider added in v0.7.0 and therefore requires the `karmaTestExplorer.testParsingMethod` setting to be `ast` (which is the current default when this setting is not configured)
+- Addresses a long-standing issue where parameterized tests are unmapped, as well as tests with template or computed string descriptions. This support is provided by the new AST-based Test Definition Provider added in v0.7.0 and therefore requires the `karmaTestExplorer.testParsingMethod` setting to be `ast` (which is the current default when this setting is not configured)
 
 ---
 ## [0.7.0] - Jul 17, 2022

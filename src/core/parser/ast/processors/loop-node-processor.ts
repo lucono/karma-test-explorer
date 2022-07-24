@@ -4,7 +4,7 @@ import { Disposer } from '../../../../util/disposable/disposer';
 import { Logger } from '../../../../util/logging/logger';
 import { ProcessedSourceNode, SourceNodeProcessor } from '../source-node-processor';
 
-export class ForLoopNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
+export class LoopNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
   private readonly disposables: Disposable[] = [];
 
   public constructor(private readonly logger: Logger) {
@@ -12,10 +12,14 @@ export class ForLoopNodeProcessor implements SourceNodeProcessor<ProcessedSource
   }
 
   public processNode(node: Node): ProcessedSourceNode | undefined {
-    const nodeIsForLoopVariant =
-      node.type === 'ForStatement' || node.type === 'ForInStatement' || node.type === 'ForOfStatement';
+    const isLoopNode =
+      node.type === 'ForStatement' ||
+      node.type === 'ForInStatement' ||
+      node.type === 'ForOfStatement' ||
+      node.type === 'WhileStatement' ||
+      node.type === 'DoWhileStatement';
 
-    if (!nodeIsForLoopVariant || node.body.type !== 'BlockStatement') {
+    if (!isLoopNode || node.body.type !== 'BlockStatement') {
       this.logger.trace(() => `Rejecting source node of type: ${node.type}`);
       return undefined;
     }

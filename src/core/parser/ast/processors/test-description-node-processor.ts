@@ -1,5 +1,5 @@
 import { Node } from '@babel/core';
-import { BinaryExpression, NumericLiteral, TemplateLiteral } from '@babel/types';
+import { BinaryExpression, ConditionalExpression, NumericLiteral, TemplateLiteral } from '@babel/types';
 import { Disposable } from 'vscode';
 import { Disposer } from '../../../../util/disposable/disposer';
 import { Logger } from '../../../../util/logging/logger';
@@ -25,22 +25,14 @@ export class TestDescriptionNodeProcessor implements SourceNodeProcessor<Process
   }
 
   public processNode(node: Node): ProcessedTestDescription | undefined {
-    const descriptionStringOrPattern: StringOrPattern | undefined =
-      node.type === 'StringLiteral'
-        ? { text: node.value, isPattern: false }
-        : node.type === 'TemplateLiteral'
-        ? this.processTemplateLiteralNode(node)
-        : node.type === 'NumericLiteral'
-        ? this.processNumericLiteralNode(node)
-        : node.type === 'BinaryExpression'
-        ? this.processBinaryExpressionNode(node)
-        : undefined;
+    this.logger.trace(() => `Processing description node of type: ${node.type}`);
+
+    const descriptionStringOrPattern = this.getNodeStringOrPattern(node);
 
     if (!descriptionStringOrPattern) {
-      this.logger.trace(() => `Rejecting source node of type: ${node.type}`);
+      this.logger.trace(() => `Rejecting description node of type: ${node.type}`);
       return undefined;
     }
-    this.logger.trace(() => `Processing source node of type: ${node.type}`);
 
     const processedDescription: ProcessedTestDescription = descriptionStringOrPattern.isPattern
       ? {
@@ -54,7 +46,7 @@ export class TestDescriptionNodeProcessor implements SourceNodeProcessor<Process
 
     this.logger.trace(
       () =>
-        `Successfully processed source node ` +
+        `Successfully processed description node ` +
         `of type '${node.type}' with result: ` +
         `${JSON.stringify(processedDescription, regexJsonReplacer, 2)}`
     );
@@ -66,46 +58,77 @@ export class TestDescriptionNodeProcessor implements SourceNodeProcessor<Process
       const text = node.quasis[0].value.cooked ?? node.quasis[0].value.raw;
       return { text, isPattern: false };
     }
-    const templatePattern = node.quasis.map(templateElement => escapeForRegExp(templateElement.value.raw)).join('(.*)');
-    return { text: templatePattern, isPattern: true };
+
+    const expressionsStringOrPatterns = node.expressions.map(
+      expression => this.getNodeStringOrPattern(expression) ?? { text: '(.*)', isPattern: true }
+    );
+
+    const quasisStringOrPatterns: StringOrPattern[] = node.quasis.map(quasi => ({
+      text: quasi.value.cooked ?? quasi.value.raw,
+      isPattern: false
+    }));
+
+    const templateSegments = quasisStringOrPatterns
+      .map((segment, index) => (index === 0 ? [segment] : [expressionsStringOrPatterns[index - 1], segment]))
+      .reduce((combinedSegments, nextSegments) => [...combinedSegments, ...nextSegments], []);
+
+    const combinedStringOrPattern = this.getJoinedStringOrPattern(...templateSegments);
+    return combinedStringOrPattern;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private processNumericLiteralNode(node: NumericLiteral): StringOrPattern {
-    return { text: `[-+._0-9]+`, isPattern: true };
+    return { text: `${node.value}`, isPattern: false };
   }
 
-  private processBinaryExpressionNode(node: BinaryExpression): StringOrPattern {
-    const leftNode = node.left;
-    const rightNode = node.right;
+  private processConditionalExpressionNode(node: ConditionalExpression): StringOrPattern | undefined {
+    const ifBranchStringOrPattern = this.getNodeStringOrPattern(node.consequent);
+    const elseBranchStringOrPattern = this.getNodeStringOrPattern(node.alternate);
 
-    const leftStringOrPattern: StringOrPattern =
-      leftNode.type === 'StringLiteral'
-        ? { text: leftNode.value, isPattern: false }
-        : leftNode.type === 'TemplateLiteral'
-        ? this.processTemplateLiteralNode(leftNode)
-        : leftNode.type === 'NumericLiteral'
-        ? this.processNumericLiteralNode(leftNode)
-        : leftNode.type === 'BinaryExpression'
-        ? this.processBinaryExpressionNode(leftNode)
-        : { text: '(.*)', isPattern: true };
+    if (!ifBranchStringOrPattern || !elseBranchStringOrPattern) {
+      return undefined;
+    }
+    const hasPatternBranch = ifBranchStringOrPattern.isPattern || elseBranchStringOrPattern.isPattern;
 
-    const rightStringOrPattern: StringOrPattern =
-      rightNode.type === 'StringLiteral'
-        ? { text: rightNode.value, isPattern: false }
-        : rightNode.type === 'TemplateLiteral'
-        ? this.processTemplateLiteralNode(rightNode)
-        : rightNode.type === 'NumericLiteral'
-        ? this.processNumericLiteralNode(rightNode)
-        : rightNode.type === 'BinaryExpression'
-        ? this.processBinaryExpressionNode(rightNode)
-        : { text: '(.*)', isPattern: true };
+    const branchStrings = [ifBranchStringOrPattern, elseBranchStringOrPattern].map(branchValue =>
+      hasPatternBranch && !branchValue.isPattern ? escapeForRegExp(branchValue.text) : branchValue.text
+    );
 
-    const combinedStringOrPattern = this.getCombinedStringOrPattern(leftStringOrPattern, rightStringOrPattern);
+    const combinedStringOrPattern: StringOrPattern = {
+      text: `(${branchStrings.join('|')})`,
+      isPattern: true
+    };
     return combinedStringOrPattern;
   }
 
-  private getCombinedStringOrPattern(...items: StringOrPattern[]): StringOrPattern {
+  private processBinaryExpressionNode(node: BinaryExpression): StringOrPattern {
+    if (node.operator !== '+') {
+      return { text: '(.*)', isPattern: true };
+    }
+    const leftStringOrPattern = this.getNodeStringOrPattern(node.left) ?? { text: '(.*)', isPattern: true };
+    const rightStringOrPattern = this.getNodeStringOrPattern(node.right) ?? { text: '(.*)', isPattern: true };
+    const joinedStringOrPattern = this.getJoinedStringOrPattern(leftStringOrPattern, rightStringOrPattern);
+    return joinedStringOrPattern;
+  }
+
+  private getNodeStringOrPattern(node: Node): StringOrPattern | undefined {
+    const nodeStringOrPattern: StringOrPattern | undefined =
+      node.type === 'StringLiteral'
+        ? { text: node.value, isPattern: false }
+        : node.type === 'TemplateLiteral'
+        ? this.processTemplateLiteralNode(node)
+        : node.type === 'NumericLiteral'
+        ? this.processNumericLiteralNode(node)
+        : node.type === 'BinaryExpression'
+        ? this.processBinaryExpressionNode(node)
+        : node.type === 'ConditionalExpression'
+        ? this.processConditionalExpressionNode(node)
+        : undefined;
+
+    return nodeStringOrPattern;
+  }
+
+  private getJoinedStringOrPattern(...items: StringOrPattern[]): StringOrPattern {
     const combinationIsPattern = items.some(item => item.isPattern);
 
     const combinedString = items
