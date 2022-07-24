@@ -163,7 +163,7 @@ export class SimpleProcess implements Process {
       return this.processCurrentlyStopping;
     }
 
-    const runningProcess = this.childProcess!;
+    const runningProcess = this.childProcess;
     this.logger.debug(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
     const futureProcessTermination = new RichPromise<void>((resolve, reject) => {

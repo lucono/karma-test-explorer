@@ -29,7 +29,7 @@ export class Disposer {
     if (distinctDisposables.size === 0) {
       return;
     }
-    const diposals = Array.from(distinctDisposables).map(disposable => this.disposeItems(disposable));
+    const diposals = [...distinctDisposables].map(disposable => this.disposeItems(disposable));
     disposables.splice(0, disposables.length);
 
     await RichPromise.allSettled(diposals);

@@ -9,7 +9,7 @@ import { LogLevel } from '../../../util/logging/log-level';
 import { Logger } from '../../../util/logging/logger';
 import { LoggerAdapter } from '../../../util/logging/logger-adapter';
 import { MultiEventHandler } from '../../../util/multi-event-handler';
-import { getCircularReferenceReplacer } from '../../../util/utils';
+import { getJsonCircularReferenceReplacer } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { BrowserInfo, KarmaEvent, KarmaEventName } from '../runner/karma-event';
 import { LightSpecCompleteResponse } from '../runner/spec-complete-response';
@@ -75,7 +75,7 @@ export function KarmaTestExplorerReporter(
       logger.trace(
         () =>
           `No specific handler for received error event '${eventName}' with data: ` +
-          `${JSON.stringify(args, getCircularReferenceReplacer(), 2)}`
+          `${JSON.stringify(args, getJsonCircularReferenceReplacer(), 2)}`
       );
     }
     sendEvent({ name: eventName as KarmaEventName });
@@ -86,12 +86,14 @@ export function KarmaTestExplorerReporter(
     logger.trace(
       () =>
         `Event data for errored '${eventName}' event handling: ` +
-        `${JSON.stringify(args, getCircularReferenceReplacer(), 2)}`
+        `${JSON.stringify(args, getJsonCircularReferenceReplacer(), 2)}`
     );
   });
 
   interceptAllEmitterEvents(emitter, (eventName: string, ...args: any[]) => {
-    logger.trace(() => `New Karma event: ${JSON.stringify({ eventName, args }, getCircularReferenceReplacer(), 2)}`);
+    logger.trace(
+      () => `New Karma event: ${JSON.stringify({ eventName, args }, getJsonCircularReferenceReplacer(), 2)}`
+    );
     karmaEventHandler.handleEvent(eventName as KarmaEventName, eventName as KarmaEventName, ...args);
   });
 
@@ -122,7 +124,9 @@ export function KarmaTestExplorerReporter(
   });
 
   karmaEventHandler.setEventHandler(KarmaEventName.BrowserStart, (name: KarmaEventName, browser: any, info: any) => {
-    logger.trace(() => `Karma event '${name}' has 'info': ${JSON.stringify(info, getCircularReferenceReplacer(), 2)}`);
+    logger.trace(
+      () => `Karma event '${name}' has 'info': ${JSON.stringify(info, getJsonCircularReferenceReplacer(), 2)}`
+    );
 
     sendEvent({
       name,
@@ -160,7 +164,7 @@ export function KarmaTestExplorerReporter(
     KarmaEventName.BrowserComplete,
     (name: KarmaEventName, browser: any, runInfo: any) => {
       logger.trace(
-        () => `Karma event '${name}' has 'runInfo': ${JSON.stringify(runInfo, getCircularReferenceReplacer(), 2)}`
+        () => `Karma event '${name}' has 'runInfo': ${JSON.stringify(runInfo, getJsonCircularReferenceReplacer(), 2)}`
       );
 
       sendEvent({

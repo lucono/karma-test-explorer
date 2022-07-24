@@ -48,7 +48,7 @@ export class TestStore implements Disposable {
   }
 
   public getTestsByFile(filePath: string): TestInfo[] {
-    const changedTests = Array.from(this.storedTestsById.values()).filter(
+    const changedTests = [...this.storedTestsById.values()].filter(
       loadedTest => loadedTest.file === filePath && loadedTest.type === TestType.Test
     ) as TestInfo[];
 

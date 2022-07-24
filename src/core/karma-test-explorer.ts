@@ -137,12 +137,12 @@ export class KarmaTestExplorer implements Disposable {
         if (debuggerPort) {
           this.logger.debug(
             () =>
-              `Starting debug session '${debuggerConfigName}' ` +
+              `Starting debug session configuration '${debuggerConfigName}' ` +
               'with requested --> available debug port: ' +
               `${this.config.debuggerConfig.port ?? '<none>'} --> ${debuggerPort}`
           );
         } else {
-          this.logger.debug(() => `Starting debug session '${debuggerConfigName}'`);
+          this.logger.debug(() => `Starting debug session configuration '${debuggerConfigName}'`);
         }
 
         const deferredDebugSessionStart = new DeferredPromise();

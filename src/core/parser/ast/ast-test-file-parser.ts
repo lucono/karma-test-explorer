@@ -3,11 +3,12 @@ import { parse, ParserOptions } from '@babel/parser';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
-import { generateRandomId } from '../../../util/utils';
-import { TestDefinition, TestDefinitionState } from '../../base/test-definition';
-import { TestInterface } from '../../base/test-framework';
+import { generateRandomId, regexJsonReplacer } from '../../../util/utils';
+import { TestDefinitionState } from '../../base/test-definition';
 import { TestType } from '../../base/test-infos';
-import { TestDefinitionInfo } from '../../test-locator';
+import { TestFileParser } from '../test-file-parser';
+import { DescribedTestDefinition, DescribedTestDefinitionInfo } from './described-test-definition';
+import { ProcessedSourceNode, SourceNodeProcessor } from './source-node-processor';
 
 const PARSER_OPTIONS: ParserOptions = {
   errorRecovery: true,
@@ -26,29 +27,18 @@ const PARSER_OPTIONS: ParserOptions = {
   plugins: ['typescript', 'jsx']
 };
 
-export class AstTestFileParser implements Disposable {
-  private disposables: Disposable[] = [];
-  private readonly suiteTags: string[];
-  private readonly testTags: string[];
+export class AstTestFileParser implements TestFileParser<DescribedTestDefinitionInfo[]> {
+  private readonly disposables: Disposable[] = [];
+  private readonly nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[];
 
-  public constructor(private readonly testInterface: TestInterface, private readonly logger: Logger) {
+  public constructor(nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[], private readonly logger: Logger) {
     this.disposables.push(logger);
-
-    this.suiteTags = [
-      ...testInterface.suiteTags.default,
-      ...testInterface.suiteTags.focused,
-      ...testInterface.suiteTags.disabled
-    ];
-    this.testTags = [
-      ...testInterface.testTags.default,
-      ...testInterface.testTags.focused,
-      ...testInterface.testTags.disabled
-    ];
+    this.nodeProcessors = [...nodeProcessors];
   }
 
-  public parseFileText(fileText: string, fileName: string): TestDefinitionInfo[] {
+  public parseFileText(fileText: string, filePath: string): DescribedTestDefinitionInfo[] {
     const parseId = generateRandomId();
-    this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${fileName}' having content: \n${fileText}`);
+    this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
     const startTime = new Date();
     const parsedFile = parse(fileText, PARSER_OPTIONS);
@@ -59,144 +49,98 @@ export class AstTestFileParser implements Disposable {
       this.logger.trace(
         () =>
           `Parse operation ${parseId}: ` +
-          `Encountered errors while parsing file '${fileName}': ` +
+          `Encountered errors while parsing file '${filePath}': ` +
           `\n${errorMessages.join('\n')}`
       );
     }
-    const testDefinitionInfos = this.getTestDefinitionFromStatementNodes(parsedFile.program.body, fileName);
+    const testDefinitionInfos = this.getTestDefinitionsFromNodes(parsedFile.program.body, filePath);
     const elapsedTime = (Date.now() - startTime.getTime()) / 1000;
 
     this.logger.debug(
       () =>
         `Parse operation ${parseId}: ` +
         `Parsed ${testDefinitionInfos.length} total tests ` +
-        `from file '${fileName}' ` +
+        `from file '${filePath}' ` +
         `in ${elapsedTime.toFixed(2)} secs`
     );
     return testDefinitionInfos;
   }
 
-  private getTestDefinitionFromStatementNodes(
-    nodes: Node[],
-    fileName: string,
+  private getTestDefinitionsFromNodes(
+    nodes: Node[] | undefined,
+    filePath: string,
     derivedParentSuiteDefinitionState: TestDefinitionState = TestDefinitionState.Default
-  ): TestDefinitionInfo[] {
+  ): DescribedTestDefinitionInfo[] {
+    if (!nodes) {
+      return [];
+    }
     const testDefinitionInfos = nodes
-      .map((node): TestDefinitionInfo[] => {
-        if (node.type !== 'ExpressionStatement' || node.expression.type !== 'CallExpression') {
+      .map((node): DescribedTestDefinitionInfo[] => {
+        const processedNode = this.processNode(node);
+
+        if (!processedNode?.nodeDetail && !processedNode?.childNodes) {
           return [];
         }
-        const expressionNode = node.expression;
-        const calleeNode = expressionNode.callee;
+        const { nodeDetail, childNodes } = processedNode;
 
-        const testTag: string | undefined =
-          calleeNode.type === 'Identifier'
-            ? calleeNode.name
-            : calleeNode.type === 'MemberExpression' &&
-              calleeNode.object.type === 'Identifier' &&
-              calleeNode.property.type === 'Identifier'
-            ? `${calleeNode.object.name}.${calleeNode.property.name}`
-            : undefined;
+        const derivedTestDefinitionState = nodeDetail
+          ? nodeDetail.state === TestDefinitionState.Default
+            ? derivedParentSuiteDefinitionState
+            : nodeDetail.state
+          : derivedParentSuiteDefinitionState;
 
-        if (!testTag) {
-          return [];
+        let testDefinition: DescribedTestDefinition | undefined;
+
+        if (nodeDetail) {
+          testDefinition = {
+            ...nodeDetail,
+            file: filePath,
+            disabled: derivedTestDefinitionState === TestDefinitionState.Disabled
+          };
         }
 
-        const testDefinitionType: TestType | undefined = this.suiteTags.includes(testTag)
-          ? TestType.Suite
-          : this.testTags.includes(testTag)
-          ? TestType.Test
-          : undefined;
+        const childTestDefinitionInfos = this.getTestDefinitionsFromNodes(
+          childNodes,
+          filePath,
+          derivedTestDefinitionState
+        );
 
-        if (!testDefinitionType) {
-          return [];
+        if (!testDefinition) {
+          return childTestDefinitionInfos;
         }
 
-        const testTags =
-          testDefinitionType === TestType.Suite ? this.testInterface.suiteTags : this.testInterface.testTags;
+        this.logger.trace(
+          () => `Including parsed test definition: ${JSON.stringify(testDefinition, regexJsonReplacer, 2)}`
+        );
 
-        const testDefinitionState: TestDefinitionState | undefined = testTags.default.includes(testTag)
-          ? TestDefinitionState.Default
-          : testTags.focused.includes(testTag)
-          ? TestDefinitionState.Focused
-          : testTags.disabled.includes(testTag)
-          ? TestDefinitionState.Disabled
-          : undefined;
-
-        if (!testDefinitionState) {
-          return [];
-        }
-
-        const testDescriptionNode = expressionNode.arguments[0];
-
-        const testDescription: string | undefined =
-          testDescriptionNode?.type === 'StringLiteral'
-            ? testDescriptionNode.value
-            : testDescriptionNode?.type === 'TemplateLiteral' && testDescriptionNode.quasis.length === 1
-            ? testDescriptionNode.quasis[0].value.raw
-            : undefined;
-
-        if (testDescription === undefined) {
-          return [];
-        }
-
-        const locationNode = calleeNode.loc;
-
-        if (!locationNode) {
-          return [];
-        }
-
-        const derivedSuiteDefinitionState =
-          testDefinitionState === TestDefinitionState.Default ? derivedParentSuiteDefinitionState : testDefinitionState;
-
-        const testDefinition: TestDefinition = {
-          type: testDefinitionType,
-          description: testDescription,
-          state: testDefinitionState,
-          disabled: derivedSuiteDefinitionState === TestDefinitionState.Disabled,
-          file: fileName,
-          line: locationNode.start.line
-        };
-
-        if (testDefinitionType === TestType.Test) {
-          const testDefinitionInfo: TestDefinitionInfo = {
+        if (testDefinition.type === TestType.Test) {
+          const testDefinitionInfo: DescribedTestDefinitionInfo = {
             test: testDefinition,
             suite: []
           };
           return [testDefinitionInfo];
         }
 
-        const testImplementationNode = expressionNode.arguments[1];
-
-        if (
-          (testImplementationNode?.type !== 'FunctionExpression' &&
-            testImplementationNode?.type !== 'ArrowFunctionExpression') ||
-          testImplementationNode?.body?.type !== 'BlockStatement'
-        ) {
-          return [];
+        for (const childTestDefinitionInfo of childTestDefinitionInfos) {
+          childTestDefinitionInfo.suite.unshift(testDefinition);
         }
-
-        const childStatementNodes = testImplementationNode.body.body;
-
-        const childTestDefinitionInfos = this.getTestDefinitionFromStatementNodes(
-          childStatementNodes,
-          fileName,
-          derivedSuiteDefinitionState
-        );
-
-        if (!childTestDefinitionInfos || childTestDefinitionInfos.length === 0) {
-          return [];
-        }
-
-        childTestDefinitionInfos.forEach(childTestDefinitionInfo =>
-          childTestDefinitionInfo.suite.unshift(testDefinition)
-        );
-
         return childTestDefinitionInfos;
       })
       .reduce((accummulatedDefinitions, currentDefinitions) => [...accummulatedDefinitions, ...currentDefinitions], []);
 
     return testDefinitionInfos;
+  }
+
+  private processNode(node: Node): ProcessedSourceNode | undefined {
+    let processedNodeResult: ProcessedSourceNode | undefined;
+
+    for (const nodeProcessor of this.nodeProcessors) {
+      processedNodeResult = nodeProcessor.processNode(node);
+      if (processedNodeResult) {
+        break;
+      }
+    }
+    return processedNodeResult;
   }
 
   public async dispose() {

@@ -29,7 +29,7 @@ import { LogLevel } from './util/logging/log-level';
 import { SimpleLogger } from './util/logging/simple-logger';
 import { PortAcquisitionClient } from './util/port/port-acquisition-client';
 import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
-import { getCircularReferenceReplacer } from './util/utils';
+import { getJsonCircularReferenceReplacer } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
   private readonly outputChannelLog: OutputChannelLog;
@@ -124,7 +124,7 @@ export class Adapter implements TestAdapter, Disposable {
     this.logger.debug(
       () =>
         `Re/creating test explorer with extension configuration: ` +
-        `${JSON.stringify(this.config, getCircularReferenceReplacer(), 2)}`
+        `${JSON.stringify(this.config, getJsonCircularReferenceReplacer(), 2)}`
     );
 
     this.logger.debug(() => 'Creating main factory');

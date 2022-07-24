@@ -4,9 +4,9 @@ import { Logger } from '../../../util/logging/logger';
 import { TestDefinition, TestDefinitionState } from '../../base/test-definition';
 import { TestDefinitionProvider } from '../../base/test-definition-provider';
 import { TestType } from '../../base/test-infos';
-import { TestNode, TestNodeType } from '../../base/test-node';
 import { TestDefinitionInfo } from '../../test-locator';
 import { RegexpTestFileParser, RegexpTestFileParserResult } from './regexp-test-file-parser';
+import { TestNode, TestNodeType } from './test-node';
 
 export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
   private readonly fileInfoMap: Map<string, RegexpTestFileParserResult> = new Map();
@@ -17,12 +17,12 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
     this.disposables.push(testFileParser, logger);
   }
 
-  public addFileContent(filePath: string, testContent: string): void {
+  public addFileContent(fileText: string, filePath: string): void {
     this.logger.trace(() => `Processing spec file: ${filePath}`);
 
     this.removeFileContents([filePath]);
 
-    const fileTestInfo = this.testFileParser.parseFileText(testContent);
+    const fileTestInfo = this.testFileParser.parseFileText(fileText, filePath);
     this.fileInfoMap.set(filePath, fileTestInfo);
 
     if (fileTestInfo[TestNodeType.Suite].length === 0) {
@@ -42,7 +42,7 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
       }
       this.fileInfoMap.delete(fileToPurge);
 
-      Array.from(this.specFilesBySuite.entries()).forEach((suiteToFilesEntry: [string, string[]]) => {
+      [...this.specFilesBySuite.entries()].forEach((suiteToFilesEntry: [string, string[]]) => {
         const [suite, files] = suiteToFilesEntry;
         const fileIndex = files.indexOf(fileToPurge);
 
@@ -108,7 +108,6 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
 
     const suiteNodes = testDefinitionNodeResult.suiteNodes;
     const suiteDefinitions: TestDefinition[] = [];
-
     let activeSuiteDefinitionState = TestDefinitionState.Default;
 
     suiteNodes.forEach(suiteNode => {
@@ -117,7 +116,6 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
 
       const suiteDefinition: TestDefinition = {
         type: TestType.Suite,
-        description: suiteNode.description,
         state: suiteNode.state,
         disabled: activeSuiteDefinitionState === TestDefinitionState.Disabled,
         file: filePath,
@@ -133,7 +131,6 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
 
     const testDefinition: TestDefinition = {
       type: TestType.Test,
-      description: testNode.description,
       state: testNode.state,
       disabled: testDefinitionState === TestDefinitionState.Disabled,
       file: filePath,
@@ -150,7 +147,7 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
     testSuite: readonly string[],
     testDescription: string
   ): { testNode: Readonly<TestNode>; suiteNodes: Readonly<TestNode>[] } | undefined {
-    if (!testFileNodeList || !testSuite) {
+    if (!testFileNodeList) {
       return undefined;
     }
 

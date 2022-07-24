@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { TestServerExecutor } from '../../../api/test-server-executor';
-import { EXTENSION_NAME } from '../../../constants';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants';
 import { ExternalConfigSetting } from '../../../core/config/config-setting';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
@@ -77,10 +77,11 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
 
       if (!karmaBinaryPath) {
         throw new Error(
-          `Karma does not seem to be installed - You may need ` +
-            `to install your project dependencies or specify the ` +
-            `right path to your project using the ${EXTENSION_NAME} ` +
-            `'${ExternalConfigSetting.Projects}' setting.`
+          `Karma does not seem to be installed. You may ` +
+            `need to install your project dependencies or ` +
+            `specify the right path to your project using the ` +
+            `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.Projects} ` +
+            `setting.`
         );
       }
 

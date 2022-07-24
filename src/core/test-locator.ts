@@ -86,7 +86,7 @@ export class TestLocator implements Disposable {
         for (const file of filesToRefresh) {
           try {
             const fileText = await this.fileHandler.readFile(file, this.testLocatorOptions.fileEncoding);
-            this.testDefinitionProvider.addFileContent(file, fileText);
+            this.testDefinitionProvider.addFileContent(fileText, file);
             loadedFileCount++;
           } catch (error) {
             this.logger.error(() => `Failed to get tests from spec file ${file}: ${error}`);

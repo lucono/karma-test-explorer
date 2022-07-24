@@ -80,7 +80,7 @@ export class TestSuiteOrganizer implements Disposable {
     if (unmappedTests.length > 0) {
       const filelessTestsSuiteMessage =
         `${EXTENSION_NAME} could not find the test sources in your project ` +
-        `for the tests in this group. This can occur if the tests:` +
+        `for the tests in this group. This can occur in some scenarios if the tests:` +
         `\n\n` +
         `- Use parameterization \n` +
         `- Use computed test descriptions \n` +

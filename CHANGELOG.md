@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.1 - Jul 23, 2022](#071---jul-23-2022)
   - [0.7.0 - Jul 17, 2022](#070---jul-17-2022)
   - [0.6.1 - Apr 13, 2022](#061---apr-13-2022)
   - [0.6.0 - Apr 6, 2022](#060---apr-6-2022)
@@ -18,6 +19,13 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.7.1] - Jul 23, 2022
+
+### Added
+
+- Support for parameterized tests and template string test descriptions, as well as some support for computed string test descriptions. This support builds on the new AST-based Test Definition Provider added in the v0.7.0 release, and requires the `karmaTestExplorer.testParsingMethod` setting to be `ast` (the current default when this setting is not configured)
 
 ---
 ## [0.7.0] - Jul 17, 2022

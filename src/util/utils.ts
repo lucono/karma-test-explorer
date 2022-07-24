@@ -120,7 +120,7 @@ export const getLongestCommonPath = (filePaths: string[]): string | undefined =>
 };
 
 // From MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
-export const getCircularReferenceReplacer = () => {
+export const getJsonCircularReferenceReplacer = () => {
   const seen = new WeakSet();
   return (key: string, value: unknown) => {
     if (typeof value === 'object' && value !== null) {
@@ -131,6 +131,13 @@ export const getCircularReferenceReplacer = () => {
     }
     return value;
   };
+};
+
+export const regexJsonReplacer = (key: string, value: unknown) => {
+  if (value instanceof RegExp) {
+    return value.source;
+  }
+  return value;
 };
 
 export const expandEnvironment = (

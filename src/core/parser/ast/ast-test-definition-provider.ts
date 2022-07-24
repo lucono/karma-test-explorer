@@ -1,30 +1,34 @@
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
+import { regexJsonReplacer } from '../../../util/utils';
 import { TestDefinitionProvider } from '../../base/test-definition-provider';
 import { TestDefinitionInfo } from '../../test-locator';
 import { AstTestFileParser } from './ast-test-file-parser';
+import {
+  DescribedTestDefinition,
+  DescribedTestDefinitionInfo,
+  DescribedTestDefinitionType
+} from './described-test-definition';
 
 export class AstTestDefinitionProvider implements TestDefinitionProvider {
   private readonly disposables: Disposable[] = [];
-  private readonly specFilesBySuite: Map<string, string[]> = new Map();
-  private readonly testDefinitionInfosByFile: Map<string, TestDefinitionInfo[]> = new Map();
+  private readonly specFilesByTopLevelSuite: Map<string, Set<string>> = new Map();
+  private readonly testDefinitionInfosByFile: Map<string, DescribedTestDefinitionInfo[]> = new Map();
 
   public constructor(private readonly testFileParser: AstTestFileParser, private readonly logger: Logger) {
     this.disposables.push(logger);
   }
 
-  public addFileContent(filePath: string, testContent: string): void {
+  public addFileContent(fileText: string, filePath: string): void {
     this.logger.trace(() => `Processing spec file: ${filePath}`);
 
     this.removeFileContents([filePath]);
-    const testDefinitionInfos = this.testFileParser.parseFileText(testContent, filePath);
+    const testDefinitionInfos = this.testFileParser.parseFileText(fileText, filePath);
 
     testDefinitionInfos.forEach(testDefinitionInfo => {
-      const testSuite = testDefinitionInfo.suite.map(testSuiteDefinition => testSuiteDefinition.description);
-      this.addSuiteFileToCache(testSuite, filePath);
+      this.addFileOfTestToCache(testDefinitionInfo.suite, testDefinitionInfo.test, [filePath]);
     });
-
     this.testDefinitionInfosByFile.set(filePath, testDefinitionInfos);
   }
 
@@ -35,18 +39,11 @@ export class AstTestDefinitionProvider implements TestDefinitionProvider {
       }
       this.testDefinitionInfosByFile.delete(fileToPurge);
 
-      Array.from(this.specFilesBySuite.entries()).forEach((suiteToFilesEntry: [string, string[]]) => {
-        const [suite, files] = suiteToFilesEntry;
-        const fileIndex = files.indexOf(fileToPurge);
+      [...this.specFilesByTopLevelSuite.entries()].forEach(([suite, files]) => {
+        files.delete(fileToPurge);
 
-        if (fileIndex === -1) {
-          return;
-        }
-
-        if (files.length > 1) {
-          files.splice(files.indexOf(fileToPurge), 1);
-        } else {
-          this.specFilesBySuite.delete(suite);
+        if (files.size === 0) {
+          this.specFilesByTopLevelSuite.delete(suite);
         }
       });
     });
@@ -54,23 +51,33 @@ export class AstTestDefinitionProvider implements TestDefinitionProvider {
 
   public clearAllContent(): void {
     this.testDefinitionInfosByFile.clear();
-    this.specFilesBySuite.clear();
+    this.specFilesByTopLevelSuite.clear();
   }
 
   public getTestDefinitions(specSuite: string[], specDescription: string): TestDefinitionInfo[] {
     const testDefinitionResults: TestDefinitionInfo[] = [];
+    const cachedSpecFiles = this.getFilesOfTestFromCache(specSuite, specDescription);
+    const specFiles = cachedSpecFiles ?? [...this.testDefinitionInfosByFile.keys()];
 
-    if (specSuite.length === 0) {
-      return testDefinitionResults;
-    }
-    const specFiles = this.getSuiteFilesFromCache(specSuite);
+    specFiles.forEach(specFile => {
+      const testDefinitionsForSpecFile = this.getTestDefinitionsForFile(specFile, specSuite, specDescription);
+      testDefinitionResults.push(...testDefinitionsForSpecFile);
+    });
 
-    if (specFiles) {
-      specFiles.forEach(specFile => {
-        const testDefinitionsForSpecFile = this.getTestDefinitionsForFile(specFile, specSuite, specDescription);
-        testDefinitionResults.push(...testDefinitionsForSpecFile);
-      });
+    if (testDefinitionResults.length > 0 && !cachedSpecFiles) {
+      this.addFileOfTestToCache(
+        specSuite,
+        specDescription,
+        testDefinitionResults.map(testItem => testItem.test.file)
+      );
     }
+    this.logger.trace(
+      () =>
+        `Got ${testDefinitionResults.length} test definitions: ` +
+        `${JSON.stringify(testDefinitionResults, regexJsonReplacer, 2)} \n` +
+        `for test definition lookup of spec suite: ${JSON.stringify(specSuite)} \n` +
+        `and spec description: ${specDescription}`
+    );
 
     return testDefinitionResults;
   }
@@ -79,48 +86,83 @@ export class AstTestDefinitionProvider implements TestDefinitionProvider {
     filePath: string,
     specSuite: string[],
     specDescription: string
-  ): TestDefinitionInfo[] {
-    const testDefinitionInfosForFile = this.testDefinitionInfosByFile.get(filePath);
+  ): DescribedTestDefinitionInfo[] {
+    let testDefinitionInfos = this.testDefinitionInfosByFile.get(filePath) ?? [];
 
-    if (!testDefinitionInfosForFile) {
-      return [];
-    }
-
-    let testDefinitionInfos = testDefinitionInfosForFile.filter(
+    testDefinitionInfos = testDefinitionInfos.filter(
       testDefinitionInfo => testDefinitionInfo.suite.length === specSuite.length
     );
 
-    for (let suiteIndex = 0; suiteIndex < specSuite.length; suiteIndex++) {
-      testDefinitionInfos = testDefinitionInfos.filter(
-        testDefinitionInfo => testDefinitionInfo.suite[suiteIndex]?.description === specSuite[suiteIndex]
-      );
-    }
+    specSuite.forEach((suiteDescription, suiteIndex) => {
+      testDefinitionInfos = testDefinitionInfos.filter(testDefinitionInfo => {
+        const suiteDefinition = testDefinitionInfo.suite[suiteIndex];
 
-    testDefinitionInfos = testDefinitionInfos.filter(
-      testDefinitionInfo => testDefinitionInfo.test.description === specDescription
+        const suiteDescriptionMatchesDefinition =
+          suiteDefinition === undefined
+            ? false
+            : suiteDefinition.descriptionType === DescribedTestDefinitionType.Pattern
+            ? suiteDefinition.description.test(suiteDescription)
+            : suiteDefinition.description === suiteDescription;
+
+        return suiteDescriptionMatchesDefinition;
+      });
+    });
+
+    testDefinitionInfos = testDefinitionInfos.filter(testDefinitionInfo =>
+      testDefinitionInfo.test.descriptionType === DescribedTestDefinitionType.Pattern
+        ? testDefinitionInfo.test.description.test(specDescription)
+        : testDefinitionInfo.test.description === specDescription
     );
     return testDefinitionInfos;
   }
 
-  private addSuiteFileToCache(suite: string[], filePath: string) {
-    const suiteKey = suite.join(' ');
+  private addFileOfTestToCache(
+    specSuite: string[] | DescribedTestDefinition[],
+    specDescription: string | DescribedTestDefinition,
+    filePaths: string[]
+  ) {
+    const topLevelSuiteName = this.getTopLevelSuiteName(specSuite, specDescription);
 
-    if (!this.specFilesBySuite.has(suiteKey)) {
-      this.specFilesBySuite.set(suiteKey, []);
+    if (topLevelSuiteName === undefined) {
+      return;
     }
-    const suiteFiles = this.specFilesBySuite.get(suiteKey)!;
 
-    if (!suiteFiles.includes(filePath)) {
-      this.logger.debug(() => `Adding suite file to cache: ${filePath}`);
-      this.logger.trace(() => `Added suite file '${filePath}' to cache with key: ${suiteKey}`);
-
-      suiteFiles.push(filePath);
+    if (!this.specFilesByTopLevelSuite.has(topLevelSuiteName)) {
+      this.specFilesByTopLevelSuite.set(topLevelSuiteName, new Set());
     }
+    const suiteFiles = this.specFilesByTopLevelSuite.get(topLevelSuiteName)!;
+
+    filePaths.forEach(filePath => {
+      if (!suiteFiles.has(filePath)) {
+        this.logger.trace(() => `Adding top level suite '${topLevelSuiteName}' to file cache: ${filePath}`);
+        suiteFiles.add(filePath);
+      }
+    });
   }
 
-  private getSuiteFilesFromCache(suite: string[]): string[] | undefined {
-    const suiteKey = suite.join(' ');
-    return this.specFilesBySuite.get(suiteKey);
+  private getFilesOfTestFromCache(
+    specSuite: string[] | DescribedTestDefinition[],
+    specDescription: string | DescribedTestDefinition
+  ): string[] | undefined {
+    const topLevelSuiteName = this.getTopLevelSuiteName(specSuite, specDescription);
+
+    const suiteFiles =
+      topLevelSuiteName !== undefined ? this.specFilesByTopLevelSuite.get(topLevelSuiteName) : undefined;
+
+    return suiteFiles ? [...suiteFiles] : undefined;
+  }
+
+  private getTopLevelSuiteName(
+    specSuite: string[] | DescribedTestDefinition[],
+    specDescription: string | DescribedTestDefinition
+  ): string | undefined {
+    const topLevelSuite = specSuite[0] || specDescription;
+
+    return typeof topLevelSuite === 'string'
+      ? topLevelSuite
+      : topLevelSuite.descriptionType === DescribedTestDefinitionType.String
+      ? topLevelSuite.description
+      : undefined;
   }
 
   public async dispose() {
