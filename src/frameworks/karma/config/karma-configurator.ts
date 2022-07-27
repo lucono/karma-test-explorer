@@ -43,7 +43,7 @@ export class KarmaConfigurator {
       this.customLauncher = undefined;
     } else {
       this.browser = KARMA_CUSTOM_LAUNCHER_BROWSER_NAME;
-      const customLaucher = JSON.parse(customLauncherString);
+      const customLaucher = customLauncherString ? JSON.parse(customLauncherString) : {};
       this.addCustomLauncherDebugPort(customLaucher, debugPort);
       this.customLauncher = customLaucher;
     }

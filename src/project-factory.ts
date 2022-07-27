@@ -1,5 +1,6 @@
 import { existsSync } from 'fs';
 import { basename, posix, relative, resolve } from 'path';
+import type { PackageJson } from 'type-fest';
 import { workspace, WorkspaceFolder } from 'vscode';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants';
 import { ProjectType } from './core/base/project-type';
@@ -14,12 +15,12 @@ import { ConfigStore } from './core/config/config-store';
 import { LayeredConfigStore } from './core/config/layered-config-store';
 import { ProjectSpecificConfig, ProjectSpecificConfigSetting } from './core/config/project-specific-config';
 import { SimpleConfigStore } from './core/config/simple-config-store';
-import { AngularProjectInfo } from './frameworks/angular/angular-project-info';
-import { getAllAngularProjects } from './frameworks/angular/angular-util';
+import { getAngularWorkspaceInfo } from './frameworks/angular/angular-util';
+import { AngularWorkspaceInfo } from './frameworks/angular/angular-workspace-info';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
 import { Logger } from './util/logging/logger';
-import { asNonBlankStringOrUndefined, isChildPath, normalizePath } from './util/utils';
+import { asNonBlankStringOrUndefined, getPackageJsonAtPath, isChildPath, normalizePath } from './util/utils';
 import { WorkspaceProject } from './workspace';
 
 export class ProjectFactory implements Disposable {
@@ -131,37 +132,43 @@ export class ProjectFactory implements Disposable {
 
     const projectRootPathFolderName = basename(absoluteProjectRootPath);
     const projectType: ProjectType | undefined = projectFolderConfig.get(ExternalConfigSetting.ProjectType);
-    const angularProjectList: AngularProjectInfo[] = getAllAngularProjects(absoluteProjectRootPath);
 
-    this.logger.debug(
-      () =>
-        `Angular projects found for workspace folder ${workspaceFolderPath}: ` +
-        `${JSON.stringify(angularProjectList.map(projectInfo => projectInfo.name))}`
+    const angularWorkspace: AngularWorkspaceInfo | undefined = getAngularWorkspaceInfo(
+      absoluteProjectRootPath,
+      this.logger
     );
 
-    const resolvedProjectType =
-      projectType !== ProjectType.Karma && angularProjectList.length > 0 ? ProjectType.Angular : ProjectType.Karma;
-
-    if (projectType === ProjectType.Angular && resolvedProjectType !== ProjectType.Angular) {
+    if (projectType === ProjectType.Angular && !angularWorkspace) {
       this.logger.warn(
         () =>
           `Project type is configured as ${ProjectType.Angular} ` +
-          `but no angular project configuration was found ` +
+          `but no viable angular projects were found ` +
           `for workspace folder '${workspaceFolderPath}'`
       );
     }
 
+    const isAngularProject = angularWorkspace && projectType !== ProjectType.Karma;
+
     this.logger.info(
       () =>
-        `Using ${resolvedProjectType} project type ` +
-        `for workspace folder '${workspaceFolderPath}'` +
-        `${!projectType ? ' (auto-detected)' : ''}`
+        `Using project type '${isAngularProject ? ProjectType.Angular : ProjectType.Karma}' ` +
+        `${!projectType ? '(auto-detected)' : ''} for workspace folder: ${workspaceFolderPath}`
     );
 
     const workspaceFolderProjects: WorkspaceProject[] = [];
 
-    if (resolvedProjectType === ProjectType.Angular) {
-      angularProjectList.forEach(angularChildProjectInfo => {
+    if (isAngularProject) {
+      if (angularWorkspace.projects.length === 0) {
+        this.logger.warn(() => `No projects found for Angular workspace: ${absoluteProjectRootPath}`);
+        return [];
+      }
+      this.logger.debug(
+        () =>
+          `Angular projects found for workspace folder '${workspaceFolderPath}': ` +
+          `${angularWorkspace.projects.map(projectInfo => projectInfo.name).join(', ')}`
+      );
+
+      angularWorkspace.projects.forEach(angularChildProjectInfo => {
         const angularProjectPath = normalizePath(resolve(absoluteProjectRootPath, angularChildProjectInfo.rootPath));
         const karmaConfigPath = normalizePath(resolve(angularProjectPath, angularChildProjectInfo.karmaConfigPath));
 
@@ -192,7 +199,9 @@ export class ProjectFactory implements Disposable {
           topLevelProjectPath: absoluteProjectRootPath,
           shortProjectPath: relative(workspaceFolderPath, angularProjectPath),
           config: angularChildProjectConfig,
-          isPrimary: angularChildProjectInfo.isDefaultProject
+          isPrimary: angularWorkspace.defaultProject
+            ? angularChildProjectInfo.name === angularWorkspace.defaultProject.name
+            : false
         };
         workspaceFolderProjects.push(project);
       });
@@ -280,23 +289,21 @@ export class ProjectFactory implements Disposable {
     }
 
     const workspacePackageJsonFilePath = posix.join(workspaceFolderPath, 'package.json');
+    const packageJson: PackageJson | undefined = getPackageJsonAtPath(workspacePackageJsonFilePath, this.logger);
 
-    if (!existsSync(workspacePackageJsonFilePath)) {
+    if (!packageJson) {
       this.logger.debug(
         () =>
           `Excluding projects in workspace folder '${workspaceFolderPath}' ` +
           `because could not determine presence of a testable project - ` +
-          `No package.json file at '${workspacePackageJsonFilePath}'`
+          `No package.json file at: '${workspacePackageJsonFilePath}'`
       );
       return false;
     } else {
       this.logger.debug(() => `Found a workspace package.json file at '${workspacePackageJsonFilePath}'`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const packageJson: { devDependencies: Record<string, string> } | undefined = require(workspacePackageJsonFilePath);
-
-    if (packageJson && Object.keys(packageJson.devDependencies).includes('karma')) {
+    if (packageJson.devDependencies?.karma) {
       this.logger.debug(
         () =>
           `Including projects in workspace folder '${workspaceFolderPath}' ` +

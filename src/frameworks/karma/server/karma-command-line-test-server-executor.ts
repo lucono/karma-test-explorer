@@ -67,12 +67,9 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
     } else {
-      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
-        'karma',
-        this.projectPath,
-        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
-        this.logger
-      );
+      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectPath, this.logger, {
+        allowGlobalPackageFallback: this.options.allowGlobalPackageFallback
+      });
       const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
 
       if (!karmaBinaryPath) {

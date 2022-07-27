@@ -70,8 +70,8 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       const angularLocalInstallPath = getPackageInstallPathForProjectRoot(
         '@angular/cli',
         this.projectInstallRootPath,
-        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback },
-        this.logger
+        this.logger,
+        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback }
       );
       const angularBinaryPath = angularLocalInstallPath ? join(angularLocalInstallPath, 'bin', 'ng') : undefined;
 

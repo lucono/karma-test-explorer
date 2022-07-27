@@ -1,5 +1,7 @@
 import dotenvExpand from 'dotenv-expand';
+import { existsSync } from 'fs';
 import { dirname, isAbsolute, posix, win32 } from 'path';
+import type { PackageJson } from 'type-fest';
 import { sync as which } from 'which';
 import { GeneralConfigSetting } from '../core/config/config-setting';
 import { Logger } from './logging/logger';
@@ -142,7 +144,7 @@ export const regexJsonReplacer = (key: string, value: unknown) => {
 
 export const expandEnvironment = (
   environment: Readonly<Record<string, string>>,
-  logger?: Logger
+  logger: Logger
 ): Record<string, string> | undefined => {
   const UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES = [
     'HOMEDRIVE',
@@ -167,7 +169,7 @@ export const expandEnvironment = (
     dotenvExpand(<any>{ parsed: mergedProcessEnvironment, ignoreProcessEnv: true });
     expandedEnvironment = extractProperties(mergedProcessEnvironment, ...Object.keys(environment));
   } catch (error) {
-    logger?.error(
+    logger.error(
       () =>
         `Failed to expand combined environment: ${JSON.stringify(environment, null, 2)}\n` +
         `Expansion failed with error: ${error}`
@@ -177,11 +179,30 @@ export const expandEnvironment = (
   return expandedEnvironment;
 };
 
+export const getPackageJsonAtPath = (absolutePath: string, logger: Logger): PackageJson | undefined => {
+  const normalizedPath = normalizePath(absolutePath);
+
+  const packageJsonFilePath = normalizedPath.endsWith(`${posix.sep}package.json`)
+    ? normalizedPath
+    : posix.join(normalizedPath, 'package.json');
+
+  if (!existsSync(packageJsonFilePath)) {
+    logger.debug(() => `No package.json file at '${packageJsonFilePath}'`);
+    return undefined;
+  } else {
+    logger.debug(() => `Found package.json file at '${packageJsonFilePath}'`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const packageJson: PackageJson | undefined = require(packageJsonFilePath);
+  return packageJson;
+};
+
 export const getPackageInstallPathForProjectRoot = (
   moduleName: string,
   projectRootPath: string,
-  options?: { allowGlobalPackageFallback?: boolean },
-  logger?: Logger
+  logger: Logger,
+  options?: { allowGlobalPackageFallback?: boolean }
 ): string | undefined => {
   let moduleInstallPath: string | undefined;
 
@@ -189,9 +210,9 @@ export const getPackageInstallPathForProjectRoot = (
     const modulePackageJson = `${moduleName}/package.json`;
     const modulePackageJsonPath = require.resolve(modulePackageJson, { paths: [projectRootPath] });
     moduleInstallPath = dirname(modulePackageJsonPath);
-    logger?.debug(() => `Found '${moduleName}' module at: ${moduleInstallPath}`);
+    logger.debug(() => `Found '${moduleName}' module at: ${moduleInstallPath}`);
   } catch (error) {
-    logger?.warn(
+    logger.warn(
       () => `Could not locate '${moduleName}' module globally or under project at '${projectRootPath}': ${error}`
     );
     return;
@@ -202,7 +223,7 @@ export const getPackageInstallPathForProjectRoot = (
     !isChildPath(projectRootPath, moduleInstallPath) &&
     options?.allowGlobalPackageFallback === false
   ) {
-    logger?.warn(
+    logger.warn(
       () =>
         `Rejected resolved '${moduleName}' module located at '${moduleInstallPath}' ` +
         `which is outside of project at '${projectRootPath}'` +

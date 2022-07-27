@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.2 - Jul 27, 2022](#072---jul-27-2022)
   - [0.7.1 - Jul 24, 2022](#071---jul-24-2022)
   - [0.7.0 - Jul 17, 2022](#070---jul-17-2022)
   - [0.6.1 - Apr 13, 2022](#061---apr-13-2022)
@@ -21,11 +22,18 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
+## [0.7.2] - Jul 27, 2022
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/37) introduced in `v.0.7.0` that prevented new Angular projects that don't specify a default project in `angular.json` from loading
+
+---
 ## [0.7.1] - Jul 24, 2022
 
 ### Fixed
 
-- Addresses a long-standing issue where parameterized tests are unmapped, as well as tests with template or computed string descriptions. This support is provided by the new AST-based Test Definition Provider added in v0.7.0 and therefore requires the `karmaTestExplorer.testParsingMethod` setting to be `ast` (which is the current default when this setting is not configured)
+- Fixed long-standing issue where parameterized tests are unmapped, as well as tests with template or computed string descriptions. This support is provided by the new AST-based Test Definition Provider added in v0.7.0 and therefore requires the `karmaTestExplorer.testParsingMethod` setting to be `ast` (which is the current default when this setting is not configured)
 
 ---
 ## [0.7.0] - Jul 17, 2022

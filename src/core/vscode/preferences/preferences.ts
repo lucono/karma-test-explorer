@@ -23,11 +23,13 @@ export class Preferences implements Disposable {
     this.setPref(ExtensionPreference.LastLoadedProjectPaths, projectPaths);
   }
 
-  private getPref<T>(pref: ExtensionPreference): T | undefined {
-    return this.globalPrefs.get<T>(pref) ?? this.workspacePrefs.get<T>(pref);
+  private getPref<T>(pref: ExtensionPreference): T | undefined;
+  private getPref<T>(pref: ExtensionPreference, defaultValue: T): T;
+  private getPref<T>(pref: ExtensionPreference, defaultValue?: T): T | undefined {
+    return this.globalPrefs.get<T>(pref) ?? this.workspacePrefs.get<T>(pref) ?? defaultValue;
   }
 
-  private setPref<T>(pref: ExtensionPreference, value: T, setGlobal?: boolean): void {
+  private setPref<T>(pref: ExtensionPreference, value: T, setGlobal: boolean = false): void {
     const previousValue = this.getPref(pref) ?? 'undefined';
     const prefsScope = setGlobal ? this.globalPrefs : this.workspacePrefs;
     prefsScope.update(pref, value);

@@ -51,7 +51,7 @@ export class PortAcquisitionManager implements Disposable {
     requestLogger.debug(
       () => `Request for ${portCount} port(s) at base port ${basePort} acquired: ${foundPorts.join(', ')}`
     );
-    requestLogger.trace(() => `Current assigned ports: ${[...this.assignedPorts].join(', ')}`);
+    requestLogger.trace(() => `Currently assigned ports: ${[...this.assignedPorts].join(', ')}`);
 
     futurePortRelease.then(() => {
       requestLogger.debug(() => `Releasing ports: ${foundPorts.join(', ')}`);

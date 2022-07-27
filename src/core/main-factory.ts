@@ -519,7 +519,7 @@ export class MainFactory {
       this.logger.warn(
         () =>
           `Failed to detect test framework from karma config file: ${karmaConfigPath}. ` +
-          `Falling back to test framework: ${testFramework}`
+          `Falling back to test framework: ${testFramework?.name}`
       );
     }
 

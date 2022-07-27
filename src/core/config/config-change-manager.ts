@@ -36,7 +36,7 @@ export interface ConfigChangeManagerOptions {
 export class ConfigChangeManager<T extends string> implements Disposable {
   private readonly disposables: Disposable[] = [];
   private readonly configPrefix: string;
-  private readonly configChangeSubscriptions: ConfigChangeSubscription<T>[] = [];
+  private readonly configChangeSubscriptions: Set<ConfigChangeSubscription<T>> = new Set();
   private unprocessedConfigChanges: Map<ConfigChangeSubscription<T>, Set<T>> = new Map();
 
   public constructor(private readonly logger: Logger, options?: ConfigChangeManagerOptions) {
@@ -54,19 +54,30 @@ export class ConfigChangeManager<T extends string> implements Disposable {
     this.disposables.push(configChangeSubscription, logger);
   }
 
-  public watchForConfigChange(
+  public subscribeForConfigChanges(
     workspaceFolder: WorkspaceFolder,
     watchedSettings: readonly T[],
     changeHandler: ConfigChangeHandler<T>,
     changeNotificationOptions?: ConfigChangeNotificationOptions
-  ) {
+  ): ConfigChangeSubscription<T> {
     const configChangeSubscription: ConfigChangeSubscription<T> = {
       workspaceFolder,
       watchedSettings,
       changeHandler,
       changeNotificationOptions
     };
-    this.configChangeSubscriptions.push(configChangeSubscription);
+    this.configChangeSubscriptions.add(configChangeSubscription);
+    return configChangeSubscription;
+  }
+
+  public unsubscribeForConfigChanges(configChangeSubscription: ConfigChangeSubscription<T>) {
+    this.configChangeSubscriptions.delete(configChangeSubscription);
+  }
+
+  public unsubscribeWorkspaceFolderForConfigChanges(workspaceFolder: WorkspaceFolder) {
+    [...this.configChangeSubscriptions]
+      .filter(subscription => subscription.workspaceFolder.uri.fsPath === workspaceFolder.uri.fsPath)
+      .forEach(subscription => this.configChangeSubscriptions.delete(subscription));
   }
 
   private processConfigChangeSubscription(

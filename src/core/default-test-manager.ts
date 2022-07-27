@@ -51,7 +51,7 @@ export class DefaultTestManager implements TestManager {
       if (this.systemCurrentlyStopping) {
         this.logger.debug(
           () =>
-            'Request to start test manager - test manager is still stopping. ' +
+            'Request to start test manager - Test manager is still stopping. ' +
             'Waiting for stop operation to complete before proceeding to start'
         );
 
@@ -59,7 +59,7 @@ export class DefaultTestManager implements TestManager {
       }
 
       if (this.isStarted()) {
-        this.logger.debug(() => 'Request to start test manager ignored - test manager is already started');
+        this.logger.debug(() => 'Request to start test manager ignored - Test manager is already started');
         return this.currentServerStartInfo!;
       }
 

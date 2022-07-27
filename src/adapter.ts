@@ -201,8 +201,8 @@ export class Adapter implements TestAdapter, Disposable {
     return this.reset();
   }
 
-  public async run(testIds: string[], isDebug?: boolean): Promise<void> {
-    return this.karmaTestExplorer.runTests(testIds, isDebug);
+  public async run(testIds: string[]): Promise<void> {
+    return this.karmaTestExplorer.runTests(testIds);
   }
 
   public async debug(testIds: string[]): Promise<void> {
