@@ -1,5 +1,6 @@
 import RichPromise from 'bluebird';
 import { basename } from 'path';
+import { PackageJson } from 'type-fest';
 import {
   commands,
   ExtensionContext,
@@ -12,7 +13,7 @@ import {
 } from 'vscode';
 import { testExplorerExtensionId, TestHub } from 'vscode-test-adapter-api';
 import { Adapter } from './adapter';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
 import { ConfigChangeManager } from './core/config/config-change-manager';
 import { ExternalConfigSetting, GeneralConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
 import { ExtensionCommands } from './core/vscode/commands/extension-commands';
@@ -47,6 +48,9 @@ export const activate = async (extensionContext: ExtensionContext) => {
 
   const logger: SimpleLogger = new SimpleLogger(workspaceOutputChannel, 'Main', MAIN_LOG_LEVEL);
   disposables.push(logger);
+
+  const extensionVersion = (extensionContext.extension.packageJSON as PackageJson).version;
+  logger.info(() => `Activating ${EXTENSION_NAME}, v${extensionVersion}`);
 
   // --- Obtain Test Explorer Hub ---
 
