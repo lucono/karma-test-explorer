@@ -112,7 +112,7 @@ export class SimpleProcess implements Process {
         this.logger.debug(() => 'Process is currently stopping - ending process execution');
         deferredProcessExecution.end();
       } else {
-        this.logger.debug(() => 'Process is not currently stopping - failing process execution');
+        this.logger.debug(() => 'Process is not currently stopping - Failing process execution');
         deferredProcessExecution.fail(error);
       }
     });

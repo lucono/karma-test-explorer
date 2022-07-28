@@ -44,7 +44,11 @@ export class KarmaTestExplorer implements Disposable {
     this.disposables.push(logger);
   }
 
-  public async runTests(testIds: string[], isDebug: boolean = false): Promise<void> {
+  public async runTests(testIds: string[]): Promise<void> {
+    return this.executeTests(testIds, false);
+  }
+
+  private async executeTests(testIds: string[], isDebug: boolean): Promise<void> {
     if (!isDebug && !this.verifyNoTestProcessCurrentlyRunning('Cannot run new test')) {
       return;
     }
@@ -173,7 +177,7 @@ export class KarmaTestExplorer implements Disposable {
         return;
       }
 
-      await this.runTests(testIds, true);
+      await this.executeTests(testIds, true);
       await debug.stopDebugging(debugSession);
       await debugSessionExecution.ended();
     } finally {
