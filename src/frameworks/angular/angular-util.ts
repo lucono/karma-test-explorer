@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'fs';
-import * as path from 'path';
+import { posix } from 'path';
 import { Logger } from '../../util/logging/logger';
 import { normalizePath } from '../../util/utils';
 import { AngularProjectInfo } from './angular-project-info';
@@ -19,7 +19,7 @@ const getAngularJsonWorkspaceInfo = (
   angularConfigRootPath: string,
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
-  const angularJsonConfigPath = normalizePath(path.resolve(angularConfigRootPath, 'angular.json'));
+  const angularJsonConfigPath = normalizePath(posix.resolve(angularConfigRootPath, 'angular.json'));
 
   if (!existsSync(angularJsonConfigPath)) {
     logger.debug(() => `Cannot get Angular projects - Angular Json file does not exist: ${angularJsonConfigPath}`);
@@ -41,8 +41,8 @@ const getAngularJsonWorkspaceInfo = (
     if (projectConfig.architect.test === undefined || projectConfig.architect.test.options.karmaConfig === undefined) {
       continue;
     }
-    const projectPath = path.resolve(angularConfigRootPath, projectConfig.root);
-    const karmaConfigPath = path.resolve(angularConfigRootPath, projectConfig.architect.test.options.karmaConfig);
+    const projectPath = posix.resolve(angularConfigRootPath, projectConfig.root);
+    const karmaConfigPath = posix.resolve(angularConfigRootPath, projectConfig.architect.test.options.karmaConfig);
 
     const project: AngularProjectInfo = {
       name: projectName,
@@ -72,7 +72,7 @@ const getAngularCliJsonWorkspaceInfo = (
   angularConfigRootPath: string,
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
-  const angularCliJsonConfigPath = normalizePath(path.resolve(angularConfigRootPath, '.angular-cli.json'));
+  const angularCliJsonConfigPath = normalizePath(posix.resolve(angularConfigRootPath, '.angular-cli.json'));
 
   if (!existsSync(angularCliJsonConfigPath)) {
     logger.debug(
@@ -94,8 +94,8 @@ const getAngularCliJsonWorkspaceInfo = (
 
   for (const app of angularCliJson.apps) {
     const projectName: string = app.name || angularCliJson.project.name;
-    const projectPath = normalizePath(path.resolve(angularConfigRootPath, app.root));
-    const karmaConfigPath = path.resolve(angularConfigRootPath, angularCliJson.test.karma.config);
+    const projectPath = normalizePath(posix.resolve(angularConfigRootPath, app.root));
+    const karmaConfigPath = posix.resolve(angularConfigRootPath, angularCliJson.test.karma.config);
 
     const project: AngularProjectInfo = {
       name: projectName,
