@@ -5,7 +5,7 @@
 	"icon": "docs/img/extension-icon-128.png",
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
-	"version": "0.7.2",
+	"version": "0.7.3",
 	"license": "MIT",
 	"homepage": "https://github.com/lucono/karma-test-explorer",
 	"repository": {
