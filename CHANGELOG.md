@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.3 - Jul 29, 2022](#073---jul-29-2022)
   - [0.7.2 - Jul 27, 2022](#072---jul-27-2022)
   - [0.7.1 - Jul 24, 2022](#071---jul-24-2022)
   - [0.7.0 - Jul 17, 2022](#070---jul-17-2022)
@@ -20,6 +21,13 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.7.3] - Jul 29, 2022
+
+### Fixed
+
+- Fixed an issue ([#38](https://github.com/lucono/karma-test-explorer/issues/38), [#42](https://github.com/lucono/karma-test-explorer/issues/42)) that prevented Angular projects from loading because the extension was not looking at the right path for the `angular.json` file
 
 ---
 ## [0.7.2] - Jul 27, 2022
