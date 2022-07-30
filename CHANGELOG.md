@@ -27,7 +27,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Fixed
 
-- Fixed an issue ([#38](https://github.com/lucono/karma-test-explorer/issues/38), [#42](https://github.com/lucono/karma-test-explorer/issues/42)) that prevented Angular projects from loading because the extension was not looking at the right path for the `angular.json` file
+- Fixed an issue ([#38](https://github.com/lucono/karma-test-explorer/issues/38), [#42](https://github.com/lucono/karma-test-explorer/issues/42)) that prevented Angular projects from loading because the extension was not looking at the right path for the `angular.json` file. Fix contributed by [@Randelung](https://github.com/Randelung) - thanks!
 
 ---
 ## [0.7.2] - Jul 27, 2022
