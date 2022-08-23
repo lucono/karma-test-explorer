@@ -101,7 +101,7 @@ export class DefaultTestBuilder implements TestBuilder {
         const existingDuplicateTest = singleDefinitionTestsByNormalizedId.get(normalizedSpecId);
 
         if (existingDuplicateTest) {
-          loadProblemMessage =
+          loadProblemMessage = // FIXME: Adjust message when duplicate reported tests are due to parameterized tests without parameterized descriptions (💡 use lightbulb icon and also add lightbulb tip to gutter position)
             `"${spec.fullName}" \n\n` +
             `--- \n\n` +
             `Duplicate instances of the above test were reported in your project ` +
@@ -131,7 +131,13 @@ export class DefaultTestBuilder implements TestBuilder {
         let duplicateSpecCounter = 0;
 
         const duplicateSpecFiles = matchingTestDefinitions
-          .sort((loc1, loc2) => (loc1.file === testDefinition?.file ? -1 : loc2.file === testDefinition?.file ? 1 : 0))
+          .sort((loc1, loc2) =>
+            this.isSameTestDefinition(loc1, testDefinition)
+              ? -1
+              : this.isSameTestDefinition(loc2, testDefinition)
+              ? 1
+              : 0
+          )
           .map(location => `${++duplicateSpecCounter}. ${location.file}:${location.line + 1}`)
           .join('\n');
 
@@ -156,6 +162,12 @@ export class DefaultTestBuilder implements TestBuilder {
     const builtTests = rootContainerSuite.children;
 
     return builtTests;
+  }
+
+  private isSameTestDefinition(definition1?: TestDefinition, definition2?: TestDefinition): boolean {
+    return !definition1 || !definition2
+      ? false
+      : definition1.file === definition2.file && definition1.line === definition2.line;
   }
 
   private buildTest(

@@ -1,3 +1,4 @@
+import { relative } from 'path';
 import { EventEmitter } from 'vscode';
 import { RetireEvent, TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
 import { TestDefinition } from '../../../core/base/test-definition';
@@ -12,10 +13,9 @@ import { StoredTestResolver } from '../../../core/test-store';
 import { TestSuiteFolderGroupingOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
-import { FileHandler } from '../../../util/file-handler';
 import { DeferredPromise } from '../../../util/future/deferred-promise';
 import { Logger } from '../../../util/logging/logger';
-import { escapeForRegExp } from '../../../util/utils';
+import { escapeForRegExp, normalizePath } from '../../../util/utils';
 import { TestCapture } from './karma-test-listener';
 import { SpecCompleteResponse } from './spec-complete-response';
 import { SuiteAggregateTestResultProcessor } from './suite-aggregate-test-result-processor';
@@ -62,8 +62,8 @@ export class KarmaTestEventProcessor {
     private readonly suiteTestResultEmitter: SuiteAggregateTestResultProcessor,
     private readonly testLocator: TestLocator,
     private readonly testResolver: StoredTestResolver,
-    private readonly fileHandler: FileHandler,
     private readonly testHelper: TestHelper,
+    private readonly basePath: string,
     private readonly logger: Logger
   ) {
     this.disposables.push(logger, testResultEventEmitter);
@@ -382,7 +382,7 @@ export class KarmaTestEventProcessor {
     const decodedFailureMessages = testResult.failureMessages.map(message => decodeURIComponent(message));
 
     const matchingTestDefinitionsForFailure = candidateTestDefinitions.filter(candidateTestDefinition => {
-      const relativeTestFilePath = this.fileHandler.getFileRelativePath(candidateTestDefinition.file);
+      const relativeTestFilePath = normalizePath(relative(this.basePath, candidateTestDefinition.file));
       return decodedFailureMessages.some(failureMessage => failureMessage.includes(relativeTestFilePath));
     });
 
@@ -408,7 +408,7 @@ export class KarmaTestEventProcessor {
 
     try {
       const decorations = decodedFailureMessages.map((failureMessage): TestDecoration => {
-        const relativeTestFilePath = this.fileHandler.getFileRelativePath(testDefinition.file);
+        const relativeTestFilePath = normalizePath(relative(this.basePath, testDefinition.file));
 
         const errorLineAndColumnCollection = failureMessage
           .substring(failureMessage.indexOf(relativeTestFilePath))

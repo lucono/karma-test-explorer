@@ -1,5 +1,4 @@
 import { parse as parseDotEnvContent } from 'dotenv';
-import { readFileSync } from 'fs';
 import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
@@ -10,6 +9,7 @@ import {
   KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS,
   KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
 } from '../../constants';
+import { FileHandler } from '../../util/filesystem/file-handler';
 import { Logger } from '../../util/logging/logger';
 import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, transformProperties } from '../../util/utils';
 import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting';
@@ -136,6 +136,7 @@ export const getTestsBasePath = (
 export const getCombinedEnvironment = (
   projectRootPath: string,
   config: ConfigStore<ProjectConfigSetting>,
+  fileHandler: FileHandler,
   logger: Logger
 ): Record<string, string> => {
   const envMap: Record<string, string> = config.get(GeneralConfigSetting.Env) ?? {};
@@ -149,7 +150,7 @@ export const getCombinedEnvironment = (
     logger.info(() => `Reading environment from file: ${envFile}`);
 
     try {
-      const envFileContent: Buffer = readFileSync(envFile!);
+      const envFileContent = fileHandler.readFileSync(envFile);
 
       if (!envFileContent) {
         throw new Error(`Failed to read configured environment file: ${envFile}`);

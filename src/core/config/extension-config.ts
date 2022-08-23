@@ -1,3 +1,4 @@
+import { ParserPlugin } from '@babel/parser';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 import { DebugConfiguration } from 'vscode';
@@ -5,6 +6,7 @@ import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS } from '../../constants';
 import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
+import { FileHandler } from '../../util/filesystem/file-handler';
 import { LogLevel } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
 import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
@@ -80,10 +82,12 @@ export class ExtensionConfig implements Disposable {
   public readonly showOnlyFocusedTests: boolean;
   public readonly showTestDefinitionTypeIndicators: boolean;
   public readonly showUnmappedTests: boolean;
+  public readonly enabledParserPlugins: readonly ParserPlugin[];
 
   public constructor(
     configStore: ConfigStore<ProjectConfigSetting>,
     workspacePath: string,
+    fileHandler: FileHandler,
     private readonly logger: Logger
   ) {
     const normalizedWorkspacePath = normalizePath(workspacePath);
@@ -104,6 +108,7 @@ export class ExtensionConfig implements Disposable {
     );
     this.testTriggerMethod = configStore.get<TestTriggerMethod>(GeneralConfigSetting.TestTriggerMethod);
     this.testParsingMethod = configStore.get<TestParsingMethod>(GeneralConfigSetting.TestParsingMethod);
+    this.enabledParserPlugins = configStore.get<ParserPlugin[]>(GeneralConfigSetting.EnabledParserPlugins);
     this.failOnStandardError = !!configStore.get(GeneralConfigSetting.FailOnStandardError);
     this.testsBasePath = getTestsBasePath(this.projectPath, configStore);
     this.defaultSocketConnectionPort = configStore.get(GeneralConfigSetting.DefaultSocketConnectionPort)!;
@@ -115,7 +120,7 @@ export class ExtensionConfig implements Disposable {
     this.karmaReadyTimeout = configStore.get(GeneralConfigSetting.KarmaReadyTimeout)!;
     this.testGrouping = configStore.get(GeneralConfigSetting.TestGrouping)!;
     this.flattenSingleChildFolders = !!configStore.get(GeneralConfigSetting.FlattenSingleChildFolders);
-    this.environment = getCombinedEnvironment(this.projectPath, configStore, logger);
+    this.environment = getCombinedEnvironment(this.projectPath, configStore, fileHandler, logger);
     this.testFramework = configStore.get(GeneralConfigSetting.TestFramework);
     this.reloadOnKarmaConfigChange = !!configStore.get(GeneralConfigSetting.ReloadOnKarmaConfigChange);
     this.customLauncher = getCustomLauncher(configStore);

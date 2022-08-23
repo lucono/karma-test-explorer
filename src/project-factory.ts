@@ -1,7 +1,6 @@
-import { existsSync } from 'fs';
-import { basename, posix, relative, resolve } from 'path';
+import { basename, join, relative, resolve } from 'path';
 import type { PackageJson } from 'type-fest';
-import { workspace, WorkspaceFolder } from 'vscode';
+import { WorkspaceFolder } from 'vscode';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants';
 import { ProjectType } from './core/base/project-type';
 import {
@@ -15,18 +14,26 @@ import { ConfigStore } from './core/config/config-store';
 import { LayeredConfigStore } from './core/config/layered-config-store';
 import { ProjectSpecificConfig, ProjectSpecificConfigSetting } from './core/config/project-specific-config';
 import { SimpleConfigStore } from './core/config/simple-config-store';
+import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver';
 import { getAngularWorkspaceInfo } from './frameworks/angular/angular-util';
 import { AngularWorkspaceInfo } from './frameworks/angular/angular-workspace-info';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
+import { FileHandler } from './util/filesystem/file-handler';
 import { Logger } from './util/logging/logger';
 import { asNonBlankStringOrUndefined, getPackageJsonAtPath, isChildPath, normalizePath } from './util/utils';
 import { WorkspaceProject } from './workspace';
 
+const CONFIG_VALUES_CONSIDERED_ABSENT = [undefined, null];
+
 export class ProjectFactory implements Disposable {
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly logger: Logger) {
+  public constructor(
+    private readonly fileHandler: FileHandler,
+    private readonly workspaceConfigResolver: WorkspaceFolderConfigResolver,
+    private readonly logger: Logger
+  ) {
     this.disposables.push(logger);
   }
 
@@ -46,7 +53,7 @@ export class ProjectFactory implements Disposable {
       return [];
     }
     const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
-    const workspaceConfig = workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, workspaceFolder);
+    const workspaceConfig = this.workspaceConfigResolver.resolveConfig(workspaceFolder);
 
     const shouldEnableTestingForWorkspaceFolder = this.shouldEnableTestingForWorkspaceFolder(
       workspaceFolderPath,
@@ -68,7 +75,7 @@ export class ProjectFactory implements Disposable {
     );
 
     let configuredProjects: (string | ProjectSpecificConfig)[] =
-      workspaceConfig.get(ExternalConfigSetting.Projects) ?? [];
+      workspaceConfig.get(ExternalConfigSetting.ProjectWorkspaces) ?? [];
 
     if (configuredProjects.length === 0) {
       const deprecatedProjectRootPath = asNonBlankStringOrUndefined(
@@ -77,22 +84,37 @@ export class ProjectFactory implements Disposable {
       configuredProjects = deprecatedProjectRootPath ? [deprecatedProjectRootPath] : [''];
     }
 
+    const mappedProjectPaths = new Set<string>();
+
     const workspaceFolderProjects = configuredProjects
       .map(configuredProject => {
         const projectSpecificSettings =
           typeof configuredProject === 'string'
-            ? { [ExternalConfigSetting.ProjectRootPath]: configuredProject }
+            ? { [ExternalConfigSetting.RootPath]: configuredProject }
             : configuredProject;
 
-        const projectSpecificConfig: ConfigStore<ProjectSpecificConfigSetting> = new SimpleConfigStore(
-          projectSpecificSettings,
-          EXTENSION_CONFIG_PREFIX
-        );
+        const projectRootPath = projectSpecificSettings.rootPath ?? projectSpecificSettings.projectRootPath;
 
-        const projectFolderConfig: ConfigStore<WorkspaceConfigSetting> = new LayeredConfigStore(
+        if (mappedProjectPaths.has(projectRootPath)) {
+          this.logger.warn(
+            () =>
+              `Ignoring duplicate project entry for path '${projectRootPath}' - ` +
+              `${JSON.stringify(configuredProject, null, 2)}`
+          );
+          return [];
+        }
+        mappedProjectPaths.add(projectRootPath);
+
+        const projectSpecificConfig: ConfigStore<ProjectSpecificConfigSetting> = new SimpleConfigStore({
+          ...projectSpecificSettings,
+          rootPath: projectRootPath,
+          projectRootPath: undefined
+        });
+
+        const projectFolderConfig: ConfigStore<WorkspaceConfigSetting> = new LayeredConfigStore([
           workspaceConfig,
           projectSpecificConfig
-        );
+        ]);
 
         return this.createProjectsForConfiguredProjectFolder(projectFolderConfig, workspaceFolder);
       })
@@ -106,7 +128,7 @@ export class ProjectFactory implements Disposable {
     workspaceFolder: WorkspaceFolder // FIXME: Can this be reduced to workspace folder path string?
   ): WorkspaceProject[] {
     const workspaceFolderPath = normalizePath(workspaceFolder.uri.fsPath);
-    const relativeProjectRootPath = projectFolderConfig.get<string>(ExternalConfigSetting.ProjectRootPath);
+    const relativeProjectRootPath = projectFolderConfig.get<string>(ExternalConfigSetting.RootPath);
     const absoluteProjectRootPath = normalizePath(resolve(workspaceFolderPath, relativeProjectRootPath));
     const isProjectPathInWorkspaceFolder = isChildPath(workspaceFolderPath, absoluteProjectRootPath, true);
 
@@ -120,7 +142,7 @@ export class ProjectFactory implements Disposable {
       return [];
     }
 
-    if (!existsSync(absoluteProjectRootPath)) {
+    if (!this.fileHandler.existsSync(absoluteProjectRootPath)) {
       this.logger.debug(
         () =>
           `Excluding project root path '${relativeProjectRootPath}' ` +
@@ -135,6 +157,7 @@ export class ProjectFactory implements Disposable {
 
     const angularWorkspace: AngularWorkspaceInfo | undefined = getAngularWorkspaceInfo(
       absoluteProjectRootPath,
+      this.fileHandler,
       this.logger
     );
 
@@ -172,20 +195,21 @@ export class ProjectFactory implements Disposable {
         const angularProjectPath = normalizePath(resolve(absoluteProjectRootPath, angularChildProjectInfo.rootPath));
         const karmaConfigPath = normalizePath(resolve(angularProjectPath, angularChildProjectInfo.karmaConfigPath));
 
-        const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>(
-          {
-            [InternalConfigSetting.ProjectType]: ProjectType.Angular,
-            [InternalConfigSetting.ProjectName]: angularChildProjectInfo.name,
-            [InternalConfigSetting.ProjectPath]: angularProjectPath,
-            [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
-            [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
-          },
-          EXTENSION_CONFIG_PREFIX
-        );
+        const projectDefaultSettings = new SimpleConfigStore<GeneralConfigSetting>({
+          [GeneralConfigSetting.WebRoot]: absoluteProjectRootPath
+        });
+
+        const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>({
+          [InternalConfigSetting.ProjectType]: ProjectType.Angular,
+          [InternalConfigSetting.ProjectName]: angularChildProjectInfo.name,
+          [InternalConfigSetting.ProjectPath]: angularProjectPath,
+          [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
+          [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
+        });
 
         const angularChildProjectConfig: ConfigStore<ProjectConfigSetting> = new LayeredConfigStore(
-          projectFolderConfig,
-          projectInternalSettings
+          [projectDefaultSettings, projectFolderConfig, projectInternalSettings],
+          { valuesConsideredAbsent: CONFIG_VALUES_CONSIDERED_ABSENT }
         );
 
         const project: WorkspaceProject = {
@@ -193,7 +217,7 @@ export class ProjectFactory implements Disposable {
           longName: `${projectRootPathFolderName}: ${angularChildProjectInfo.name}`,
           namespace: `${absoluteProjectRootPath}:${angularChildProjectInfo.name}`,
           type: ProjectType.Angular,
-          workspaceFolder: workspaceFolder, // FIXME: Exclude? Could only workspace folder path be enough?
+          workspaceFolder: workspaceFolder, // FIXME: Exclude? Could only workspace folder path be used?
           workspaceFolderPath: workspaceFolderPath,
           projectPath: angularProjectPath,
           topLevelProjectPath: absoluteProjectRootPath,
@@ -209,20 +233,21 @@ export class ProjectFactory implements Disposable {
       const karmaConfigPath = normalizePath(
         resolve(absoluteProjectRootPath, projectFolderConfig.get(ExternalConfigSetting.KarmaConfFilePath)!)
       );
-      const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>(
-        {
-          [InternalConfigSetting.ProjectType]: ProjectType.Karma,
-          [InternalConfigSetting.ProjectName]: projectRootPathFolderName,
-          [InternalConfigSetting.ProjectPath]: absoluteProjectRootPath,
-          [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
-          [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
-        },
-        EXTENSION_CONFIG_PREFIX
-      );
+      const projectDefaultSettings = new SimpleConfigStore<GeneralConfigSetting>({
+        [GeneralConfigSetting.WebRoot]: absoluteProjectRootPath
+      });
+
+      const projectInternalSettings = new SimpleConfigStore<InternalConfigSetting>({
+        [InternalConfigSetting.ProjectType]: ProjectType.Karma,
+        [InternalConfigSetting.ProjectName]: projectRootPathFolderName,
+        [InternalConfigSetting.ProjectPath]: absoluteProjectRootPath,
+        [InternalConfigSetting.ProjectInstallRootPath]: absoluteProjectRootPath,
+        [InternalConfigSetting.ProjectKarmaConfigFilePath]: karmaConfigPath
+      });
 
       const projectConfig: ConfigStore<ProjectConfigSetting> = new LayeredConfigStore(
-        projectFolderConfig,
-        projectInternalSettings
+        [projectDefaultSettings, projectFolderConfig, projectInternalSettings],
+        { valuesConsideredAbsent: CONFIG_VALUES_CONSIDERED_ABSENT }
       );
 
       const project: WorkspaceProject = {
@@ -288,8 +313,13 @@ export class ProjectFactory implements Disposable {
       this.logger.debug(() => `Workspace folder '${workspaceFolderPath}' has no ${EXTENSION_NAME} settings configured`);
     }
 
-    const workspacePackageJsonFilePath = posix.join(workspaceFolderPath, 'package.json');
-    const packageJson: PackageJson | undefined = getPackageJsonAtPath(workspacePackageJsonFilePath, this.logger);
+    const workspacePackageJsonFilePath = normalizePath(join(workspaceFolderPath, 'package.json'));
+
+    const packageJson: PackageJson | undefined = getPackageJsonAtPath(
+      workspacePackageJsonFilePath,
+      this.fileHandler,
+      this.logger
+    );
 
     if (!packageJson) {
       this.logger.debug(

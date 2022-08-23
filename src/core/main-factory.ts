@@ -20,7 +20,7 @@ import { KarmaServerProcessLog } from '../frameworks/karma/server/karma-server-p
 import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../frameworks/mocha/mocha-test-framework';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
-import { FileHandler } from '../util/file-handler';
+import { FileHandler } from '../util/filesystem/file-handler';
 import { LogAppender } from '../util/logging/log-appender';
 import { SimpleLogger } from '../util/logging/simple-logger';
 import { PortAcquisitionClient } from '../util/port/port-acquisition-client';
@@ -61,7 +61,6 @@ export class MainFactory {
   private readonly disposables: Disposable[] = [];
   private readonly testFramework: TestFramework;
   private readonly processHandler: ProcessHandler;
-  private readonly fileHandler: FileHandler;
   private readonly testLocator: TestLocator;
   private readonly testHelper: TestHelper;
   private readonly testStore: TestStore;
@@ -73,6 +72,7 @@ export class MainFactory {
     private readonly config: ExtensionConfig,
     private readonly testDebugger: Debugger,
     private readonly portAcquisitionClient: PortAcquisitionClient,
+    private readonly fileHandler: FileHandler,
     private readonly projectCommands: Commands<ProjectCommand>,
     private readonly notificationHandler: NotificationHandler,
     private readonly testLoadEventEmitter: EventEmitter<TestLoadEvent>,
@@ -84,9 +84,6 @@ export class MainFactory {
   ) {
     this.disposables.push(logger);
 
-    this.fileHandler = new FileHandler(this.createLogger(FileHandler.name), {
-      cwd: this.config.projectPath
-    });
     const karmaConfigPath = this.config.projectKarmaConfigFilePath;
 
     const configuredTestFramework: TestFramework | undefined =
@@ -326,7 +323,8 @@ export class MainFactory {
 
     const testFileParser: AstTestFileParser = new AstTestFileParser(
       sourceNodeProcessors,
-      this.createLogger(AstTestFileParser.name)
+      this.createLogger(AstTestFileParser.name),
+      { enabledParserPlugins: this.config.enabledParserPlugins }
     );
 
     const testDefinitionProvider = new AstTestDefinitionProvider(
@@ -343,6 +341,7 @@ export class MainFactory {
       projectKarmaConfigFilePath: this.config.projectKarmaConfigFilePath,
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
+      logLevel: this.config.logLevel,
       karmaLogLevel: this.config.karmaLogLevel,
       karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
@@ -372,6 +371,7 @@ export class MainFactory {
       projectKarmaConfigFilePath: this.config.projectKarmaConfigFilePath,
       autoWatchEnabled: watchModeEnabled,
       autoWatchBatchDelay: this.config.autoWatchBatchDelay,
+      logLevel: this.config.logLevel,
       karmaLogLevel: this.config.karmaLogLevel,
       karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
@@ -417,8 +417,8 @@ export class MainFactory {
       suiteTestResultProcessor,
       this.testLocator,
       testResolver,
-      this.fileHandler,
       this.testHelper,
+      this.config.projectPath,
       this.createLogger(KarmaTestEventProcessor.name)
     );
 
@@ -433,8 +433,8 @@ export class MainFactory {
         suiteTestResultProcessor,
         this.testLocator,
         testResolver,
-        this.fileHandler,
         this.testHelper,
+        this.config.projectPath,
         this.createLogger(`${KarmaAutoWatchTestEventProcessor.name}::${KarmaTestEventProcessor.name}`)
       );
 

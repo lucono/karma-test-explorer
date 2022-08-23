@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'fs';
-import { posix } from 'path';
+import { join } from 'path';
+import { FileHandler } from '../../util/filesystem/file-handler';
 import { Logger } from '../../util/logging/logger';
 import { normalizePath } from '../../util/utils';
 import { AngularProjectInfo } from './angular-project-info';
@@ -7,33 +7,37 @@ import { AngularWorkspaceInfo } from './angular-workspace-info';
 
 export const getAngularWorkspaceInfo = (
   angularConfigRootPath: string,
+  fileHandler: FileHandler,
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
   return (
-    getAngularJsonWorkspaceInfo(angularConfigRootPath, logger) ??
-    getAngularCliJsonWorkspaceInfo(angularConfigRootPath, logger)
+    getAngularJsonWorkspaceInfo(angularConfigRootPath, fileHandler, logger) ??
+    getAngularCliJsonWorkspaceInfo(angularConfigRootPath, fileHandler, logger)
   );
 };
 
 const getAngularJsonWorkspaceInfo = (
   angularConfigRootPath: string,
+  fileHandler: FileHandler,
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
-  const angularJsonConfigPath = normalizePath(posix.join(angularConfigRootPath, 'angular.json'));
+  const angularJsonConfigPath = normalizePath(join(angularConfigRootPath, 'angular.json'));
 
-  if (!existsSync(angularJsonConfigPath)) {
+  if (!fileHandler.existsSync(angularJsonConfigPath)) {
     logger.debug(() => `Cannot get Angular projects - Angular Json file does not exist: ${angularJsonConfigPath}`);
     return undefined;
   }
   let angularJson: any;
+
   try {
-    angularJson = JSON.parse(readFileSync(angularJsonConfigPath, 'utf-8'));
-  } catch (e) {
-    // do nothing
+    const angularJsonContent = fileHandler.readFileSync(angularJsonConfigPath, 'utf-8');
+    angularJson = angularJsonContent ? JSON.parse(angularJsonContent) : undefined;
+  } catch (error) {
+    // No action required
   }
 
   if (!angularJson) {
-    logger.debug(() => `Cannot get Angular projects - Failed to read Angular Json file: ${angularJsonConfigPath}`);
+    logger.warn(() => `Cannot get Angular projects - Failed to read Angular Json file: ${angularJsonConfigPath}`);
     return undefined;
   }
   const defaultProjectName: string = angularJson.defaultProject;
@@ -46,9 +50,10 @@ const getAngularJsonWorkspaceInfo = (
     if (projectConfig.architect.test === undefined || projectConfig.architect.test.options.karmaConfig === undefined) {
       continue;
     }
-    const projectPath = normalizePath(posix.join(angularConfigRootPath, projectConfig.root));
+    const projectPath = normalizePath(join(angularConfigRootPath, projectConfig.root));
+
     const karmaConfigPath = normalizePath(
-      posix.join(angularConfigRootPath, projectConfig.architect.test.options.karmaConfig)
+      join(angularConfigRootPath, projectConfig.architect?.test?.options?.karmaConfig)
     );
 
     const project: AngularProjectInfo = {
@@ -77,21 +82,24 @@ const getAngularJsonWorkspaceInfo = (
 
 const getAngularCliJsonWorkspaceInfo = (
   angularConfigRootPath: string,
+  fileHandler: FileHandler,
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
-  const angularCliJsonConfigPath = normalizePath(posix.join(angularConfigRootPath, '.angular-cli.json'));
+  const angularCliJsonConfigPath = normalizePath(join(angularConfigRootPath, '.angular-cli.json'));
 
-  if (!existsSync(angularCliJsonConfigPath)) {
+  if (!fileHandler.existsSync(angularCliJsonConfigPath)) {
     logger.debug(
       () => `Cannot get Angular projects - Angular CLI Json file does not exist: ${angularCliJsonConfigPath}`
     );
     return undefined;
   }
   let angularCliJson: any;
+
   try {
-    angularCliJson = JSON.parse(readFileSync(angularCliJsonConfigPath, 'utf-8'));
-  } catch (e) {
-    // do nothing
+    const angularCliJsonContent = fileHandler.readFileSync(angularCliJsonConfigPath, 'utf-8');
+    angularCliJson = angularCliJsonContent ? JSON.parse(angularCliJsonContent) : undefined;
+  } catch (error) {
+    // No action required
   }
 
   if (!angularCliJson) {
@@ -104,10 +112,11 @@ const getAngularCliJsonWorkspaceInfo = (
   const projects: AngularProjectInfo[] = [];
   let defaultProject: AngularProjectInfo | undefined;
 
+  const karmaConfigPath = normalizePath(join(angularConfigRootPath, angularCliJson.test?.karma?.config));
+
   for (const app of angularCliJson.apps) {
     const projectName: string = app.name || angularCliJson.project.name;
-    const projectPath = normalizePath(posix.join(angularConfigRootPath, app.root));
-    const karmaConfigPath = normalizePath(posix.join(angularConfigRootPath, angularCliJson.test.karma.config));
+    const projectPath = normalizePath(join(angularConfigRootPath, app.root));
 
     const project: AngularProjectInfo = {
       name: projectName,

@@ -35,6 +35,7 @@ export type KarmaFactoryConfig = Pick<
   | 'environment'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
+  | 'logLevel'
   | 'karmaLogLevel'
   | 'karmaReporterLogLevel'
   | 'karmaProcessCommand'
@@ -135,6 +136,7 @@ export class KarmaFactory implements TestFactory, Disposable {
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
+      [KarmaEnvironmentVariable.ExtensionLogLevel]: `${this.config.logLevel}`,
       [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
       [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`
     };

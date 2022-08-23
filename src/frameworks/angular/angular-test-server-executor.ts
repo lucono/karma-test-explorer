@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { TestServerExecutor } from '../../api/test-server-executor';
-import { EXTENSION_CONFIG_PREFIX } from '../../constants';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
 import { ExternalConfigSetting } from '../../core/config/config-setting';
 import { Disposable } from '../../util/disposable/disposable';
 import { Disposer } from '../../util/disposable/disposer';
@@ -80,7 +80,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
           `Angular CLI does not seem to be installed. You may ` +
             `need to install your project dependencies or ` +
             `specify the right path to your project using the ` +
-            `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.Projects} ` +
+            `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ProjectWorkspaces} ` +
             `setting.`
         );
       }
@@ -98,10 +98,19 @@ export class AngularTestServerExecutor implements TestServerExecutor {
       '--no-watch'
     ];
 
+    this.logKarmaLaunch();
     const angularProcess = this.processHandler.spawn(command, processArguments, runOptions);
     this.disposables.push(angularProcess);
 
     return angularProcess;
+  }
+
+  private logKarmaLaunch() {
+    const launchMessage =
+      `------------------------------------\n` +
+      `${EXTENSION_NAME}: Launching Karma\n` +
+      `------------------------------------\n`;
+    this.options.serverProcessLog?.output(() => launchMessage);
   }
 
   public async dispose() {

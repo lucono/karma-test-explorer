@@ -11,7 +11,7 @@ import {
 } from 'vscode-test-adapter-api';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME, KARMA_SERVER_OUTPUT_CHANNEL_NAME } from './constants';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
-import { GeneralConfigSetting, ProjectConfigSetting } from './core/config/config-setting';
+import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './core/config/config-setting';
 import { ConfigStore } from './core/config/config-store';
 import { ExtensionConfig } from './core/config/extension-config';
 import { Debugger } from './core/debugger';
@@ -25,18 +25,23 @@ import { OutputChannelLog } from './core/vscode/output-channel-log';
 import { KarmaLogLevel } from './frameworks/karma/karma-log-level';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
+import { FileHandler } from './util/filesystem/file-handler';
+import { SimpleFileHandler } from './util/filesystem/simple-file-handler';
 import { LogLevel } from './util/logging/log-level';
+import { Logger } from './util/logging/logger';
 import { SimpleLogger } from './util/logging/simple-logger';
 import { PortAcquisitionClient } from './util/port/port-acquisition-client';
 import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
 import { getJsonCircularReferenceReplacer } from './util/utils';
 
 export class Adapter implements TestAdapter, Disposable {
+  private readonly logLevel: LogLevel;
   private readonly outputChannelLog: OutputChannelLog;
   private readonly testServerLog: OutputChannelLog;
-  private readonly logger: SimpleLogger;
+  private readonly logger: Logger;
   private readonly config: ExtensionConfig;
   private readonly portAcquisitionClient: PortAcquisitionClient;
+  private readonly fileHandler: FileHandler;
   private readonly debugger: Debugger;
   private readonly projectCommands: Commands<ProjectCommand>;
   private readonly notificationHandler: NotificationHandler;
@@ -56,20 +61,22 @@ export class Adapter implements TestAdapter, Disposable {
     portAcquisitionManager: PortAcquisitionManager,
     projectStatusDisplay: StatusDisplay
   ) {
+    this.logLevel = configStore.get<LogLevel>(GeneralConfigSetting.LogLevel);
     this.outputChannelLog = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME} (${this.projectNamespace})`);
     this.disposables.push(this.outputChannelLog);
+
+    this.logger = this.createLogger(Adapter.name);
+
+    this.fileHandler = new SimpleFileHandler(this.createLogger(SimpleFileHandler.name), {
+      cwd: configStore.get(InternalConfigSetting.ProjectPath)
+    });
 
     this.config = new ExtensionConfig(
       configStore,
       this.workspaceFolder.uri.path,
-      new SimpleLogger(
-        this.outputChannelLog,
-        ExtensionConfig.name,
-        configStore.get<LogLevel>(GeneralConfigSetting.LogLevel)
-      )
+      this.fileHandler,
+      this.createLogger(ExtensionConfig.name)
     );
-
-    this.logger = new SimpleLogger(this.outputChannelLog, Adapter.name, this.config.logLevel);
 
     this.logger.debug(() => 'Creating server output channel');
     const serverOutputChannelName = `${KARMA_SERVER_OUTPUT_CHANNEL_NAME} (${this.projectNamespace})`;
@@ -114,11 +121,13 @@ export class Adapter implements TestAdapter, Disposable {
     this.testRunEmitter = new EventEmitter();
     this.retireEmitter = new EventEmitter();
     this.disposables.push(this.testLoadEmitter, this.testRunEmitter, this.retireEmitter);
+
+    this.logger.debug(() => 'Creating initial test explorer');
     this.karmaTestExplorer = this.createTestExplorer();
   }
 
   private createTestExplorer(): KarmaTestExplorer {
-    this.logger.debug(() => 'Creating new test explorer');
+    this.logger.debug(() => 'Assembling new test explorer');
     const testExplorerDisposables: Disposable[] = [];
 
     this.logger.debug(
@@ -135,6 +144,7 @@ export class Adapter implements TestAdapter, Disposable {
       this.config,
       this.debugger,
       this.portAcquisitionClient,
+      this.fileHandler,
       this.projectCommands,
       this.notificationHandler,
       this.testLoadEmitter,
@@ -187,7 +197,7 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   private createLogger(loggerName: string): SimpleLogger {
-    return new SimpleLogger(this.logger, loggerName);
+    return new SimpleLogger(this.outputChannelLog, loggerName, this.logLevel);
   }
 
   private async reset(): Promise<void> {

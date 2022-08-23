@@ -38,7 +38,7 @@ export class Preferences implements Disposable {
       () =>
         `Updated preference '${pref}' ` +
         `${setGlobal ? 'globally' : 'in current workspace'} ` +
-        `from: ${JSON.stringify(previousValue, null, 2)}` +
+        `from: ${JSON.stringify(previousValue, null, 2)} ` +
         `to: ${JSON.stringify(value, null, 2)}`
     );
   }

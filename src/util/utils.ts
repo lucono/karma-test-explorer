@@ -1,9 +1,8 @@
 import dotenvExpand from 'dotenv-expand';
-import { existsSync } from 'fs';
-import { dirname, isAbsolute, posix, win32 } from 'path';
+import { dirname, isAbsolute, join, posix, win32 } from 'path';
 import type { PackageJson } from 'type-fest';
 import { sync as which } from 'which';
-import { GeneralConfigSetting } from '../core/config/config-setting';
+import { FileHandler } from './filesystem/file-handler';
 import { Logger } from './logging/logger';
 
 export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T): string | undefined => {
@@ -179,14 +178,16 @@ export const expandEnvironment = (
   return expandedEnvironment;
 };
 
-export const getPackageJsonAtPath = (absolutePath: string, logger: Logger): PackageJson | undefined => {
-  const normalizedPath = normalizePath(absolutePath);
+export const getPackageJsonAtPath = (
+  absolutePath: string,
+  fileHandler: FileHandler,
+  logger: Logger
+): PackageJson | undefined => {
+  const packageJsonFilePath = absolutePath.endsWith(`package.json`)
+    ? normalizePath(absolutePath)
+    : normalizePath(join(absolutePath, 'package.json'));
 
-  const packageJsonFilePath = normalizedPath.endsWith(`${posix.sep}package.json`)
-    ? normalizedPath
-    : posix.join(normalizedPath, 'package.json');
-
-  if (!existsSync(packageJsonFilePath)) {
+  if (!fileHandler.existsSync(packageJsonFilePath)) {
     logger.debug(() => `No package.json file at '${packageJsonFilePath}'`);
     return undefined;
   } else {
@@ -227,7 +228,7 @@ export const getPackageInstallPathForProjectRoot = (
       () =>
         `Rejected resolved '${moduleName}' module located at '${moduleInstallPath}' ` +
         `which is outside of project at '${projectRootPath}'` +
-        `and '${GeneralConfigSetting.AllowGlobalPackageFallback}' is not enabled`
+        `and global package fallback is not enabled`
     );
     return;
   }

@@ -1,34 +1,42 @@
-import { ConfigStore } from './config-store';
+import { MutableConfigStore } from './config-store';
 
-export class SimpleMutableConfigStore<K extends string = string> implements ConfigStore<K> {
-  private configOverrides: Map<string, unknown> = new Map();
+export class SimpleMutableConfigStore<K extends string = string> implements MutableConfigStore<K> {
+  private configEntries: Map<string, unknown> = new Map();
   private readonly configPrefix: string;
 
-  public constructor(configPrefix?: string, configEntries?: Partial<Record<K, any>>) {
+  public constructor(configPrefix?: string, initialEntries?: Partial<Record<K, any>>) {
     this.configPrefix = configPrefix ? `${configPrefix}.` : '';
 
-    if (configEntries) {
-      this.setAll(configEntries);
+    if (initialEntries) {
+      this.setMultiple(initialEntries);
     }
   }
 
-  public set(key: K, value: any): void {
-    this.configOverrides.set(this.toPrefixedKey(key), value);
-  }
-
-  public setAll(overrides: Partial<Record<K, any>>): void {
+  private setMultiple(overrides: Partial<Record<K, any>>): void {
     for (const key in overrides) {
       const value = overrides[key];
       this.set(key, value);
     }
   }
 
+  public set(key: K, value: any): void {
+    this.configEntries.set(this.toPrefixedKey(key), value);
+  }
+
   public get<T>(key: K): T {
-    return this.configOverrides.get(this.toPrefixedKey(key)) as T;
+    return this.configEntries.get(this.toPrefixedKey(key)) as T;
   }
 
   public has(key: K): boolean {
-    return this.configOverrides.has(this.toPrefixedKey(key));
+    return this.configEntries.has(this.toPrefixedKey(key));
+  }
+
+  public delete(key: K): void {
+    this.configEntries.delete(this.toPrefixedKey(key));
+  }
+
+  public clear(): void {
+    [...this.configEntries.keys()].forEach(key => this.configEntries.delete(key));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

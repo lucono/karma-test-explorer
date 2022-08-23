@@ -2,6 +2,7 @@ import { ExternalConfigSetting, GeneralConfigSetting } from './config-setting';
 
 export type ProjectSpecificConfigSetting =
   | ExternalConfigSetting.ProjectRootPath
+  | ExternalConfigSetting.RootPath
   | ExternalConfigSetting.ProjectType
   | ExternalConfigSetting.KarmaConfFilePath
   | GeneralConfigSetting.TestFramework
@@ -9,6 +10,6 @@ export type ProjectSpecificConfigSetting =
   | GeneralConfigSetting.ExcludeFiles
   | GeneralConfigSetting.TestsBasePath;
 
-export type ProjectSpecificConfig = { [key in ExternalConfigSetting.ProjectRootPath]: string } & {
-  [key in Exclude<ProjectSpecificConfigSetting, ExternalConfigSetting.ProjectRootPath>]?: unknown;
+export type ProjectSpecificConfig = { [key in ExternalConfigSetting.RootPath]: string } & {
+  [key in Exclude<ProjectSpecificConfigSetting, ExternalConfigSetting.RootPath>]?: unknown;
 };

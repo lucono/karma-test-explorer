@@ -22,6 +22,7 @@ export type AngularFactoryConfig = Pick<
   | 'environment'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
+  | 'logLevel'
   | 'karmaLogLevel'
   | 'karmaReporterLogLevel'
   | 'projectPath'
@@ -57,6 +58,7 @@ export class AngularFactory implements Partial<TestFactory> {
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
+      [KarmaEnvironmentVariable.ExtensionLogLevel]: `${this.config.logLevel}`,
       [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
       [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`
     };
