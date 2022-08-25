@@ -1,11 +1,13 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Uri, WorkspaceFolder } from 'vscode';
+import { ProjectType } from '../src/core/base/project-type';
 import { ExternalConfigSetting } from '../src/core/config/config-setting';
 import { SimpleMutableConfigStore } from '../src/core/config/simple-mutable-config-store';
 import { WorkspaceFolderConfigResolver } from '../src/core/config/workspace-folder-config-resolver';
 import { ProjectFactory } from '../src/project-factory';
 import { FileHandler } from '../src/util/filesystem/file-handler';
 import { Logger } from '../src/util/logging/logger';
+import { WorkspaceProject } from '../src/workspace';
 import { Writeable } from './test-util';
 
 describe('Project Factory', () => {
@@ -16,6 +18,7 @@ describe('Project Factory', () => {
 
   beforeEach(() => {
     configStore = new SimpleMutableConfigStore(undefined, { [ExternalConfigSetting.EnableExtension]: true });
+
     mockWorkspaceFolderConfigResolver = mock<WorkspaceFolderConfigResolver>();
     mockWorkspaceFolderConfigResolver.resolveConfig.mockImplementation(() => configStore);
     mockFileHandler = mock<FileHandler>();
@@ -23,32 +26,52 @@ describe('Project Factory', () => {
   });
 
   describe('createProjectsForWorkspaceFolders method', () => {
-    let workspaceFolder: WorkspaceFolder;
+    let mockWorkspaceFolder: WorkspaceFolder;
 
     beforeEach(() => {
-      workspaceFolder = mock<WorkspaceFolder>();
+      configStore.set(ExternalConfigSetting.EnableExtension, true);
+      configStore.set(ExternalConfigSetting.KarmaConfFilePath, '');
+
+      mockWorkspaceFolder = mock<WorkspaceFolder>();
+      (mockWorkspaceFolder.uri as Writeable<Uri>).fsPath = '/fake/workspace/project';
+      mockFileHandler.existsSync.calledWith('/fake/workspace/project').mockReturnValue(true);
     });
 
     describe('using a non-file scheme uri workspace', () => {
       beforeEach(() => {
-        (workspaceFolder.uri as Writeable<Uri>).scheme = 'not-file-scheme';
+        (mockWorkspaceFolder.uri as Writeable<Uri>).scheme = 'not-file-scheme';
       });
 
       it('does not create a project for the workspace', () => {
-        const projects = projectFactory.createProjectsForWorkspaceFolders(workspaceFolder);
+        const projects = projectFactory.createProjectsForWorkspaceFolders(mockWorkspaceFolder);
         expect(projects).toEqual([]);
       });
     });
 
     describe('using a file scheme uri workspace', () => {
       beforeEach(() => {
-        (workspaceFolder.uri as Writeable<Uri>).scheme = 'file';
-        (workspaceFolder.uri as Writeable<Uri>).fsPath = '/fake/workspace/path';
+        (mockWorkspaceFolder.uri as Writeable<Uri>).scheme = 'file';
       });
 
       it('creates a project for the workspace', () => {
-        const projects = projectFactory.createProjectsForWorkspaceFolders(workspaceFolder);
-        expect(projects).toEqual([]);
+        const projects = projectFactory.createProjectsForWorkspaceFolders(mockWorkspaceFolder);
+
+        expect(projects).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining(<WorkspaceProject>{
+              type: ProjectType.Karma,
+              shortName: 'project',
+              longName: 'project',
+              namespace: '/fake/workspace/project',
+              workspaceFolder: mockWorkspaceFolder,
+              workspaceFolderPath: '/fake/workspace/project',
+              shortProjectPath: '',
+              topLevelProjectPath: '/fake/workspace/project',
+              projectPath: '/fake/workspace/project',
+              isPrimary: true
+            })
+          ])
+        );
       });
     });
   });

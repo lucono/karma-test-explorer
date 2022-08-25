@@ -74,15 +74,24 @@ export class ProjectFactory implements Disposable {
         `One or more inclusion conditions were satisfied: ${workspaceFolderPath}`
     );
 
-    let configuredProjects: (string | ProjectSpecificConfig)[] =
+    const configuredProjectWorkspaces: (string | ProjectSpecificConfig)[] =
       workspaceConfig.get(ExternalConfigSetting.ProjectWorkspaces) ?? [];
 
-    if (configuredProjects.length === 0) {
-      const deprecatedProjectRootPath = asNonBlankStringOrUndefined(
-        workspaceConfig.get(ExternalConfigSetting.ProjectRootPath)
-      );
-      configuredProjects = deprecatedProjectRootPath ? [deprecatedProjectRootPath] : [''];
-    }
+    const configuredDeprecatedProjects: (string | ProjectSpecificConfig)[] =
+      workspaceConfig.get(ExternalConfigSetting.Projects) ?? [];
+
+    const configuredDeprecatedProjectRootPath = asNonBlankStringOrUndefined(
+      workspaceConfig.get(ExternalConfigSetting.ProjectRootPath)
+    );
+
+    const configuredProjects =
+      configuredProjectWorkspaces.length > 0
+        ? configuredProjectWorkspaces
+        : configuredDeprecatedProjects.length > 0
+        ? configuredDeprecatedProjects
+        : configuredDeprecatedProjectRootPath
+        ? [configuredDeprecatedProjectRootPath]
+        : [''];
 
     const mappedProjectPaths = new Set<string>();
 
@@ -170,7 +179,7 @@ export class ProjectFactory implements Disposable {
       );
     }
 
-    const isAngularProject = angularWorkspace && projectType !== ProjectType.Karma;
+    const isAngularProject = angularWorkspace !== undefined && projectType !== ProjectType.Karma;
 
     this.logger.info(
       () =>

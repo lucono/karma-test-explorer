@@ -13,6 +13,7 @@ export enum ExternalConfigSetting {
   EnableExtension = 'enableExtension',
   ProjectType = 'projectType',
   ProjectWorkspaces = 'projectWorkspaces',
+  Projects = 'projects', // FIXME: Deprecated - remove
   RootPath = 'rootPath',
   ProjectRootPath = 'projectRootPath', // FIXME: Deprecated - remove
   KarmaConfFilePath = 'karmaConfFilePath'
