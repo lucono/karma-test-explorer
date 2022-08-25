@@ -27,14 +27,18 @@ describe('Project Factory', () => {
 
   describe('createProjectsForWorkspaceFolders method', () => {
     let mockWorkspaceFolder: WorkspaceFolder;
+    let mockWorkspaceFolderFsPath: string;
 
     beforeEach(() => {
       configStore.set(ExternalConfigSetting.EnableExtension, true);
       configStore.set(ExternalConfigSetting.KarmaConfFilePath, '');
 
+      mockWorkspaceFolderFsPath =
+        process.platform === 'win32' ? 'C:/fake/workspace/project' : '/fake/workspace/project';
+
       mockWorkspaceFolder = mock<WorkspaceFolder>();
-      (mockWorkspaceFolder.uri as Writeable<Uri>).fsPath = '/fake/workspace/project';
-      mockFileHandler.existsSync.calledWith('/fake/workspace/project').mockReturnValue(true);
+      (mockWorkspaceFolder.uri as Writeable<Uri>).fsPath = mockWorkspaceFolderFsPath;
+      mockFileHandler.existsSync.calledWith(mockWorkspaceFolderFsPath).mockReturnValue(true);
     });
 
     describe('using a non-file scheme uri workspace', () => {
@@ -62,12 +66,12 @@ describe('Project Factory', () => {
               type: ProjectType.Karma,
               shortName: 'project',
               longName: 'project',
-              namespace: '/fake/workspace/project',
+              namespace: mockWorkspaceFolderFsPath,
               workspaceFolder: mockWorkspaceFolder,
-              workspaceFolderPath: '/fake/workspace/project',
+              workspaceFolderPath: mockWorkspaceFolderFsPath,
               shortProjectPath: '',
-              topLevelProjectPath: '/fake/workspace/project',
-              projectPath: '/fake/workspace/project',
+              topLevelProjectPath: mockWorkspaceFolderFsPath,
+              projectPath: mockWorkspaceFolderFsPath,
               isPrimary: true
             })
           ])
