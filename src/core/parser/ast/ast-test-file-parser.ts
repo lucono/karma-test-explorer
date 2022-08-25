@@ -26,8 +26,6 @@ const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   startLine: 0
 };
 
-const DEFAULT_PARSER_PLUGINS: ParserPlugin[] = ['typescript', 'jsx', ['decorators', { decoratorsBeforeExport: false }]];
-
 export interface AstTestFileParserOptions {
   readonly enabledParserPlugins?: readonly ParserPlugin[];
 }
@@ -35,20 +33,12 @@ export interface AstTestFileParserOptions {
 export class AstTestFileParser implements TestFileParser<DescribedTestDefinitionInfo[]> {
   private readonly disposables: Disposable[] = [];
   private readonly nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[];
-  private readonly parserOptions: ParserOptions;
 
   public constructor(
     nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[],
     private readonly logger: Logger,
-    options: AstTestFileParserOptions = {}
+    private readonly options: AstTestFileParserOptions = {}
   ) {
-    const enabledParserPlugins = options.enabledParserPlugins?.length
-      ? options.enabledParserPlugins
-      : DEFAULT_PARSER_PLUGINS;
-
-    const uniqueParserPlugins = new Set(enabledParserPlugins);
-
-    this.parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: [...uniqueParserPlugins] };
     this.disposables.push(logger);
     this.nodeProcessors = [...nodeProcessors];
   }
@@ -57,8 +47,14 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
     const parseId = generateRandomId();
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
+    const enabledParserPlugins = this.options.enabledParserPlugins?.length
+      ? this.options.enabledParserPlugins
+      : this.getParserPluginsForFile(filePath);
+
+    const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: [...enabledParserPlugins] };
+
     const startTime = new Date();
-    const parsedFile = parse(fileText, this.parserOptions);
+    const parsedFile = parse(fileText, parserOptions);
 
     if (parsedFile.errors.length > 0) {
       const errorMessages = parsedFile.errors.map(error => `--> ${error.code} - ${error.reasonCode}`);
@@ -158,6 +154,21 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
       }
     }
     return processedNodeResult;
+  }
+
+  private getParserPluginsForFile(filePath: string): ParserPlugin[] {
+    const isJsxFile = /.+\.(jsx|tsx)$/.test(filePath);
+    const jsxPlugins: ParserPlugin[] = isJsxFile ? ['jsx'] : [];
+
+    const isTypeScriptFile = /.+\.(ts|tsx)$/.test(filePath);
+    const tsPlugins: ParserPlugin[] = isTypeScriptFile ? [['typescript', { disallowAmbiguousJSXLike: false }]] : [];
+
+    const parserPlugins: ParserPlugin[] = [
+      ...tsPlugins,
+      ...jsxPlugins,
+      ['decorators', { decoratorsBeforeExport: false }]
+    ];
+    return parserPlugins;
   }
 
   public async dispose() {

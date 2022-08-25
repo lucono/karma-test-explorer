@@ -452,6 +452,84 @@ describe('AstTestFileParser', () => {
         );
       });
 
+      it('correctly parses non-jsx TypeScript `.ts` test file content having typescript angle bracket type casts', () => {
+        const fileText = `
+          ${_.describe}('test suite 1', () => {
+            ${_.it}('test 1', () => {
+              const with_angle_bracket_type_cast = <string>5;
+              const obj_prop_with_angle_bracket_type_cast = {
+                prop1: 'hi',
+                prop2: <number>'5'
+              };
+            });
+          })
+        `;
+        const testFileName = '/fake/test/file/path.ts';
+        const testSuiteFileInfo = testParser.parseFileText(fileText, testFileName);
+
+        expect(testSuiteFileInfo).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              suite: expect.arrayContaining([
+                expect.objectContaining({
+                  type: TestType.Suite,
+                  description: 'test suite 1',
+                  line: 1,
+                  state: TestDefinitionState.Default,
+                  disabled: false,
+                  file: testFileName
+                })
+              ]),
+              test: expect.objectContaining({
+                type: TestType.Test,
+                description: 'test 1',
+                line: 2,
+                state: TestDefinitionState.Default,
+                disabled: false,
+                file: testFileName
+              })
+            })
+          ])
+        );
+      });
+
+      it('correctly parses jsx TypeScript `.tsx` test file content having typescript `as` type casts', () => {
+        const fileText = `
+          ${_.describe}('test suite 1', () => {
+            ${_.it}('test 1', () => {
+              const with_angle_bracket_type_cast = 5 as string;
+            });
+          })
+        `;
+        const testFileName = '/fake/test/file/path.tsx';
+        const testSuiteFileInfo = testParser.parseFileText(fileText, testFileName);
+
+        expect(testSuiteFileInfo).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              suite: expect.arrayContaining([
+                expect.objectContaining({
+                  type: TestType.Suite,
+                  description: 'test suite 1',
+                  line: 1,
+                  state: TestDefinitionState.Default,
+                  disabled: false,
+                  file: testFileName
+                })
+              ]),
+              test: expect.objectContaining({
+                type: TestType.Test,
+                description: 'test 1',
+                line: 2,
+                state: TestDefinitionState.Default,
+                disabled: false,
+                file: testFileName
+              })
+            })
+          ])
+        );
+      });
+
       it('correctly parses test content having decorators', () => {
         const fileText = `
           ${_.describe}('test suite 1', () => {
