@@ -1,7 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TestDefinitionProvider } from '../../src/core/base/test-definition-provider';
 import { TestLocator } from '../../src/core/test-locator';
-import { FileHandler } from '../../src/util/file-handler';
+import { FileHandler } from '../../src/util/filesystem/file-handler';
 import { Logger } from '../../src/util/logging/logger';
 import { withUnixStyleSeparator } from '../test-util';
 

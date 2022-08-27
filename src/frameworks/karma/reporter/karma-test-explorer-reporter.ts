@@ -32,7 +32,7 @@ export function KarmaTestExplorerReporter(
   const logger: Logger = LoggerAdapter.fromBasicLog(
     karmaLogger.create(`reporter:${KarmaTestExplorerReporter.name}`),
     logLevel,
-    { bypassUnderlyingTraceMethod: true }
+    { patchTraceLogger: true }
   );
 
   // --- Setup worker to communicate with extension ---

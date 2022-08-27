@@ -4,17 +4,20 @@ import { DebugConfiguration } from 'vscode';
 import { GeneralConfigSetting } from '../../../src/core/config/config-setting';
 import { ConfigStore } from '../../../src/core/config/config-store';
 import { ExtensionConfig } from '../../../src/core/config/extension-config';
+import { FileHandler } from '../../../src/util/filesystem/file-handler';
 import { Logger } from '../../../src/util/logging/logger';
 import { asExtensionConfigWithUnixStylePaths as withUnixPaths } from '../../test-util';
 
 describe('ExtensionConfig', () => {
   let mockLogger: MockProxy<Logger>;
+  let mockFileHandler: MockProxy<FileHandler>;
   let mockConfigValues: Map<string, any>;
   let mockConfigDefaults: Map<string, any>;
   let mockConfigStore: ConfigStore;
 
   beforeEach(() => {
     mockLogger = mock<Logger>();
+    mockFileHandler = mock<FileHandler>();
     mockConfigValues = new Map();
     mockConfigDefaults = new Map();
 
@@ -69,7 +72,7 @@ describe('ExtensionConfig', () => {
             customLauncherConfig.flags = ['--remote-debugging-port=1234'];
 
             const extensionConfig = withUnixPaths(
-              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
             );
             expect(extensionConfig.defaultDebugPort).toEqual(1234);
           });
@@ -78,7 +81,7 @@ describe('ExtensionConfig', () => {
             customLauncherConfig.flags = [];
 
             const extensionConfig = withUnixPaths(
-              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
             );
             expect(extensionConfig.defaultDebugPort).toEqual(9222);
           });
@@ -94,7 +97,7 @@ describe('ExtensionConfig', () => {
             customLauncherConfig.flags = ['--remote-debugging-port=1234'];
 
             const extensionConfig = withUnixPaths(
-              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
             );
             expect(extensionConfig.defaultDebugPort).not.toBeDefined();
           });
@@ -103,7 +106,7 @@ describe('ExtensionConfig', () => {
             customLauncherConfig.flags = [];
 
             const extensionConfig = withUnixPaths(
-              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+              new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
             );
             expect(extensionConfig.defaultDebugPort).not.toBeDefined();
           });
@@ -119,14 +122,18 @@ describe('ExtensionConfig', () => {
 
       it('does not set a default debug port if the `remote-debugging-port` launcher flag is present', () => {
         customLauncherConfig.flags = ['--remote-debugging-port=1234'];
-        const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger));
+        const extensionConfig = withUnixPaths(
+          new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
+        );
 
         expect(extensionConfig.defaultDebugPort).not.toBeDefined();
       });
 
       it('does not default to port 9222 if the `remote-debugging-port` launcher flag is not present', () => {
         customLauncherConfig.flags = [];
-        const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger));
+        const extensionConfig = withUnixPaths(
+          new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
+        );
 
         expect(extensionConfig.defaultDebugPort).not.toBeDefined();
       });
@@ -155,7 +162,7 @@ describe('ExtensionConfig', () => {
           customLauncherConfig.flags = ['some-random-flag'];
 
           const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
           );
           expect(extensionConfig.customLauncher).toEqual(
             expect.objectContaining({ flags: ['some-random-flag', '--no-sandbox'] })
@@ -166,7 +173,7 @@ describe('ExtensionConfig', () => {
           customLauncherConfig.flags = ['--no-sandbox', 'random-other-flag'];
 
           const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
           );
           expect(extensionConfig.customLauncher).toEqual(
             expect.objectContaining({ flags: ['--no-sandbox', 'random-other-flag'] })
@@ -181,7 +188,7 @@ describe('ExtensionConfig', () => {
 
         it('does not add the `--no-sandbox` flag when', () => {
           const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
           );
           expect(extensionConfig.customLauncher).toEqual(
             expect.not.objectContaining({ flags: expect.arrayContaining(['--no-sandbox']) })
@@ -192,7 +199,7 @@ describe('ExtensionConfig', () => {
           customLauncherConfig.flags = ['--random-flag-one', 'randomFlagTwo', '-f3'];
 
           const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger)
+            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
           );
           expect(extensionConfig.customLauncher).toEqual(
             expect.objectContaining({ flags: ['--random-flag-one', 'randomFlagTwo', '-f3'] })
@@ -212,14 +219,18 @@ describe('ExtensionConfig', () => {
 
     it('includes the node_modules folder if it was not included in the configured exclusion list', () => {
       configuredExcludeFiles = ['fake/exclusion/glob'];
-      const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger));
+      const extensionConfig = withUnixPaths(
+        new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
+      );
 
       expect(extensionConfig.excludeFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
     });
 
     it('retains the node_modules folder if it was included in the configured exclusion list', () => {
       configuredExcludeFiles = ['fake/exclusion/glob/1', '**/node_modules/**/*', 'fake/exclusion/glob/2'];
-      const extensionConfig = withUnixPaths(new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockLogger));
+      const extensionConfig = withUnixPaths(
+        new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
+      );
 
       expect(extensionConfig.excludeFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
     });

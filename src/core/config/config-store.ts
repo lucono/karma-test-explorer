@@ -6,4 +6,6 @@ export interface ConfigStore<K extends string = string> {
 
 export interface MutableConfigStore<K extends string = string> extends ConfigStore<K> {
   set(key: K, value: any): void;
+  delete(key: K): void;
+  clear(): void;
 }

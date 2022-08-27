@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.4 - Aug 27, 2022](#074---aug-27-2022)
   - [0.7.3 - Jul 29, 2022](#073---jul-29-2022)
   - [0.7.2 - Jul 27, 2022](#072---jul-27-2022)
   - [0.7.1 - Jul 24, 2022](#071---jul-24-2022)
@@ -23,6 +24,26 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
+## [0.7.4] - Aug 27, 2022
+
+### Added
+
+- Experimental new `karmaTestExplorer.enabledParserPlugins` extension setting for specifying exact set of parser plugins to enable for supporting the specific language syntaxes present in user's test files
+
+### Changed
+
+- Parser plugins enabled by default now include support for decorators syntax in test sources, which addresses [this issue](https://github.com/lucono/karma-test-explorer/issues/46)
+- The `karmaTestExplorer.projects` extension setting has been renamed to `karmaTestExplorer.projectWorkspaces` to avoid confusion with Angular workspace projects
+- The `projectRootPath` property of the object format for specifying projects has been renamed to `rootPath` to better align with the new naming of its parent `karmaTestExplorer.projectWorkspaces` setting
+- Improved error logging for scenarios where Karma fails to start or quits unexpectedly
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/47) where breakpoints are not hit when debugging projects that are not located directly in the VS Code workspace root
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/49) where tests are unmapped when Typescript angle bracket cast syntax is used in non-JSX test files
+- Addressed an [issue](https://github.com/lucono/karma-test-explorer/issues/45) to add support for a Karma configuration scenario that works with Karma but not with the extension
+
+---
 ## [0.7.3] - Jul 29, 2022
 
 ### Fixed
@@ -34,7 +55,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Fixed
 
-- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/37) introduced in `v.0.7.0` that prevented new Angular projects that don't specify a default project in `angular.json` from loading
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/37) introduced in `v0.7.0` that prevented new Angular projects that don't specify a default project in `angular.json` from loading
 
 ---
 ## [0.7.1] - Jul 24, 2022

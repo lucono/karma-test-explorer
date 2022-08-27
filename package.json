@@ -5,7 +5,7 @@
 	"icon": "docs/img/extension-icon-128.png",
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"license": "MIT",
 	"homepage": "https://github.com/lucono/karma-test-explorer",
 	"repository": {
@@ -96,7 +96,7 @@
 		"ts-jest": "^27.1.3",
 		"type-fest": "^2.17.0",
 		"typescript": "^4.6.2",
-		"vsce": "^2.10.0",
+		"vsce": "^2.10.2",
 		"simple-get": "^3.1.1"
 	},
 	"engines": {
@@ -131,8 +131,8 @@
 					"default": null
 				},
 				"karmaTestExplorer.projectRootPath": {
-					"markdownDescription": "The path to the folder containing the project for testing (relative to the workspace root folder). Defaults to the workspace root folder if not specified",
-					"markdownDeprecationMessage": "This is deprecated. Use `karmaTestExplorer.projects` instead",
+					"markdownDescription": "The path to the folder containing the project for testing (relative to the VS Code workspace root folder). Defaults to the workspace root folder if not specified",
+					"markdownDeprecationMessage": "This is deprecated. Use `karmaTestExplorer.projectWorkspaces` instead",
 					"type": "string",
 					"scope": "resource"
 				},
@@ -175,6 +175,58 @@
 						"Parse test files with an AST parser",
 						"Parse test files with regular expression matching"
 					]
+				},
+				"karmaTestExplorer.enabledParserPlugins": {
+					"markdownDescription": "Experimental and subject to change in future releases! Specifies the exact set of Babel parser plugins to enable for parsing test files. Useful for enabling full support for various language syntaxes present in the test files",
+					"type": "array",
+					"scope": "resource",
+					"default": [],
+					"items": {
+						"type": "string",
+						"uniqueItems": true,
+						"enum": [
+							"asyncDoExpressions",
+							"asyncGenerators",
+							"bigInt",
+							"classPrivateMethods",
+							"classPrivateProperties",
+							"classProperties",
+							"classStaticBlock",
+							"decimal",
+							"decorators",
+							"decorators-legacy",
+							"decoratorAutoAccessors",
+							"destructuringPrivate",
+							"doExpressions",
+							"dynamicImport",
+							"estree",
+							"exportDefaultFrom",
+							"flow",
+							"flowComments",
+							"functionBind",
+							"functionSent",
+							"importMeta",
+							"jsx",
+							"logicalAssignment",
+							"importAssertions",
+							"moduleBlocks",
+							"moduleStringNames",
+							"nullishCoalescingOperator",
+							"numericSeparator",
+							"objectRestSpread",
+							"optionalCatchBinding",
+							"optionalChaining",
+							"partialApplication",
+							"pipelineOperator",
+							"placeholders",
+							"privateIn",
+							"regexpUnicodeSets",
+							"throwExpressions",
+							"topLevelAwait",
+							"typescript",
+							"v8intrinsic"
+						]
+					}
 				},
 				"karmaTestExplorer.nonHeadlessModeEnabled": {
 					"markdownDescription": "Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden",
@@ -226,7 +278,7 @@
 					"default": 9976
 				},
 				"karmaTestExplorer.karmaConfFilePath": {
-					"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project root path)",
+					"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project workspace root path)",
 					"type": "string",
 					"scope": "resource",
 					"default": "karma.conf.js"
@@ -246,16 +298,17 @@
 					]
 				},
 				"karmaTestExplorer.testsBasePath": {
-					"markdownDescription": "The base folder containing the test files (relative to the project root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project",
+					"markdownDescription": "The base folder containing the test files (relative to the project workspace root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project",
 					"type": "string",
 					"scope": "resource",
 					"default": null
 				},
 				"karmaTestExplorer.testFiles": {
-					"markdownDescription": "The path glob patterns identifying the test files (relative to the project root path)",
+					"markdownDescription": "The path glob patterns identifying the test files (relative to the project workspace root path)",
 					"type": "array",
 					"items": {
-						"type": "string"
+						"type": "string",
+						"uniqueItems": true
 					},
 					"scope": "resource",
 					"minItems": 1,
@@ -265,10 +318,11 @@
 					]
 				},
 				"karmaTestExplorer.excludeFiles": {
-					"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project root path). The `node_modules` folder is always excluded",
+					"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project workspace root path). The `node_modules` folder is always excluded",
 					"type": "array",
 					"items": {
-						"type": "string"
+						"type": "string",
+						"uniqueItems": true
 					},
 					"scope": "resource",
 					"default": []
@@ -277,7 +331,8 @@
 					"markdownDescription": "A list of files which when modified will trigger a Karma reload",
 					"type": "array",
 					"items": {
-						"type": "string"
+						"type": "string",
+						"uniqueItems": true
 					},
 					"scope": "resource",
 					"default": []
@@ -508,11 +563,20 @@
 					"default": ""
 				},
 				"karmaTestExplorer.projects": {
-					"markdownDescription": "This is a list, each entry of which is either a string of the relative path (relative to the workspace root folder) to a project for testing, or an object having a `projectRootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project - `projectType`, `karmaConfFilePath`, `testFramework`, `testFiles`, `excludeFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project",
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.projectWorkspaces` to avoid confusion with Angular workspace projects. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.projectWorkspaces`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.projectWorkspaces`",
+					"type": "array",
+					"scope": "resource",
+					"default": null
+				},
+				"karmaTestExplorer.projectWorkspaces": {
+					"markdownDescription": "Experimental and subject to change in future releases! This is a list, each entry of which is either a string of the relative path (relative to the VS Code workspace root folder) to a project workspace for testing, or an object having a `rootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project workspace - `projectType`, `karmaConfFilePath`, `testFramework`, `testFiles`, `excludeFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project workspace",
 					"type": "array",
 					"scope": "resource",
 					"default": [],
 					"items": {
+						"uniqueItems": true,
 						"oneOf": [
 							{
 								"type": "string"
@@ -520,11 +584,18 @@
 							{
 								"type": "object",
 								"required": [
-									"projectRootPath"
+									"rootPath"
 								],
 								"properties": {
 									"projectRootPath": {
-										"markdownDescription": "The path to the folder containing the project for testing (relative to the workspace root folder)",
+										"markdownDescription": "This setting has been renamed to `rootPath`. Please update your setting to use the new name.",
+										"deprecationMessage": "Rename this setting to `rootPath`",
+										"markdownDeprecationMessage": "Rename this setting to `rootPath`",
+										"type": "string",
+										"scope": "resource"
+									},
+									"rootPath": {
+										"markdownDescription": "The path to the folder containing the project worspace for testing (relative to the VS Code workspace root folder)",
 										"type": "string",
 										"scope": "resource"
 									},
@@ -542,7 +613,7 @@
 										]
 									},
 									"karmaConfFilePath": {
-										"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project root path)",
+										"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project workspace root path)",
 										"type": "string",
 										"scope": "resource"
 									},
@@ -562,24 +633,26 @@
 										]
 									},
 									"testFiles": {
-										"markdownDescription": "The path glob patterns identifying the test files (relative to the project root path)",
+										"markdownDescription": "The path glob patterns identifying the test files (relative to the project workspace root path)",
 										"type": "array",
 										"items": {
-											"type": "string"
+											"type": "string",
+											"uniqueItems": true
 										},
 										"scope": "resource",
 										"minItems": 1
 									},
 									"excludeFiles": {
-										"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project root path). The `node_modules` folder is always excluded",
+										"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project workspace root path). The `node_modules` folder is always excluded",
 										"type": "array",
 										"items": {
-											"type": "string"
+											"type": "string",
+											"uniqueItems": true
 										},
 										"scope": "resource"
 									},
 									"testsBasePath": {
-										"markdownDescription": "The base folder containing the test files (relative to the project root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project",
+										"markdownDescription": "The base folder containing the test files (relative to the project workspace root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project",
 										"type": "string",
 										"scope": "resource"
 									}

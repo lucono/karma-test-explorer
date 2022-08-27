@@ -229,7 +229,7 @@ export class DefaultTestManager implements TestManager {
       return this.currentServerStartInfo;
     } catch (error: any) {
       this.logger.error(() => `${error}`);
-      await this.stop();
+      this.stop();
       throw error;
     } finally {
       this.actionIsRunning = testActionWasRunning;

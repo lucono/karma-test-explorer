@@ -1,12 +1,12 @@
-import { readFile, readFileSync } from 'fs';
+import { existsSync, readFile, readFileSync } from 'fs';
 import globby from 'globby';
-import { relative } from 'path';
-import { DEFAULT_FILE_ENCODING } from '../constants';
-import { Disposable } from './disposable/disposable';
-import { Disposer } from './disposable/disposer';
-import { DeferredPromise } from './future/deferred-promise';
-import { Logger } from './logging/logger';
-import { normalizePath } from './utils';
+import { DEFAULT_FILE_ENCODING } from '../../constants';
+import { Disposable } from '../disposable/disposable';
+import { Disposer } from '../disposable/disposer';
+import { DeferredPromise } from '../future/deferred-promise';
+import { Logger } from '../logging/logger';
+import { normalizePath } from '../utils';
+import { FileHandler } from './file-handler';
 
 const DEFAULT_GLOB_OPTIONS: globby.GlobbyOptions = {
   unique: true,
@@ -16,27 +16,29 @@ const DEFAULT_GLOB_OPTIONS: globby.GlobbyOptions = {
   gitignore: true
 };
 
-export interface FileHandlerOptions extends globby.GlobbyOptions {
+export interface SimpleFileHandlerOptions extends globby.GlobbyOptions {
   cwd?: string;
   fileEncoding?: BufferEncoding;
 }
 
-export class FileHandler implements Disposable {
-  private readonly fileHandlerOptions: FileHandlerOptions;
+export class SimpleFileHandler implements FileHandler {
+  private readonly fileHandlerOptions: SimpleFileHandlerOptions;
   private readonly fileEncoding: BufferEncoding;
-  private readonly cwd: string;
   private readonly disposables: Disposable[] = [];
 
-  public constructor(private readonly logger: Logger, fileHandlerOptions: FileHandlerOptions = {}) {
+  public constructor(private readonly logger: Logger, fileHandlerOptions: SimpleFileHandlerOptions = {}) {
     this.disposables.push(logger);
     this.fileEncoding = fileHandlerOptions.fileEncoding ?? DEFAULT_FILE_ENCODING;
-    this.cwd = fileHandlerOptions.cwd ?? process.cwd();
 
     this.fileHandlerOptions = {
       ...fileHandlerOptions,
       fileEncoding: this.fileEncoding,
-      cwd: this.cwd
+      cwd: fileHandlerOptions.cwd ?? process.cwd()
     };
+  }
+
+  public existsSync(filePath: string): boolean {
+    return existsSync(filePath);
   }
 
   public readFileSync(filePath: string, encoding?: BufferEncoding): string | undefined {
@@ -86,10 +88,6 @@ export class FileHandler implements Disposable {
       this.logger.error(() => errorMsg);
       throw new Error(errorMsg);
     }
-  }
-
-  public getFileRelativePath(fileAbsolutePath: string) {
-    return normalizePath(relative(this.cwd, fileAbsolutePath));
   }
 
   public async dispose() {

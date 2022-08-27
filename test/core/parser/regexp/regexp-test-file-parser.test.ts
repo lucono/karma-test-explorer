@@ -39,20 +39,20 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses single-line comments', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        // single-line comment
-        ${_.describe}('test suite 1', () => {
           // single-line comment
-          ${_.it}('test 1', () => {
-            const msg = 'hello';
+          ${_.describe}('test suite 1', () => {
             // single-line comment
-          });
+            ${_.it}('test 1', () => {
+              const msg = 'hello';
+              // single-line comment
+            });
+            // single-line comment
+            ${_.it}('test 2', () => {
+              const msg = 'world!';
+            });
+          })
           // single-line comment
-          ${_.it}('test 2', () => {
-            const msg = 'world!';
-          });
-        })
-        // single-line comment
-      `;
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -72,22 +72,22 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses multi-line comments', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        /* multi-line comment with comment opening
-        and closing on same lines as text */
-        ${_.describe}('test suite 1', () => {
-          /*
-          multi-line comment
-          multi-line comment
-          */
-          ${_.it}('test 1', () => {
-            const msg = 'hello';
-          });
-          /* multi-line comment on single line */
-          ${_.it}('test 2', () => {
-            const msg = 'world!';
-          });
-        })
-      `;
+          /* multi-line comment with comment opening
+          and closing on same lines as text */
+          ${_.describe}('test suite 1', () => {
+            /*
+            multi-line comment
+            multi-line comment
+            */
+            ${_.it}('test 1', () => {
+              const msg = 'hello';
+            });
+            /* multi-line comment on single line */
+            ${_.it}('test 2', () => {
+              const msg = 'world!';
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -107,19 +107,19 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses commented out tests', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          /*
-          ${_.it}('commented out test 1') {
-            test contents
-          }
-          */
-          ${_.it}('test 1', () => {
-            // ${_.it}('commented out test 2') {
-            //   test contents
-            // }
-          });
-        })
-      `;
+          ${_.describe}('test suite 1', () => {
+            /*
+            ${_.it}('commented out test 1') {
+              test contents
+            }
+            */
+            ${_.it}('test 1', () => {
+              // ${_.it}('commented out test 2') {
+              //   test contents
+              // }
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -138,21 +138,21 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses a combination of various kinds of comments in the same file', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          ${_.it}('test 1', () => {
-            // single-line comments
+          ${_.describe}('test suite 1', () => {
+            ${_.it}('test 1', () => {
+              // single-line comments
+              /*
+              multi-line comment
+              multi-line comment
+              */
+            });
             /*
-            multi-line comment
-            multi-line comment
+            ${_.it}('commented out test 1') {
+              // test contents
+            });
             */
-          });
-          /*
-          ${_.it}('commented out test 1') {
-            // test contents
-          });
-          */
-        })
-      `;
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -171,12 +171,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses non-arrow function tests', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', function() {
-          ${_.it}('test 1', function() {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}('test suite 1', function() {
+            ${_.it}('test 1', function() {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -195,14 +195,14 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses tests with description on following line', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}(
-          'test suite 1', function() {
-          ${_.it}(
-            'test 1', function() {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}(
+            'test suite 1', function() {
+            ${_.it}(
+              'test 1', function() {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -226,12 +226,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses test description containing curly brace', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test { suite 1', function() {
-          ${_.it}('test } 1', function() {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}('test { suite 1', function() {
+            ${_.it}('test } 1', function() {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -250,12 +250,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses test description containing parentheses', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test ( suite 1', function() {
-          ${_.it}('test ) 1', function() {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}('test ( suite 1', function() {
+            ${_.it}('test ) 1', function() {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -274,10 +274,10 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses single-line test format', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          ${_.it}('test 1', () => { /* test contents */ });
-        })
-      `;
+          ${_.describe}('test suite 1', () => {
+            ${_.it}('test 1', () => { /* test contents */ });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -298,9 +298,9 @@ describe('RegexpTestFileParser', () => {
         const fileText =
           // First line begins below
           `${_.describe}('test suite 1', () => {
-          ${_.it}('test 1', () => { /* test contents */ });
-        })
-      `;
+            ${_.it}('test 1', () => { /* test contents */ });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -319,16 +319,16 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses nested test suites with no identical test descriptions', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          ${_.describe}('test suite 2', () => {
-            ${_.describe}('test suite 3', () => {
-              ${_.it}('test 1', () => {
-                  // test contents
+          ${_.describe}('test suite 1', () => {
+            ${_.describe}('test suite 2', () => {
+              ${_.describe}('test suite 3', () => {
+                ${_.it}('test 1', () => {
+                    // test contents
+                });
               });
             });
           });
-        });
-      `;
+        `;
 
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
@@ -360,23 +360,23 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses nested test suites with one or more identical test descriptions', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', function () {
-          ${_.describe}('test suite 1-1', function () {
-            ${_.describe}('identical inner suite', function () {
-              ${_.it}('identical inner test', function () {
-                // test contents
+          ${_.describe}('test suite 1', function () {
+            ${_.describe}('test suite 1-1', function () {
+              ${_.describe}('identical inner suite', function () {
+                ${_.it}('identical inner test', function () {
+                  // test contents
+                })
+              })
+            })
+            ${_.describe}('test suite 1-2', function () {
+              ${_.describe}('identical inner suite', function () {
+                ${_.it}('identical inner test', function () {
+                  // test contents
+                })
               })
             })
           })
-          ${_.describe}('test suite 1-2', function () {
-            ${_.describe}('identical inner suite', function () {
-              ${_.it}('identical inner test', function () {
-                // test contents
-              })
-            })
-          })
-        })
-      `;
+        `;
 
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
@@ -431,17 +431,17 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses file with multiple top level suites', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', {
-          ${_.it}('test 1', () => {
-            // test contents
-          })
-        });
-        ${_.describe}('test suite 2', {
-          ${_.it}('test 2', () => {
-            // test contents
-          })
-        });
-      `;
+          ${_.describe}('test suite 1', {
+            ${_.it}('test 1', () => {
+              // test contents
+            })
+          });
+          ${_.describe}('test suite 2', {
+            ${_.it}('test 2', () => {
+              // test contents
+            })
+          });
+        `;
 
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
@@ -468,12 +468,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses focused suites', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.fdescribe}('test suite 1', () => {
-          ${_.it}('test 1', () => {
-            // test contents
-          });
-        })
-      `;
+          ${_.fdescribe}('test suite 1', () => {
+            ${_.it}('test 1', () => {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -492,12 +492,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses focused tests', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          ${_.fit}('test 1', () => {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}('test suite 1', () => {
+            ${_.fit}('test 1', () => {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -516,12 +516,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses disabled suites', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.xdescribe}('test suite 1', () => {
-          ${_.it}('test 1', () => {
-            // test contents
-          });
-        })
-      `;
+          ${_.xdescribe}('test suite 1', () => {
+            ${_.it}('test 1', () => {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([
@@ -540,12 +540,12 @@ describe('RegexpTestFileParser', () => {
       it('correctly parses disabled tests', () => {
         const testParser = new RegexpTestFileParser(testInterface, mockLogger);
         const fileText = `
-        ${_.describe}('test suite 1', () => {
-          ${_.xit}('test 1', () => {
-            // test contents
-          });
-        })
-      `;
+          ${_.describe}('test suite 1', () => {
+            ${_.xit}('test 1', () => {
+              // test contents
+            });
+          })
+        `;
         const testSuiteFileInfo = testParser.parseFileText(fileText, fakeTestFilePath);
 
         expect(testSuiteFileInfo[TestNodeType.Suite]).toEqual([

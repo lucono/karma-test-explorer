@@ -4,6 +4,7 @@ import treeKill from 'tree-kill';
 import { Disposable } from '../disposable/disposable';
 import { Disposer } from '../disposable/disposer';
 import { DeferredExecution } from '../future/deferred-execution';
+import { DeferredPromise } from '../future/deferred-promise';
 import { Execution } from '../future/execution';
 import { Logger } from '../logging/logger';
 import { generateRandomId } from '../utils';
@@ -92,7 +93,15 @@ export class SimpleProcess implements Process {
 
     if (childProcessLog) {
       childProcess.stdout?.on('data', (data: unknown) => childProcessLog.output(() => `${data}`));
-      childProcess.stderr?.on('data', (data: unknown) => childProcessLog.error(() => `${data}`));
+
+      childProcess.stderr?.on('data', (data: unknown) => {
+        childProcessLog.error(() => `${data}`);
+        const trimmedError = `${data}`.trim();
+
+        if (trimmedError) {
+          this.logger.error(() => `Error log from process: ${trimmedError}`);
+        }
+      });
     }
 
     if (runOptions.failOnStandardError) {
@@ -106,7 +115,6 @@ export class SimpleProcess implements Process {
       this.logger.error(
         () => `Process ${this.uid} - Error from child process: '${error}' - for command: ${commandWithArgs}`
       );
-      this.updateProcessRunning(false);
 
       if (this.processCurrentlyStopping) {
         this.logger.debug(() => 'Process is currently stopping - ending process execution');
@@ -115,6 +123,7 @@ export class SimpleProcess implements Process {
         this.logger.debug(() => 'Process is not currently stopping - Failing process execution');
         deferredProcessExecution.fail(error);
       }
+      this.updateProcessRunning(false);
     });
 
     childProcess.on('exit', (exitCode, signal) => {
@@ -123,11 +132,17 @@ export class SimpleProcess implements Process {
           `Process ${this.uid} - PID ${processPid} exited with code '${exitCode}' ` +
           `and signal '${signal}' for command: ${commandWithArgs}`
       );
+      const effectiveExitCode = exitCode ?? 0;
+
+      if (effectiveExitCode === 0 || this.processCurrentlyStopping) {
+        deferredProcessExecution.end();
+      } else {
+        deferredProcessExecution.fail(`Process exited with non-zero status code ${effectiveExitCode}`);
+      }
       this.updateProcessRunning(false);
-      deferredProcessExecution.end();
     });
 
-    process.stdin.on('close', async (exitCode: number, signal: string) => {
+    process.stdin.on('close', async (exitCode: number | null, signal: string) => {
       // Stop child process tree when main parent process stdio streams are closed
       this.logger.debug(
         () =>
@@ -166,28 +181,28 @@ export class SimpleProcess implements Process {
     const runningProcess = this.childProcess;
     this.logger.debug(() => `Process ${this.uid} - Killing process tree of PID: ${runningProcess.pid}`);
 
-    const futureProcessTermination = new RichPromise<void>((resolve, reject) => {
-      const processPid = runningProcess.pid;
+    const deferredProcessTermination = new DeferredPromise();
+    const futureProcessTermination = deferredProcessTermination.promise();
+    this.processCurrentlyStopping = futureProcessTermination;
 
-      if (!processPid) {
-        resolve();
-        return;
-      }
+    const processPid = runningProcess.pid;
 
+    if (!processPid) {
+      deferredProcessTermination.fulfill();
+    } else {
       treeKill(processPid, signal, error => {
         if (error) {
           this.logger.error(
             () => `Process ${this.uid} - Failed to terminate process tree for PID '${processPid}': ${error}`
           );
-          reject(error);
+          deferredProcessTermination.reject(error);
         } else {
           this.logger.debug(() => `Process ${this.uid} - Successfully killed process tree for PID: ${processPid}`);
-          resolve();
+          deferredProcessTermination.fulfill();
         }
       });
-    });
+    }
 
-    this.processCurrentlyStopping = futureProcessTermination;
     return futureProcessTermination;
   }
 

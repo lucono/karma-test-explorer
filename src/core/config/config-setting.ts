@@ -12,7 +12,9 @@ export enum InternalConfigSetting {
 export enum ExternalConfigSetting {
   EnableExtension = 'enableExtension',
   ProjectType = 'projectType',
-  Projects = 'projects',
+  ProjectWorkspaces = 'projectWorkspaces',
+  Projects = 'projects', // FIXME: Deprecated - remove
+  RootPath = 'rootPath',
   ProjectRootPath = 'projectRootPath', // FIXME: Deprecated - remove
   KarmaConfFilePath = 'karmaConfFilePath'
 }
@@ -23,6 +25,7 @@ export enum GeneralConfigSetting {
   AngularProcessCommand = 'angularProcessCommand',
   TestTriggerMethod = 'testTriggerMethod',
   TestParsingMethod = 'testParsingMethod',
+  EnabledParserPlugins = 'enabledParserPlugins',
   Browser = 'browser',
   CustomLauncher = 'customLauncher',
   NonHeadlessModeEnabled = 'nonHeadlessModeEnabled',

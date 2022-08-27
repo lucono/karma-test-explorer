@@ -3,7 +3,7 @@ import { LogLevel, LogLevels } from './log-level';
 import { Logger } from './logger';
 
 export interface LoggerAdapterOptions {
-  bypassUnderlyingTraceMethod?: boolean;
+  patchTraceLogger?: boolean;
 }
 
 export class LoggerAdapter implements Logger {
@@ -14,7 +14,7 @@ export class LoggerAdapter implements Logger {
     private readonly logLevel: LogLevel,
     options?: LoggerAdapterOptions
   ) {
-    this.options = { bypassUnderlyingTraceMethod: false, ...options };
+    this.options = { patchTraceLogger: false, ...options };
   }
 
   public static fromBasicLog(log: BasicLog, logLevel: LogLevel, options?: LoggerAdapterOptions): LoggerAdapter {
@@ -49,7 +49,7 @@ export class LoggerAdapter implements Logger {
     if (!this.isLevelEnabled(LogLevel.TRACE)) {
       return;
     }
-    if (!this.options.bypassUnderlyingTraceMethod && typeof this.logger.trace === 'function') {
+    if (!this.options.patchTraceLogger && typeof this.logger.trace === 'function') {
       this.logger.trace(msgSource());
     } else {
       this.logger.debug(`[TRACE]: ${msgSource()}`);

@@ -77,7 +77,7 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
           `Karma does not seem to be installed. You may ` +
             `need to install your project dependencies or ` +
             `specify the right path to your project using the ` +
-            `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.Projects} ` +
+            `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ProjectWorkspaces} ` +
             `setting.`
         );
       }

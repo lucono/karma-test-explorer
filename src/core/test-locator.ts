@@ -3,7 +3,7 @@ import { isMatch } from 'micromatch';
 import { join, resolve } from 'path';
 import { Disposable } from '../util/disposable/disposable';
 import { Disposer } from '../util/disposable/disposer';
-import { FileHandler } from '../util/file-handler';
+import { FileHandler } from '../util/filesystem/file-handler';
 import { DeferredPromise } from '../util/future/deferred-promise';
 import { Logger } from '../util/logging/logger';
 import { isChildPath, normalizePath } from '../util/utils';

@@ -1,5 +1,5 @@
 import { Node } from '@babel/core';
-import { parse, ParserOptions } from '@babel/parser';
+import { parse, ParserOptions, ParserPlugin, ParserPluginWithOptions } from '@babel/parser';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
@@ -10,7 +10,7 @@ import { TestFileParser } from '../test-file-parser';
 import { DescribedTestDefinition, DescribedTestDefinitionInfo } from './described-test-definition';
 import { ProcessedSourceNode, SourceNodeProcessor } from './source-node-processor';
 
-const PARSER_OPTIONS: ParserOptions = {
+const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   errorRecovery: true,
   allowAwaitOutsideFunction: true,
   allowImportExportEverywhere: true,
@@ -23,15 +23,27 @@ const PARSER_OPTIONS: ParserOptions = {
   sourceType: 'unambiguous',
   strictMode: false,
   tokens: false,
-  startLine: 0,
-  plugins: ['typescript', 'jsx']
+  startLine: 0
 };
+
+const PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
+  ['typescript', ['typescript', { disallowAmbiguousJSXLike: false }]],
+  ['decorators', ['decorators', { decoratorsBeforeExport: false }]]
+]);
+
+export interface AstTestFileParserOptions {
+  readonly enabledParserPlugins?: readonly ParserPlugin[];
+}
 
 export class AstTestFileParser implements TestFileParser<DescribedTestDefinitionInfo[]> {
   private readonly disposables: Disposable[] = [];
   private readonly nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[];
 
-  public constructor(nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[], private readonly logger: Logger) {
+  public constructor(
+    nodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[],
+    private readonly logger: Logger,
+    private readonly options: AstTestFileParserOptions = {}
+  ) {
     this.disposables.push(logger);
     this.nodeProcessors = [...nodeProcessors];
   }
@@ -40,8 +52,11 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
     const parseId = generateRandomId();
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
+    const enabledParserPlugins = this.getParserPluginsForFile(filePath);
+    const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: [...enabledParserPlugins] };
+
     const startTime = new Date();
-    const parsedFile = parse(fileText, PARSER_OPTIONS);
+    const parsedFile = parse(fileText, parserOptions);
 
     if (parsedFile.errors.length > 0) {
       const errorMessages = parsedFile.errors.map(error => `--> ${error.code} - ${error.reasonCode}`);
@@ -141,6 +156,18 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
       }
     }
     return processedNodeResult;
+  }
+
+  private getParserPluginsForFile(filePath: string): ParserPlugin[] {
+    const isJsxFile = /.+\.(jsx|tsx)$/.test(filePath);
+    const isTypeScriptFile = /.+\.(ts|tsx)$/.test(filePath);
+    const parserPlugins = this.options.enabledParserPlugins ?? ['typescript', 'jsx', 'decorators'];
+
+    const pluginsWithOptions = parserPlugins
+      .filter(pluginName => (pluginName === 'jsx' ? isJsxFile : pluginName === 'typescript' ? isTypeScriptFile : true))
+      .map(pluginName => PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
+
+    return pluginsWithOptions;
   }
 
   public async dispose() {

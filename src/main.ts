@@ -16,6 +16,7 @@ import { Adapter } from './adapter';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
 import { ConfigChangeManager } from './core/config/config-change-manager';
 import { ExternalConfigSetting, GeneralConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
+import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver';
 import { ExtensionCommands } from './core/vscode/commands/extension-commands';
 import { MultiStatusDisplay } from './core/vscode/notifications/multi-status-display';
 import { OutputChannelLog } from './core/vscode/output-channel-log';
@@ -23,6 +24,8 @@ import { Preferences } from './core/vscode/preferences/preferences';
 import { ProjectFactory } from './project-factory';
 import { Disposable } from './util/disposable/disposable';
 import { Disposer } from './util/disposable/disposer';
+import { FileHandler } from './util/filesystem/file-handler';
+import { SimpleFileHandler } from './util/filesystem/simple-file-handler';
 import { LogLevel } from './util/logging/log-level';
 import { Logger } from './util/logging/logger';
 import { SimpleLogger } from './util/logging/simple-logger';
@@ -37,6 +40,8 @@ interface SharedAdapterComponents {
 }
 
 const MAIN_LOG_LEVEL = LogLevel.TRACE;
+const ALLOW_PROJECT_SELECTION_CONTEXT_KEY = `${EXTENSION_CONFIG_PREFIX}.allowProjectSelection`;
+
 const disposables: Disposable[] = [];
 const allWorkspaceProjects: Set<WorkspaceProject> = new Set();
 
@@ -65,8 +70,22 @@ export const activate = async (extensionContext: ExtensionContext) => {
 
   // --- Create Global Components ---
 
+  logger.info(() => `Creating file handler`);
+  const fileHandler: FileHandler = new SimpleFileHandler(new SimpleLogger(logger, SimpleFileHandler.name));
+
+  logger.info(() => `Creating workspace configuration resolver`);
+  const workspaceConfigResolver: WorkspaceFolderConfigResolver = {
+    resolveConfig(workspaceFolder) {
+      return workspace.getConfiguration(EXTENSION_CONFIG_PREFIX, workspaceFolder);
+    }
+  };
+
   logger.info(() => `Creating project factory`);
-  const projectFactory = new ProjectFactory(new SimpleLogger(logger, ProjectFactory.name));
+  const projectFactory = new ProjectFactory(
+    fileHandler,
+    workspaceConfigResolver,
+    new SimpleLogger(logger, ProjectFactory.name)
+  );
   disposables.push(projectFactory);
 
   logger.info(() => `Creating config change manager`);
@@ -359,7 +378,7 @@ const updateMultiProjectContext = (logger: Logger) => {
   const multiProjectEnabled = allWorkspaceProjects.size > 1;
 
   logger.info(() => `Setting multi-project context to: ${multiProjectEnabled}`);
-  commands.executeCommand('setContext', `${EXTENSION_CONFIG_PREFIX}.allowProjectSelection`, multiProjectEnabled);
+  commands.executeCommand('setContext', ALLOW_PROJECT_SELECTION_CONTEXT_KEY, multiProjectEnabled);
 };
 
 export const deactivate = async () => {
