@@ -28,10 +28,11 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Added
 
-- Experimental new `karmaTestExplorer.enabledParserPlugins` extension setting for specifying enabled parser plugins for adding support for various specific language syntaxes when parsing test files. (Addresses [this issue](https://github.com/lucono/karma-test-explorer/issues/46))
+- Experimental new `karmaTestExplorer.enabledParserPlugins` extension setting for specifying exact set of parser plugins to enable for supporting the specific language syntaxes present in user's test files
 
 ### Changed
 
+- Parser plugins enabled by default now include support for decorators syntax in test sources, which addresses [this issue](https://github.com/lucono/karma-test-explorer/issues/46)
 - The `karmaTestExplorer.projects` extension setting has been renamed to `karmaTestExplorer.projectWorkspaces` to avoid confusion with Angular workspace projects
 - The `projectRootPath` property of the object format for specifying projects has been renamed to `rootPath` to better align with the new naming of its parent `karmaTestExplorer.projectWorkspaces` setting
 - Improved error logging for scenarios where Karma fails to start or quits unexpectedly
@@ -39,6 +40,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 ### Fixed
 
 - Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/47) where breakpoints are not hit when debugging projects that are not located directly in the VS Code workspace root
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/49) where tests are unmapped when Typescript angle bracket cast syntax is used in non-JSX test files
 - Addressed an [issue](https://github.com/lucono/karma-test-explorer/issues/45) to add support for a Karma configuration scenario that works with Karma but not with the extension
 
 ---

@@ -177,7 +177,7 @@
 					]
 				},
 				"karmaTestExplorer.enabledParserPlugins": {
-					"markdownDescription": "Experimental and subject to change in future releases! Specifies the parser plugins to enable for parsing test files",
+					"markdownDescription": "Experimental and subject to change in future releases! Specifies the exact set of Babel parser plugins to enable for parsing test files. Useful for enabling full support for various language syntaxes present in the test files",
 					"type": "array",
 					"scope": "resource",
 					"default": [],

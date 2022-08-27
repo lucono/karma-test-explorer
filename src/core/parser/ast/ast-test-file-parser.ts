@@ -1,5 +1,5 @@
 import { Node } from '@babel/core';
-import { parse, ParserOptions, ParserPlugin } from '@babel/parser';
+import { parse, ParserOptions, ParserPlugin, ParserPluginWithOptions } from '@babel/parser';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
@@ -26,6 +26,11 @@ const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   startLine: 0
 };
 
+const PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
+  ['typescript', ['typescript', { disallowAmbiguousJSXLike: false }]],
+  ['decorators', ['decorators', { decoratorsBeforeExport: false }]]
+]);
+
 export interface AstTestFileParserOptions {
   readonly enabledParserPlugins?: readonly ParserPlugin[];
 }
@@ -47,10 +52,7 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
     const parseId = generateRandomId();
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
-    const enabledParserPlugins = this.options.enabledParserPlugins?.length
-      ? this.options.enabledParserPlugins
-      : this.getParserPluginsForFile(filePath);
-
+    const enabledParserPlugins = this.getParserPluginsForFile(filePath);
     const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: [...enabledParserPlugins] };
 
     const startTime = new Date();
@@ -158,17 +160,14 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
 
   private getParserPluginsForFile(filePath: string): ParserPlugin[] {
     const isJsxFile = /.+\.(jsx|tsx)$/.test(filePath);
-    const jsxPlugins: ParserPlugin[] = isJsxFile ? ['jsx'] : [];
-
     const isTypeScriptFile = /.+\.(ts|tsx)$/.test(filePath);
-    const tsPlugins: ParserPlugin[] = isTypeScriptFile ? [['typescript', { disallowAmbiguousJSXLike: false }]] : [];
+    const parserPlugins = this.options.enabledParserPlugins ?? ['typescript', 'jsx', 'decorators'];
 
-    const parserPlugins: ParserPlugin[] = [
-      ...tsPlugins,
-      ...jsxPlugins,
-      ['decorators', { decoratorsBeforeExport: false }]
-    ];
-    return parserPlugins;
+    const pluginsWithOptions = parserPlugins
+      .filter(pluginName => (pluginName === 'jsx' ? isJsxFile : pluginName === 'typescript' ? isTypeScriptFile : true))
+      .map(pluginName => PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
+
+    return pluginsWithOptions;
   }
 
   public async dispose() {
