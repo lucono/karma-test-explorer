@@ -84,9 +84,14 @@ export class KarmaConfigLoader {
     config.browserSocketTimeout = 30_000;
     config.processKillTimeout = 2000;
     config.retryLimit = Math.max(config.retryLimit || 0, 3);
-    config.basePath ??= originalConfigPath ? resolve(dirname(originalConfigPath)) : process.cwd();
     (config.exclude ??= []).push(originalConfigPath);
     (config.client ??= {}).clearContext = false;
+
+    config.basePath = config.basePath
+      ? config.basePath
+      : originalConfigPath
+      ? resolve(dirname(originalConfigPath))
+      : process.cwd();
 
     // -- Permanently disable Single Run --
     const configSetter = typeof config.set === 'function' ? config.set : undefined;
