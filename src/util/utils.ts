@@ -54,6 +54,10 @@ export const asNonBlankStringOrUndefined = (value?: string): string | undefined 
   return (value ?? '').trim().length > 0 ? value : undefined;
 };
 
+export const asNonEmptyArrayOrUndefined = <T>(value?: T[]): T[] | undefined => {
+  return (value ?? []).length > 0 ? value : undefined;
+};
+
 export const toSingleUniqueArray = <T>(...arrays: (T[] | undefined)[]): T[] => {
   const combinedArray = arrays.reduce(
     (arr1: T[] | undefined = [], arr2: T[] | undefined = []) => [...arr1, ...arr2],

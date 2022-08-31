@@ -1,6 +1,47 @@
-import { isChildPath } from '../../src/util/utils';
+import { asNonBlankStringOrUndefined, asNonEmptyArrayOrUndefined, isChildPath } from '../../src/util/utils';
 
 describe('Utils', () => {
+  describe(`${asNonBlankStringOrUndefined.name} function`, () => {
+    it('returns undefined when called with an undefined value', () => {
+      const returnString = asNonBlankStringOrUndefined(undefined);
+      expect(returnString).toBeUndefined();
+    });
+
+    it('returns undefined when called with an empty string', () => {
+      const returnString = asNonBlankStringOrUndefined('');
+      expect(returnString).toBeUndefined();
+    });
+
+    it('returns undefined when called with a blank string', () => {
+      const returnString = asNonBlankStringOrUndefined('   ');
+      expect(returnString).toBeUndefined();
+    });
+
+    it('returns the input string when called with a non-empty string', () => {
+      const inputString = '  x  ';
+      const returnString = asNonBlankStringOrUndefined(inputString);
+      expect(returnString).toEqual(inputString);
+    });
+  });
+
+  describe(`${asNonEmptyArrayOrUndefined.name} function`, () => {
+    it('returns undefined when called with an undefined value', () => {
+      const returnString = asNonEmptyArrayOrUndefined(undefined);
+      expect(returnString).toBeUndefined();
+    });
+
+    it('returns undefined when called with an empty array', () => {
+      const returnString = asNonEmptyArrayOrUndefined([]);
+      expect(returnString).toBeUndefined();
+    });
+
+    it('returns the input array when called with a non-empty array', () => {
+      const inputArray = ['item'];
+      const returnString = asNonEmptyArrayOrUndefined(inputArray);
+      expect(returnString).toEqual(inputArray);
+    });
+  });
+
   describe('isChildPath function', () => {
     let parentPath: string;
     let childPath: string;

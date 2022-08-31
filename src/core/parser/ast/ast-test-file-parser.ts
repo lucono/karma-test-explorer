@@ -27,17 +27,20 @@ const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   startLine: 0
 };
 
-const PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
+const DEFAULT_PARSER_PLUGINS: ParserPlugin[] = ['typescript', 'jsx', 'decorators'];
+
+const PARSER_PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
   ['typescript', ['typescript', { disallowAmbiguousJSXLike: false }]],
   ['decorators', ['decorators', { decoratorsBeforeExport: false }]]
 ]);
 
-interface ParseFailureError extends ParseError {
+interface ParseFailure extends ParseError {
   loc?: { line: number; column: number };
 }
 
 export interface AstTestFileParserOptions {
   readonly enabledParserPlugins?: readonly ParserPlugin[];
+  readonly useLenientMode?: boolean;
 }
 
 export class AstTestFileParser implements TestFileParser<DescribedTestDefinitionInfo[]> {
@@ -55,16 +58,15 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
 
   public parseFileText(fileText: string, filePath: string): DescribedTestDefinitionInfo[] {
     const parseId = generateRandomId();
+    const parseFailureErrors: Set<string> = new Set();
     const startTime = new Date();
+
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
-    const parseAttemptsParamsList: [string?][] = [[filePath], []];
-    const parseFailureErrors: Set<string> = new Set();
-    let parsedFile: ParseResult<File> | undefined;
-
-    for (const parseAttemptParams of parseAttemptsParamsList) {
-      const enabledParserPlugins = this.getParserPlugins(...parseAttemptParams);
+    const executeParse = (enforceFileType: boolean): ParseResult<File> | undefined => {
+      const enabledParserPlugins = enforceFileType ? this.getParserPlugins(filePath) : this.getParserPlugins();
       const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: enabledParserPlugins };
+      let parseResult: ParseResult<File> | undefined;
 
       this.logger.trace(
         () =>
@@ -74,37 +76,44 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
       );
 
       try {
-        parsedFile = parse(fileText, parserOptions);
+        parseResult = parse(fileText, parserOptions);
 
-        if (parsedFile.errors.length > 0) {
-          const errorMessages = parsedFile.errors
-            .map(error => this.getErrorMsgWithSourceSnippet(error as ParseFailureError, fileText))
+        if (parseResult.errors.length > 0) {
+          const errorMessages = parseResult.errors
+            .map(error => this.getErrorMsgWithSourceSnippet(error as ParseFailure, fileText))
             .join('\n');
 
           this.logger.trace(
             () =>
               `Parse operation ${parseId}: ` +
-              `Encountered errors while parsing file '${filePath}':` +
+              `Encountered errors while parsing file '${filePath}' using parser plugins: ` +
+              `${JSON.stringify(parserOptions.plugins || [])}:` +
               `${errorMessages}`
           );
         }
-        break;
       } catch (error) {
-        const errorMsg = this.getErrorMsgWithSourceSnippet(error as ParseFailureError, fileText);
+        const errorMsg = this.getErrorMsgWithSourceSnippet(error as ParseFailure, fileText);
 
         this.logger.warn(
           () =>
             `Parse operation ${parseId}: ` +
             `Error parsing file '${filePath}' using parser plugins: ` +
             `${JSON.stringify(parserOptions.plugins || [])}:` +
-            `${errorMsg}\n` +
-            `(Does file extension accurately reflect type of file contents?)`
+            `${errorMsg}`
         );
         parseFailureErrors.add(errorMsg);
       }
+      return parseResult;
+    };
+
+    let parsedFile = executeParse(true);
+
+    if (!parsedFile && this.options.useLenientMode) {
+      // FIXME: Don't re-parse if equivalent to same set of plugins used in first parse
+      parsedFile = executeParse(false);
     }
 
-    if (parsedFile === undefined) {
+    if (!parsedFile) {
       const errorMessages = [...parseFailureErrors].join('\n');
       throw new Error(
         `Parse operation ${parseId}: Error parsing file '${filePath}'` + (errorMessages ? `: ${errorMessages}` : '')
@@ -202,29 +211,24 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
   }
 
   private getParserPlugins(filePath?: string): ParserPlugin[] {
-    const fileSupportsJsxContent = filePath ? !!filePath.match(/^.+\.(js|jsx|tsx)$/) : true;
     const fileSupportsTypeScriptContent = filePath ? !!filePath.match(/^.+\.(ts|tsx)$/) : true;
-
-    const parserPlugins: readonly ParserPlugin[] = this.options.enabledParserPlugins ?? [
-      'typescript',
-      'jsx',
-      'decorators'
-    ];
+    const fileSupportsJsxContent = filePath ? !!filePath.match(/^.+\.(js|jsx|tsx)$/) : true;
+    const parserPlugins = this.options.enabledParserPlugins ?? DEFAULT_PARSER_PLUGINS;
 
     const pluginsWithOptions: ParserPlugin[] = parserPlugins
       .filter(pluginName =>
-        pluginName === 'jsx'
-          ? fileSupportsJsxContent
-          : pluginName === 'typescript'
+        pluginName === 'typescript'
           ? fileSupportsTypeScriptContent
+          : pluginName === 'jsx'
+          ? fileSupportsJsxContent
           : true
       )
-      .map(pluginName => PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
+      .map(pluginName => PARSER_PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
 
     return pluginsWithOptions;
   }
 
-  private getErrorMsgWithSourceSnippet(error: ParseFailureError, fileText: string): string {
+  private getErrorMsgWithSourceSnippet(error: ParseFailure, fileText: string): string {
     const sourceSnippet = error.loc
       ? `${fileText.split('\n')[error.loc.line]}\n${' '.repeat(error.loc.column)}^`
       : undefined;
