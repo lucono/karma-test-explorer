@@ -324,7 +324,10 @@ export class MainFactory {
     const testFileParser: AstTestFileParser = new AstTestFileParser(
       sourceNodeProcessors,
       this.createLogger(AstTestFileParser.name),
-      { enabledParserPlugins: this.config.enabledParserPlugins }
+      {
+        enabledParserPlugins: this.config.enabledParserPlugins,
+        useLenientMode: true
+      }
     );
 
     const testDefinitionProvider = new AstTestDefinitionProvider(

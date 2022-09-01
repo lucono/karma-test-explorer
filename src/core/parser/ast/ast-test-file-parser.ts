@@ -1,5 +1,6 @@
 import { Node } from '@babel/core';
-import { parse, ParserOptions, ParserPlugin, ParserPluginWithOptions } from '@babel/parser';
+import { parse, ParseError, ParseResult, ParserOptions, ParserPlugin, ParserPluginWithOptions } from '@babel/parser';
+import { File } from '@babel/types';
 import { Disposable } from '../../../util/disposable/disposable';
 import { Disposer } from '../../../util/disposable/disposer';
 import { Logger } from '../../../util/logging/logger';
@@ -26,13 +27,20 @@ const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   startLine: 0
 };
 
-const PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
+const DEFAULT_PARSER_PLUGINS: ParserPlugin[] = ['typescript', 'jsx', 'decorators'];
+
+const PARSER_PLUGINS_WITH_OPTIONS: Map<ParserPlugin, ParserPluginWithOptions> = new Map([
   ['typescript', ['typescript', { disallowAmbiguousJSXLike: false }]],
   ['decorators', ['decorators', { decoratorsBeforeExport: false }]]
 ]);
 
+interface ParseFailure extends ParseError {
+  loc?: { line: number; column: number };
+}
+
 export interface AstTestFileParserOptions {
   readonly enabledParserPlugins?: readonly ParserPlugin[];
+  readonly useLenientMode?: boolean;
 }
 
 export class AstTestFileParser implements TestFileParser<DescribedTestDefinitionInfo[]> {
@@ -50,24 +58,68 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
 
   public parseFileText(fileText: string, filePath: string): DescribedTestDefinitionInfo[] {
     const parseId = generateRandomId();
+    const parseFailureErrors: Set<string> = new Set();
+    const startTime = new Date();
+
     this.logger.trace(() => `Parse operation ${parseId}: Parsing file '${filePath}' having content: \n${fileText}`);
 
-    const enabledParserPlugins = this.getParserPluginsForFile(filePath);
-    const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: [...enabledParserPlugins] };
-
-    const startTime = new Date();
-    const parsedFile = parse(fileText, parserOptions);
-
-    if (parsedFile.errors.length > 0) {
-      const errorMessages = parsedFile.errors.map(error => `--> ${error.code} - ${error.reasonCode}`);
+    const executeParse = (enforceFileType: boolean): ParseResult<File> | undefined => {
+      const enabledParserPlugins = enforceFileType ? this.getParserPlugins(filePath) : this.getParserPlugins();
+      const parserOptions = { ...DEFAULT_PARSER_OPTIONS, plugins: enabledParserPlugins };
+      let parseResult: ParseResult<File> | undefined;
 
       this.logger.trace(
         () =>
           `Parse operation ${parseId}: ` +
-          `Encountered errors while parsing file '${filePath}': ` +
-          `\n${errorMessages.join('\n')}`
+          `Parsing file '${filePath}' using parser plugins: ` +
+          `${JSON.stringify(parserOptions.plugins || [])}`
+      );
+
+      try {
+        parseResult = parse(fileText, parserOptions);
+
+        if (parseResult.errors.length > 0) {
+          const errorMessages = parseResult.errors
+            .map(error => this.getErrorMsgWithSourceSnippet(error as ParseFailure, fileText))
+            .join('\n');
+
+          this.logger.trace(
+            () =>
+              `Parse operation ${parseId}: ` +
+              `Encountered errors while parsing file '${filePath}' using parser plugins: ` +
+              `${JSON.stringify(parserOptions.plugins || [])}:` +
+              `${errorMessages}`
+          );
+        }
+      } catch (error) {
+        const errorMsg = this.getErrorMsgWithSourceSnippet(error as ParseFailure, fileText);
+
+        this.logger.warn(
+          () =>
+            `Parse operation ${parseId}: ` +
+            `Error parsing file '${filePath}' using parser plugins: ` +
+            `${JSON.stringify(parserOptions.plugins || [])}:` +
+            `${errorMsg}`
+        );
+        parseFailureErrors.add(errorMsg);
+      }
+      return parseResult;
+    };
+
+    let parsedFile = executeParse(true);
+
+    if (!parsedFile && this.options.useLenientMode) {
+      // FIXME: Don't re-parse if equivalent to same set of plugins used in first parse
+      parsedFile = executeParse(false);
+    }
+
+    if (!parsedFile) {
+      const errorMessages = [...parseFailureErrors].join('\n');
+      throw new Error(
+        `Parse operation ${parseId}: Error parsing file '${filePath}'` + (errorMessages ? `: ${errorMessages}` : '')
       );
     }
+
     const testDefinitionInfos = this.getTestDefinitionsFromNodes(parsedFile.program.body, filePath);
     const elapsedTime = (Date.now() - startTime.getTime()) / 1000;
 
@@ -158,16 +210,31 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
     return processedNodeResult;
   }
 
-  private getParserPluginsForFile(filePath: string): ParserPlugin[] {
-    const isJsxFile = /.+\.(jsx|tsx)$/.test(filePath);
-    const isTypeScriptFile = /.+\.(ts|tsx)$/.test(filePath);
-    const parserPlugins = this.options.enabledParserPlugins ?? ['typescript', 'jsx', 'decorators'];
+  private getParserPlugins(filePath?: string): ParserPlugin[] {
+    const fileSupportsTypeScriptContent = filePath ? !!filePath.match(/^.+\.(ts|tsx)$/) : true;
+    const fileSupportsJsxContent = filePath ? !!filePath.match(/^.+\.(js|jsx|tsx)$/) : true;
+    const parserPlugins = this.options.enabledParserPlugins ?? DEFAULT_PARSER_PLUGINS;
 
-    const pluginsWithOptions = parserPlugins
-      .filter(pluginName => (pluginName === 'jsx' ? isJsxFile : pluginName === 'typescript' ? isTypeScriptFile : true))
-      .map(pluginName => PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
+    const pluginsWithOptions: ParserPlugin[] = parserPlugins
+      .filter(pluginName =>
+        pluginName === 'typescript'
+          ? fileSupportsTypeScriptContent
+          : pluginName === 'jsx'
+          ? fileSupportsJsxContent
+          : true
+      )
+      .map(pluginName => PARSER_PLUGINS_WITH_OPTIONS.get(pluginName) ?? pluginName);
 
     return pluginsWithOptions;
+  }
+
+  private getErrorMsgWithSourceSnippet(error: ParseFailure, fileText: string): string {
+    const sourceSnippet = error.loc
+      ? `${fileText.split('\n')[error.loc.line]}\n${' '.repeat(error.loc.column)}^`
+      : undefined;
+
+    const errorSourceSnippet = `\n-----\n${error}` + (sourceSnippet ? `:\n${sourceSnippet}` : '');
+    return errorSourceSnippet;
   }
 
   public async dispose() {

@@ -1,4 +1,4 @@
-import { Config as KarmaConfig, ConfigOptions as KarmaConfigOptions, CustomLauncher, InlinePluginDef } from 'karma';
+import { Config as KarmaConfig, CustomLauncher, InlinePluginDef } from 'karma';
 import { dirname, resolve } from 'path';
 import {
   CHROME_BROWSER_DEBUGGING_PORT_FLAG,
@@ -6,6 +6,7 @@ import {
   KARMA_CUSTOM_LAUNCHER_BROWSER_NAME
 } from '../../../constants';
 import { Logger } from '../../../util/logging/logger';
+import { asNonBlankStringOrUndefined } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { KarmaLogLevel } from '../karma-log-level';
 import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter';
@@ -16,9 +17,17 @@ export class KarmaConfigLoader {
   public loadConfig(config: KarmaConfig, originalConfigPath: string) {
     this.loadOriginalConfig(config, originalConfigPath);
     this.applyConfigOverrides(config, originalConfigPath);
-    this.addReporter(config);
-    this.setBasePath(config, originalConfigPath);
-    this.disableSingleRun(config);
+    this.addKarmaTestExplorerReporter(config);
+  }
+
+  private loadOriginalConfig(config: KarmaConfig, originalKarmaConfigPath: string) {
+    let originalKarmaConfigModule = require(originalKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
+
+    // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
+    if (typeof originalKarmaConfigModule === 'object' && typeof originalKarmaConfigModule.default !== 'undefined') {
+      originalKarmaConfigModule = originalKarmaConfigModule.default;
+    }
+    originalKarmaConfigModule(config);
   }
 
   private applyConfigOverrides(config: KarmaConfig, originalConfigPath: string) {
@@ -76,21 +85,22 @@ export class KarmaConfigLoader {
     config.browserSocketTimeout = 30_000;
     config.processKillTimeout = 2000;
     config.retryLimit = Math.max(config.retryLimit || 0, 3);
-    (config.client ??= {}).clearContext = false;
     (config.exclude ??= []).push(originalConfigPath);
+    (config.client ??= {}).clearContext = false;
+
+    config.basePath =
+      asNonBlankStringOrUndefined(config.basePath) ??
+      (originalConfigPath ? resolve(dirname(originalConfigPath)) : process.cwd());
+
+    // -- Permanently disable Single Run --
+    const configSetter = typeof config.set === 'function' ? config.set : undefined;
+
+    config.set = configSetter
+      ? (newConfig = {}) => configSetter.apply(config, [{ ...newConfig, singleRun: false }])
+      : config.set;
   }
 
-  private loadOriginalConfig(config: KarmaConfig, originalKarmaConfigPath: string) {
-    let originalKarmaConfigModule = require(originalKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
-
-    // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
-    if (typeof originalKarmaConfigModule === 'object' && typeof originalKarmaConfigModule.default !== 'undefined') {
-      originalKarmaConfigModule = originalKarmaConfigModule.default;
-    }
-    originalKarmaConfigModule(config);
-  }
-
-  private addReporter(config: KarmaConfig) {
+  private addKarmaTestExplorerReporter(config: KarmaConfig) {
     const reporterName = KarmaTestExplorerReporter.name;
     const karmaPlugin: InlinePluginDef = { [`reporter:${reporterName}`]: ['type', KarmaTestExplorerReporter] };
 
@@ -101,30 +111,6 @@ export class KarmaConfigLoader {
     const reporters = Array.isArray(config.reporters) ? config.reporters : [];
     reporters.splice(0, reporters.length, reporterName);
     config.reporters = reporters;
-  }
-
-  private setBasePath(config: KarmaConfig, originalConfigPath: string) {
-    if (!config.basePath) {
-      if (originalConfigPath) {
-        config.basePath = resolve(dirname(originalConfigPath));
-      } else {
-        config.basePath = process.cwd();
-      }
-    }
-  }
-
-  private disableSingleRun(config: KarmaConfig) {
-    const originalConfigSet = config.set;
-
-    if (typeof originalConfigSet !== 'function') {
-      return;
-    }
-    config.set = (newConfig?: KarmaConfigOptions) => {
-      if (newConfig) {
-        newConfig.singleRun = newConfig.singleRun === true ? false : newConfig.singleRun;
-        originalConfigSet.apply(config, [newConfig]);
-      }
-    };
   }
 
   private addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined) {

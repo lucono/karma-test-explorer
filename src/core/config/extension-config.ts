@@ -9,7 +9,12 @@ import { Disposer } from '../../util/disposable/disposer';
 import { FileHandler } from '../../util/filesystem/file-handler';
 import { LogLevel } from '../../util/logging/log-level';
 import { Logger } from '../../util/logging/logger';
-import { asNonBlankStringOrUndefined, normalizePath, toSingleUniqueArray } from '../../util/utils';
+import {
+  asNonBlankStringOrUndefined,
+  asNonEmptyArrayOrUndefined,
+  normalizePath,
+  toSingleUniqueArray
+} from '../../util/utils';
 import { ProjectType } from '../base/project-type';
 import { TestFrameworkName } from '../base/test-framework-name';
 import { TestGrouping } from '../base/test-grouping';
@@ -82,7 +87,7 @@ export class ExtensionConfig implements Disposable {
   public readonly showOnlyFocusedTests: boolean;
   public readonly showTestDefinitionTypeIndicators: boolean;
   public readonly showUnmappedTests: boolean;
-  public readonly enabledParserPlugins: readonly ParserPlugin[];
+  public readonly enabledParserPlugins?: readonly ParserPlugin[];
 
   public constructor(
     configStore: ConfigStore<ProjectConfigSetting>,
@@ -108,7 +113,9 @@ export class ExtensionConfig implements Disposable {
     );
     this.testTriggerMethod = configStore.get<TestTriggerMethod>(GeneralConfigSetting.TestTriggerMethod);
     this.testParsingMethod = configStore.get<TestParsingMethod>(GeneralConfigSetting.TestParsingMethod);
-    this.enabledParserPlugins = configStore.get<ParserPlugin[]>(GeneralConfigSetting.EnabledParserPlugins);
+    this.enabledParserPlugins = asNonEmptyArrayOrUndefined(
+      configStore.get<ParserPlugin[]>(GeneralConfigSetting.EnabledParserPlugins)
+    );
     this.failOnStandardError = !!configStore.get(GeneralConfigSetting.FailOnStandardError);
     this.testsBasePath = getTestsBasePath(this.projectPath, configStore);
     this.defaultSocketConnectionPort = configStore.get(GeneralConfigSetting.DefaultSocketConnectionPort)!;
