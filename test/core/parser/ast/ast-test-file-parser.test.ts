@@ -1,3 +1,4 @@
+import { ParserPlugin } from '@babel/parser';
 import { mock } from 'jest-mock-extended';
 import { TestDefinitionState } from '../../../../src/core/base/test-definition';
 import { TestType } from '../../../../src/core/base/test-infos';
@@ -1318,12 +1319,12 @@ describe('AstTestFileParser', () => {
 
                 beforeEach(() => {
                   fileText = `
-                  ${_.describe}('test suite 1', () => {
-                    ${_.it}('test 1', () => {
-                      const with_type_annotation: string = 'hi';
-                    });
-                  })
-                `;
+                    ${_.describe}('test suite 1', () => {
+                      ${_.it}('test 1', () => {
+                        const with_type_annotation: string = 'hi';
+                      });
+                    })
+                  `;
                 });
 
                 it(`experiences a failure parsing the file`, () => {
@@ -1378,12 +1379,12 @@ describe('AstTestFileParser', () => {
 
                 beforeEach(() => {
                   fileText = `
-                  ${_.describe}('test suite 1', () => {
-                    ${_.it}('test 1', () => {
-                      render(<Hello />, container);
-                    });
-                  })
-                `;
+                    ${_.describe}('test suite 1', () => {
+                      ${_.it}('test 1', () => {
+                        render(<Hello />, container);
+                      });
+                    })
+                  `;
                 });
 
                 it(`experiences a failure parsing the file`, () => {
@@ -1435,6 +1436,100 @@ describe('AstTestFileParser', () => {
             if (['.tsx'].includes(fileType)) {
               it.todo('TODO');
             }
+          });
+
+          describe('when enabled parser plugins is undefined', () => {
+            beforeEach(() => {
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
+                useLenientMode: true,
+                enabledParserPlugins: undefined
+              });
+            });
+
+            it(`applies default plugins to parse the content`, () => {
+              const fileText = `fakeKeyWord var = should fail to parse;`;
+              try {
+                testParser.parseFileText(fileText, fakeTestFilePath);
+              } catch (error) {
+                /* Do nothing */
+              }
+
+              const typescriptPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: [^\\n]*"typescript"[^\\n]*($|\\n)`
+              );
+              const jsxPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: [^\\n]*"jsx"[^\\n]*($|\\n)`
+              );
+              const decoratorsPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: [^\\n]*"decorators"[^\\n]*($|\\n)`
+              );
+              const fileWasParsedWithTypeScriptPlugin = parserLogs.search(typescriptPluginLogMatcher) !== -1;
+              const fileWasParsedWithJsxPlugin = parserLogs.search(jsxPluginLogMatcher) !== -1;
+              const fileWasParsedWithDecoratorsPlugin = parserLogs.search(decoratorsPluginLogMatcher) !== -1;
+
+              expect(fileWasParsedWithTypeScriptPlugin).toBe(true);
+              expect(fileWasParsedWithJsxPlugin).toBe(true);
+              expect(fileWasParsedWithDecoratorsPlugin).toBe(true);
+            });
+          });
+
+          describe('when enabled parser plugins is an empty list', () => {
+            beforeEach(() => {
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
+                useLenientMode: false,
+                enabledParserPlugins: []
+              });
+            });
+
+            it(`doesn't apply any plugins to parse the content`, () => {
+              const fileText = `fakeKeyWord var = should fail to parse;`;
+              try {
+                testParser.parseFileText(fileText, fakeTestFilePath);
+              } catch (error) {
+                /* Do nothing */
+              }
+
+              const anyPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: \\[[^\\]]`
+              );
+              const fileWasParsedWithAnyPlugin = parserLogs.search(anyPluginLogMatcher) !== -1;
+              expect(fileWasParsedWithAnyPlugin).toBe(false);
+            });
+          });
+
+          describe('when enabled parser plugins is a non-empty list', () => {
+            let specifiedPlugin: ParserPlugin;
+
+            beforeEach(() => {
+              specifiedPlugin = 'decimal';
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
+                useLenientMode: true,
+                enabledParserPlugins: [specifiedPlugin]
+              });
+            });
+
+            it(`applies only the specified plugins to parse the content`, () => {
+              const fileText = `fakeKeyWord var = should fail to parse;`;
+              try {
+                testParser.parseFileText(fileText, fakeTestFilePath);
+              } catch (error) {
+                /* Do nothing */
+              }
+
+              const specifiedPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: [^\\n]*"${specifiedPlugin}"[^\\n]*($|\\n)`,
+                'g'
+              );
+              const anyPluginLogMatcher = new RegExp(
+                `Parsing file '${fakeTestFilePath}' using parser plugins: \\[[^\\]]`,
+                'g'
+              );
+              const parseCountWithSpecifiedPlugin = parserLogs.match(specifiedPluginLogMatcher)?.length ?? 0;
+              const parseCountWithAnyPlugin = parserLogs.match(anyPluginLogMatcher)?.length ?? 0;
+
+              expect(parseCountWithSpecifiedPlugin).not.toEqual(0);
+              expect(parseCountWithSpecifiedPlugin).toEqual(parseCountWithAnyPlugin);
+            });
           });
         });
       });

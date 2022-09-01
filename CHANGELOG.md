@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.7.5 - Aug 31, 2022](#075---aug-31-2022)
   - [0.7.4 - Aug 27, 2022](#074---aug-27-2022)
   - [0.7.3 - Jul 29, 2022](#073---jul-29-2022)
   - [0.7.2 - Jul 27, 2022](#072---jul-27-2022)
@@ -22,6 +23,13 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.7.5] - Aug 31, 2022
+
+### Fixed
+
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/50) introduced in [v0.7.4](#074---aug-27-2022) which caused all tests in test files that make use of TypeScript syntax, JSX syntax, or JavaScript decorators syntax, to be unmapped
 
 ---
 ## [0.7.4] - Aug 27, 2022
@@ -55,7 +63,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 ### Fixed
 
-- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/37) introduced in `v0.7.0` that prevented new Angular projects that don't specify a default project in `angular.json` from loading
+- Fixed an [issue](https://github.com/lucono/karma-test-explorer/issues/37) introduced in [v0.7.0](#070---jul-17-2022) that prevented new Angular projects that don't specify a default project in `angular.json` from loading
 
 ---
 ## [0.7.1] - Jul 24, 2022

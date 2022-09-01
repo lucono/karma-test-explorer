@@ -6,6 +6,7 @@ import {
   KARMA_CUSTOM_LAUNCHER_BROWSER_NAME
 } from '../../../constants';
 import { Logger } from '../../../util/logging/logger';
+import { asNonBlankStringOrUndefined } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { KarmaLogLevel } from '../karma-log-level';
 import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter';
@@ -87,11 +88,9 @@ export class KarmaConfigLoader {
     (config.exclude ??= []).push(originalConfigPath);
     (config.client ??= {}).clearContext = false;
 
-    config.basePath = config.basePath
-      ? config.basePath
-      : originalConfigPath
-      ? resolve(dirname(originalConfigPath))
-      : process.cwd();
+    config.basePath =
+      asNonBlankStringOrUndefined(config.basePath) ??
+      (originalConfigPath ? resolve(dirname(originalConfigPath)) : process.cwd());
 
     // -- Permanently disable Single Run --
     const configSetter = typeof config.set === 'function' ? config.set : undefined;
