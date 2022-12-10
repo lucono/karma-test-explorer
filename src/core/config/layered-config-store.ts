@@ -1,4 +1,4 @@
-import { ConfigStore } from './config-store';
+import { ConfigStore, ConfigStoreSettingInfo } from './config-store';
 
 export interface LayeredConfigStoreOptions {
   valuesConsideredAbsent?: any[];
@@ -25,7 +25,7 @@ export class LayeredConfigStore<K extends string = string> implements ConfigStor
     );
   }
 
-  public inspect<T>(key: K): { defaultValue?: T | undefined } | undefined {
+  public inspect<T>(key: K): ConfigStoreSettingInfo<T> | undefined {
     return this.layeredConfigs.find(config => config.inspect(key) !== undefined)?.inspect(key);
   }
 }

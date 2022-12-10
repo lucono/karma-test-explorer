@@ -32,7 +32,7 @@ export class RegexpTestFileParser implements TestFileParser<RegexpTestFileParser
     let matchResult: RegExpExecArray | null;
     let activeLineNumber: number | undefined;
 
-    while ((matchResult = testInterfaceParserRegexp.exec(data)) != null) {
+    while ((matchResult = testInterfaceParserRegexp.exec(data)) !== null) {
       activeLineNumber = matchResult[3] !== undefined ? Number(matchResult[3]) : activeLineNumber;
       const nodeDefinition = this.getNodeTypeAndState(matchResult[4]);
       const testDescription = matchResult[7]?.replace(/\\(['"`])/g, '$1');

@@ -100,97 +100,114 @@ describe('KarmaFactory', () => {
   });
 
   describe('createTestServerExecutor factory method', () => {
-    describe('when a karma process executable is configured', () => {
+    describe('when no project karma config file is configured', () => {
       beforeEach(() => {
-        (mockConfig as Writeable<ExtensionConfig>).karmaProcessCommand = 'path/to/some/executable';
+        (mockConfig as Writeable<ExtensionConfig>).projectKarmaConfigFilePath = undefined;
       });
 
-      it('creates a commandline test server executor instance', () => {
+      it('should throw an error', () => {
         const karmaFactory = new KarmaFactory(framework, mockConfig, mockProcessHandler, mockProcessLog, mockLogger);
-        expect(karmaFactory.createTestServerExecutor()).toBeInstanceOf(KarmaCommandLineTestServerExecutor);
+        expect(() => karmaFactory.createTestServerExecutor()).toThrow();
+      });
+    });
+
+    describe('when a project karma config file is configured', () => {
+      beforeEach(() => {
+        (mockConfig as Writeable<ExtensionConfig>).projectKarmaConfigFilePath = 'some/path/to/project/karma.conf';
       });
 
-      it('creates the test server executor to use the configured karma process executable', () => {
-        expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
-
-        new KarmaFactory(
-          framework,
-          mockConfig,
-          mockProcessHandler,
-          mockProcessLog,
-          mockLogger
-        ).createTestServerExecutor();
-
-        expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][5]).toMatchObject({
-          karmaProcessCommand: mockConfig.karmaProcessCommand
+      describe('and a karma process executable is configured', () => {
+        beforeEach(() => {
+          (mockConfig as Writeable<ExtensionConfig>).karmaProcessCommand = 'path/to/some/executable';
         });
-      });
 
-      it('creates the test server executor with the configured environment', () => {
-        (mockConfig as Writeable<ExtensionConfig>).environment = { someEnvVar1: 'foo', someEnvVar2: 'bar' };
-        expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
-
-        new KarmaFactory(
-          framework,
-          mockConfig,
-          mockProcessHandler,
-          mockProcessLog,
-          mockLogger
-        ).createTestServerExecutor();
-
-        expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][5]).toMatchObject({
-          environment: mockConfig.environment
+        it('creates a commandline test server executor instance', () => {
+          const karmaFactory = new KarmaFactory(framework, mockConfig, mockProcessHandler, mockProcessLog, mockLogger);
+          expect(karmaFactory.createTestServerExecutor()).toBeInstanceOf(KarmaCommandLineTestServerExecutor);
         });
-      });
 
-      it('creates the test server executor with the configured project root path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).projectPath = 'some/project/root/path';
-        expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
+        it('creates the test server executor to use the configured karma process executable', () => {
+          expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 
-        new KarmaFactory(
-          framework,
-          mockConfig,
-          mockProcessHandler,
-          mockProcessLog,
-          mockLogger
-        ).createTestServerExecutor();
+          new KarmaFactory(
+            framework,
+            mockConfig,
+            mockProcessHandler,
+            mockProcessLog,
+            mockLogger
+          ).createTestServerExecutor();
 
-        expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][0]).toBe(mockConfig.projectPath);
-      });
+          expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
+          expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][5]).toMatchObject({
+            karmaProcessCommand: mockConfig.karmaProcessCommand
+          });
+        });
 
-      it('creates the test server executor with the configured base karma config file path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).baseKarmaConfFilePath = 'some/base/karma/config/file/path';
-        expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
+        it('creates the test server executor with the configured environment', () => {
+          (mockConfig as Writeable<ExtensionConfig>).environment = { someEnvVar1: 'foo', someEnvVar2: 'bar' };
+          expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 
-        new KarmaFactory(
-          framework,
-          mockConfig,
-          mockProcessHandler,
-          mockProcessLog,
-          mockLogger
-        ).createTestServerExecutor();
+          new KarmaFactory(
+            framework,
+            mockConfig,
+            mockProcessHandler,
+            mockProcessLog,
+            mockLogger
+          ).createTestServerExecutor();
 
-        expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][1]).toBe(mockConfig.baseKarmaConfFilePath);
-      });
+          expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
+          expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][5]).toMatchObject({
+            environment: mockConfig.environment
+          });
+        });
 
-      it('creates the test server executor with the configured user karma config file path', () => {
-        (mockConfig as Writeable<ExtensionConfig>).projectKarmaConfigFilePath = 'some/user/karma/config/file/path';
-        expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
+        it('creates the test server executor with the configured project root path', () => {
+          (mockConfig as Writeable<ExtensionConfig>).projectPath = 'some/project/root/path';
+          expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 
-        new KarmaFactory(
-          framework,
-          mockConfig,
-          mockProcessHandler,
-          mockProcessLog,
-          mockLogger
-        ).createTestServerExecutor();
+          new KarmaFactory(
+            framework,
+            mockConfig,
+            mockProcessHandler,
+            mockProcessLog,
+            mockLogger
+          ).createTestServerExecutor();
 
-        expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
-        expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][2]).toBe(mockConfig.projectKarmaConfigFilePath);
+          expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
+          expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][0]).toBe(mockConfig.projectPath);
+        });
+
+        it('creates the test server executor with the configured base karma config file path', () => {
+          (mockConfig as Writeable<ExtensionConfig>).baseKarmaConfFilePath = 'some/base/karma/config/file/path';
+          expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
+
+          new KarmaFactory(
+            framework,
+            mockConfig,
+            mockProcessHandler,
+            mockProcessLog,
+            mockLogger
+          ).createTestServerExecutor();
+
+          expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
+          expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][1]).toBe(mockConfig.baseKarmaConfFilePath);
+        });
+
+        it('creates the test server executor with the configured user karma config file path', () => {
+          (mockConfig as Writeable<ExtensionConfig>).projectKarmaConfigFilePath = 'some/user/karma/config/file/path';
+          expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
+
+          new KarmaFactory(
+            framework,
+            mockConfig,
+            mockProcessHandler,
+            mockProcessLog,
+            mockLogger
+          ).createTestServerExecutor();
+
+          expect(MockKarmaCommandLineTestServerExecutor).toHaveBeenCalledTimes(1);
+          expect(MockKarmaCommandLineTestServerExecutor.mock.calls[0][2]).toBe(mockConfig.projectKarmaConfigFilePath);
+        });
       });
     });
   });

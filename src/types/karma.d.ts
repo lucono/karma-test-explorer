@@ -7,6 +7,8 @@ declare module 'karma' {
     detached?: boolean;
     configFile?: string;
     coverageIstanbulReporter?: any;
-    reporters: string[];
+    reporters?: string[];
+    jasmineHtmlReporter?: Record<string, any>;
+    coverageReporter?: Record<string, any>;
   }
 }

@@ -1,11 +1,11 @@
-import { MutableConfigStore } from './config-store';
+import { ConfigStoreSettingInfo, MutableConfigStore } from './config-store';
 
 export class SimpleMutableConfigStore<K extends string = string> implements MutableConfigStore<K> {
   private configEntries: Map<string, unknown> = new Map();
-  private readonly configPrefix: string;
+  private readonly baseKey: string;
 
-  public constructor(configPrefix?: string, initialEntries?: Partial<Record<K, any>>) {
-    this.configPrefix = configPrefix ? `${configPrefix}.` : '';
+  public constructor(initialEntries?: Partial<Record<K, any>>, baseKey?: string) {
+    this.baseKey = baseKey ? `${baseKey}.` : '';
 
     if (initialEntries) {
       this.setMultiple(initialEntries);
@@ -20,19 +20,19 @@ export class SimpleMutableConfigStore<K extends string = string> implements Muta
   }
 
   public set(key: K, value: any): void {
-    this.configEntries.set(this.toPrefixedKey(key), value);
+    this.configEntries.set(this.resolveKey(key), value);
   }
 
   public get<T>(key: K): T {
-    return this.configEntries.get(this.toPrefixedKey(key)) as T;
+    return this.configEntries.get(this.resolveKey(key)) as T;
   }
 
   public has(key: K): boolean {
-    return this.configEntries.has(this.toPrefixedKey(key));
+    return this.configEntries.has(this.resolveKey(key));
   }
 
   public delete(key: K): void {
-    this.configEntries.delete(this.toPrefixedKey(key));
+    this.configEntries.delete(this.resolveKey(key));
   }
 
   public clear(): void {
@@ -40,11 +40,11 @@ export class SimpleMutableConfigStore<K extends string = string> implements Muta
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public inspect<T>(key: K): { defaultValue?: T | undefined } | undefined {
+  public inspect<T>(key: K): ConfigStoreSettingInfo<T> | undefined {
     return undefined;
   }
 
-  private toPrefixedKey(key: K): string {
-    return `${this.configPrefix}${key}`;
+  private resolveKey(key: K): string {
+    return `${this.baseKey}${key}`;
   }
 }

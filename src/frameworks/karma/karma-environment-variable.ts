@@ -2,6 +2,7 @@ export enum KarmaEnvironmentVariable {
   KarmaPort = 'KarmaTestExplorer_karmaPort',
   KarmaSocketPort = 'KarmaTestExplorer_karmaSocketPort',
   DebugPort = 'KarmaTestExplorer_debugPort',
+  ProjectKarmaConfigHomePath = 'KarmaTestExplorer_projectKarmaConfigHomePath',
   ProjectKarmaConfigPath = 'KarmaTestExplorer_projectKarmaConfigPath',
   AutoWatchEnabled = 'KarmaTestExplorer_autoWatchEnabled',
   AutoWatchBatchDelay = 'KarmaTestExplorer_autoWatchBatchDelay',

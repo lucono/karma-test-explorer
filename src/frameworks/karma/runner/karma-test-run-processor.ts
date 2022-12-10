@@ -51,10 +51,12 @@ export class KarmaTestRunProcessor implements Disposable {
   }
 
   public processTestDiscovery(testRunId: string, testNames: string[]): Execution<void, SpecCompleteResponse[]> {
+    this.logger.debug(() => `Processing test discovery for test run with id: ${testRunId}`);
     return this.processTest(testRunId, testNames, this.testDiscoveryEventProcessingOptions);
   }
 
   public processTestRun(testRunId: string, testNames: string[]): Execution<void, SpecCompleteResponse[]> {
+    this.logger.debug(() => `Processing test execution for test run with id: ${testRunId}`);
     return this.processTest(testRunId, testNames, this.testRunEventProcessingOptions);
   }
 

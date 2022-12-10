@@ -87,7 +87,7 @@ describe('Angular Utils', () => {
       const workspaceInfoResult = getAngularWorkspaceInfo(angularConfigRootPath, mockFileHandler, mockLogger);
 
       expect(workspaceInfoResult).toBeDefined();
-      expect(workspaceInfoResult!.projects).toHaveLength(2);
+      expect(workspaceInfoResult!.projects).toHaveLength(3);
 
       expect(workspaceInfoResult!.projects[0].name).toEqual('project-1');
       expect(workspaceInfoResult!.projects[0].rootPath).toEqual(normalizePath(`${angularConfigRootPath}/project-1`));
@@ -100,6 +100,10 @@ describe('Angular Utils', () => {
       expect(workspaceInfoResult!.projects[1].karmaConfigPath).toEqual(
         normalizePath(`${angularConfigRootPath}/project-2/karma.conf.js`)
       );
+
+      expect(workspaceInfoResult!.projects[2].name).toEqual('project-3');
+      expect(workspaceInfoResult!.projects[2].rootPath).toEqual(normalizePath(`${angularConfigRootPath}/project-3`));
+      expect(workspaceInfoResult!.projects[2].karmaConfigPath).toBeUndefined();
 
       expect(workspaceInfoResult!.defaultProject).toEqual(workspaceInfoResult!.projects[0]);
     });

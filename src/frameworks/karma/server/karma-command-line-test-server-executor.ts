@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { TestServerExecutor } from '../../../api/test-server-executor';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants';
 import { ExternalConfigSetting } from '../../../core/config/config-setting';
@@ -43,7 +43,8 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       ...this.options.environment,
       [KarmaEnvironmentVariable.KarmaPort]: `${karmaPort}`,
       [KarmaEnvironmentVariable.KarmaSocketPort]: `${karmaSocketPort}`,
-      [KarmaEnvironmentVariable.ProjectKarmaConfigPath]: this.projectKarmaConfigFile
+      [KarmaEnvironmentVariable.ProjectKarmaConfigPath]: this.projectKarmaConfigFile,
+      [KarmaEnvironmentVariable.ProjectKarmaConfigHomePath]: dirname(this.projectKarmaConfigFile)
     };
 
     if (debugPort !== undefined) {

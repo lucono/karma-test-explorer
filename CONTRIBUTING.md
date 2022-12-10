@@ -9,7 +9,7 @@
 
 ## Recommended Areas of Focus
 
-Contributions to the Karma Test Explorer are welcome, particularly in the core areas of focus mentioned in the [Why this Extension](./README.md#why-this-extension) section. Other particular areas, among others, include:
+Contributions to the Karma Test Explorer are welcome, particularly in the core areas of focus mentioned in the [Why this Extension](README.md#why-this-extension) section. Other particular areas, among others, include:
 
 - Migrating to the native VS Code test API
 - Enhancing the level of Angular and Mocha support
@@ -50,6 +50,6 @@ For linting and building the code, and running unit tests, you can use the follo
 
 ## See Also
 
-- [Readme](./README.md#karma-test-explorer-for-visual-studio-code)
-- [Documentation](./docs/documentation.md#documentation---karma-test-explorer)
-- [Changelog](./CHANGELOG.md#changelog)
+- [Readme](README.md#karma-test-explorer-for-visual-studio-code)
+- [Documentation](docs/documentation.md#documentation---karma-test-explorer)
+- [Changelog](CHANGELOG.md#changelog)

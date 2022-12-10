@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { TestServerExecutor } from '../../api/test-server-executor';
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
 import { ExternalConfigSetting } from '../../core/config/config-setting';
@@ -27,7 +27,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     private readonly projectName: string,
     private readonly projectPath: string,
     private readonly projectInstallRootPath: string,
-    private readonly projectKarmaConfigFile: string,
+    private readonly projectKarmaConfigFile: string | undefined,
     private readonly baseKarmaConfigFile: string,
     private readonly processHandler: ProcessHandler,
     private readonly logger: SimpleLogger,
@@ -41,10 +41,15 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     const environment: Record<string, string> = {
       ...this.options?.environment,
-      [KarmaEnvironmentVariable.ProjectKarmaConfigPath]: this.projectKarmaConfigFile,
       [KarmaEnvironmentVariable.KarmaPort]: `${karmaPort}`,
-      [KarmaEnvironmentVariable.KarmaSocketPort]: `${karmaSocketPort}`
+      [KarmaEnvironmentVariable.KarmaSocketPort]: `${karmaSocketPort}`,
+      [KarmaEnvironmentVariable.ProjectKarmaConfigHomePath]: `${this.projectPath}`
     };
+
+    if (this.projectKarmaConfigFile !== undefined) {
+      environment[KarmaEnvironmentVariable.ProjectKarmaConfigPath] = this.projectKarmaConfigFile;
+      environment[KarmaEnvironmentVariable.ProjectKarmaConfigHomePath] = dirname(this.projectKarmaConfigFile);
+    }
 
     if (debugPort !== undefined) {
       environment[KarmaEnvironmentVariable.DebugPort] = `${debugPort}`;

@@ -17,7 +17,7 @@ describe('Project Factory', () => {
   let projectFactory: ProjectFactory;
 
   beforeEach(() => {
-    configStore = new SimpleMutableConfigStore(undefined, { [ExternalConfigSetting.EnableExtension]: true });
+    configStore = new SimpleMutableConfigStore({ [ExternalConfigSetting.EnableExtension]: true });
 
     mockWorkspaceFolderConfigResolver = mock<WorkspaceFolderConfigResolver>();
     mockWorkspaceFolderConfigResolver.resolveConfig.mockImplementation(() => configStore);

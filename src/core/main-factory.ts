@@ -41,9 +41,10 @@ import { FileWatcher, FileWatcherOptions } from './file-watcher';
 import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider';
 import { AstTestFileParser } from './parser/ast/ast-test-file-parser';
 import { ForEachNodeProcessor } from './parser/ast/processors/for-each-node-processor';
+import { FunctionCallNodeProcessor } from './parser/ast/processors/function-call-node-processor';
+import { FunctionDeclarationNodeProcessor } from './parser/ast/processors/function-declaration-node-processor';
 import { IfElseNodeProcessor } from './parser/ast/processors/if-else-node-processor';
 import { LoopNodeProcessor } from './parser/ast/processors/loop-node-processor';
-import { TestAndSuiteNodeProcessor } from './parser/ast/processors/test-and-suite-node-processor';
 import { TestDescriptionNodeProcessor } from './parser/ast/processors/test-description-node-processor';
 import { ProcessedSourceNode, SourceNodeProcessor } from './parser/ast/source-node-processor';
 import { RegexpTestDefinitionProvider } from './parser/regexp/regexp-test-definition-provider';
@@ -95,7 +96,11 @@ export class MainFactory {
         ? JasmineTestFramework
         : undefined;
 
-    this.testFramework = configuredTestFramework ?? this.detectTestFramework(karmaConfigPath, this.fileHandler);
+    this.testFramework = configuredTestFramework
+      ? configuredTestFramework
+      : karmaConfigPath !== undefined
+      ? this.detectTestFramework(karmaConfigPath, this.fileHandler)
+      : JasmineTestFramework;
 
     this.logger.info(
       () => `Using test framework: ${this.testFramework.name} ${!config.testFramework ? `(auto-detected)` : ''}`
@@ -123,7 +128,7 @@ export class MainFactory {
   public createFileWatcher(): FileWatcher {
     const reloadTriggerFiles = [...this.config.reloadOnChangedFiles];
 
-    if (this.config.reloadOnKarmaConfigChange) {
+    if (this.config.reloadOnKarmaConfigChange && this.config.projectKarmaConfigFilePath) {
       reloadTriggerFiles.push(this.config.projectKarmaConfigFilePath);
     }
     if (this.config.envFile) {
@@ -311,14 +316,15 @@ export class MainFactory {
     );
 
     const sourceNodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[] = [
-      new TestAndSuiteNodeProcessor(
+      new FunctionCallNodeProcessor(
         this.testFramework.getTestInterface(),
         testDescriptionNodeProcessor,
-        this.createLogger(TestAndSuiteNodeProcessor.name)
+        this.createLogger(FunctionCallNodeProcessor.name)
       ),
       new ForEachNodeProcessor(this.createLogger(ForEachNodeProcessor.name)),
       new LoopNodeProcessor(this.createLogger(LoopNodeProcessor.name)),
-      new IfElseNodeProcessor(this.createLogger(IfElseNodeProcessor.name))
+      new IfElseNodeProcessor(this.createLogger(IfElseNodeProcessor.name)),
+      new FunctionDeclarationNodeProcessor(this.createLogger(FunctionDeclarationNodeProcessor.name))
     ];
 
     const testFileParser: AstTestFileParser = new AstTestFileParser(

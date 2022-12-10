@@ -10,6 +10,7 @@ module.exports = {
   rules: {
     'prettier/prettier': 'error',
     'no-param-reassign': 'error',
+    eqeqeq: ['error', 'always'],
     'no-useless-escape': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',

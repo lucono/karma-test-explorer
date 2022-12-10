@@ -33,11 +33,10 @@ const getAngularJsonWorkspaceInfo = (
     const angularJsonContent = fileHandler.readFileSync(angularJsonConfigPath, 'utf-8');
     angularJson = angularJsonContent ? JSON.parse(angularJsonContent) : undefined;
   } catch (error) {
-    // No action required
+    logger.warn(() => `Cannot get Angular projects for Angular config file '${angularJsonConfigPath}': ${error}`);
   }
 
   if (!angularJson) {
-    logger.warn(() => `Cannot get Angular projects - Failed to read Angular Json file: ${angularJsonConfigPath}`);
     return undefined;
   }
   const defaultProjectName: string = angularJson.defaultProject;
@@ -46,15 +45,11 @@ const getAngularJsonWorkspaceInfo = (
 
   for (const projectName of Object.keys(angularJson.projects)) {
     const projectConfig = angularJson.projects[projectName];
-
-    if (projectConfig.architect.test === undefined || projectConfig.architect.test.options.karmaConfig === undefined) {
-      continue;
-    }
     const projectPath = normalizePath(join(angularConfigRootPath, projectConfig.root));
 
-    const karmaConfigPath = normalizePath(
-      join(angularConfigRootPath, projectConfig.architect?.test?.options?.karmaConfig)
-    );
+    const karmaConfigPath = projectConfig.architect?.test?.options?.karmaConfig
+      ? normalizePath(join(angularConfigRootPath, projectConfig.architect.test.options.karmaConfig))
+      : undefined;
 
     const project: AngularProjectInfo = {
       name: projectName,
@@ -99,20 +94,21 @@ const getAngularCliJsonWorkspaceInfo = (
     const angularCliJsonContent = fileHandler.readFileSync(angularCliJsonConfigPath, 'utf-8');
     angularCliJson = angularCliJsonContent ? JSON.parse(angularCliJsonContent) : undefined;
   } catch (error) {
-    // No action required
+    logger.warn(
+      () => `Cannot get Angular projects for Angular CLI config file '${angularCliJsonConfigPath}': ${error}`
+    );
   }
 
   if (!angularCliJson) {
-    logger.debug(
-      () => `Cannot get Angular CLI projects - Failed to read Angular Json file: ${angularCliJsonConfigPath}`
-    );
     return undefined;
   }
   const defaultProjectName: string = angularCliJson.project.name;
   const projects: AngularProjectInfo[] = [];
   let defaultProject: AngularProjectInfo | undefined;
 
-  const karmaConfigPath = normalizePath(join(angularConfigRootPath, angularCliJson.test?.karma?.config));
+  const karmaConfigPath = angularCliJson.test?.karma?.config
+    ? normalizePath(join(angularConfigRootPath, angularCliJson.test.karma.config))
+    : undefined;
 
   for (const app of angularCliJson.apps) {
     const projectName: string = app.name || angularCliJson.project.name;

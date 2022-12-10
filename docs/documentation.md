@@ -45,8 +45,8 @@ Duplicated tests in your project are also detected and convniently flagged for a
 - Angular, Karma, Jasmine, and Mocha support
 - Multi-project / monorepo / multi-root workspace support
 - Live update of pass-fail test statuses
-- Filter out noise from disabled tests or show only focused tests
-- Duplicate test detection and reporting
+- Filter out noise from disabled tests / show only focused tests
+- Automatically detect and flag duplicate tests
 - Non-Headless testing / use visible browser window
 - Group and run tests by folder or by test suite
 - Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
@@ -73,15 +73,15 @@ Duplicated tests in your project are also detected and convniently flagged for a
 
 |Prerequisite | Description|
 |:-------------|------------|
-|Test&nbsp;Browser | Karma Test Explorer requires a browser for running tests, which by default is the Chrome browser, though you can provide a custom launcher which uses a different browser. Whichever browser is used must be installed on the computer or container where VS Code will be running your project's tests|
-|Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, some of Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc, all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` or `yarn install` for instance, would ensure they are all installed|
-|Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container, then the extension's installation in VS Code should be in the remote workspace|
+|Test&nbsp;Browser | Karma Test Explorer requires a browser for running tests, which by default is the Chrome browser, though you can [customize](#customizing-the-launcher-and-browser) it to use any other browser of your choice. Whichever browser is used however, must be available for testing in your Karma setup and installed on the computer or container where VS Code will be running your project's tests|
+|Test&nbsp;Frameworks | The various frameworks required for your project's tests must be installed. This can include for instance, Angular, Karma, Jasmine, Mocha, Karma-Jasmine, Karma-Mocha, etc., all of which will usually be defined as Dev dependencies in your project's package.json file, so that simply running `npm install` (or `yarn install` if using yarn) would ensure they are all installed|
+|Karma&nbsp;Test&nbsp;Explorer | The Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) must be installed and enabled in VS Code. If developing and testing your project in a container or remote server, then the extension's installation in VS Code should be in the remote workspace|
 
 ### 2. Configure Extension
 
 |Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | When&nbsp;Required | Config&nbsp;Setting
 |:-------|---------------|----------------
-|Specify the path to the project relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace folder root | `karmaTestExplorer.projects`
+|Specify the path to the project relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace folder root | `karmaTestExplorer.projectWorkspaces`
 |Specify the path to the `karma.conf.js` file relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
 |Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
 |Ensure you DO NOT have any of these Test Explorer UI settings configured | Required to prevent conflict with Karma Test Explorer functionality | `testExplorer.useNativeTesting` and `testExplorer.onStart` and `testExplorer.onReload`
@@ -169,7 +169,7 @@ Setting                                       | Description
 `karmaTestExplorer.envFile` | Path to a dotenv file containing environment variables to be set when running the tests
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
-`karmaTestExplorer.testTriggerMethod` | Experimental. Specifies how test runs are triggered by default, either through the Karma CLI or Http interface. You will usually not need to use this setting unless working around specific issues
+`karmaTestExplorer.testTriggerMethod` | Specifies how test runs are triggered by default. You will usually not need to use this setting unless working around specific issues
 `karmaTestExplorer.testParsingMethod` | Specifies how tests are parsed by default, either using regular expression matching or an abstract syntax tree. You will usually not need to use this setting unless working around specific issues
 `karmaTestExplorer.enabledParserPlugins` | Experimental and subject to change in future releases! Specifies the exact set of Babel parser plugins to enable for parsing test files. Useful for enabling full support for various language syntaxes present in the test files
 `karmaTestExplorer.failOnStandardError` | Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues
@@ -253,7 +253,7 @@ Multi-Project Setup | Description
 -------------|------------
 VS Code multi-root workspace | For a multi-root workspace that is open in VS Code, all Karma and Angular projects in each root of the multi-root workspace will be available to load for testing
 Multi-project Angular workspace | For each Angular workspace that is configured or automatically discovered by Karma Test Explorer in a VS Code workspace, all its sub-projects will be available to load for testing
-Monorepo or Embedded project | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projects` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each
+Monorepo or Embedded project | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projectWorkspaces` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each project
 
 In any scenario, whenever multiple Karma or Angular projects are available for testing, a folder button will be available on the Test view toolbar which can be used for selecting and loading any number of those projects for simultaneous testing in the UI. The folder button is not available when there is only a single project configured or detected for testing in the current VS Code workspace.
 

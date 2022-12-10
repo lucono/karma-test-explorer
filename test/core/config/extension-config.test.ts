@@ -28,7 +28,8 @@ describe('ExtensionConfig', () => {
     mockConfigStore = {
       has: mockConfigValues.has,
       get: key => (mockConfigValues.has(key) ? mockConfigValues.get(key) : ''),
-      inspect: key => (mockConfigDefaults.has(key) ? { defaultValue: mockConfigDefaults.get(key) } : undefined)
+      inspect: key =>
+        mockConfigDefaults.has(key) ? { key: key, defaultValue: mockConfigDefaults.get(key) } : undefined
     };
   });
 
