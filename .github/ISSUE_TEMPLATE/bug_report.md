@@ -24,8 +24,13 @@ assignees: ''
 
 **Provide Debug Logs**
 
-- With the `karmaTestExplorer.logLevel` set to `debug`, please capture and attach the logs from the `Karma Test Explorer` Output chanel when the issue occurs.
-- Please also capture and attach the logs from the `Karma Server` Output channel when the issue occurs.
+- With the `karmaTestExplorer.logLevel` set to `debug`, please capture and attach the logs from all the `Karma Test Explorer` Output channels when the issue occurs.
+- Please also capture and attach the logs from all the `Karma Server` Output channels when the issue occurs.
+
+**Provide a Minimal Reproduction Project**
+
+- In a public github repo, create a minimal project that reproduces the issue
+- Provide a link to the project
 
 **Screenshots**
 

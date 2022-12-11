@@ -1,5 +1,5 @@
 import { Config as KarmaConfig, CustomLauncher, InlinePluginDef } from 'karma';
-import { dirname, resolve } from 'path';
+import { resolve } from 'path';
 import {
   CHROME_BROWSER_DEBUGGING_PORT_FLAG,
   KARMA_BROWSER_CAPTURE_MIN_TIMEOUT,
@@ -10,17 +10,22 @@ import { asNonBlankStringOrUndefined } from '../../../util/utils';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable';
 import { KarmaLogLevel } from '../karma-log-level';
 import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter';
+import loadDefaultKarmaConfig from './karma.conf-default';
 
 export class KarmaConfigLoader {
   public constructor(private readonly logger: Logger) {}
 
-  public loadConfig(config: KarmaConfig, originalConfigPath: string) {
-    this.loadOriginalConfig(config, originalConfigPath);
-    this.applyConfigOverrides(config, originalConfigPath);
+  public loadConfig(config: KarmaConfig, karmaConfigHomePath: string, karmaConfigPath?: string) {
+    this.loadOriginalConfig(config, karmaConfigHomePath, karmaConfigPath);
+    this.applyConfigOverrides(config, karmaConfigHomePath, karmaConfigPath);
     this.addKarmaTestExplorerReporter(config);
   }
 
-  private loadOriginalConfig(config: KarmaConfig, originalKarmaConfigPath: string) {
+  private loadOriginalConfig(config: KarmaConfig, karmaConfigHomePath: string, originalKarmaConfigPath?: string) {
+    if (!originalKarmaConfigPath) {
+      loadDefaultKarmaConfig(config, karmaConfigHomePath);
+      return;
+    }
     let originalKarmaConfigModule = require(originalKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
 
     // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
@@ -30,7 +35,7 @@ export class KarmaConfigLoader {
     originalKarmaConfigModule(config);
   }
 
-  private applyConfigOverrides(config: KarmaConfig, originalConfigPath: string) {
+  private applyConfigOverrides(config: KarmaConfig, karmaConfigHomePath: string, karmaConfigPath?: string) {
     // -- Karma Port and LogLevel settings --
     const karmaLogLevel = <KarmaLogLevel>process.env[KarmaEnvironmentVariable.KarmaLogLevel] ?? KarmaLogLevel.INFO;
     const karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
@@ -44,7 +49,7 @@ export class KarmaConfigLoader {
       ? 0
       : !Number.isNaN(configuredAutoWatchBatchDelay)
       ? configuredAutoWatchBatchDelay
-      : undefined;
+      : config.autoWatchBatchDelay;
 
     // -- Browser and Custom Launcher settings --
     const requestedBrowser = process.env[KarmaEnvironmentVariable.Browser];
@@ -69,12 +74,16 @@ export class KarmaConfigLoader {
       customLauncher = customLaucherObject;
     }
 
+    const configuredRelativeBasePath = asNonBlankStringOrUndefined(config.basePath) ?? '';
+    const absoluteBasePath = resolve(karmaConfigHomePath, configuredRelativeBasePath);
+
     // -- Update Karma config --
+    config.basePath = absoluteBasePath;
     config.port = karmaPort;
     config.logLevel = (config as any)[`LOG_${karmaLogLevel.toUpperCase()}`];
     config.singleRun = false;
     config.autoWatch = autoWatchEnabled;
-    config.autoWatchBatchDelay = autoWatchBatchDelay ?? config.autoWatchBatchDelay;
+    config.autoWatchBatchDelay = autoWatchBatchDelay;
     config.restartOnFileChange = false;
     config.browsers = [browser];
     config.customLaunchers = customLauncher ? { [browser]: customLauncher } : config.customLaunchers;
@@ -85,12 +94,11 @@ export class KarmaConfigLoader {
     config.browserSocketTimeout = 30_000;
     config.processKillTimeout = 2000;
     config.retryLimit = Math.max(config.retryLimit || 0, 3);
-    (config.exclude ??= []).push(originalConfigPath);
     (config.client ??= {}).clearContext = false;
 
-    config.basePath =
-      asNonBlankStringOrUndefined(config.basePath) ??
-      (originalConfigPath ? resolve(dirname(originalConfigPath)) : process.cwd());
+    if (karmaConfigPath) {
+      (config.exclude ??= []).push(karmaConfigPath);
+    }
 
     // -- Permanently disable Single Run --
     const configSetter = typeof config.set === 'function' ? config.set : undefined;

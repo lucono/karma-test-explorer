@@ -1,11 +1,11 @@
-import { ConfigStore } from './config-store';
+import { ConfigStore, ConfigStoreSettingInfo } from './config-store';
 import { SimpleMutableConfigStore } from './simple-mutable-config-store';
 
 export class SimpleConfigStore<K extends string = string> implements ConfigStore<K> {
   private readonly configStore: SimpleMutableConfigStore<K>;
 
-  public constructor(configEntries: Partial<Record<K, any>>, configPrefix?: string) {
-    this.configStore = new SimpleMutableConfigStore<K>(configPrefix, configEntries);
+  public constructor(configEntries: Partial<Record<K, any>>, baseKey?: string) {
+    this.configStore = new SimpleMutableConfigStore<K>(configEntries, baseKey);
   }
 
   public get<T>(key: K): T {
@@ -17,7 +17,7 @@ export class SimpleConfigStore<K extends string = string> implements ConfigStore
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public inspect<T>(key: K): { defaultValue?: T | undefined } | undefined {
+  public inspect<T>(key: K): ConfigStoreSettingInfo<T> | undefined {
     return undefined;
   }
 }

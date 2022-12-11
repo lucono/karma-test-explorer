@@ -149,6 +149,15 @@ export class KarmaFactory implements TestFactory, Disposable {
       allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
     };
 
+    if (this.config.projectKarmaConfigFilePath === undefined) {
+      this.logger.error(
+        () =>
+          `Cannot create Karma Test Server Executor - ` +
+          `No karma config file for the project at: ${this.config.projectPath}`
+      );
+      throw new Error(`No karma config file for project at: ${this.config.projectPath}`);
+    }
+
     const testServerExecutor = new KarmaCommandLineTestServerExecutor(
       this.config.projectPath,
       this.config.baseKarmaConfFilePath,

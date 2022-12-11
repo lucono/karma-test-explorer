@@ -50,7 +50,7 @@ export class Adapter implements TestAdapter, Disposable {
   private readonly retireEmitter: EventEmitter<RetireEvent>;
   private readonly disposables: Disposable[] = [];
 
-  private karmaTestExplorer: KarmaTestExplorer;
+  private karmaTestExplorer?: KarmaTestExplorer;
   private testExplorerDisposables: Disposable[] = [];
 
   constructor(
@@ -105,7 +105,7 @@ export class Adapter implements TestAdapter, Disposable {
       `${EXTENSION_CONFIG_PREFIX}${commandsNamespace}`
     );
     this.projectCommands.register(ProjectCommand.ShowLog, () => this.outputChannelLog.show());
-    this.projectCommands.register(ProjectCommand.Reset, () => this.reset());
+    this.projectCommands.register(ProjectCommand.Reset, () => this.reload());
     this.disposables.push(this.projectCommands);
 
     this.logger.debug(() => 'Creating notifications handler');
@@ -121,9 +121,6 @@ export class Adapter implements TestAdapter, Disposable {
     this.testRunEmitter = new EventEmitter();
     this.retireEmitter = new EventEmitter();
     this.disposables.push(this.testLoadEmitter, this.testRunEmitter, this.retireEmitter);
-
-    this.logger.debug(() => 'Creating initial test explorer');
-    this.karmaTestExplorer = this.createTestExplorer();
   }
 
   private createTestExplorer(): KarmaTestExplorer {
@@ -200,27 +197,26 @@ export class Adapter implements TestAdapter, Disposable {
     return new SimpleLogger(this.outputChannelLog, loggerName, this.logLevel);
   }
 
-  private async reset(): Promise<void> {
-    this.logger.info(() => `Resetting adapter`);
-    await this.disposeTestExplorer();
-    this.karmaTestExplorer = this.createTestExplorer();
-    this.load();
+  public async load(): Promise<void> {
+    return this.reload();
   }
 
-  public async cancel(): Promise<void> {
-    return this.reset();
+  private async reload(): Promise<void> {
+    await this.disposeTestExplorer();
+    this.karmaTestExplorer = this.createTestExplorer();
+    return this.karmaTestExplorer.loadTests();
   }
 
   public async run(testIds: string[]): Promise<void> {
-    return this.karmaTestExplorer.runTests(testIds);
+    return this.karmaTestExplorer?.runTests(testIds);
   }
 
   public async debug(testIds: string[]): Promise<void> {
-    return this.karmaTestExplorer.debugTests(testIds);
+    return this.karmaTestExplorer?.debugTests(testIds);
   }
 
-  public async load(): Promise<void> {
-    return this.karmaTestExplorer.loadTests();
+  public async cancel(): Promise<void> {
+    return this.reload();
   }
 
   get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -236,6 +232,10 @@ export class Adapter implements TestAdapter, Disposable {
   }
 
   private async disposeTestExplorer(): Promise<void> {
+    if (!this.karmaTestExplorer) {
+      return;
+    }
+    this.logger.info(() => `Resetting adapter`);
     await this.karmaTestExplorer.dispose();
     await Disposer.dispose(this.testExplorerDisposables);
     this.testExplorerDisposables = [];

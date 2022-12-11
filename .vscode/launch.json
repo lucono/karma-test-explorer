@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Debug Karma Test Explorer",
-      "type": "pwa-extensionHost",
+      "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
@@ -23,11 +23,7 @@
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "disableOptimisticBPs": true,
-      "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "vscode-jest-tests",
@@ -40,11 +36,7 @@
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "disableOptimisticBPs": true,
-      "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
-      }
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }

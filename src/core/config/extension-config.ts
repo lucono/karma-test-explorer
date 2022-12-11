@@ -50,7 +50,7 @@ export class ExtensionConfig implements Disposable {
   public readonly projectName: string;
   public readonly projectPath: string;
   public readonly projectInstallRootPath: string;
-  public readonly projectKarmaConfigFilePath: string;
+  public readonly projectKarmaConfigFilePath?: string;
 
   // General Settings
   public readonly autoWatchBatchDelay?: number;
@@ -161,7 +161,7 @@ export class ExtensionConfig implements Disposable {
     );
 
     this.excludeFiles = toSingleUniqueArray(
-      configStore.get(GeneralConfigSetting.ExcludeFiles),
+      configStore.get<string[]>(GeneralConfigSetting.ExcludeFiles),
       ALWAYS_EXCLUDED_TEST_FILE_GLOBS
     ).map(fileGlob => normalizePath(fileGlob));
   }

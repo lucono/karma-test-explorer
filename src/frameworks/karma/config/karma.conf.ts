@@ -9,8 +9,9 @@ module.exports = (config: KarmaConfig) => {
   const logLevel = <LogLevel>process.env[KarmaEnvironmentVariable.ExtensionLogLevel] || LogLevel.INFO;
   const logger: Logger = new ConsoleLogger(KarmaConfigLoader.name, logLevel);
 
+  const karmaConfigHomePath = process.env[KarmaEnvironmentVariable.ProjectKarmaConfigHomePath] as string;
   const originalConfigPath = process.env[KarmaEnvironmentVariable.ProjectKarmaConfigPath] as string;
-  const karmaConfigProcessor = new KarmaConfigLoader(logger);
+  const karmaConfigLoader = new KarmaConfigLoader(logger);
 
-  karmaConfigProcessor.loadConfig(config, originalConfigPath);
+  karmaConfigLoader.loadConfig(config, karmaConfigHomePath, originalConfigPath);
 };

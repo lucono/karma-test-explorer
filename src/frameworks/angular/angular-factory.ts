@@ -48,7 +48,7 @@ export class AngularFactory implements Partial<TestFactory> {
       () =>
         `Using Angular project '${this.config.projectName}' ` +
         `at root path '${this.config.projectPath}' ` +
-        `and karma config file '${this.config.projectKarmaConfigFilePath}'`
+        `and karma config file '${this.config.projectKarmaConfigFilePath ?? '<none>'}'`
     );
 
     const environment: Record<string, string | undefined> = {

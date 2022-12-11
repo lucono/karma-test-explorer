@@ -1,4 +1,5 @@
 import { Node } from '@babel/core';
+import { CallExpression } from '@babel/types';
 import { Disposable } from 'vscode';
 import { Disposer } from '../../../../util/disposable/disposer';
 import { Logger } from '../../../../util/logging/logger';
@@ -9,7 +10,7 @@ import { TestType } from '../../../base/test-infos';
 import { ProcessedSourceNode, SourceNodeDetail, SourceNodeProcessor } from '../source-node-processor';
 import { TestDescriptionNodeProcessor } from './test-description-node-processor';
 
-export class TestAndSuiteNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
+export class FunctionCallNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
   private readonly disposables: Disposable[] = [];
   private readonly suiteTags: string[];
   private readonly testTags: string[];
@@ -41,6 +42,51 @@ export class TestAndSuiteNodeProcessor implements SourceNodeProcessor<ProcessedS
     this.logger.trace(() => `Processing source node of type: ${node.type}`);
 
     const expressionNode = node.expression;
+    const nodeDetail: SourceNodeDetail | undefined = this.getNodeDetail(expressionNode);
+
+    let childNodes: Node[] | undefined;
+
+    if (nodeDetail) {
+      const testImplementationNode = expressionNode.arguments[1];
+
+      const testNodeIsSuiteWithFunctionImplementation =
+        nodeDetail.type === TestType.Suite &&
+        (testImplementationNode?.type === 'FunctionExpression' ||
+          testImplementationNode?.type === 'ArrowFunctionExpression');
+
+      childNodes =
+        testNodeIsSuiteWithFunctionImplementation && testImplementationNode?.body?.type === 'BlockStatement'
+          ? testImplementationNode.body.body
+          : undefined;
+    } else {
+      const blockStatementNodes: Node[] = [];
+
+      [expressionNode.callee, ...expressionNode.arguments].forEach(node => {
+        const nodeIsFunction = node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression';
+
+        if (nodeIsFunction && node.body.type === 'BlockStatement') {
+          blockStatementNodes.push(...node.body.body);
+        }
+      });
+
+      childNodes = blockStatementNodes;
+    }
+
+    const processedNode: ProcessedSourceNode = {
+      nodeDetail,
+      childNodes
+    };
+
+    this.logger.trace(
+      () =>
+        `Successfully processed source node ` +
+        `(having ${childNodes?.length ?? 0} child nodes): ` +
+        `${JSON.stringify(nodeDetail, regexJsonReplacer, 2)}`
+    );
+    return processedNode;
+  }
+
+  private getNodeDetail(expressionNode: CallExpression): SourceNodeDetail | undefined {
     const calleeNode = expressionNode.callee;
 
     const testTag: string | undefined =
@@ -51,7 +97,6 @@ export class TestAndSuiteNodeProcessor implements SourceNodeProcessor<ProcessedS
           calleeNode.property.type === 'Identifier'
         ? `${calleeNode.object.name}.${calleeNode.property.name}`
         : undefined;
-
     if (!testTag) {
       return undefined;
     }
@@ -100,31 +145,7 @@ export class TestAndSuiteNodeProcessor implements SourceNodeProcessor<ProcessedS
       line: locationNode.start.line
     };
 
-    const testImplementationNode = expressionNode.arguments[1];
-
-    const testNodeHasFunctionImplementation =
-      testImplementationNode?.type === 'FunctionExpression' ||
-      testImplementationNode?.type === 'ArrowFunctionExpression';
-
-    const childNodes =
-      testDefinitionType === TestType.Suite &&
-      testNodeHasFunctionImplementation &&
-      testImplementationNode?.body?.type === 'BlockStatement'
-        ? testImplementationNode.body.body
-        : undefined;
-
-    const processedNode: ProcessedSourceNode = {
-      nodeDetail,
-      childNodes
-    };
-
-    this.logger.trace(
-      () =>
-        `Successfully processed source node ` +
-        `(having ${childNodes?.length ?? 0} child nodes): ` +
-        `${JSON.stringify(nodeDetail, regexJsonReplacer, 2)}`
-    );
-    return processedNode;
+    return nodeDetail;
   }
 
   public async dispose() {

@@ -202,7 +202,10 @@ export class ProjectFactory implements Disposable {
 
       angularWorkspace.projects.forEach(angularChildProjectInfo => {
         const angularProjectPath = normalizePath(resolve(absoluteProjectRootPath, angularChildProjectInfo.rootPath));
-        const karmaConfigPath = normalizePath(resolve(angularProjectPath, angularChildProjectInfo.karmaConfigPath));
+
+        const karmaConfigPath = angularChildProjectInfo.karmaConfigPath
+          ? normalizePath(resolve(angularProjectPath, angularChildProjectInfo.karmaConfigPath))
+          : undefined;
 
         const projectDefaultSettings = new SimpleConfigStore<GeneralConfigSetting>({
           [GeneralConfigSetting.WebRoot]: absoluteProjectRootPath
@@ -242,6 +245,17 @@ export class ProjectFactory implements Disposable {
       const karmaConfigPath = normalizePath(
         resolve(absoluteProjectRootPath, projectFolderConfig.get(ExternalConfigSetting.KarmaConfFilePath)!)
       );
+
+      if (!this.fileHandler.existsSync(karmaConfigPath)) {
+        this.logger.debug(
+          () =>
+            `Excluding project root path '${relativeProjectRootPath}' ` +
+            `which has absolute path '${absoluteProjectRootPath}' - ` +
+            `Karma config file not found at: ${karmaConfigPath}`
+        );
+        return [];
+      }
+
       const projectDefaultSettings = new SimpleConfigStore<GeneralConfigSetting>({
         [GeneralConfigSetting.WebRoot]: absoluteProjectRootPath
       });
@@ -308,7 +322,11 @@ export class ProjectFactory implements Disposable {
     const configuredExtensionSetting = [
       ...Object.values(GeneralConfigSetting),
       ...Object.values(ExternalConfigSetting)
-    ].find(configSetting => workspaceConfig.inspect(configSetting)?.workspaceFolderValue ?? false);
+    ].find(
+      configSetting =>
+        workspaceConfig.inspect(configSetting)?.workspaceFolderValue !== undefined ||
+        workspaceConfig.inspect(configSetting)?.workspaceValue !== undefined
+    );
 
     if (configuredExtensionSetting !== undefined) {
       this.logger.debug(

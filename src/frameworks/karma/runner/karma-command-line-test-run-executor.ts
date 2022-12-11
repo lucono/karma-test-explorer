@@ -32,7 +32,8 @@ export class KarmaCommandLineTestRunExecutor implements TestRunExecutor {
       cwd: this.projectRootPath,
       shell: false,
       env: this.options.environment,
-      failOnStandardError: this.options.failOnStandardError
+      failOnStandardError: this.options.failOnStandardError,
+      parentProcessName: KarmaCommandLineTestRunExecutor.name
     };
 
     const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
