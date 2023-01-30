@@ -1,12 +1,14 @@
-import { mock, MockProxy } from 'jest-mock-extended';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { TestGrouping } from '../../../src/core/base/test-grouping';
-import { TestSuiteType, TestType } from '../../../src/core/base/test-infos';
-import { TestHelper } from '../../../src/core/test-helper';
-import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from '../../../src/core/util/test-suite-organizer';
+
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestGrouping } from '../../../src/core/base/test-grouping.js';
+import { TestSuiteType, TestType } from '../../../src/core/base/test-infos.js';
+import { TestHelper } from '../../../src/core/test-helper.js';
+import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from '../../../src/core/util/test-suite-organizer.js';
 import '../../../src/types/vscode-test-adapter-api';
-import { Logger } from '../../../src/util/logging/logger';
-import { asTestSuiteWithUnixStylePaths as withUnixPaths } from '../../test-util';
+import { Logger } from '../../../src/util/logging/logger.js';
+import { asTestSuiteWithUnixStylePaths as withUnixPaths } from '../../test-util.js';
 
 describe('TestSuiteOrganizer', () => {
   let mockLogger: MockProxy<Logger>;

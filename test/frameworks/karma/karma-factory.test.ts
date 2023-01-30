@@ -1,15 +1,16 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestFramework } from '../../../src/core/base/test-framework';
-import { ExtensionConfig, TestTriggerMethod } from '../../../src/core/config/extension-config';
-import { JasmineTestFramework } from '../../../src/frameworks/jasmine/jasmine-test-framework';
-import { KarmaFactory } from '../../../src/frameworks/karma/karma-factory';
-import { KarmaCommandLineTestRunExecutor } from '../../../src/frameworks/karma/runner/karma-command-line-test-run-executor';
-import { KarmaHttpTestRunExecutor } from '../../../src/frameworks/karma/runner/karma-http-test-run-executor';
-import { KarmaCommandLineTestServerExecutor } from '../../../src/frameworks/karma/server/karma-command-line-test-server-executor';
-import { SimpleLogger } from '../../../src/util/logging/simple-logger';
-import { ProcessHandler } from '../../../src/util/process/process-handler';
-import { ProcessLog } from '../../../src/util/process/process-log';
-import { Writeable } from '../../test-util';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestFramework } from '../../../src/core/base/test-framework.js';
+import { ExtensionConfig, TestTriggerMethod } from '../../../src/core/config/extension-config.js';
+import { JasmineTestFramework } from '../../../src/frameworks/jasmine/jasmine-test-framework.js';
+import { KarmaFactory } from '../../../src/frameworks/karma/karma-factory.js';
+import { KarmaCommandLineTestRunExecutor } from '../../../src/frameworks/karma/runner/karma-command-line-test-run-executor.js';
+import { KarmaHttpTestRunExecutor } from '../../../src/frameworks/karma/runner/karma-http-test-run-executor.js';
+import { KarmaCommandLineTestServerExecutor } from '../../../src/frameworks/karma/server/karma-command-line-test-server-executor.js';
+import { SimpleLogger } from '../../../src/util/logging/simple-logger.js';
+import { ProcessHandler } from '../../../src/util/process/process-handler.js';
+import { ProcessLog } from '../../../src/util/process/process-log.js';
+import { Writeable } from '../../test-util.js';
 
 jest.mock('../../../src/frameworks/karma/server/karma-command-line-test-server-executor');
 jest.mock('../../../src/frameworks/karma/runner/karma-command-line-test-run-executor');

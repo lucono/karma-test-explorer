@@ -1,14 +1,15 @@
 import { existsSync, readFile, readFileSync } from 'fs';
-import globby from 'globby';
-import { DEFAULT_FILE_ENCODING } from '../../constants';
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
-import { DeferredPromise } from '../future/deferred-promise';
-import { Logger } from '../logging/logger';
-import { normalizePath } from '../utils';
-import { FileHandler } from './file-handler';
+import { Options as GlobbyOptions, globby } from 'globby';
 
-const DEFAULT_GLOB_OPTIONS: globby.GlobbyOptions = {
+import { DEFAULT_FILE_ENCODING } from '../../constants.js';
+import { Disposable } from '../disposable/disposable.js';
+import { Disposer } from '../disposable/disposer.js';
+import { DeferredPromise } from '../future/deferred-promise.js';
+import { Logger } from '../logging/logger.js';
+import { normalizePath } from '../utils.js';
+import { FileHandler } from './file-handler.js';
+
+const DEFAULT_GLOB_OPTIONS: GlobbyOptions = {
   unique: true,
   absolute: true,
   baseNameMatch: false,
@@ -16,7 +17,7 @@ const DEFAULT_GLOB_OPTIONS: globby.GlobbyOptions = {
   gitignore: true
 };
 
-export interface SimpleFileHandlerOptions extends globby.GlobbyOptions {
+export interface SimpleFileHandlerOptions extends GlobbyOptions {
   cwd?: string;
   fileEncoding?: BufferEncoding;
 }
@@ -69,7 +70,7 @@ export class SimpleFileHandler implements FileHandler {
     return deferredFileContents.promise();
   }
 
-  public async resolveFileGlobs(filePatterns: string[], globOptions: globby.GlobbyOptions = {}): Promise<string[]> {
+  public async resolveFileGlobs(filePatterns: string[], globOptions: GlobbyOptions = {}): Promise<string[]> {
     try {
       const searchOptions = { ...DEFAULT_GLOB_OPTIONS, ...this.fileHandlerOptions, ...globOptions };
       const files = (await globby(filePatterns, searchOptions)).map(file => normalizePath(file));

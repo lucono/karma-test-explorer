@@ -1,15 +1,15 @@
-import { Node } from '@babel/core';
-import { BinaryExpression, ConditionalExpression, NumericLiteral, TemplateLiteral } from '@babel/types';
-import { Disposable } from 'vscode';
-import { Disposer } from '../../../../util/disposable/disposer';
-import { Logger } from '../../../../util/logging/logger';
-import { escapeForRegExp, regexJsonReplacer } from '../../../../util/utils';
+import { BinaryExpression, ConditionalExpression, Node, NumericLiteral, TemplateLiteral } from '@babel/types';
+
+import { Disposable } from '../../../../util/disposable/disposable.js';
+import { Disposer } from '../../../../util/disposable/disposer.js';
+import { Logger } from '../../../../util/logging/logger.js';
+import { escapeForRegExp, regexJsonReplacer } from '../../../../util/utils.js';
 import {
   DescribedTestDefinitionType,
   PatternDescribedTestDefinition,
   StringDescribedTestDefinition
-} from '../described-test-definition';
-import { SourceNodeProcessor } from '../source-node-processor';
+} from '../described-test-definition.js';
+import { SourceNodeProcessor } from '../source-node-processor.js';
 
 type StringOrPattern = { text: string; isPattern: boolean };
 

@@ -1,14 +1,15 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestDefinitionState } from '../../../../src/core/base/test-definition';
-import { TestDefinitionProvider } from '../../../../src/core/base/test-definition-provider';
-import { TestType } from '../../../../src/core/base/test-infos';
-import { AstTestDefinitionProvider } from '../../../../src/core/parser/ast/ast-test-definition-provider';
-import { AstTestFileParser } from '../../../../src/core/parser/ast/ast-test-file-parser';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestDefinitionProvider } from '../../../../src/core/base/test-definition-provider.js';
+import { TestDefinitionState } from '../../../../src/core/base/test-definition.js';
+import { TestType } from '../../../../src/core/base/test-infos.js';
+import { AstTestDefinitionProvider } from '../../../../src/core/parser/ast/ast-test-definition-provider.js';
+import { AstTestFileParser } from '../../../../src/core/parser/ast/ast-test-file-parser.js';
 import {
   DescribedTestDefinitionInfo,
   DescribedTestDefinitionType
-} from '../../../../src/core/parser/ast/described-test-definition';
-import { Logger } from '../../../../src/util/logging/logger';
+} from '../../../../src/core/parser/ast/described-test-definition.js';
+import { Logger } from '../../../../src/util/logging/logger.js';
 
 describe('AstTestDefinitionProvider', () => {
   let mockLogger: MockProxy<Logger>;
@@ -26,7 +27,7 @@ describe('AstTestDefinitionProvider', () => {
     const mockTestFilePath = 'path/to/random/test/file';
 
     beforeEach(async () => {
-      mockAstTestFileParser.parseFileText.mockReturnValue(<DescribedTestDefinitionInfo[]>[
+      mockAstTestFileParser.parseFileText.mockReturnValue([
         {
           suite: [
             {
@@ -107,7 +108,7 @@ describe('AstTestDefinitionProvider', () => {
             disabled: false
           }
         }
-      ]);
+      ] as DescribedTestDefinitionInfo[]);
       testDefinitionProvider.addFileContent(mockTestFileText, mockTestFilePath);
     });
 

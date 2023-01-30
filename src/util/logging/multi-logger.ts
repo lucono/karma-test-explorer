@@ -1,5 +1,5 @@
-import { NonDisposable } from '../disposable/disposable';
-import { Logger } from './logger';
+import { NonDisposable } from '../disposable/disposable.js';
+import { Logger } from './logger.js';
 
 export class MultiLogger implements Logger {
   private readonly loggers: (NonDisposable<Logger> | undefined)[];

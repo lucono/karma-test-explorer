@@ -1,14 +1,15 @@
 import { join } from 'path';
-import { TestRunExecutor } from '../../../api/test-run-executor';
-import { EXTENSION_CONFIG_PREFIX } from '../../../constants';
-import { ExternalConfigSetting } from '../../../core/config/config-setting';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Execution } from '../../../util/future/execution';
-import { SimpleLogger } from '../../../util/logging/simple-logger';
-import { ProcessHandler } from '../../../util/process/process-handler';
-import { SimpleProcessOptions } from '../../../util/process/simple-process';
-import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils';
+
+import { TestRunExecutor } from '../../../api/test-run-executor.js';
+import { EXTENSION_CONFIG_PREFIX } from '../../../constants.js';
+import { ExternalConfigSetting } from '../../../core/config/config-setting.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Execution } from '../../../util/future/execution.js';
+import { SimpleLogger } from '../../../util/logging/simple-logger.js';
+import { ProcessHandler } from '../../../util/process/process-handler.js';
+import { SimpleProcessOptions } from '../../../util/process/simple-process.js';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils.js';
 
 export interface KarmaCommandLineTestRunExecutorOptions {
   environment: Record<string, string | undefined>;

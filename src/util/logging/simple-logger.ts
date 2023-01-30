@@ -1,8 +1,8 @@
-import { DEFAULT_LOG_LEVEL } from '../../constants';
-import { getPropertyWithValue } from '../utils';
-import { LogAppender } from './log-appender';
-import { LogLevel, LogLevels } from './log-level';
-import { Logger } from './logger';
+import { DEFAULT_LOG_LEVEL } from '../../constants.js';
+import { getPropertyWithValue } from '../utils.js';
+import { LogAppender } from './log-appender.js';
+import { LogLevel, LogLevels } from './log-level.js';
+import { Logger } from './logger.js';
 
 export class SimpleLogger implements Logger {
   private readonly appender: LogAppender;

@@ -1,12 +1,13 @@
 import { commands, window } from 'vscode';
-import { STATUS_BAR_MESASGE_MAX_DURATION, STATUS_BAR_MESASGE_MIN_DURATION } from '../../../constants';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredPromise } from '../../../util/future/deferred-promise';
-import { Logger } from '../../../util/logging/logger';
-import { getPropertyWithValue } from '../../../util/utils';
-import { ExtensionCommands } from '../commands/extension-commands';
-import { StatusDisplay } from './status-display';
+
+import { STATUS_BAR_MESASGE_MAX_DURATION, STATUS_BAR_MESASGE_MIN_DURATION } from '../../../constants.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredPromise } from '../../../util/future/deferred-promise.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { getPropertyWithValue } from '../../../util/utils.js';
+import { ExtensionCommands } from '../commands/extension-commands.js';
+import { StatusDisplay } from './status-display.js';
 
 export enum MessageType {
   Info = 'Info',

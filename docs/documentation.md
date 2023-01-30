@@ -44,9 +44,10 @@ Duplicated tests in your project are also detected and convniently flagged for a
 - Rich visual test browsing, execution, and debugging
 - Angular, Karma, Jasmine, and Mocha support
 - Multi-project / monorepo / multi-root workspace support
-- Live update of pass-fail test statuses
-- Filter out noise from disabled tests / show only focused tests
+- Live update of pass-fail test statuses as code changes
 - Automatically detect and flag duplicate tests
+- Automatically detect and flag test parameterization issues
+- Filter out noise from disabled tests or show only focused tests
 - Non-Headless testing / use visible browser window
 - Group and run tests by folder or by test suite
 - Support for [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
@@ -253,9 +254,50 @@ Multi-Project Setup | Description
 -------------|------------
 VS Code multi-root workspace | For a multi-root workspace that is open in VS Code, all Karma and Angular projects in each root of the multi-root workspace will be available to load for testing
 Multi-project Angular workspace | For each Angular workspace that is configured or automatically discovered by Karma Test Explorer in a VS Code workspace, all its sub-projects will be available to load for testing
-Monorepo or Embedded project | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projectWorkspaces` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each project
+Monorepo or Embedded project | For a monorepo with different projects in various sub-folders, or a single project with embedded projects located in paths under the main project folder, the various projects can be configured for simultaneous testing in a single VS Code workspace using the `karmaTestExplorer.projectWorkspaces` extension setting, which allows for specifying the path to each project and optionally also providing some project-specific settings for each project. See the [Extension Settings](#extension-settings) section for more details on how to use this setting
 
 In any scenario, whenever multiple Karma or Angular projects are available for testing, a folder button will be available on the Test view toolbar which can be used for selecting and loading any number of those projects for simultaneous testing in the UI. The folder button is not available when there is only a single project configured or detected for testing in the current VS Code workspace.
+
+### Configuration examples using the `projectWorkspaces` option
+
+Specifying multiple projects using the relative path to each:
+
+```json
+"karmaTestExplorer.projectWorkspaces": [
+  "path/to/project-1/root",
+  "path/to/project-2/root"
+]
+```
+
+Specifying multiple projects with some additional per-project configuration:
+
+```json
+"karmaTestExplorer.projectWorkspaces": [
+  {
+    "rootPath": "path/to/project-1/root",
+    "karmaConfFilePath": "relative/to/rootPath/karma.conf.js",
+    "testFiles": ["test/**/*.spec.ts"],
+    "excludeFiles": ["test/path/to/exclude"]
+  },
+  {
+    "rootPath": "path/to/project-2/root",
+    "testFiles": ["test/**/*.spec.ts"]
+  }
+]
+```
+
+Specifying multiple projects while only providing additional configuration for some, but not all, of the projects:
+
+```json
+"karmaTestExplorer.projectWorkspaces": [
+  "./path/to/project-1/root",
+  "./path/to/project-2/root",
+  {
+    "rootPath": "path/to/project-3/root",
+    "testFiles": ["test/**/*.spec.ts"]
+  }
+]
+```
 
 ---
 

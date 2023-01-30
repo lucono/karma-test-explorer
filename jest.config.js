@@ -1,8 +1,9 @@
-module.exports = {
+export default {
   roots: ['<rootDir>'],
   preset: 'ts-jest',
-  transform: { '^.+\\.ts$': 'ts-jest' },
+  resolver: 'ts-jest-resolver',
   testRegex: 'test/.*\\.test\\.ts$',
   moduleFileExtensions: ['ts', 'js', 'd.ts'],
+  extensionsToTreatAsEsm: ['.ts'],
   testEnvironment: 'node'
 };

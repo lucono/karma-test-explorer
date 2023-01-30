@@ -1,19 +1,24 @@
 import { ParserPlugin } from '@babel/parser';
 import { mock } from 'jest-mock-extended';
-import { TestDefinitionState } from '../../../../src/core/base/test-definition';
-import { TestType } from '../../../../src/core/base/test-infos';
-import { AstTestFileParser } from '../../../../src/core/parser/ast/ast-test-file-parser';
-import { FunctionCallNodeProcessor } from '../../../../src/core/parser/ast/processors/function-call-node-processor';
-import { TestDescriptionNodeProcessor } from '../../../../src/core/parser/ast/processors/test-description-node-processor';
-import { TestFileParser } from '../../../../src/core/parser/test-file-parser';
-import { TestDefinitionInfo } from '../../../../src/core/test-locator';
-import { JasmineTestFramework } from '../../../../src/frameworks/jasmine/jasmine-test-framework';
-import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../../../../src/frameworks/mocha/mocha-test-framework';
-import { LogAppender } from '../../../../src/util/logging/log-appender';
-import { LogLevel } from '../../../../src/util/logging/log-level';
-import { Logger } from '../../../../src/util/logging/logger';
-import { SimpleLogger } from '../../../../src/util/logging/simple-logger';
-import { jasmineInterfaceKeywords, mochaBddInterfaceKeywords, mochaTddInterfaceKeywords } from '../parser-test-utils';
+
+import { TestDefinitionState } from '../../../../src/core/base/test-definition.js';
+import { TestType } from '../../../../src/core/base/test-infos.js';
+import { AstTestFileParser } from '../../../../src/core/parser/ast/ast-test-file-parser.js';
+import { TestAndSuiteNodeProcessor } from '../../../../src/core/parser/ast/processors/test-and-suite-node-processor.js';
+import { TestDescriptionNodeProcessor } from '../../../../src/core/parser/ast/processors/test-description-node-processor.js';
+import { TestFileParser } from '../../../../src/core/parser/test-file-parser.js';
+import { TestDefinitionInfo } from '../../../../src/core/test-locator.js';
+import { JasmineTestFramework } from '../../../../src/frameworks/jasmine/jasmine-test-framework.js';
+import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../../../../src/frameworks/mocha/mocha-test-framework.js';
+import { LogAppender } from '../../../../src/util/logging/log-appender.js';
+import { LogLevel } from '../../../../src/util/logging/log-level.js';
+import { Logger } from '../../../../src/util/logging/logger.js';
+import { SimpleLogger } from '../../../../src/util/logging/simple-logger.js';
+import {
+  jasmineInterfaceKeywords,
+  mochaBddInterfaceKeywords,
+  mochaTddInterfaceKeywords
+} from '../parser-test-utils.js';
 
 const fileTypeData = [
   { fileName: '/fake/test/file/path.js', fileType: '.js' },
@@ -45,13 +50,13 @@ describe('AstTestFileParser', () => {
     fileTypeData.forEach(({ fileName, fileType }) => {
       describe(`using the ${testInterfaceName} test interface`, () => {
         let testParser: TestFileParser<TestDefinitionInfo[]>;
-        let functionCallNodeProcessor: FunctionCallNodeProcessor;
+        let testAndSuiteNodeProcessor: TestAndSuiteNodeProcessor;
         let logger: Logger;
         let fakeTestFilePath: string;
         let parserLogs: string;
 
         beforeEach(() => {
-          functionCallNodeProcessor = new FunctionCallNodeProcessor(
+          testAndSuiteNodeProcessor = new TestAndSuiteNodeProcessor(
             testInterface,
             new TestDescriptionNodeProcessor(mock<Logger>()),
             mock<Logger>()
@@ -61,7 +66,7 @@ describe('AstTestFileParser', () => {
             dispose: () => {} // eslint-disable-line @typescript-eslint/no-empty-function
           };
           logger = new SimpleLogger(logCapturingAppender, 'Parser Test', LogLevel.TRACE);
-          testParser = new AstTestFileParser([functionCallNodeProcessor], logger, { useLenientMode: false });
+          testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, { useLenientMode: false });
           parserLogs = '';
         });
 
@@ -1310,7 +1315,7 @@ describe('AstTestFileParser', () => {
 
           describe('using lenient parsing mode', () => {
             beforeEach(() => {
-              testParser = new AstTestFileParser([functionCallNodeProcessor], logger, { useLenientMode: true });
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, { useLenientMode: true });
             });
 
             if (['.js', '.jsx'].includes(fileType)) {
@@ -1440,7 +1445,7 @@ describe('AstTestFileParser', () => {
 
           describe('when enabled parser plugins is undefined', () => {
             beforeEach(() => {
-              testParser = new AstTestFileParser([functionCallNodeProcessor], logger, {
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
                 useLenientMode: true,
                 enabledParserPlugins: undefined
               });
@@ -1475,7 +1480,7 @@ describe('AstTestFileParser', () => {
 
           describe('when enabled parser plugins is an empty list', () => {
             beforeEach(() => {
-              testParser = new AstTestFileParser([functionCallNodeProcessor], logger, {
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
                 useLenientMode: false,
                 enabledParserPlugins: []
               });
@@ -1502,7 +1507,7 @@ describe('AstTestFileParser', () => {
 
             beforeEach(() => {
               specifiedPlugin = 'decimal';
-              testParser = new AstTestFileParser([functionCallNodeProcessor], logger, {
+              testParser = new AstTestFileParser([testAndSuiteNodeProcessor], logger, {
                 useLenientMode: true,
                 enabledParserPlugins: [specifiedPlugin]
               });

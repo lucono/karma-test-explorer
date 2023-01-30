@@ -1,4 +1,4 @@
-import { TestStatus } from '../../../core/base/test-status';
+import { TestStatus } from '../../../core/base/test-status.js';
 
 export interface SpecCompleteResponse {
   readonly id: string;

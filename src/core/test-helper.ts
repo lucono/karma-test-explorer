@@ -1,8 +1,8 @@
-import { TestActiveState } from '../types/vscode-test-adapter-api';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { Logger } from '../util/logging/logger';
-import { TestDefinition, TestDefinitionState } from './base/test-definition';
+import { TestActiveState } from '../types/vscode-test-adapter-api.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { Logger } from '../util/logging/logger.js';
+import { TestDefinition, TestDefinitionState } from './base/test-definition.js';
 
 export interface TestHelperOptions {
   showTestDefinitionTypeIndicators?: boolean;

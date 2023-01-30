@@ -1,62 +1,64 @@
 import { EventEmitter, WorkspaceFolder } from 'vscode';
 import { RetireEvent } from 'vscode-test-adapter-api';
-import { TestFactory } from '../api/test-factory';
-import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../constants';
-import { AngularFactory, AngularFactoryConfig } from '../frameworks/angular/angular-factory';
-import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framework';
-import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-factory';
-import { DefaultTestBuilder, DefaultTestBuilderOptions } from '../frameworks/karma/runner/default-test-builder';
-import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor';
+
+import { TestFactory } from '../api/test-factory.js';
+import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../constants.js';
+import { AngularFactory, AngularFactoryConfig } from '../frameworks/angular/angular-factory.js';
+import { JasmineTestFramework } from '../frameworks/jasmine/jasmine-test-framework.js';
+import { KarmaFactory, KarmaFactoryConfig } from '../frameworks/karma/karma-factory.js';
+import { DefaultTestBuilder, DefaultTestBuilderOptions } from '../frameworks/karma/runner/default-test-builder.js';
+import { KarmaAutoWatchTestEventProcessor } from '../frameworks/karma/runner/karma-auto-watch-test-event-processor.js';
 import {
   KarmaTestEventProcessor,
   TestEventProcessingOptions
-} from '../frameworks/karma/runner/karma-test-event-processor';
-import { DebugStatusResolver, KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
-import { KarmaTestRunProcessor } from '../frameworks/karma/runner/karma-test-run-processor';
-import { SuiteAggregateTestResultProcessor } from '../frameworks/karma/runner/suite-aggregate-test-result-processor';
-import { TestBuilder } from '../frameworks/karma/runner/test-builder';
-import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor';
-import { KarmaServerProcessLog } from '../frameworks/karma/server/karma-server-process-log';
-import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../frameworks/mocha/mocha-test-framework';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { FileHandler } from '../util/filesystem/file-handler';
-import { LogAppender } from '../util/logging/log-appender';
-import { SimpleLogger } from '../util/logging/simple-logger';
-import { PortAcquisitionClient } from '../util/port/port-acquisition-client';
-import { ProcessHandler } from '../util/process/process-handler';
-import { ProcessLog } from '../util/process/process-log';
-import { stripJsComments } from '../util/utils';
-import { ProjectType } from './base/project-type';
-import { TestDefinitionProvider } from './base/test-definition-provider';
-import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events';
-import { TestFramework } from './base/test-framework';
-import { TestFrameworkName } from './base/test-framework-name';
-import { TestStatus } from './base/test-status';
-import { CascadingTestFactory } from './cascading-test-factory';
-import { ExtensionConfig, TestParsingMethod } from './config/extension-config';
-import { Debugger } from './debugger';
-import { DefaultTestManager } from './default-test-manager';
-import { FileWatcher, FileWatcherOptions } from './file-watcher';
-import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider';
-import { AstTestFileParser } from './parser/ast/ast-test-file-parser';
-import { ForEachNodeProcessor } from './parser/ast/processors/for-each-node-processor';
-import { FunctionCallNodeProcessor } from './parser/ast/processors/function-call-node-processor';
-import { FunctionDeclarationNodeProcessor } from './parser/ast/processors/function-declaration-node-processor';
-import { IfElseNodeProcessor } from './parser/ast/processors/if-else-node-processor';
-import { LoopNodeProcessor } from './parser/ast/processors/loop-node-processor';
-import { TestDescriptionNodeProcessor } from './parser/ast/processors/test-description-node-processor';
-import { ProcessedSourceNode, SourceNodeProcessor } from './parser/ast/source-node-processor';
-import { RegexpTestDefinitionProvider } from './parser/regexp/regexp-test-definition-provider';
-import { RegexpTestFileParser } from './parser/regexp/regexp-test-file-parser';
-import { TestHelper } from './test-helper';
-import { TestLocator, TestLocatorOptions } from './test-locator';
-import { StoredTestResolver, TestStore } from './test-store';
-import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from './util/test-suite-organizer';
-import { TestTreeProcessor } from './util/test-tree-processor';
-import { Commands } from './vscode/commands/commands';
-import { ProjectCommand } from './vscode/commands/project-command';
-import { NotificationHandler } from './vscode/notifications/notification-handler';
+} from '../frameworks/karma/runner/karma-test-event-processor.js';
+import { DebugStatusResolver, KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener.js';
+import { KarmaTestRunProcessor } from '../frameworks/karma/runner/karma-test-run-processor.js';
+import { SuiteAggregateTestResultProcessor } from '../frameworks/karma/runner/suite-aggregate-test-result-processor.js';
+import { TestBuilder } from '../frameworks/karma/runner/test-builder.js';
+import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor.js';
+import { KarmaServerProcessLog } from '../frameworks/karma/server/karma-server-process-log.js';
+import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../frameworks/mocha/mocha-test-framework.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { FileHandler } from '../util/filesystem/file-handler.js';
+import { LogAppender } from '../util/logging/log-appender.js';
+import { SimpleLogger } from '../util/logging/simple-logger.js';
+import { PortAcquisitionClient } from '../util/port/port-acquisition-client.js';
+import { ProcessHandler } from '../util/process/process-handler.js';
+import { ProcessLog } from '../util/process/process-log.js';
+import { stripJsComments } from '../util/utils.js';
+import { ProjectType } from './base/project-type.js';
+import { TestDefinitionProvider } from './base/test-definition-provider.js';
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events.js';
+import { TestFrameworkName } from './base/test-framework-name.js';
+import { TestFramework } from './base/test-framework.js';
+import { TestStatus } from './base/test-status.js';
+import { CascadingTestFactory } from './cascading-test-factory.js';
+import { ExtensionConfig, TestParsingMethod } from './config/extension-config.js';
+import { Debugger } from './debugger.js';
+import { DefaultTestManager } from './default-test-manager.js';
+import { FileWatcher, FileWatcherOptions } from './file-watcher.js';
+import { AstTestDefinitionProvider } from './parser/ast/ast-test-definition-provider.js';
+import { AstTestFileParser } from './parser/ast/ast-test-file-parser.js';
+import { ForEachNodeProcessor } from './parser/ast/processors/for-each-node-processor.js';
+import { FunctionCallNodeProcessor } from './parser/ast/processors/function-call-node-processor.js';
+import { FunctionDeclarationNodeProcessor } from './parser/ast/processors/function-declaration-node-processor.js';
+import { IfElseNodeProcessor } from './parser/ast/processors/if-else-node-processor.js';
+import { LoopNodeProcessor } from './parser/ast/processors/loop-node-processor.js';
+import { TestAndSuiteNodeProcessor } from './parser/ast/processors/test-and-suite-node-processor.js';
+import { TestDescriptionNodeProcessor } from './parser/ast/processors/test-description-node-processor.js';
+import { ProcessedSourceNode, SourceNodeProcessor } from './parser/ast/source-node-processor.js';
+import { RegexpTestDefinitionProvider } from './parser/regexp/regexp-test-definition-provider.js';
+import { RegexpTestFileParser } from './parser/regexp/regexp-test-file-parser.js';
+import { TestHelper } from './test-helper.js';
+import { TestLocator, TestLocatorOptions } from './test-locator.js';
+import { StoredTestResolver, TestStore } from './test-store.js';
+import { TestSuiteOrganizer, TestSuiteOrganizerOptions } from './util/test-suite-organizer.js';
+import { TestTreeProcessor } from './util/test-tree-processor.js';
+import { Commands } from './vscode/commands/commands.js';
+import { ProjectCommand } from './vscode/commands/project-command.js';
+import { NotificationHandler } from './vscode/notifications/notification-handler.js';
 
 export class MainFactory {
   private readonly disposables: Disposable[] = [];
@@ -316,15 +318,16 @@ export class MainFactory {
     );
 
     const sourceNodeProcessors: SourceNodeProcessor<ProcessedSourceNode>[] = [
-      new FunctionCallNodeProcessor(
+      new TestAndSuiteNodeProcessor(
         this.testFramework.getTestInterface(),
         testDescriptionNodeProcessor,
-        this.createLogger(FunctionCallNodeProcessor.name)
+        this.createLogger(TestAndSuiteNodeProcessor.name)
       ),
       new ForEachNodeProcessor(this.createLogger(ForEachNodeProcessor.name)),
       new LoopNodeProcessor(this.createLogger(LoopNodeProcessor.name)),
       new IfElseNodeProcessor(this.createLogger(IfElseNodeProcessor.name)),
-      new FunctionDeclarationNodeProcessor(this.createLogger(FunctionDeclarationNodeProcessor.name))
+      new FunctionDeclarationNodeProcessor(this.createLogger(FunctionDeclarationNodeProcessor.name)),
+      new FunctionCallNodeProcessor(this.createLogger(FunctionCallNodeProcessor.name))
     ];
 
     const testFileParser: AstTestFileParser = new AstTestFileParser(

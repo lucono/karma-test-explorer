@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
-import { Disposable } from '../../../src/util/disposable/disposable';
-import { Disposer } from '../../../src/util/disposable/disposer';
+
+import { Disposable } from '../../../src/util/disposable/disposable.js';
+import { Disposer } from '../../../src/util/disposable/disposer.js';
 
 describe('Disposer', () => {
   describe('dispose static method', () => {

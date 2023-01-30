@@ -1,25 +1,27 @@
-import { relative } from 'path';
 import { EventEmitter } from 'vscode';
 import { RetireEvent, TestDecoration, TestEvent, TestInfo } from 'vscode-test-adapter-api';
-import { TestDefinition } from '../../../core/base/test-definition';
-import { TestResultEvent } from '../../../core/base/test-events';
-import { TestType } from '../../../core/base/test-infos';
-import { TestResults } from '../../../core/base/test-results';
-import { TestState } from '../../../core/base/test-state';
-import { TestStatus } from '../../../core/base/test-status';
-import { TestHelper } from '../../../core/test-helper';
-import { TestLocator } from '../../../core/test-locator';
-import { StoredTestResolver } from '../../../core/test-store';
-import { TestSuiteFolderGroupingOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredPromise } from '../../../util/future/deferred-promise';
-import { Logger } from '../../../util/logging/logger';
-import { escapeForRegExp, normalizePath } from '../../../util/utils';
-import { TestCapture } from './karma-test-listener';
-import { SpecCompleteResponse } from './spec-complete-response';
-import { SuiteAggregateTestResultProcessor } from './suite-aggregate-test-result-processor';
-import { TestBuilder } from './test-builder';
+
+import { relative } from 'path';
+
+import { TestDefinition } from '../../../core/base/test-definition.js';
+import { TestResultEvent } from '../../../core/base/test-events.js';
+import { TestType } from '../../../core/base/test-infos.js';
+import { TestResults } from '../../../core/base/test-results.js';
+import { TestState } from '../../../core/base/test-state.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { TestHelper } from '../../../core/test-helper.js';
+import { TestLocator } from '../../../core/test-locator.js';
+import { StoredTestResolver } from '../../../core/test-store.js';
+import { TestSuiteFolderGroupingOptions, TestSuiteOrganizer } from '../../../core/util/test-suite-organizer.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredPromise } from '../../../util/future/deferred-promise.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { escapeForRegExp, normalizePath } from '../../../util/utils.js';
+import { TestCapture } from './karma-test-listener.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
+import { SuiteAggregateTestResultProcessor } from './suite-aggregate-test-result-processor.js';
+import { TestBuilder } from './test-builder.js';
 
 const defaultEventProcessingOptions: TestEventProcessingOptions = {
   filterTestEvents: [],

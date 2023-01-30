@@ -1,11 +1,12 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestFactory } from '../../src/api/test-factory';
-import { TestRunExecutor } from '../../src/api/test-run-executor';
-import { TestServerExecutor } from '../../src/api/test-server-executor';
-import { CascadingTestFactory } from '../../src/core/cascading-test-factory';
-import { KarmaTestListener } from '../../src/frameworks/karma/runner/karma-test-listener';
-import { TestDiscoveryProcessor } from '../../src/frameworks/karma/runner/test-discovery-processor';
-import { Logger } from '../../src/util/logging/logger';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestFactory } from '../../src/api/test-factory.js';
+import { TestRunExecutor } from '../../src/api/test-run-executor.js';
+import { TestServerExecutor } from '../../src/api/test-server-executor.js';
+import { CascadingTestFactory } from '../../src/core/cascading-test-factory.js';
+import { KarmaTestListener } from '../../src/frameworks/karma/runner/karma-test-listener.js';
+import { TestDiscoveryProcessor } from '../../src/frameworks/karma/runner/test-discovery-processor.js';
+import { Logger } from '../../src/util/logging/logger.js';
 
 describe('CascadingTestFactory', () => {
   let mockLogger: MockProxy<Logger>;

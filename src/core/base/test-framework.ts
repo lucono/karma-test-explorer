@@ -1,4 +1,4 @@
-import { TestFrameworkName } from './test-framework-name';
+import { TestFrameworkName } from './test-framework-name.js';
 
 export interface TestInterface {
   readonly suiteTags: { default: string[]; focused: string[]; disabled: string[] };

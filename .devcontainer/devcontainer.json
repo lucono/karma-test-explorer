@@ -14,8 +14,6 @@
 	"extensions": [
 		"dbaeumer.vscode-eslint",
 		"Orta.vscode-jest",
-		"hbenl.vscode-test-explorer",
-		"eamodio.gitlens",
-		"gruntfuggly.todo-tree"
+		"hbenl.vscode-test-explorer"
 	]
 }

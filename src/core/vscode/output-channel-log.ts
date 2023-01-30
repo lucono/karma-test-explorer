@@ -1,5 +1,6 @@
 import { OutputChannel, window } from 'vscode';
-import { LogAppender } from '../../util/logging/log-appender';
+
+import { LogAppender } from '../../util/logging/log-appender.js';
 
 export interface OutputChannelLogOptions {
   enabled?: boolean;

@@ -1,8 +1,8 @@
-import { EXTENSION_NAME } from '../../../constants';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { StatusType } from './notification-handler';
-import { StatusDisplay } from './status-display';
+import { EXTENSION_NAME } from '../../../constants.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { StatusType } from './notification-handler.js';
+import { StatusDisplay } from './status-display.js';
 
 const STATUS_TYPE_DISPLAY_PRIORITY_ORDER: StatusType[] = [
   StatusType.Error,

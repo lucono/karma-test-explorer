@@ -1,18 +1,18 @@
-import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../../../constants';
-import { TestStatus } from '../../../core/base/test-status';
-import { NotificationHandler, StatusType } from '../../../core/vscode/notifications/notification-handler';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { Execution } from '../../../util/future/execution';
-import { SimpleLogger } from '../../../util/logging/simple-logger';
-import { MultiEventHandler } from '../../../util/multi-event-handler';
-import { KarmaAutoWatchTestEventProcessor } from './karma-auto-watch-test-event-processor';
-import { KarmaEvent, KarmaEventName } from './karma-event';
-import { KarmaTestEventProcessor, TestEventProcessingOptions } from './karma-test-event-processor';
-import { DebugStatusResolver } from './karma-test-listener';
-import { LightSpecCompleteResponse, SpecCompleteResponse } from './spec-complete-response';
-import { TestRunStatus } from './test-run-status';
+import { KARMA_TEST_EVENT_INTERVAL_TIMEOUT } from '../../../constants.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { NotificationHandler, StatusType } from '../../../core/vscode/notifications/notification-handler.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredExecution } from '../../../util/future/deferred-execution.js';
+import { Execution } from '../../../util/future/execution.js';
+import { SimpleLogger } from '../../../util/logging/simple-logger.js';
+import { MultiEventHandler } from '../../../util/multi-event-handler.js';
+import { KarmaAutoWatchTestEventProcessor } from './karma-auto-watch-test-event-processor.js';
+import { KarmaEvent, KarmaEventName } from './karma-event.js';
+import { KarmaTestEventProcessor, TestEventProcessingOptions } from './karma-test-event-processor.js';
+import { DebugStatusResolver } from './karma-test-listener.js';
+import { LightSpecCompleteResponse, SpecCompleteResponse } from './spec-complete-response.js';
+import { TestRunStatus } from './test-run-status.js';
 
 export enum KarmaConnectionStatus {
   Started,

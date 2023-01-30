@@ -1,10 +1,12 @@
+import { ConfigurationChangeEvent, WorkspaceFolder, window, workspace } from 'vscode';
+
 import { debounce } from 'throttle-debounce';
-import { ConfigurationChangeEvent, window, workspace, WorkspaceFolder } from 'vscode';
-import { CONFIG_FILE_CHANGE_BATCH_DELAY } from '../../constants';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { Logger } from '../../util/logging/logger';
-import { normalizePath } from '../../util/utils';
+
+import { CONFIG_FILE_CHANGE_BATCH_DELAY } from '../../constants.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { Logger } from '../../util/logging/logger.js';
+import { normalizePath } from '../../util/utils.js';
 
 interface ConfigChangeSubscription<T extends string> {
   readonly workspaceFolder: WorkspaceFolder;
@@ -44,8 +46,8 @@ export class ConfigChangeManager<T extends string> implements Disposable {
 
     const debouncedConfigChangeHandler = debounce(
       options?.changeHandlingDelay ?? CONFIG_FILE_CHANGE_BATCH_DELAY,
-      options?.changeHandlingDelayMode === 'Ending' ? false : true,
-      this.handleConfigurationChange.bind(this)
+      this.handleConfigurationChange.bind(this),
+      { atBegin: options?.changeHandlingDelayMode === 'Ending' ? false : true }
     );
 
     this.logger.debug(() => 'Creating config change subscription');

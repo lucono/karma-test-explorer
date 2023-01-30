@@ -1,4 +1,4 @@
-import { AngularProjectInfo } from './angular-project-info';
+import { AngularProjectInfo } from './angular-project-info.js';
 
 export interface AngularWorkspaceInfo {
   readonly projects: AngularProjectInfo[];

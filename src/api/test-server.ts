@@ -1,5 +1,5 @@
-import { Disposable } from '../util/disposable/disposable';
-import { Execution } from '../util/future/execution';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Execution } from '../util/future/execution.js';
 
 export interface TestServer extends Disposable {
   start(karmaPort: number, karmaSocketPort: number, debugPort?: number): Execution;

@@ -1,14 +1,16 @@
-import { basename, dirname, posix, relative, resolve, sep as pathSeparator } from 'path';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { Logger } from '../../util/logging/logger';
-import { getLongestCommonPath, isChildPath } from '../../util/utils';
-import { TestGrouping } from '../base/test-grouping';
-import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos';
-import { GeneralConfigSetting } from '../config/config-setting';
-import { TestHelper } from '../test-helper';
+
+import { basename, dirname, sep as pathSeparator, posix, relative, resolve } from 'path';
+
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { Logger } from '../../util/logging/logger.js';
+import { getLongestCommonPath, isChildPath } from '../../util/utils.js';
+import { TestGrouping } from '../base/test-grouping.js';
+import { AnyTestInfo, TestFileSuiteInfo, TestFolderSuiteInfo, TestSuiteType, TestType } from '../base/test-infos.js';
+import { GeneralConfigSetting } from '../config/config-setting.js';
+import { TestHelper } from '../test-helper.js';
 
 export interface TestSuiteFolderGroupingOptions {
   flattenSingleChildFolders?: boolean;

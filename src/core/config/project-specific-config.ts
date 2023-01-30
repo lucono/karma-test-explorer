@@ -1,4 +1,4 @@
-import { ExternalConfigSetting, GeneralConfigSetting } from './config-setting';
+import { ExternalConfigSetting, GeneralConfigSetting } from './config-setting.js';
 
 export type ProjectSpecificConfigSetting =
   | ExternalConfigSetting.ProjectRootPath

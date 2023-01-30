@@ -1,5 +1,5 @@
-import { ConfigStore, ConfigStoreSettingInfo } from './config-store';
-import { SimpleMutableConfigStore } from './simple-mutable-config-store';
+import { ConfigStore, ConfigStoreSettingInfo } from './config-store.js';
+import { SimpleMutableConfigStore } from './simple-mutable-config-store.js';
 
 export class SimpleConfigStore<K extends string = string> implements ConfigStore<K> {
   private readonly configStore: SimpleMutableConfigStore<K>;

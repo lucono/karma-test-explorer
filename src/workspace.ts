@@ -1,8 +1,9 @@
 import { WorkspaceFolder } from 'vscode';
-import { Adapter } from './adapter';
-import { ProjectType } from './core/base/project-type';
-import { ProjectConfigSetting } from './core/config/config-setting';
-import { ConfigStore } from './core/config/config-store';
+
+import { Adapter } from './adapter.js';
+import { ProjectType } from './core/base/project-type.js';
+import { ProjectConfigSetting } from './core/config/config-setting.js';
+import { ConfigStore } from './core/config/config-store.js';
 
 export interface WorkspaceProject {
   readonly shortName: string;

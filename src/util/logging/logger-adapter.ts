@@ -1,6 +1,6 @@
-import { BasicLog } from './basic-log';
-import { LogLevel, LogLevels } from './log-level';
-import { Logger } from './logger';
+import { BasicLog } from './basic-log.js';
+import { LogLevel, LogLevels } from './log-level.js';
+import { Logger } from './logger.js';
 
 export interface LoggerAdapterOptions {
   patchTraceLogger?: boolean;

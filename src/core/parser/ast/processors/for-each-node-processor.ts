@@ -1,8 +1,9 @@
-import { Node } from '@babel/core';
-import { Disposable } from 'vscode';
-import { Disposer } from '../../../../util/disposable/disposer';
-import { Logger } from '../../../../util/logging/logger';
-import { ProcessedSourceNode, SourceNodeProcessor } from '../source-node-processor';
+import { Node } from '@babel/types';
+
+import { Disposable } from '../../../../util/disposable/disposable.js';
+import { Disposer } from '../../../../util/disposable/disposer.js';
+import { Logger } from '../../../../util/logging/logger.js';
+import { ProcessedSourceNode, SourceNodeProcessor } from '../source-node-processor.js';
 
 export class ForEachNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
   private readonly disposables: Disposable[] = [];
@@ -42,7 +43,8 @@ export class ForEachNodeProcessor implements SourceNodeProcessor<ProcessedSource
         : undefined;
 
     const processedNode: ProcessedSourceNode = {
-      childNodes: childNodes ?? []
+      childNodes: childNodes ?? [],
+      childNodesParameterized: true
     };
 
     this.logger.trace(

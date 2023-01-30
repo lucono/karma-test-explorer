@@ -1,14 +1,15 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestDefinitionState } from '../../../../src/core/base/test-definition';
-import { TestDefinitionProvider } from '../../../../src/core/base/test-definition-provider';
-import { TestType } from '../../../../src/core/base/test-infos';
-import { RegexpTestDefinitionProvider } from '../../../../src/core/parser/regexp/regexp-test-definition-provider';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestDefinitionProvider } from '../../../../src/core/base/test-definition-provider.js';
+import { TestDefinitionState } from '../../../../src/core/base/test-definition.js';
+import { TestType } from '../../../../src/core/base/test-infos.js';
+import { RegexpTestDefinitionProvider } from '../../../../src/core/parser/regexp/regexp-test-definition-provider.js';
 import {
   RegexpTestFileParser,
   RegexpTestFileParserResult
-} from '../../../../src/core/parser/regexp/regexp-test-file-parser';
-import { TestNodeType } from '../../../../src/core/parser/regexp/test-node';
-import { Logger } from '../../../../src/util/logging/logger';
+} from '../../../../src/core/parser/regexp/regexp-test-file-parser.js';
+import { TestNodeType } from '../../../../src/core/parser/regexp/test-node.js';
+import { Logger } from '../../../../src/util/logging/logger.js';
 
 describe('RegexpTestDefinitionProvider', () => {
   let mockLogger: MockProxy<Logger>;
@@ -26,7 +27,7 @@ describe('RegexpTestDefinitionProvider', () => {
     const mockTestFilePath = 'path/to/random/test/file';
 
     beforeEach(async () => {
-      mockRegexTestFileParser.parseFileText.mockReturnValue(<RegexpTestFileParserResult>{
+      mockRegexTestFileParser.parseFileText.mockReturnValue({
         Suite: [
           {
             type: TestNodeType.Suite,
@@ -73,7 +74,7 @@ describe('RegexpTestDefinitionProvider', () => {
             state: TestDefinitionState.Default
           }
         ]
-      });
+      } as RegexpTestFileParserResult);
       testDefinitionProvider.addFileContent(mockTestFileText, mockTestFilePath);
     });
 

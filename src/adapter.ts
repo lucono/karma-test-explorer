@@ -9,30 +9,35 @@ import {
   TestRunStartedEvent,
   TestSuiteEvent
 } from 'vscode-test-adapter-api';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_OUTPUT_CHANNEL_NAME, KARMA_SERVER_OUTPUT_CHANNEL_NAME } from './constants';
-import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events';
-import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './core/config/config-setting';
-import { ConfigStore } from './core/config/config-store';
-import { ExtensionConfig } from './core/config/extension-config';
-import { Debugger } from './core/debugger';
-import { KarmaTestExplorer } from './core/karma-test-explorer';
-import { MainFactory } from './core/main-factory';
-import { Commands } from './core/vscode/commands/commands';
-import { ProjectCommand } from './core/vscode/commands/project-command';
-import { NotificationHandler } from './core/vscode/notifications/notification-handler';
-import { StatusDisplay } from './core/vscode/notifications/status-display';
-import { OutputChannelLog } from './core/vscode/output-channel-log';
-import { KarmaLogLevel } from './frameworks/karma/karma-log-level';
-import { Disposable } from './util/disposable/disposable';
-import { Disposer } from './util/disposable/disposer';
-import { FileHandler } from './util/filesystem/file-handler';
-import { SimpleFileHandler } from './util/filesystem/simple-file-handler';
-import { LogLevel } from './util/logging/log-level';
-import { Logger } from './util/logging/logger';
-import { SimpleLogger } from './util/logging/simple-logger';
-import { PortAcquisitionClient } from './util/port/port-acquisition-client';
-import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
-import { getJsonCircularReferenceReplacer } from './util/utils';
+
+import {
+  EXTENSION_CONFIG_PREFIX,
+  EXTENSION_OUTPUT_CHANNEL_NAME,
+  KARMA_SERVER_OUTPUT_CHANNEL_NAME
+} from './constants.js';
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from './core/base/test-events.js';
+import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './core/config/config-setting.js';
+import { ConfigStore } from './core/config/config-store.js';
+import { ExtensionConfig } from './core/config/extension-config.js';
+import { Debugger } from './core/debugger.js';
+import { KarmaTestExplorer } from './core/karma-test-explorer.js';
+import { MainFactory } from './core/main-factory.js';
+import { Commands } from './core/vscode/commands/commands.js';
+import { ProjectCommand } from './core/vscode/commands/project-command.js';
+import { NotificationHandler } from './core/vscode/notifications/notification-handler.js';
+import { StatusDisplay } from './core/vscode/notifications/status-display.js';
+import { OutputChannelLog } from './core/vscode/output-channel-log.js';
+import { KarmaLogLevel } from './frameworks/karma/karma-log-level.js';
+import { Disposable } from './util/disposable/disposable.js';
+import { Disposer } from './util/disposable/disposer.js';
+import { FileHandler } from './util/filesystem/file-handler.js';
+import { SimpleFileHandler } from './util/filesystem/simple-file-handler.js';
+import { LogLevel } from './util/logging/log-level.js';
+import { Logger } from './util/logging/logger.js';
+import { SimpleLogger } from './util/logging/simple-logger.js';
+import { PortAcquisitionClient } from './util/port/port-acquisition-client.js';
+import { PortAcquisitionManager } from './util/port/port-acquisition-manager.js';
+import { getJsonCircularReferenceReplacer } from './util/utils.js';
 
 export class Adapter implements TestAdapter, Disposable {
   private readonly logLevel: LogLevel;

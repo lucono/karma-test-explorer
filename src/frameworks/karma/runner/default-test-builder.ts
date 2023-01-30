@@ -1,15 +1,16 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants';
-import { TestDefinition, TestDefinitionState } from '../../../core/base/test-definition';
-import { TestType } from '../../../core/base/test-infos';
-import { GeneralConfigSetting } from '../../../core/config/config-setting';
-import { TestHelper } from '../../../core/test-helper';
-import { TestDefinitionInfo, TestLocator } from '../../../core/test-locator';
-import { TestActiveState } from '../../../types/vscode-test-adapter-api';
-import { Logger } from '../../../util/logging/logger';
-import { regexJsonReplacer } from '../../../util/utils';
-import { SpecCompleteResponse } from './spec-complete-response';
-import { TestBuilder } from './test-builder';
+
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../../constants.js';
+import { TestDefinition, TestDefinitionState } from '../../../core/base/test-definition.js';
+import { TestType } from '../../../core/base/test-infos.js';
+import { GeneralConfigSetting } from '../../../core/config/config-setting.js';
+import { TestHelper } from '../../../core/test-helper.js';
+import { TestDefinitionInfo, TestLocator } from '../../../core/test-locator.js';
+import { TestActiveState } from '../../../types/vscode-test-adapter-api.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { regexJsonReplacer } from '../../../util/utils.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
+import { TestBuilder } from './test-builder.js';
 
 interface TestsFocusContext {
   currentFocusedSuites: Set<TestInfo | TestSuiteInfo>;
@@ -101,15 +102,21 @@ export class DefaultTestBuilder implements TestBuilder {
         const existingDuplicateTest = singleDefinitionTestsByNormalizedId.get(normalizedSpecId);
 
         if (existingDuplicateTest) {
-          loadProblemMessage = // FIXME: Adjust message when duplicate reported tests are due to parameterized tests without parameterized descriptions (💡 use lightbulb icon and also add lightbulb tip to gutter position)
+          loadProblemMessage =
             `"${spec.fullName}" \n\n` +
             `--- \n\n` +
-            `Duplicate instances of the above test were reported in your project ` +
-            `by Karma which could lead to incorrect and misreported test results. ` +
-            (test?.file
-              ? `${EXTENSION_NAME} has only mapped one matching test defined in ` +
-                `your project at the location below. \n\n` +
-                test.file
+            `Duplicate executions of the above test were reported in your project ` +
+            `by Karma, which can lead to incorrect or misreported test results. ` +
+            (testDefinition?.parameterized // TODO: Add lightbulb icon 💡 to test description and lightbulb tip to source gutter position
+              ? '(💡Tip: This seems to be a parameterized test. Ensure that each ' +
+                'test case description is different by properly incorporating all ' +
+                'its test prameters into the test description). '
+              : '') +
+            (test?.file && test?.line !== undefined
+              ? `For the multiple executions reported, ${EXTENSION_NAME} found ` +
+                `only one coresponding test defined in your project at: ` +
+                `\n\n` +
+                `${test.file}:${test.line + 1}`
               : '');
 
           errored = true;
@@ -124,7 +131,7 @@ export class DefaultTestBuilder implements TestBuilder {
           `${EXTENSION_NAME} could not find the test source for the above test ` +
           `within your project. This can occur in some scenarios if the test uses ` +
           `parameterization or a computed test description, or if the file in which ` +
-          `this test is defined is not captured by the glob pattern specified by your ` +
+          `this test is defined is not included by the glob pattern specified by your ` +
           `'${EXTENSION_CONFIG_PREFIX}.${GeneralConfigSetting.TestFiles}' setting.`;
       } else if (matchingTestDefinitions.length > 1) {
         errored = true;
@@ -144,9 +151,9 @@ export class DefaultTestBuilder implements TestBuilder {
         loadProblemMessage =
           `"${spec.fullName}" \n\n` +
           `--- \n\n` +
-          `${EXTENSION_NAME} found duplicate matching definitions for the ` +
-          `above test in your project at the locations below. This could ` +
-          `lead to incorrect and misreported test results. \n\n` +
+          `${EXTENSION_NAME} found duplicate matching definitions for the above test ` +
+          `in your project, which can lead to incorrect or misreported test results. ` +
+          `The duplicate tests are defined at: \n\n` +
           `${duplicateSpecFiles}`;
       }
 

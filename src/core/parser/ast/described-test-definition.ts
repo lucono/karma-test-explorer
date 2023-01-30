@@ -1,4 +1,4 @@
-import { TestDefinition } from '../../base/test-definition';
+import { TestDefinition } from '../../base/test-definition.js';
 
 export enum DescribedTestDefinitionType {
   String = 'string',

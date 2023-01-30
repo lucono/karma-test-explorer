@@ -1,11 +1,16 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestDefinitionState } from '../../../../src/core/base/test-definition';
-import { RegexpTestFileParser } from '../../../../src/core/parser/regexp/regexp-test-file-parser';
-import { TestNodeType } from '../../../../src/core/parser/regexp/test-node';
-import { JasmineTestFramework } from '../../../../src/frameworks/jasmine/jasmine-test-framework';
-import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../../../../src/frameworks/mocha/mocha-test-framework';
-import { Logger } from '../../../../src/util/logging/logger';
-import { jasmineInterfaceKeywords, mochaBddInterfaceKeywords, mochaTddInterfaceKeywords } from '../parser-test-utils';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestDefinitionState } from '../../../../src/core/base/test-definition.js';
+import { RegexpTestFileParser } from '../../../../src/core/parser/regexp/regexp-test-file-parser.js';
+import { TestNodeType } from '../../../../src/core/parser/regexp/test-node.js';
+import { JasmineTestFramework } from '../../../../src/frameworks/jasmine/jasmine-test-framework.js';
+import { MochaTestFrameworkBdd, MochaTestFrameworkTdd } from '../../../../src/frameworks/mocha/mocha-test-framework.js';
+import { Logger } from '../../../../src/util/logging/logger.js';
+import {
+  jasmineInterfaceKeywords,
+  mochaBddInterfaceKeywords,
+  mochaTddInterfaceKeywords
+} from '../parser-test-utils.js';
 
 describe('RegexpTestFileParser', () => {
   const fakeTestFilePath = '/fake/test/file/path.ts';

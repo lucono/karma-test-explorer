@@ -1,4 +1,4 @@
-import { Disposable } from '../disposable/disposable';
+import { Disposable } from '../disposable/disposable.js';
 
 export interface Logger extends Disposable {
   error(provideMessage: () => string): void;

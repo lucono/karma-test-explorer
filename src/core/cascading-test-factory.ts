@@ -1,13 +1,13 @@
-import { TestFactory } from '../api/test-factory';
-import { TestRunExecutor } from '../api/test-run-executor';
-import { TestRunner } from '../api/test-runner';
-import { TestServer } from '../api/test-server';
-import { TestServerExecutor } from '../api/test-server-executor';
-import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
-import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { Logger } from '../util/logging/logger';
+import { TestFactory } from '../api/test-factory.js';
+import { TestRunExecutor } from '../api/test-run-executor.js';
+import { TestRunner } from '../api/test-runner.js';
+import { TestServerExecutor } from '../api/test-server-executor.js';
+import { TestServer } from '../api/test-server.js';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener.js';
+import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { Logger } from '../util/logging/logger.js';
 
 export class CascadingTestFactory implements TestFactory {
   private readonly delegateTestFactories: (Partial<TestFactory> & Disposable)[];

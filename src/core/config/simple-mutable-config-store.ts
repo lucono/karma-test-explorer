@@ -1,4 +1,4 @@
-import { ConfigStoreSettingInfo, MutableConfigStore } from './config-store';
+import { ConfigStoreSettingInfo, MutableConfigStore } from './config-store.js';
 
 export class SimpleMutableConfigStore<K extends string = string> implements MutableConfigStore<K> {
   private configEntries: Map<string, unknown> = new Map();

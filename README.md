@@ -1,10 +1,8 @@
 [![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
-[![Installs](https://vsmarketplacebadge.apphb.com/installs-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
-[![Rating](https://vsmarketplacebadge.apphb.com/rating-short/lucono.karma-test-explorer.svg)](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer)
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 
-This extension runs your Karma or Angular tests in Visual Studio Code using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer), and supports the Jasmine and Mocha test frameworks.
+This extension adds a rich and fully integrated testing experience to Visual Studio Code for TypeScript, JavaScript, or Angular projects that use [Karma](https://karma-runner.github.io/latest/index.html) for testing.
 
 ![Karma Test Explorer screenshot](docs/img/sidebar.png)
 
@@ -17,12 +15,12 @@ Please take a minute to rate this extension in the [marketplace](https://marketp
 
 ## Why this Extension
 
-Karma Test Explorer is a complete rewrite of the deprecated [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) extension, and is aimed at facilitating various significant enhancements and new features, with a focus on robust support for:
+Karma Test Explorer is a complete rewrite of the deprecated [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer), and adds various significant enhancements and new features to provide robust support for:
 
 - Cloud and remote development sceanarios with [Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - Good performance with large projects having many thousands of tests
+- Zero-configuration user experience that "just works" for most setups
 - Flexibility to support a wide range of testing scenarios and workflows
-- Smooth user experience to "just work" without any or much configuration
 - Reliability, usability, and productivity
 
 ## Features
@@ -30,14 +28,13 @@ Karma Test Explorer is a complete rewrite of the deprecated [Angular/Karma Test 
 - Rich visual test browsing, execution, and debugging
 - Angular, Karma, Jasmine, and Mocha support
 - Multi-project / monorepo / multi-root workspace support
-- Live update of pass-fail test statuses
-- Filter out noise from disabled tests / show only focused tests
-- Automatically detect and flag duplicate tests
+- Live test validation of changing product code
+- Auto-detect and recommend fixes for various testing issues
 - [Much more](docs/documentation.md#features)
 
 ## Quick Start
 
-In many cases, testing should work without any manual configuration. To quickly get started:
+In many cases, testing should work out of the box:
 
 - Ensure Chrome browser and the project dependencies are installed
 - Install the Karma Test Explorer [extension](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and wait a moment while it initializes
@@ -51,7 +48,7 @@ For a more detailed guide on setting up, customizing, and fully leveraging all t
 
 ## Acknowledgement
 
-Special thanks to the authors of [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) on which Karma Test Explorer is originally based.
+Special thanks to the authors of the deprecated [Angular/Karma Test Explorer](https://github.com/Raagh/angular-karma_test-explorer) on which Karma Test Explorer was originally based.
 
 ## See Also
 

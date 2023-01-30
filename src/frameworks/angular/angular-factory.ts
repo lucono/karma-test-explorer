@@ -1,13 +1,16 @@
-import { TestFactory } from '../../api/test-factory';
-import { TestServerExecutor } from '../../api/test-server-executor';
-import { ExtensionConfig } from '../../core/config/extension-config';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { SimpleLogger } from '../../util/logging/simple-logger';
-import { ProcessHandler } from '../../util/process/process-handler';
-import { ProcessLog } from '../../util/process/process-log';
-import { AngularTestServerExecutor, AngularTestServerExecutorOptions } from '../angular/angular-test-server-executor';
-import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
+import { TestFactory } from '../../api/test-factory.js';
+import { TestServerExecutor } from '../../api/test-server-executor.js';
+import { ExtensionConfig } from '../../core/config/extension-config.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { SimpleLogger } from '../../util/logging/simple-logger.js';
+import { ProcessHandler } from '../../util/process/process-handler.js';
+import { ProcessLog } from '../../util/process/process-log.js';
+import {
+  AngularTestServerExecutor,
+  AngularTestServerExecutorOptions
+} from '../angular/angular-test-server-executor.js';
+import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable.js';
 
 export type AngularFactoryConfig = Pick<
   ExtensionConfig,

@@ -1,18 +1,20 @@
-import RichPromise from 'bluebird';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { TestRunExecutor } from '../../../api/test-run-executor';
-import { TestRunner } from '../../../api/test-runner';
-import { KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
-import { TestFramework, TestSet } from '../../../core/base/test-framework';
-import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredPromise } from '../../../util/future/deferred-promise';
-import { Logger } from '../../../util/logging/logger';
-import { generateRandomId } from '../../../util/utils';
-import { KarmaTestListener } from './karma-test-listener';
-import { SpecCompleteResponse } from './spec-complete-response';
-import { TestDiscoveryProcessor } from './test-discovery-processor';
+
+import RichPromise from 'bluebird';
+
+import { TestRunExecutor } from '../../../api/test-run-executor.js';
+import { TestRunner } from '../../../api/test-runner.js';
+import { KARMA_TEST_RUN_ID_FLAG } from '../../../constants.js';
+import { TestFramework, TestSet } from '../../../core/base/test-framework.js';
+import { AnyTestInfo, TestType } from '../../../core/base/test-infos.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredPromise } from '../../../util/future/deferred-promise.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { generateRandomId } from '../../../util/utils.js';
+import { KarmaTestListener } from './karma-test-listener.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
+import { TestDiscoveryProcessor } from './test-discovery-processor.js';
 
 export class KarmaTestRunner implements TestRunner {
   private disposables: Disposable[] = [];

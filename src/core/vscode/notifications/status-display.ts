@@ -1,6 +1,7 @@
 import { Command, MarkdownString } from 'vscode';
-import { Disposable } from '../../../util/disposable/disposable';
-import { StatusType } from './notification-handler';
+
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { StatusType } from './notification-handler.js';
 
 export interface StatusDisplay extends Disposable {
   type?: StatusType;

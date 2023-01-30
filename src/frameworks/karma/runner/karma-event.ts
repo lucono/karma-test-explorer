@@ -1,5 +1,5 @@
-import { LightSpecCompleteResponse } from './spec-complete-response';
-import { TestRunStatus } from './test-run-status';
+import { LightSpecCompleteResponse } from './spec-complete-response.js';
+import { TestRunStatus } from './test-run-status.js';
 
 export interface BrowserInfo {
   id: string;

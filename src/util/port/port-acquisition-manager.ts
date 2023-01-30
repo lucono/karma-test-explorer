@@ -1,8 +1,9 @@
 import { getPorts } from 'portfinder';
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
-import { Logger } from '../logging/logger';
-import { MultiLogger } from '../logging/multi-logger';
+
+import { Disposable } from '../disposable/disposable.js';
+import { Disposer } from '../disposable/disposer.js';
+import { Logger } from '../logging/logger.js';
+import { MultiLogger } from '../logging/multi-logger.js';
 
 export class PortAcquisitionManager implements Disposable {
   private assignedPorts: Set<number> = new Set();

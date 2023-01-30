@@ -12,6 +12,10 @@ module.exports = {
     'no-param-reassign': 'error',
     eqeqeq: ['error', 'always'],
     'no-useless-escape': 'off',
+    '@typescript-eslint/consistent-type-assertions': [
+      'error',
+      { assertionStyle: 'as', objectLiteralTypeAssertions: 'allow-as-parameter' }
+    ],
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',
     '@typescript-eslint/no-inferrable-types': 'off',
@@ -27,6 +31,7 @@ module.exports = {
     {
       files: 'test/**/*.test.ts',
       rules: {
+        '@typescript-eslint/consistent-type-assertions': 'off',
         '@typescript-eslint/no-var-requires': 'off',
         'no-empty': ['error', { allowEmptyCatch: true }]
       }

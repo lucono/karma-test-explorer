@@ -1,20 +1,27 @@
+import { DebugConfiguration } from 'vscode';
+
 import { parse as parseDotEnvContent } from 'dotenv';
 import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
-import { DebugConfiguration } from 'vscode';
+
 import {
   CHROME_BROWSER_DEBUGGING_PORT_FLAG,
   CHROME_DEFAULT_DEBUGGING_PORT,
   KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS,
   KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
-} from '../../constants';
-import { FileHandler } from '../../util/filesystem/file-handler';
-import { Logger } from '../../util/logging/logger';
-import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, transformProperties } from '../../util/utils';
-import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting';
-import { ConfigStore } from './config-store';
-import { ContainerMode } from './extension-config';
+} from '../../constants.js';
+import { FileHandler } from '../../util/filesystem/file-handler.js';
+import { Logger } from '../../util/logging/logger.js';
+import {
+  asNonBlankStringOrUndefined,
+  expandEnvironment,
+  normalizePath,
+  transformProperties
+} from '../../util/utils.js';
+import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
+import { ConfigStore } from './config-store.js';
+import { ContainerMode } from './extension-config.js';
 
 export const getDefaultDebugPort = (
   browser: string | undefined,

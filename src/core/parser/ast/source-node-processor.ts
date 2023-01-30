@@ -1,6 +1,7 @@
-import { Node } from '@babel/core';
-import { Disposable } from '../../../util/disposable/disposable';
-import { PatternDescribedTestDefinition, StringDescribedTestDefinition } from './described-test-definition';
+import { Node } from '@babel/types';
+
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { PatternDescribedTestDefinition, StringDescribedTestDefinition } from './described-test-definition.js';
 
 export interface SourceNodeProcessor<T> extends Disposable {
   processNode(node: Node): T | undefined;
@@ -8,7 +9,8 @@ export interface SourceNodeProcessor<T> extends Disposable {
 
 export interface ProcessedSourceNode {
   nodeDetail?: SourceNodeDetail;
-  childNodes?: Node[];
+  childNodes: Node[];
+  childNodesParameterized: boolean;
 }
 
 export type SourceNodeDetail =

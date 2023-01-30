@@ -1,6 +1,7 @@
-import { posix, sep as pathSeparator } from 'path';
-import { AnyTestInfo } from '../src/core/base/test-infos';
-import { ExtensionConfig } from '../src/core/config/extension-config';
+import { sep as pathSeparator, posix } from 'path';
+
+import { AnyTestInfo } from '../src/core/base/test-infos.js';
+import { ExtensionConfig } from '../src/core/config/extension-config.js';
 
 export type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 

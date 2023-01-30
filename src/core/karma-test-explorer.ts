@@ -1,4 +1,4 @@
-import { debug, DebugSession, EventEmitter, WorkspaceFolder } from 'vscode';
+import { DebugSession, EventEmitter, WorkspaceFolder, debug } from 'vscode';
 import {
   RetireEvent,
   TestLoadFinishedEvent,
@@ -7,21 +7,22 @@ import {
   TestRunStartedEvent,
   TestSuiteInfo
 } from 'vscode-test-adapter-api';
-import { ServerStartInfo, TestManager } from '../api/test-manager';
-import { DEBUG_SESSION_START_TIMEOUT } from '../constants';
-import { Disposable, NonDisposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { DeferredPromise } from '../util/future/deferred-promise';
-import { Execution } from '../util/future/execution';
-import { SimpleLogger } from '../util/logging/simple-logger';
-import { ProcessHandler } from '../util/process/process-handler';
-import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events';
-import { CancellationRequestedError } from './cancellation-requested-error';
-import { ExtensionConfig } from './config/extension-config';
-import { Debugger } from './debugger';
-import { TestLocator } from './test-locator';
-import { TestStore } from './test-store';
-import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler';
+
+import { ServerStartInfo, TestManager } from '../api/test-manager.js';
+import { DEBUG_SESSION_START_TIMEOUT } from '../constants.js';
+import { Disposable, NonDisposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { DeferredPromise } from '../util/future/deferred-promise.js';
+import { Execution } from '../util/future/execution.js';
+import { SimpleLogger } from '../util/logging/simple-logger.js';
+import { ProcessHandler } from '../util/process/process-handler.js';
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events.js';
+import { CancellationRequestedError } from './cancellation-requested-error.js';
+import { ExtensionConfig } from './config/extension-config.js';
+import { Debugger } from './debugger.js';
+import { TestLocator } from './test-locator.js';
+import { TestStore } from './test-store.js';
+import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler.js';
 
 export class KarmaTestExplorer implements Disposable {
   private readonly disposables: Disposable[] = [];

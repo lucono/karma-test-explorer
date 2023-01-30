@@ -1,12 +1,12 @@
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { TestDefinition, TestDefinitionState } from '../../base/test-definition';
-import { TestDefinitionProvider } from '../../base/test-definition-provider';
-import { TestType } from '../../base/test-infos';
-import { TestDefinitionInfo } from '../../test-locator';
-import { RegexpTestFileParser, RegexpTestFileParserResult } from './regexp-test-file-parser';
-import { TestNode, TestNodeType } from './test-node';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { TestDefinitionProvider } from '../../base/test-definition-provider.js';
+import { TestDefinition, TestDefinitionState } from '../../base/test-definition.js';
+import { TestType } from '../../base/test-infos.js';
+import { TestDefinitionInfo } from '../../test-locator.js';
+import { RegexpTestFileParser, RegexpTestFileParserResult } from './regexp-test-file-parser.js';
+import { TestNode, TestNodeType } from './test-node.js';
 
 export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
   private readonly fileInfoMap: Map<string, RegexpTestFileParserResult> = new Map();
@@ -116,10 +116,11 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
 
       const suiteDefinition: TestDefinition = {
         type: TestType.Suite,
-        state: suiteNode.state,
-        disabled: activeSuiteDefinitionState === TestDefinitionState.Disabled,
         file: filePath,
-        line: suiteNode.line
+        line: suiteNode.line,
+        state: suiteNode.state,
+        parameterized: false,
+        disabled: activeSuiteDefinitionState === TestDefinitionState.Disabled
       };
       suiteDefinitions.push(suiteDefinition);
     });
@@ -131,10 +132,11 @@ export class RegexpTestDefinitionProvider implements TestDefinitionProvider {
 
     const testDefinition: TestDefinition = {
       type: TestType.Test,
-      state: testNode.state,
-      disabled: testDefinitionState === TestDefinitionState.Disabled,
       file: filePath,
-      line: testNode.line
+      line: testNode.line,
+      state: testNode.state,
+      parameterized: false,
+      disabled: testDefinitionState === TestDefinitionState.Disabled
     };
 
     const testDefinitionInfo: TestDefinitionInfo = { test: testDefinition, suite: suiteDefinitions };

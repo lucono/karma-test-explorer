@@ -1,10 +1,11 @@
-import { request as httpRequest, RequestOptions } from 'http';
-import { TestRunExecutor } from '../../../api/test-run-executor';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { Execution } from '../../../util/future/execution';
-import { Logger } from '../../../util/logging/logger';
+import { RequestOptions, request as httpRequest } from 'http';
+
+import { TestRunExecutor } from '../../../api/test-run-executor.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredExecution } from '../../../util/future/deferred-execution.js';
+import { Execution } from '../../../util/future/execution.js';
+import { Logger } from '../../../util/logging/logger.js';
 
 const DEFAULT_RUN_OPTIONS = {
   refresh: true,

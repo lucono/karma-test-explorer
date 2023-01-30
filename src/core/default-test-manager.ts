@@ -1,20 +1,22 @@
-import RichPromise from 'bluebird';
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { ServerStartInfo, TestManager } from '../api/test-manager';
-import { TestRunner } from '../api/test-runner';
-import { TestServer } from '../api/test-server';
-import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { DeferredPromise } from '../util/future/deferred-promise';
-import { Execution } from '../util/future/execution';
-import { Logger } from '../util/logging/logger';
-import { PortAcquisitionClient } from '../util/port/port-acquisition-client';
-import { TestType } from './base/test-infos';
-import { CancellationRequestedError } from './cancellation-requested-error';
-import { Commands } from './vscode/commands/commands';
-import { ProjectCommand } from './vscode/commands/project-command';
-import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler';
+
+import RichPromise from 'bluebird';
+
+import { ServerStartInfo, TestManager } from '../api/test-manager.js';
+import { TestRunner } from '../api/test-runner.js';
+import { TestServer } from '../api/test-server.js';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { DeferredPromise } from '../util/future/deferred-promise.js';
+import { Execution } from '../util/future/execution.js';
+import { Logger } from '../util/logging/logger.js';
+import { PortAcquisitionClient } from '../util/port/port-acquisition-client.js';
+import { TestType } from './base/test-infos.js';
+import { CancellationRequestedError } from './cancellation-requested-error.js';
+import { Commands } from './vscode/commands/commands.js';
+import { ProjectCommand } from './vscode/commands/project-command.js';
+import { MessageType, NotificationHandler, StatusType } from './vscode/notifications/notification-handler.js';
 
 export class DefaultTestManager implements TestManager {
   private disposables: Disposable[] = [];

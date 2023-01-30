@@ -17,7 +17,7 @@ jobs:
       max-parallel: 3
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        node-version: [14.x, 16.x]
+        node-version: [16.x, 18.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     runs-on: ${{ matrix.os }}
@@ -30,8 +30,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
-    - run: npm run check-format
-    - run: npm run lint
+    - run: npm run format:check
+    - run: npm run lint:check
     - run: npm run clean
     - run: npm run build
     - run: npm run test

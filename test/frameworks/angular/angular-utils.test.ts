@@ -1,8 +1,9 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { getAngularWorkspaceInfo } from '../../../src/frameworks/angular/angular-util';
-import { FileHandler } from '../../../src/util/filesystem/file-handler';
-import { Logger } from '../../../src/util/logging/logger';
-import { normalizePath } from '../../../src/util/utils';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { getAngularWorkspaceInfo } from '../../../src/frameworks/angular/angular-util.js';
+import { FileHandler } from '../../../src/util/filesystem/file-handler.js';
+import { Logger } from '../../../src/util/logging/logger.js';
+import { normalizePath } from '../../../src/util/utils.js';
 
 describe('Angular Utils', () => {
   let mockFileHandler: MockProxy<FileHandler>;
@@ -54,7 +55,7 @@ describe('Angular Utils', () => {
 
       mockFileHandler.readFileSync.calledWith(angularConfigFile).mockReturnValue(
         JSON.stringify({
-          // defaultProject: 'default-project', // deprecated!
+          defaultProject: 'project-2', // deprecated!
           projects: {
             'project-1': {
               root: 'project-1',
@@ -105,7 +106,7 @@ describe('Angular Utils', () => {
       expect(workspaceInfoResult!.projects[2].rootPath).toEqual(normalizePath(`${angularConfigRootPath}/project-3`));
       expect(workspaceInfoResult!.projects[2].karmaConfigPath).toBeUndefined();
 
-      expect(workspaceInfoResult!.defaultProject).toEqual(workspaceInfoResult!.projects[0]);
+      expect(workspaceInfoResult!.defaultProject).toEqual(workspaceInfoResult!.projects[1]);
     });
 
     it(`should successfully get project info from a valid '.angular-cli.json' config file in the config root path (${platform})`, () => {
