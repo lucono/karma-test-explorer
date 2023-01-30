@@ -1,4 +1,4 @@
-import { ConfigStore, ConfigStoreSettingInfo } from './config-store';
+import { ConfigStore, ConfigStoreSettingInfo } from './config-store.js';
 
 export interface LayeredConfigStoreOptions {
   valuesConsideredAbsent?: any[];

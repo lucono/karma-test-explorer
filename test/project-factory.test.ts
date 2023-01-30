@@ -1,14 +1,16 @@
-import { mock, MockProxy } from 'jest-mock-extended';
 import { Uri, WorkspaceFolder } from 'vscode';
-import { ProjectType } from '../src/core/base/project-type';
-import { ExternalConfigSetting } from '../src/core/config/config-setting';
-import { SimpleMutableConfigStore } from '../src/core/config/simple-mutable-config-store';
-import { WorkspaceFolderConfigResolver } from '../src/core/config/workspace-folder-config-resolver';
-import { ProjectFactory } from '../src/project-factory';
-import { FileHandler } from '../src/util/filesystem/file-handler';
-import { Logger } from '../src/util/logging/logger';
-import { WorkspaceProject } from '../src/workspace';
-import { Writeable } from './test-util';
+
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { ProjectType } from '../src/core/base/project-type.js';
+import { ExternalConfigSetting } from '../src/core/config/config-setting.js';
+import { SimpleMutableConfigStore } from '../src/core/config/simple-mutable-config-store.js';
+import { WorkspaceFolderConfigResolver } from '../src/core/config/workspace-folder-config-resolver.js';
+import { ProjectFactory } from '../src/project-factory.js';
+import { FileHandler } from '../src/util/filesystem/file-handler.js';
+import { Logger } from '../src/util/logging/logger.js';
+import { WorkspaceProject } from '../src/workspace.js';
+import { Writeable } from './test-util.js';
 
 describe('Project Factory', () => {
   let configStore: SimpleMutableConfigStore;
@@ -62,7 +64,7 @@ describe('Project Factory', () => {
 
         expect(projects).toEqual(
           expect.arrayContaining([
-            expect.objectContaining(<WorkspaceProject>{
+            expect.objectContaining({
               type: ProjectType.Karma,
               shortName: 'project',
               longName: 'project',
@@ -73,7 +75,7 @@ describe('Project Factory', () => {
               topLevelProjectPath: mockWorkspaceFolderFsPath,
               projectPath: mockWorkspaceFolderFsPath,
               isPrimary: true
-            })
+            } as WorkspaceProject)
           ])
         );
       });

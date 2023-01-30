@@ -1,5 +1,6 @@
 import Bluebird from 'bluebird';
-import { DeferredPromise } from '../../../src/util/future/deferred-promise';
+
+import { DeferredPromise } from '../../../src/util/future/deferred-promise.js';
 
 describe('DeferredPromise', () => {
   let deferredPromise: DeferredPromise<any>;

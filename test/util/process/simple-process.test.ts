@@ -1,10 +1,11 @@
 import { ChildProcess, spawn } from 'child_process';
 import { mock } from 'jest-mock-extended';
 import treeKill from 'tree-kill';
-import { Logger } from '../../../src/util/logging/logger';
-import { Process } from '../../../src/util/process/process';
-import { SimpleProcess } from '../../../src/util/process/simple-process';
-import { Writeable } from '../../test-util';
+
+import { Logger } from '../../../src/util/logging/logger.js';
+import { Process } from '../../../src/util/process/process.js';
+import { SimpleProcess } from '../../../src/util/process/simple-process.js';
+import { Writeable } from '../../test-util.js';
 
 jest.mock('child_process');
 jest.mock('tree-kill');

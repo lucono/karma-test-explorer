@@ -1,16 +1,17 @@
 import { dirname, join } from 'path';
-import { TestServerExecutor } from '../../api/test-server-executor';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants';
-import { ExternalConfigSetting } from '../../core/config/config-setting';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { SimpleLogger } from '../../util/logging/simple-logger';
-import { Process } from '../../util/process/process';
-import { ProcessHandler } from '../../util/process/process-handler';
-import { ProcessLog } from '../../util/process/process-log';
-import { SimpleProcessOptions } from '../../util/process/simple-process';
-import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../util/utils';
-import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable';
+
+import { TestServerExecutor } from '../../api/test-server-executor.js';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from '../../constants.js';
+import { ExternalConfigSetting } from '../../core/config/config-setting.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { SimpleLogger } from '../../util/logging/simple-logger.js';
+import { ProcessHandler } from '../../util/process/process-handler.js';
+import { ProcessLog } from '../../util/process/process-log.js';
+import { Process } from '../../util/process/process.js';
+import { SimpleProcessOptions } from '../../util/process/simple-process.js';
+import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../util/utils.js';
+import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable.js';
 
 export interface AngularTestServerExecutorOptions {
   environment?: Record<string, string | undefined>;

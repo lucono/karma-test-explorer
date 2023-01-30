@@ -1,32 +1,34 @@
+import { DebugConfiguration } from 'vscode';
+
 import { ParserPlugin } from '@babel/parser';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
-import { DebugConfiguration } from 'vscode';
-import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS } from '../../constants';
-import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { FileHandler } from '../../util/filesystem/file-handler';
-import { LogLevel } from '../../util/logging/log-level';
-import { Logger } from '../../util/logging/logger';
+
+import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS } from '../../constants.js';
+import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { FileHandler } from '../../util/filesystem/file-handler.js';
+import { LogLevel } from '../../util/logging/log-level.js';
+import { Logger } from '../../util/logging/logger.js';
 import {
   asNonBlankStringOrUndefined,
   asNonEmptyArrayOrUndefined,
   normalizePath,
   toSingleUniqueArray
-} from '../../util/utils';
-import { ProjectType } from '../base/project-type';
-import { TestFrameworkName } from '../base/test-framework-name';
-import { TestGrouping } from '../base/test-grouping';
+} from '../../util/utils.js';
+import { ProjectType } from '../base/project-type.js';
+import { TestFrameworkName } from '../base/test-framework-name.js';
+import { TestGrouping } from '../base/test-grouping.js';
 import {
   getCombinedEnvironment,
   getCustomLauncher,
   getDefaultDebugPort,
   getMergedDebuggerConfig,
   getTestsBasePath
-} from './config-helper';
-import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting';
-import { ConfigStore } from './config-store';
+} from './config-helper.js';
+import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting.js';
+import { ConfigStore } from './config-store.js';
 
 export enum ContainerMode {
   Auto = 'auto',
@@ -103,7 +105,7 @@ export class ExtensionConfig implements Disposable {
     this.projectPath = configStore.get(InternalConfigSetting.ProjectPath)!;
     this.projectInstallRootPath = configStore.get(InternalConfigSetting.ProjectInstallRootPath)!;
     this.projectKarmaConfigFilePath = configStore.get(InternalConfigSetting.ProjectKarmaConfigFilePath);
-    this.baseKarmaConfFilePath = normalizePath(resolve(__dirname, './karma.conf'));
+    this.baseKarmaConfFilePath = normalizePath(resolve(__dirname, './karma.conf.cjs'));
 
     // General Settings
     this.karmaPort = configStore.get(GeneralConfigSetting.KarmaPort)!;

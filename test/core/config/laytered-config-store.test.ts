@@ -1,6 +1,6 @@
-import { MutableConfigStore } from '../../../src/core/config/config-store';
-import { LayeredConfigStore } from '../../../src/core/config/layered-config-store';
-import { SimpleMutableConfigStore } from '../../../src/core/config/simple-mutable-config-store';
+import { MutableConfigStore } from '../../../src/core/config/config-store.js';
+import { LayeredConfigStore } from '../../../src/core/config/layered-config-store.js';
+import { SimpleMutableConfigStore } from '../../../src/core/config/simple-mutable-config-store.js';
 
 describe('LayeredConfigStore', () => {
   let layeredConfig: LayeredConfigStore;

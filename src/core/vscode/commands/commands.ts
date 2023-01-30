@@ -1,7 +1,8 @@
 import { commands } from 'vscode';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
+
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
 
 export class Commands<T extends string = string> {
   private readonly commandPrefix: string;

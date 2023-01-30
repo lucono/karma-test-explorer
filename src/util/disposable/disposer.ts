@@ -1,5 +1,6 @@
 import RichPromise from 'bluebird';
-import { Disposable } from './disposable';
+
+import { Disposable } from './disposable.js';
 
 export class Disposer {
   /**

@@ -1,13 +1,14 @@
 import { EventEmitter } from 'vscode';
 import { TestInfo, TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { TestResultEvent } from '../../../core/base/test-events';
-import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { TestResults } from '../../../core/base/test-results';
-import { TestStatus } from '../../../core/base/test-status';
-import { TestSuiteState } from '../../../core/base/test-suite-state';
-import { StoredTestResolver } from '../../../core/test-store';
-import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
-import { Logger } from '../../../util/logging/logger';
+
+import { TestResultEvent } from '../../../core/base/test-events.js';
+import { AnyTestInfo, TestType } from '../../../core/base/test-infos.js';
+import { TestResults } from '../../../core/base/test-results.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { TestSuiteState } from '../../../core/base/test-suite-state.js';
+import { StoredTestResolver } from '../../../core/test-store.js';
+import { TestTreeProcessor } from '../../../core/util/test-tree-processor.js';
+import { Logger } from '../../../util/logging/logger.js';
 
 export class SuiteAggregateTestResultProcessor {
   public constructor(

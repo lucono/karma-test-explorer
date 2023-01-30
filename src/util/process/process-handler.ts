@@ -1,9 +1,10 @@
 import RichPromise from 'bluebird';
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
-import { SimpleLogger } from '../logging/simple-logger';
-import { Process } from './process';
-import { SimpleProcess, SimpleProcessOptions } from './simple-process';
+
+import { Disposable } from '../disposable/disposable.js';
+import { Disposer } from '../disposable/disposer.js';
+import { SimpleLogger } from '../logging/simple-logger.js';
+import { Process } from './process.js';
+import { SimpleProcess, SimpleProcessOptions } from './simple-process.js';
 
 export interface ProcessHandlerOptions {
   defaultProcessOptions?: SimpleProcessOptions;

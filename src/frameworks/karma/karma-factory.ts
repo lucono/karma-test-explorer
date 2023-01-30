@@ -1,29 +1,29 @@
-import { TestFactory } from '../../api/test-factory';
-import { TestRunExecutor } from '../../api/test-run-executor';
-import { TestRunner } from '../../api/test-runner';
-import { TestServer } from '../../api/test-server';
-import { TestServerExecutor } from '../../api/test-server-executor';
-import { TestFramework } from '../../core/base/test-framework';
-import { ExtensionConfig, TestTriggerMethod } from '../../core/config/extension-config';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { SimpleLogger } from '../../util/logging/simple-logger';
-import { ProcessHandler } from '../../util/process/process-handler';
-import { ProcessLog } from '../../util/process/process-log';
-import { KarmaEnvironmentVariable } from './karma-environment-variable';
+import { TestFactory } from '../../api/test-factory.js';
+import { TestRunExecutor } from '../../api/test-run-executor.js';
+import { TestRunner } from '../../api/test-runner.js';
+import { TestServerExecutor } from '../../api/test-server-executor.js';
+import { TestServer } from '../../api/test-server.js';
+import { TestFramework } from '../../core/base/test-framework.js';
+import { ExtensionConfig, TestTriggerMethod } from '../../core/config/extension-config.js';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { SimpleLogger } from '../../util/logging/simple-logger.js';
+import { ProcessHandler } from '../../util/process/process-handler.js';
+import { ProcessLog } from '../../util/process/process-log.js';
+import { KarmaEnvironmentVariable } from './karma-environment-variable.js';
 import {
   KarmaCommandLineTestRunExecutor,
   KarmaCommandLineTestRunExecutorOptions
-} from './runner/karma-command-line-test-run-executor';
-import { KarmaHttpTestRunExecutor } from './runner/karma-http-test-run-executor';
-import { KarmaTestListener } from './runner/karma-test-listener';
-import { KarmaTestRunner } from './runner/karma-test-runner';
-import { TestDiscoveryProcessor } from './runner/test-discovery-processor';
+} from './runner/karma-command-line-test-run-executor.js';
+import { KarmaHttpTestRunExecutor } from './runner/karma-http-test-run-executor.js';
+import { KarmaTestListener } from './runner/karma-test-listener.js';
+import { KarmaTestRunner } from './runner/karma-test-runner.js';
+import { TestDiscoveryProcessor } from './runner/test-discovery-processor.js';
 import {
   KarmaCommandLineTestServerExecutor,
   KarmaCommandLineTestServerExecutorOptions
-} from './server/karma-command-line-test-server-executor';
-import { KarmaTestServer } from './server/karma-test-server';
+} from './server/karma-command-line-test-server-executor.js';
+import { KarmaTestServer } from './server/karma-test-server.js';
 
 export type KarmaFactoryConfig = Pick<
   ExtensionConfig,

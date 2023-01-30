@@ -1,10 +1,10 @@
-import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener';
-import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor';
-import { Disposable } from '../util/disposable/disposable';
-import { TestRunExecutor } from './test-run-executor';
-import { TestRunner } from './test-runner';
-import { TestServer } from './test-server';
-import { TestServerExecutor } from './test-server-executor';
+import { KarmaTestListener } from '../frameworks/karma/runner/karma-test-listener.js';
+import { TestDiscoveryProcessor } from '../frameworks/karma/runner/test-discovery-processor.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { TestRunExecutor } from './test-run-executor.js';
+import { TestRunner } from './test-runner.js';
+import { TestServerExecutor } from './test-server-executor.js';
+import { TestServer } from './test-server.js';
 
 export interface TestFactory extends Disposable {
   createTestServer(testServerExecutor?: TestServerExecutor): TestServer;

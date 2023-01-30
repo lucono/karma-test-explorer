@@ -1,11 +1,12 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { ExtensionConfig } from '../../../src/core/config/extension-config';
-import { AngularFactory } from '../../../src/frameworks/angular/angular-factory';
-import { AngularTestServerExecutor } from '../../../src/frameworks/angular/angular-test-server-executor';
-import { SimpleLogger } from '../../../src/util/logging/simple-logger';
-import { ProcessHandler } from '../../../src/util/process/process-handler';
-import { ProcessLog } from '../../../src/util/process/process-log';
-import { Writeable } from '../../test-util';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { ExtensionConfig } from '../../../src/core/config/extension-config.js';
+import { AngularFactory } from '../../../src/frameworks/angular/angular-factory.js';
+import { AngularTestServerExecutor } from '../../../src/frameworks/angular/angular-test-server-executor.js';
+import { SimpleLogger } from '../../../src/util/logging/simple-logger.js';
+import { ProcessHandler } from '../../../src/util/process/process-handler.js';
+import { ProcessLog } from '../../../src/util/process/process-log.js';
+import { Writeable } from '../../test-util.js';
 
 describe('AngularFactory', () => {
   let mockConfig: MockProxy<ExtensionConfig>;

@@ -1,6 +1,6 @@
-import { TestCapabilities, TestFramework, TestInterface, TestSelector } from '../../core/base/test-framework';
-import { TestFrameworkName } from '../../core/base/test-framework-name';
-import { JasmineTestSelector } from './jasmine-test-selector';
+import { TestFrameworkName } from '../../core/base/test-framework-name.js';
+import { TestCapabilities, TestFramework, TestInterface, TestSelector } from '../../core/base/test-framework.js';
+import { JasmineTestSelector } from './jasmine-test-selector.js';
 
 const testInterface: TestInterface = {
   suiteTags: {

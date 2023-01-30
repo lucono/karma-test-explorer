@@ -1,5 +1,6 @@
-import globby from 'globby';
-import { Disposable } from '../disposable/disposable';
+import { Options as GlobbyOptions } from 'globby';
+
+import { Disposable } from '../disposable/disposable.js';
 
 export interface FileHandler extends Disposable {
   existsSync(filePath: string): boolean;
@@ -8,5 +9,5 @@ export interface FileHandler extends Disposable {
 
   readFileSync(filePath: string, encoding?: BufferEncoding): string | undefined;
 
-  resolveFileGlobs(filePatterns: string[], globOptions?: globby.GlobbyOptions): Promise<string[]>;
+  resolveFileGlobs(filePatterns: string[], globOptions?: GlobbyOptions): Promise<string[]>;
 }

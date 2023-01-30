@@ -1,9 +1,10 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { TestDefinitionProvider } from '../../src/core/base/test-definition-provider';
-import { TestLocator } from '../../src/core/test-locator';
-import { FileHandler } from '../../src/util/filesystem/file-handler';
-import { Logger } from '../../src/util/logging/logger';
-import { withUnixStyleSeparator } from '../test-util';
+import { MockProxy, mock } from 'jest-mock-extended';
+
+import { TestDefinitionProvider } from '../../src/core/base/test-definition-provider.js';
+import { TestLocator } from '../../src/core/test-locator.js';
+import { FileHandler } from '../../src/util/filesystem/file-handler.js';
+import { Logger } from '../../src/util/logging/logger.js';
+import { withUnixStyleSeparator } from '../test-util.js';
 
 type FilePathTestData = { filePathStyle: string; mockTestFiles: string[] }[];
 type FileGlobTestData = { globPathStyle: string; mockFileGlobs: string[] }[];

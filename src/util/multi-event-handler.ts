@@ -1,6 +1,6 @@
-import { Disposable } from './disposable/disposable';
-import { Disposer } from './disposable/disposer';
-import { Logger } from './logging/logger';
+import { Disposable } from './disposable/disposable.js';
+import { Disposer } from './disposable/disposer.js';
+import { Logger } from './logging/logger.js';
 
 export class MultiEventHandler<E = string, T extends (...args: any[]) => any = (...args: unknown[]) => unknown>
   implements Disposable

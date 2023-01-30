@@ -1,12 +1,14 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import { CustomLauncher } from 'karma';
 import { DebugConfiguration } from 'vscode';
-import { GeneralConfigSetting } from '../../../src/core/config/config-setting';
-import { ConfigStore } from '../../../src/core/config/config-store';
-import { ExtensionConfig } from '../../../src/core/config/extension-config';
-import { FileHandler } from '../../../src/util/filesystem/file-handler';
-import { Logger } from '../../../src/util/logging/logger';
-import { asExtensionConfigWithUnixStylePaths as withUnixPaths } from '../../test-util';
+
+import { MockProxy, mock } from 'jest-mock-extended';
+import { CustomLauncher } from 'karma';
+
+import { GeneralConfigSetting } from '../../../src/core/config/config-setting.js';
+import { ConfigStore } from '../../../src/core/config/config-store.js';
+import { ExtensionConfig } from '../../../src/core/config/extension-config.js';
+import { FileHandler } from '../../../src/util/filesystem/file-handler.js';
+import { Logger } from '../../../src/util/logging/logger.js';
+import { asExtensionConfigWithUnixStylePaths as withUnixPaths } from '../../test-util.js';
 
 describe('ExtensionConfig', () => {
   let mockLogger: MockProxy<Logger>;

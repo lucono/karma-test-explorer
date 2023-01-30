@@ -1,13 +1,14 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { AnyTestInfo, TestType } from '../../../core/base/test-infos';
-import { TestSuiteOrganizer } from '../../../core/util/test-suite-organizer';
-import { TestTreeProcessor } from '../../../core/util/test-tree-processor';
-import { MessageType, NotificationHandler } from '../../../core/vscode/notifications/notification-handler';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { SpecCompleteResponse } from './spec-complete-response';
-import { TestBuilder } from './test-builder';
+
+import { AnyTestInfo, TestType } from '../../../core/base/test-infos.js';
+import { TestSuiteOrganizer } from '../../../core/util/test-suite-organizer.js';
+import { TestTreeProcessor } from '../../../core/util/test-tree-processor.js';
+import { MessageType, NotificationHandler } from '../../../core/vscode/notifications/notification-handler.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
+import { TestBuilder } from './test-builder.js';
 
 interface TestDiscoveryCount {
   focused: number;

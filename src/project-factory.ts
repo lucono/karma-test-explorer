@@ -1,28 +1,30 @@
+import { WorkspaceFolder } from 'vscode';
+
 import { basename, join, relative, resolve } from 'path';
 import type { PackageJson } from 'type-fest';
-import { WorkspaceFolder } from 'vscode';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants';
-import { ProjectType } from './core/base/project-type';
+
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants.js';
+import { ProjectType } from './core/base/project-type.js';
 import {
   ExternalConfigSetting,
   GeneralConfigSetting,
   InternalConfigSetting,
   ProjectConfigSetting,
   WorkspaceConfigSetting
-} from './core/config/config-setting';
-import { ConfigStore } from './core/config/config-store';
-import { LayeredConfigStore } from './core/config/layered-config-store';
-import { ProjectSpecificConfig, ProjectSpecificConfigSetting } from './core/config/project-specific-config';
-import { SimpleConfigStore } from './core/config/simple-config-store';
-import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver';
-import { getAngularWorkspaceInfo } from './frameworks/angular/angular-util';
-import { AngularWorkspaceInfo } from './frameworks/angular/angular-workspace-info';
-import { Disposable } from './util/disposable/disposable';
-import { Disposer } from './util/disposable/disposer';
-import { FileHandler } from './util/filesystem/file-handler';
-import { Logger } from './util/logging/logger';
-import { asNonBlankStringOrUndefined, getPackageJsonAtPath, isChildPath, normalizePath } from './util/utils';
-import { WorkspaceProject } from './workspace';
+} from './core/config/config-setting.js';
+import { ConfigStore } from './core/config/config-store.js';
+import { LayeredConfigStore } from './core/config/layered-config-store.js';
+import { ProjectSpecificConfig, ProjectSpecificConfigSetting } from './core/config/project-specific-config.js';
+import { SimpleConfigStore } from './core/config/simple-config-store.js';
+import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver.js';
+import { getAngularWorkspaceInfo } from './frameworks/angular/angular-util.js';
+import { AngularWorkspaceInfo } from './frameworks/angular/angular-workspace-info.js';
+import { Disposable } from './util/disposable/disposable.js';
+import { Disposer } from './util/disposable/disposer.js';
+import { FileHandler } from './util/filesystem/file-handler.js';
+import { Logger } from './util/logging/logger.js';
+import { asNonBlankStringOrUndefined, getPackageJsonAtPath, isChildPath, normalizePath } from './util/utils.js';
+import { WorkspaceProject } from './workspace.js';
 
 const CONFIG_VALUES_CONSIDERED_ABSENT = [undefined, null];
 
@@ -229,7 +231,7 @@ export class ProjectFactory implements Disposable {
           longName: `${projectRootPathFolderName}: ${angularChildProjectInfo.name}`,
           namespace: `${absoluteProjectRootPath}:${angularChildProjectInfo.name}`,
           type: ProjectType.Angular,
-          workspaceFolder: workspaceFolder, // FIXME: Exclude? Could only workspace folder path be used?
+          workspaceFolder: workspaceFolder, // FIXME: Exclude? Can only workspace folder path be used?
           workspaceFolderPath: workspaceFolderPath,
           projectPath: angularProjectPath,
           topLevelProjectPath: absoluteProjectRootPath,

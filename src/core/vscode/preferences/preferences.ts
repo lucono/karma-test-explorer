@@ -1,8 +1,9 @@
 import { ExtensionContext, Memento } from 'vscode';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { ExtensionPreference } from './extension-preference';
+
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { ExtensionPreference } from './extension-preference.js';
 
 export class Preferences implements Disposable {
   private readonly disposables: Disposable[] = [];
@@ -16,11 +17,12 @@ export class Preferences implements Disposable {
   }
 
   get lastLoadedProjectPaths(): string[] {
-    return this.getPref<string[]>(ExtensionPreference.LastLoadedProjectPaths) ?? [];
+    const lastLoadedProjectPaths = this.getPref<string[]>(ExtensionPreference.LastLoadedProjectPaths);
+    return lastLoadedProjectPaths ? [...lastLoadedProjectPaths] : [];
   }
 
   set lastLoadedProjectPaths(projectPaths: string[]) {
-    this.setPref(ExtensionPreference.LastLoadedProjectPaths, projectPaths);
+    this.setPref(ExtensionPreference.LastLoadedProjectPaths, [...projectPaths]);
   }
 
   private getPref<T>(pref: ExtensionPreference): T | undefined;

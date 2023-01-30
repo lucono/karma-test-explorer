@@ -1,5 +1,5 @@
-import { LogAppender } from '../../../util/logging/log-appender';
-import { ProcessLog } from '../../../util/process/process-log';
+import { LogAppender } from '../../../util/logging/log-appender.js';
+import { ProcessLog } from '../../../util/process/process-log.js';
 
 export class KarmaServerProcessLog implements ProcessLog {
   public constructor(private readonly logOutput: LogAppender) {}

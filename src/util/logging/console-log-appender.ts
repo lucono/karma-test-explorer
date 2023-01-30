@@ -1,4 +1,4 @@
-import { LogAppender } from './log-appender';
+import { LogAppender } from './log-appender.js';
 
 export interface ConsoleLog {
   log(content: string): void;

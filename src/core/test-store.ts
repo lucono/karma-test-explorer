@@ -1,8 +1,9 @@
 import { TestInfo, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { Logger } from '../util/logging/logger';
-import { TestType } from './base/test-infos';
+
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { Logger } from '../util/logging/logger.js';
+import { TestType } from './base/test-infos.js';
 
 export interface StoredTestResolver {
   resolveTest(testId: string): TestInfo | undefined;

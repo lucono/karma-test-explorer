@@ -1,38 +1,40 @@
+import {
+  ExtensionContext,
+  QuickPickItem,
+  QuickPickItemKind,
+  WorkspaceFolder,
+  commands,
+  extensions,
+  window,
+  workspace
+} from 'vscode';
+import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
+
 import RichPromise from 'bluebird';
 import { basename } from 'path';
 import { PackageJson } from 'type-fest';
-import {
-  commands,
-  ExtensionContext,
-  extensions,
-  QuickPickItem,
-  QuickPickItemKind,
-  window,
-  workspace,
-  WorkspaceFolder
-} from 'vscode';
-import { testExplorerExtensionId, TestHub } from 'vscode-test-adapter-api';
-import { Adapter } from './adapter';
-import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants';
-import { ConfigChangeManager } from './core/config/config-change-manager';
-import { ExternalConfigSetting, GeneralConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting';
-import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver';
-import { ExtensionCommands } from './core/vscode/commands/extension-commands';
-import { MultiStatusDisplay } from './core/vscode/notifications/multi-status-display';
-import { OutputChannelLog } from './core/vscode/output-channel-log';
-import { Preferences } from './core/vscode/preferences/preferences';
-import { ProjectFactory } from './project-factory';
-import { Disposable } from './util/disposable/disposable';
-import { Disposer } from './util/disposable/disposer';
-import { FileHandler } from './util/filesystem/file-handler';
-import { SimpleFileHandler } from './util/filesystem/simple-file-handler';
-import { LogLevel } from './util/logging/log-level';
-import { Logger } from './util/logging/logger';
-import { SimpleLogger } from './util/logging/simple-logger';
-import { PortAcquisitionManager } from './util/port/port-acquisition-manager';
-import { SimpleProcess } from './util/process/simple-process';
-import { normalizePath } from './util/utils';
-import { WorkspaceProject } from './workspace';
+
+import { Adapter } from './adapter.js';
+import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME, EXTENSION_OUTPUT_CHANNEL_NAME } from './constants.js';
+import { ConfigChangeManager } from './core/config/config-change-manager.js';
+import { ExternalConfigSetting, GeneralConfigSetting, WorkspaceConfigSetting } from './core/config/config-setting.js';
+import { WorkspaceFolderConfigResolver } from './core/config/workspace-folder-config-resolver.js';
+import { ExtensionCommands } from './core/vscode/commands/extension-commands.js';
+import { MultiStatusDisplay } from './core/vscode/notifications/multi-status-display.js';
+import { OutputChannelLog } from './core/vscode/output-channel-log.js';
+import { Preferences } from './core/vscode/preferences/preferences.js';
+import { ProjectFactory } from './project-factory.js';
+import { Disposable } from './util/disposable/disposable.js';
+import { Disposer } from './util/disposable/disposer.js';
+import { FileHandler } from './util/filesystem/file-handler.js';
+import { SimpleFileHandler } from './util/filesystem/simple-file-handler.js';
+import { LogLevel } from './util/logging/log-level.js';
+import { Logger } from './util/logging/logger.js';
+import { SimpleLogger } from './util/logging/simple-logger.js';
+import { PortAcquisitionManager } from './util/port/port-acquisition-manager.js';
+import { SimpleProcess } from './util/process/simple-process.js';
+import { normalizePath } from './util/utils.js';
+import { WorkspaceProject } from './workspace.js';
 
 interface SharedAdapterComponents {
   portAcquisitionManager: PortAcquisitionManager;
@@ -148,7 +150,7 @@ export const activate = async (extensionContext: ExtensionContext) => {
     logger.info(() => `Discovering projects for workspace folders: ${JSON.stringify(workspaceFolderPaths, null, 2)}`);
 
     const addedProjects = projectFactory.createProjectsForWorkspaceFolders(...addedWorkspaceFolders);
-    processAddedProjects(addedProjects, preferences.lastLoadedProjectPaths, testHub, sharedAdapterComponents, logger);
+    processAddedProjects(addedProjects, testHub, sharedAdapterComponents, preferences, logger);
     subscribeForWorkspaceConfigChanges(addedWorkspaceFolders);
   };
 
@@ -272,23 +274,33 @@ const processProjectCommand = async (
 
 const processAddedProjects = (
   projects: readonly WorkspaceProject[],
-  lastLoadedProjectPaths: readonly string[],
   testHub: TestHub,
   sharedAdapterComponents: SharedAdapterComponents,
+  preferences: Preferences,
   logger: Logger
 ): void => {
   if (projects.length === 0) {
     logger.info(() => `Ignoring empty added project list`);
     return;
   }
-  logger.info(() => `Last loaded projects: ${JSON.stringify(lastLoadedProjectPaths, null, 2)}`);
+  const lastLoadedProjectPaths = preferences.lastLoadedProjectPaths;
+  const primaryProjectPaths = projects.filter(project => project.isPrimary).map(project => project.projectPath);
+
+  logger.debug(() => `Last loaded projects: ${JSON.stringify(lastLoadedProjectPaths, null, 2)}`);
+  logger.debug(() => `Primary projects: ${JSON.stringify(primaryProjectPaths, null, 2)}`);
+
+  const projectPathsToActivate =
+    lastLoadedProjectPaths.length > 0
+      ? lastLoadedProjectPaths
+      : primaryProjectPaths.length > 0
+      ? primaryProjectPaths
+      : [];
 
   projects.forEach(project => {
     logger.info(() => `Registering project: ${project.projectPath}`);
     allWorkspaceProjects.add(project);
 
-    const shouldActivateProject =
-      lastLoadedProjectPaths.length > 0 ? lastLoadedProjectPaths.includes(project.projectPath) : project.isPrimary;
+    const shouldActivateProject = projectPathsToActivate.includes(project.projectPath);
 
     if (shouldActivateProject) {
       activateProject(project, testHub, sharedAdapterComponents, logger);
@@ -297,7 +309,29 @@ const processAddedProjects = (
   const noProjectsActivated = ![...allWorkspaceProjects].some(project => project.adapter !== undefined);
 
   if (noProjectsActivated) {
-    activateProject(projects[0], testHub, sharedAdapterComponents, logger);
+    const allAddedProjectPaths = projects.map(project => project.projectPath);
+    const firstProject = projects[0];
+
+    logger.debug(
+      () =>
+        `No default projects to activate - ` +
+        `Activating first project '${firstProject.projectPath}' ` +
+        `of workspace projects: ${JSON.stringify(allAddedProjectPaths, null, 2)}`
+    );
+
+    activateProject(firstProject, testHub, sharedAdapterComponents, logger);
+    preferences.lastLoadedProjectPaths = [firstProject.projectPath];
+
+    const hasMultipleProjects = projects.length > 1;
+
+    if (hasMultipleProjects) {
+      window.showInformationMessage(
+        `${EXTENSION_NAME} found multiple projects in your workspace ` +
+          `but has only loaded one by default for testing. To load others, ` +
+          `use the Folder button in the Testing side bar.`,
+        'Got It'
+      );
+    }
   }
   updateMultiProjectContext(logger);
 };

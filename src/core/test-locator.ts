@@ -1,21 +1,22 @@
-import globby from 'globby';
+import { Options as GlobbyOptions } from 'globby';
 import { isMatch } from 'micromatch';
 import { join, resolve } from 'path';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { FileHandler } from '../util/filesystem/file-handler';
-import { DeferredPromise } from '../util/future/deferred-promise';
-import { Logger } from '../util/logging/logger';
-import { isChildPath, normalizePath } from '../util/utils';
-import { TestDefinition } from './base/test-definition';
-import { TestDefinitionProvider } from './base/test-definition-provider';
+
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { FileHandler } from '../util/filesystem/file-handler.js';
+import { DeferredPromise } from '../util/future/deferred-promise.js';
+import { Logger } from '../util/logging/logger.js';
+import { isChildPath, normalizePath } from '../util/utils.js';
+import { TestDefinitionProvider } from './base/test-definition-provider.js';
+import { TestDefinition } from './base/test-definition.js';
 
 export interface TestDefinitionInfo {
   readonly test: TestDefinition;
   readonly suite: TestDefinition[];
 }
 
-export interface TestLocatorOptions extends globby.GlobbyOptions {
+export interface TestLocatorOptions extends GlobbyOptions {
   cwd?: string;
   ignore?: string[];
   fileEncoding?: BufferEncoding;

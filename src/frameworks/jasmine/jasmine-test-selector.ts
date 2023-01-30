@@ -1,5 +1,5 @@
-import { TestSelector, TestSet } from '../../core/base/test-framework';
-import { escapeForRegExp } from '../../util/utils';
+import { TestSelector, TestSet } from '../../core/base/test-framework.js';
+import { escapeForRegExp } from '../../util/utils.js';
 
 const SKIP_ALL_TESTS_PATTERN = '$^';
 const RUN_ALL_TESTS_PATTERN = '';

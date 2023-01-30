@@ -1,4 +1,4 @@
-import { LogLevel } from './util/logging/log-level';
+import { LogLevel } from './util/logging/log-level.js';
 
 // Extension constants
 export const EXTENSION_NAME = 'Karma Test Explorer';

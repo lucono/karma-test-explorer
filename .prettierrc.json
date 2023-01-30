@@ -8,6 +8,9 @@
   "bracketSpacing": true,
   "arrowParens": "avoid",
   "printWidth": 120,
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "importOrder": ["^(vscode|vscode-test-adapter-api)$", "^[^./]", "^[./]"],
   "overrides": [
     {
       "files": "./package(-lock)?.json",

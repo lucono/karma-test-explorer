@@ -8,17 +8,18 @@ import {
   TestRunFinishedEvent,
   TestRunStartedEvent
 } from 'vscode-test-adapter-api';
-import { TestLoadEvent, TestResultEvent, TestRunEvent } from '../../../core/base/test-events';
-import { TestType } from '../../../core/base/test-infos';
-import { TestState } from '../../../core/base/test-state';
-import { TestStatus } from '../../../core/base/test-status';
-import { TestStore } from '../../../core/test-store';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { KarmaTestEventProcessor, TestEventProcessingResults } from './karma-test-event-processor';
-import { SpecCompleteResponse } from './spec-complete-response';
-import { TestDiscoveryProcessor } from './test-discovery-processor';
+
+import { TestLoadEvent, TestResultEvent, TestRunEvent } from '../../../core/base/test-events.js';
+import { TestType } from '../../../core/base/test-infos.js';
+import { TestState } from '../../../core/base/test-state.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { TestStore } from '../../../core/test-store.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { KarmaTestEventProcessor, TestEventProcessingResults } from './karma-test-event-processor.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
+import { TestDiscoveryProcessor } from './test-discovery-processor.js';
 
 export class KarmaAutoWatchTestEventProcessor {
   private skippedSpecIds?: string[];

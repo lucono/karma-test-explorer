@@ -1,9 +1,10 @@
-import dotenvExpand from 'dotenv-expand';
+import { expand } from 'dotenv-expand';
 import { dirname, isAbsolute, join, posix, win32 } from 'path';
 import type { PackageJson } from 'type-fest';
 import { sync as which } from 'which';
-import { FileHandler } from './filesystem/file-handler';
-import { Logger } from './logging/logger';
+
+import { FileHandler } from './filesystem/file-handler.js';
+import { Logger } from './logging/logger.js';
 
 export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T): string | undefined => {
   return Object.keys(object).find(key => object[key] === propValue);
@@ -44,6 +45,21 @@ export const changePropertyCase = <T>(
   });
 
   return adjustedObject;
+};
+
+export const removeAbsentProperties = <T>(
+  object: Readonly<Record<string, T | undefined>>
+): Record<string, NonNullable<T>> => {
+  const filteredObject: Record<string, NonNullable<T>> = {};
+
+  Object.keys(object).forEach(prop => {
+    const propValue = object[prop];
+    if (propValue !== undefined && propValue !== null) {
+      filteredObject[prop] = propValue;
+    }
+  });
+
+  return filteredObject;
 };
 
 export const generateRandomId = () => {
@@ -166,10 +182,11 @@ export const expandEnvironment = (
   let expandedEnvironment: Record<string, string> | undefined;
 
   try {
-    const processEnv = changePropertyCase(process.env, 'upper', ...UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES);
-    const mergedProcessEnvironment = { ...processEnv, ...environment } as Record<string, string>;
+    const nonAbsentProcessEnv = removeAbsentProperties(process.env);
+    const processEnv = changePropertyCase(nonAbsentProcessEnv, 'upper', ...UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES);
+    const mergedProcessEnvironment = { ...processEnv, ...environment };
 
-    dotenvExpand(<any>{ parsed: mergedProcessEnvironment, ignoreProcessEnv: true });
+    expand({ parsed: mergedProcessEnvironment, ignoreProcessEnv: true } as any);
     expandedEnvironment = extractProperties(mergedProcessEnvironment, ...Object.keys(environment));
   } catch (error) {
     logger.error(

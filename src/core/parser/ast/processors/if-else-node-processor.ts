@@ -1,9 +1,9 @@
-import { Node } from '@babel/core';
-import { IfStatement } from '@babel/types';
-import { Disposable } from 'vscode';
-import { Disposer } from '../../../../util/disposable/disposer';
-import { Logger } from '../../../../util/logging/logger';
-import { ProcessedSourceNode, SourceNodeProcessor } from '../source-node-processor';
+import { IfStatement, Node } from '@babel/types';
+
+import { Disposable } from '../../../../util/disposable/disposable.js';
+import { Disposer } from '../../../../util/disposable/disposer.js';
+import { Logger } from '../../../../util/logging/logger.js';
+import { ProcessedSourceNode, SourceNodeProcessor } from '../source-node-processor.js';
 
 export class IfElseNodeProcessor implements SourceNodeProcessor<ProcessedSourceNode> {
   private readonly disposables: Disposable[] = [];
@@ -20,7 +20,7 @@ export class IfElseNodeProcessor implements SourceNodeProcessor<ProcessedSourceN
     this.logger.trace(() => `Processing source node of type: ${node.type}`);
 
     const childNodes = this.processIfStatementNode(node);
-    const processedNode: ProcessedSourceNode = { childNodes };
+    const processedNode: ProcessedSourceNode = { childNodes, childNodesParameterized: false };
 
     this.logger.trace(
       () => `Successfully processed source node of type '${node.type}' to ${childNodes?.length ?? 0} child nodes`

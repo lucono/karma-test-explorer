@@ -1,15 +1,16 @@
 import { Promise as RichPromise } from 'bluebird';
-import { ChildProcess, spawn, SpawnOptions } from 'child_process';
+import { ChildProcess, SpawnOptions, spawn } from 'child_process';
 import treeKill from 'tree-kill';
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
-import { DeferredExecution } from '../future/deferred-execution';
-import { DeferredPromise } from '../future/deferred-promise';
-import { Execution } from '../future/execution';
-import { Logger } from '../logging/logger';
-import { generateRandomId } from '../utils';
-import { Process } from './process';
-import { ProcessLog } from './process-log';
+
+import { Disposable } from '../disposable/disposable.js';
+import { Disposer } from '../disposable/disposer.js';
+import { DeferredExecution } from '../future/deferred-execution.js';
+import { DeferredPromise } from '../future/deferred-promise.js';
+import { Execution } from '../future/execution.js';
+import { Logger } from '../logging/logger.js';
+import { generateRandomId } from '../utils.js';
+import { ProcessLog } from './process-log.js';
+import { Process } from './process.js';
 
 export enum SimpleProcessLogOutput {
   Parent = 'Parent',

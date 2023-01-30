@@ -1,11 +1,11 @@
-import { TestServer } from '../../../api/test-server';
-import { TestServerExecutor } from '../../../api/test-server-executor';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { Execution } from '../../../util/future/execution';
-import { Logger } from '../../../util/logging/logger';
-import { Process } from '../../../util/process/process';
+import { TestServerExecutor } from '../../../api/test-server-executor.js';
+import { TestServer } from '../../../api/test-server.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredExecution } from '../../../util/future/deferred-execution.js';
+import { Execution } from '../../../util/future/execution.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { Process } from '../../../util/process/process.js';
 
 type ServerExecutionInfo = {
   serverProcess: Process;

@@ -1,16 +1,18 @@
+import { EventEmitter, FileChangeType, FileSystemWatcher, RelativePattern, WorkspaceFolder, workspace } from 'vscode';
+import { RetireEvent } from 'vscode-test-adapter-api';
+
 import { join, relative } from 'path';
 import { debounce } from 'throttle-debounce';
-import { EventEmitter, FileChangeType, FileSystemWatcher, RelativePattern, workspace, WorkspaceFolder } from 'vscode';
-import { RetireEvent } from 'vscode-test-adapter-api';
-import { WATCHED_FILE_CHANGE_BATCH_DELAY } from '../constants';
-import { Disposable } from '../util/disposable/disposable';
-import { Disposer } from '../util/disposable/disposer';
-import { Logger } from '../util/logging/logger';
-import { normalizePath } from '../util/utils';
-import { TestLocator } from './test-locator';
-import { TestStore } from './test-store';
-import { Commands } from './vscode/commands/commands';
-import { ProjectCommand } from './vscode/commands/project-command';
+
+import { WATCHED_FILE_CHANGE_BATCH_DELAY } from '../constants.js';
+import { Disposable } from '../util/disposable/disposable.js';
+import { Disposer } from '../util/disposable/disposer.js';
+import { Logger } from '../util/logging/logger.js';
+import { normalizePath } from '../util/utils.js';
+import { TestLocator } from './test-locator.js';
+import { TestStore } from './test-store.js';
+import { Commands } from './vscode/commands/commands.js';
+import { ProjectCommand } from './vscode/commands/project-command.js';
 
 export interface FileWatcherOptions {
   retireTestsInChangedFiles?: boolean;

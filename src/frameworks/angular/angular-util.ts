@@ -1,9 +1,10 @@
 import { join } from 'path';
-import { FileHandler } from '../../util/filesystem/file-handler';
-import { Logger } from '../../util/logging/logger';
-import { normalizePath } from '../../util/utils';
-import { AngularProjectInfo } from './angular-project-info';
-import { AngularWorkspaceInfo } from './angular-workspace-info';
+
+import { FileHandler } from '../../util/filesystem/file-handler.js';
+import { Logger } from '../../util/logging/logger.js';
+import { normalizePath } from '../../util/utils.js';
+import { AngularProjectInfo } from './angular-project-info.js';
+import { AngularWorkspaceInfo } from './angular-workspace-info.js';
 
 export const getAngularWorkspaceInfo = (
   angularConfigRootPath: string,
@@ -70,7 +71,7 @@ const getAngularJsonWorkspaceInfo = (
   }
   const workspaceInfo: AngularWorkspaceInfo = {
     projects,
-    defaultProject: defaultProject ?? projects[0]
+    defaultProject
   };
   return workspaceInfo;
 };
@@ -133,7 +134,7 @@ const getAngularCliJsonWorkspaceInfo = (
   }
   const workspaceInfo: AngularWorkspaceInfo = {
     projects,
-    defaultProject: defaultProject ?? projects[0]
+    defaultProject
   };
   return workspaceInfo;
 };

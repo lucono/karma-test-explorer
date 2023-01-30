@@ -1,15 +1,15 @@
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { regexJsonReplacer } from '../../../util/utils';
-import { TestDefinitionProvider } from '../../base/test-definition-provider';
-import { TestDefinitionInfo } from '../../test-locator';
-import { AstTestFileParser } from './ast-test-file-parser';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { regexJsonReplacer } from '../../../util/utils.js';
+import { TestDefinitionProvider } from '../../base/test-definition-provider.js';
+import { TestDefinitionInfo } from '../../test-locator.js';
+import { AstTestFileParser } from './ast-test-file-parser.js';
 import {
   DescribedTestDefinition,
   DescribedTestDefinitionInfo,
   DescribedTestDefinitionType
-} from './described-test-definition';
+} from './described-test-definition.js';
 
 export class AstTestDefinitionProvider implements TestDefinitionProvider {
   private readonly disposables: Disposable[] = [];

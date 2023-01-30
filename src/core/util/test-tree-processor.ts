@@ -1,8 +1,9 @@
 import { TestInfo } from 'vscode-test-adapter-api';
-import { Disposable } from '../../util/disposable/disposable';
-import { Disposer } from '../../util/disposable/disposer';
-import { Logger } from '../../util/logging/logger';
-import { AnyTestInfo, TestType } from '../base/test-infos';
+
+import { Disposable } from '../../util/disposable/disposable.js';
+import { Disposer } from '../../util/disposable/disposer.js';
+import { Logger } from '../../util/logging/logger.js';
+import { AnyTestInfo, TestType } from '../base/test-infos.js';
 
 export class TestTreeProcessor implements Disposable {
   public constructor(private readonly logger: Logger) {}

@@ -3,18 +3,19 @@ import { Server as HttpServer } from 'http';
 import { TestResults as KarmaTestResults } from 'karma';
 import { resolve } from 'path';
 import { Worker } from 'worker_threads';
-import { KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT, KARMA_TEST_RUN_ID_FLAG } from '../../../constants';
-import { TestStatus } from '../../../core/base/test-status';
-import { LogLevel } from '../../../util/logging/log-level';
-import { Logger } from '../../../util/logging/logger';
-import { LoggerAdapter } from '../../../util/logging/logger-adapter';
-import { MultiEventHandler } from '../../../util/multi-event-handler';
-import { getJsonCircularReferenceReplacer } from '../../../util/utils';
-import { KarmaEnvironmentVariable } from '../karma-environment-variable';
-import { BrowserInfo, KarmaEvent, KarmaEventName } from '../runner/karma-event';
-import { LightSpecCompleteResponse } from '../runner/spec-complete-response';
-import { TestRunStatus } from '../runner/test-run-status';
-import { TestResultEmitterWorkerData } from './test-result-emitter-worker-data';
+
+import { KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT, KARMA_TEST_RUN_ID_FLAG } from '../../../constants.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { LogLevel } from '../../../util/logging/log-level.js';
+import { LoggerAdapter } from '../../../util/logging/logger-adapter.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { MultiEventHandler } from '../../../util/multi-event-handler.js';
+import { getJsonCircularReferenceReplacer } from '../../../util/utils.js';
+import { KarmaEnvironmentVariable } from '../karma-environment-variable.js';
+import { BrowserInfo, KarmaEvent, KarmaEventName } from '../runner/karma-event.js';
+import { LightSpecCompleteResponse } from '../runner/spec-complete-response.js';
+import { TestRunStatus } from '../runner/test-run-status.js';
+import { TestResultEmitterWorkerData } from './test-result-emitter-worker-data.js';
 
 export function KarmaTestExplorerReporter(
   this: any,
@@ -45,7 +46,7 @@ export function KarmaTestExplorerReporter(
     pingInterval: KARMA_SOCKET_PING_INTERVAL
   };
 
-  const workerScriptFile = resolve(__dirname, './test-result-emitter-worker.js');
+  const workerScriptFile = resolve(__dirname, './test-result-emitter-worker.cjs');
   const worker = new Worker(workerScriptFile, { workerData });
 
   logger.debug(

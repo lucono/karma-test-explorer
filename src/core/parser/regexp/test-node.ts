@@ -1,4 +1,4 @@
-import { TestDefinitionState } from '../../base/test-definition';
+import { TestDefinitionState } from '../../base/test-definition.js';
 
 export enum TestNodeType {
   Suite = 'Suite',

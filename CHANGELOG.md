@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.8.1 - Jan 30, 2023](#081---jan-30-2023)
   - [0.8.0 - Dec 11, 2022](#080---dec-11-2022)
   - [0.7.5 - Aug 31, 2022](#075---aug-31-2022)
   - [0.7.4 - Aug 27, 2022](#074---aug-27-2022)
@@ -24,6 +25,22 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.8.1] - Jan 30, 2023
+
+### Added
+
+- Auto-detection and flagging in the test view, of parameterized tests that have a not-as-complete test name parameterization
+- A new explanatory prompt is shown to prevent confusion ([issue](https://github.com/lucono/karma-test-explorer/issues/62)) when only one project is loaded for testing but several were discovered in the workspace
+
+### Changed
+
+- Karma Test Explorer is now explicitly designated a [workspace extension](https://code.visualstudio.com/api/advanced-topics/remote-extensions#architecture-and-extension-kinds)
+
+### Fixed
+
+- Addressed [CVE-2022-46175](https://github.com/advisories/GHSA-9c47-m6qq-7p4h) security vulnerability from transitive dependencies
 
 ---
 ## [0.8.0] - Dec 11, 2022

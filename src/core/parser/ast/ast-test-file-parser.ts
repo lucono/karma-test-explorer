@@ -1,15 +1,15 @@
-import { Node } from '@babel/core';
-import { parse, ParseError, ParseResult, ParserOptions, ParserPlugin, ParserPluginWithOptions } from '@babel/parser';
-import { File } from '@babel/types';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { generateRandomId, regexJsonReplacer } from '../../../util/utils';
-import { TestDefinitionState } from '../../base/test-definition';
-import { TestType } from '../../base/test-infos';
-import { TestFileParser } from '../test-file-parser';
-import { DescribedTestDefinition, DescribedTestDefinitionInfo } from './described-test-definition';
-import { ProcessedSourceNode, SourceNodeProcessor } from './source-node-processor';
+import { ParseError, ParseResult, ParserOptions, ParserPlugin, ParserPluginWithOptions, parse } from '@babel/parser';
+import { File, Node } from '@babel/types';
+
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { generateRandomId, regexJsonReplacer } from '../../../util/utils.js';
+import { TestDefinitionState } from '../../base/test-definition.js';
+import { TestType } from '../../base/test-infos.js';
+import { TestFileParser } from '../test-file-parser.js';
+import { DescribedTestDefinition, DescribedTestDefinitionInfo } from './described-test-definition.js';
+import { ProcessedSourceNode, SourceNodeProcessor } from './source-node-processor.js';
 
 const DEFAULT_PARSER_OPTIONS: ParserOptions = {
   errorRecovery: true,
@@ -134,21 +134,22 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
   }
 
   private getTestDefinitionsFromNodes(
-    nodes: Node[] | undefined,
+    nodes: Node[],
     filePath: string,
-    derivedParentSuiteDefinitionState: TestDefinitionState = TestDefinitionState.Default
+    derivedParentSuiteDefinitionState: TestDefinitionState = TestDefinitionState.Default,
+    isParameterized: boolean = false
   ): DescribedTestDefinitionInfo[] {
-    if (!nodes) {
+    if (nodes.length === 0) {
       return [];
     }
     const testDefinitionInfos = nodes
       .map((node): DescribedTestDefinitionInfo[] => {
         const processedNode = this.processNode(node);
 
-        if (!processedNode?.nodeDetail && !processedNode?.childNodes) {
+        if (!processedNode) {
           return [];
         }
-        const { nodeDetail, childNodes } = processedNode;
+        const { nodeDetail, childNodes, childNodesParameterized } = processedNode;
 
         const derivedTestDefinitionState = nodeDetail
           ? nodeDetail.state === TestDefinitionState.Default
@@ -162,6 +163,7 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
           testDefinition = {
             ...nodeDetail,
             file: filePath,
+            parameterized: isParameterized,
             disabled: derivedTestDefinitionState === TestDefinitionState.Disabled
           };
         }
@@ -169,7 +171,8 @@ export class AstTestFileParser implements TestFileParser<DescribedTestDefinition
         const childTestDefinitionInfos = this.getTestDefinitionsFromNodes(
           childNodes,
           filePath,
-          derivedTestDefinitionState
+          derivedTestDefinitionState,
+          isParameterized || childNodesParameterized
         );
 
         if (!testDefinition) {

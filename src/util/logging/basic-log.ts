@@ -1,4 +1,4 @@
-import { Disposable } from '../disposable/disposable';
+import { Disposable } from '../disposable/disposable.js';
 
 export interface BasicLog extends Disposable {
   error(msg: string): void;

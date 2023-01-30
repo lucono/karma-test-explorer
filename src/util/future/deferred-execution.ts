@@ -1,5 +1,5 @@
-import { DeferredPromise } from './deferred-promise';
-import { Execution } from './execution';
+import { DeferredPromise } from './deferred-promise.js';
+import { Execution } from './execution.js';
 
 export class DeferredExecution<S = void, T = void> {
   private readonly deferredExecutionStart: DeferredPromise<S>;

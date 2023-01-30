@@ -1,11 +1,11 @@
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { Logger } from '../../../util/logging/logger';
-import { escapeForRegExp, generateRandomId, stripJsComments } from '../../../util/utils';
-import { TestDefinitionState } from '../../base/test-definition';
-import { TestInterface } from '../../base/test-framework';
-import { TestFileParser } from '../test-file-parser';
-import { TestNode, TestNodeType } from './test-node';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { escapeForRegExp, generateRandomId, stripJsComments } from '../../../util/utils.js';
+import { TestDefinitionState } from '../../base/test-definition.js';
+import { TestInterface } from '../../base/test-framework.js';
+import { TestFileParser } from '../test-file-parser.js';
+import { TestNode, TestNodeType } from './test-node.js';
 
 export type RegexpTestFileParserResult = Record<TestNodeType, TestNode[]>;
 

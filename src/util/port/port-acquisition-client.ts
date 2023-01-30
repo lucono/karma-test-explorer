@@ -1,7 +1,7 @@
-import { Disposable } from '../disposable/disposable';
-import { Disposer } from '../disposable/disposer';
-import { Logger } from '../logging/logger';
-import { PortAcquisitionManager } from './port-acquisition-manager';
+import { Disposable } from '../disposable/disposable.js';
+import { Disposer } from '../disposable/disposer.js';
+import { Logger } from '../logging/logger.js';
+import { PortAcquisitionManager } from './port-acquisition-manager.js';
 
 export class PortAcquisitionClient implements Disposable {
   public constructor(

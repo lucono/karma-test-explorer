@@ -3,9 +3,9 @@
 */**
 
 # Include required files
+!package.json
 !dist
 !docs
-!package.json
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md

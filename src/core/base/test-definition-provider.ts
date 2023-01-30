@@ -1,5 +1,5 @@
-import { Disposable } from '../../util/disposable/disposable';
-import { TestDefinitionInfo } from '../test-locator';
+import { Disposable } from '../../util/disposable/disposable.js';
+import { TestDefinitionInfo } from '../test-locator.js';
 
 export interface TestDefinitionProvider extends Disposable {
   getTestDefinitions(suite: readonly string[], test: string): TestDefinitionInfo[];

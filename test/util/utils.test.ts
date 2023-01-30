@@ -1,6 +1,71 @@
-import { asNonBlankStringOrUndefined, asNonEmptyArrayOrUndefined, isChildPath } from '../../src/util/utils';
+import {
+  asNonBlankStringOrUndefined,
+  asNonEmptyArrayOrUndefined,
+  isChildPath,
+  removeAbsentProperties
+} from '../../src/util/utils.js';
 
 describe('Utils', () => {
+  describe(`${removeAbsentProperties.name} function`, () => {
+    it('removes object properties with an undefined value', () => {
+      const resultObj = removeAbsentProperties({
+        undefinedProp: undefined,
+        randomProp: 'random value'
+      });
+      expect('undefinedProp' in resultObj).toBe(false);
+    });
+
+    it('removes object properties with a null value', () => {
+      const resultObj = removeAbsentProperties({
+        nullProp: null,
+        randomProp: 'random value'
+      });
+
+      expect(resultObj).toBeDefined();
+      expect('nullProp' in resultObj).toBe(false);
+    });
+
+    it("doesn't remove object properties with a zero number value", () => {
+      const resultObj = removeAbsentProperties({
+        zeroNumberProp: 0,
+        randomprop: 'random value'
+      });
+      expect('zeroNumberProp' in resultObj).toBe(true);
+    });
+
+    it("doesn't remove object properties with an empty string value", () => {
+      const resultObj = removeAbsentProperties({
+        emptyStringProp: '',
+        randomProp: 'random value'
+      });
+      expect('emptyStringProp' in resultObj).toBe(true);
+    });
+
+    it('only removes object properties with a null or undefined value', () => {
+      const resultObj = removeAbsentProperties({
+        undefinedProp: undefined,
+        nullProp: null,
+        emptyStringProp: '',
+        nonEmptyStringProp: 'random string',
+        zeroNumberProp: 0,
+        nonZeroNumberProp: 5,
+        falseBooleanProp: false,
+        nonFalseBooleanProp: true
+      });
+
+      expect(Object.keys(resultObj)).toEqual(
+        expect.arrayContaining([
+          'emptyStringProp',
+          'nonEmptyStringProp',
+          'zeroNumberProp',
+          'nonZeroNumberProp',
+          'falseBooleanProp',
+          'nonFalseBooleanProp'
+        ])
+      );
+    });
+  });
+
   describe(`${asNonBlankStringOrUndefined.name} function`, () => {
     it('returns undefined when called with an undefined value', () => {
       const returnString = asNonBlankStringOrUndefined(undefined);

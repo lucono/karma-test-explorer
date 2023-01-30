@@ -1,11 +1,17 @@
 import { Config as KarmaConfig } from 'karma';
+import { join } from 'path';
 
-export default (config: KarmaConfig, karmaConfigHomePath: string) => {
+export interface KarmaDefaultConfigOptions {
+  karmaConfigHomePath: string;
+  // TODO: Add a field for code coverage generation path
+}
+
+export default (config: KarmaConfig, options: KarmaDefaultConfigOptions) => {
   // Default config taken from Angular testing configuraton docs:
   // https://angular.io/guide/testing#configuration
 
   config.set({
-    basePath: karmaConfigHomePath,
+    basePath: options.karmaConfigHomePath,
     frameworks: ['jasmine', '@angular-devkit/build-angular'],
     plugins: [
       'karma-jasmine',
@@ -21,9 +27,9 @@ export default (config: KarmaConfig, karmaConfigHomePath: string) => {
       suppressAll: true
     },
     coverageReporter: {
-      dir: require('path').join(karmaConfigHomePath, './coverage/'), // eslint-disable-line @typescript-eslint/no-var-requires
+      dir: join(options.karmaConfigHomePath, './coverage/'),
       subdir: '.',
-      reporters: [{ type: 'html' }, { type: 'text-summary' }]
+      reporters: [{ type: 'lcov' }, { type: 'text-summary' }]
     },
     reporters: ['progress', 'kjhtml'],
     port: 9876,

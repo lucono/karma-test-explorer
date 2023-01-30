@@ -1,16 +1,17 @@
-import { Config as KarmaConfig, CustomLauncher, InlinePluginDef } from 'karma';
+import { CustomLauncher, InlinePluginDef, Config as KarmaConfig } from 'karma';
 import { resolve } from 'path';
+
 import {
   CHROME_BROWSER_DEBUGGING_PORT_FLAG,
   KARMA_BROWSER_CAPTURE_MIN_TIMEOUT,
   KARMA_CUSTOM_LAUNCHER_BROWSER_NAME
-} from '../../../constants';
-import { Logger } from '../../../util/logging/logger';
-import { asNonBlankStringOrUndefined } from '../../../util/utils';
-import { KarmaEnvironmentVariable } from '../karma-environment-variable';
-import { KarmaLogLevel } from '../karma-log-level';
-import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter';
-import loadDefaultKarmaConfig from './karma.conf-default';
+} from '../../../constants.js';
+import { Logger } from '../../../util/logging/logger.js';
+import { asNonBlankStringOrUndefined } from '../../../util/utils.js';
+import { KarmaEnvironmentVariable } from '../karma-environment-variable.js';
+import { KarmaLogLevel } from '../karma-log-level.js';
+import { KarmaTestExplorerReporter } from '../reporter/karma-test-explorer-reporter.js';
+import loadDefaultKarmaConfig from './karma.conf-default.js';
 
 export class KarmaConfigLoader {
   public constructor(private readonly logger: Logger) {}
@@ -23,9 +24,11 @@ export class KarmaConfigLoader {
 
   private loadOriginalConfig(config: KarmaConfig, karmaConfigHomePath: string, originalKarmaConfigPath?: string) {
     if (!originalKarmaConfigPath) {
-      loadDefaultKarmaConfig(config, karmaConfigHomePath);
+      this.logger.debug(() => `No Karma config file specified - Using default configuration`);
+      loadDefaultKarmaConfig(config, { karmaConfigHomePath });
       return;
     }
+    this.logger.debug(() => `Loading Karma config: ${originalKarmaConfigPath}`);
     let originalKarmaConfigModule = require(originalKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
 
     // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
@@ -37,7 +40,7 @@ export class KarmaConfigLoader {
 
   private applyConfigOverrides(config: KarmaConfig, karmaConfigHomePath: string, karmaConfigPath?: string) {
     // -- Karma Port and LogLevel settings --
-    const karmaLogLevel = <KarmaLogLevel>process.env[KarmaEnvironmentVariable.KarmaLogLevel] ?? KarmaLogLevel.INFO;
+    const karmaLogLevel = (process.env[KarmaEnvironmentVariable.KarmaLogLevel] as KarmaLogLevel) ?? KarmaLogLevel.INFO;
     const karmaPort = parseInt(process.env[KarmaEnvironmentVariable.KarmaPort]!, 10);
 
     // -- Autowatch settings --

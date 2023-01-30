@@ -1,17 +1,22 @@
 import express from 'express';
-import { createServer, Server as HttpServer } from 'http';
-import { Server as SocketIOServer, ServerOptions, Socket } from 'socket.io';
-import { KARMA_READY_DEFAULT_TIMEOUT, KARMA_SOCKET_PING_INTERVAL, KARMA_SOCKET_PING_TIMEOUT } from '../../../constants';
-import { TestStatus } from '../../../core/base/test-status';
-import { Disposable } from '../../../util/disposable/disposable';
-import { Disposer } from '../../../util/disposable/disposer';
-import { DeferredExecution } from '../../../util/future/deferred-execution';
-import { DeferredPromise } from '../../../util/future/deferred-promise';
-import { Execution } from '../../../util/future/execution';
-import { SimpleLogger } from '../../../util/logging/simple-logger';
-import { KarmaEvent, KarmaEventName } from './karma-event';
-import { KarmaConnectionStatus, KarmaTestRunProcessor } from './karma-test-run-processor';
-import { SpecCompleteResponse } from './spec-complete-response';
+import { Server as HttpServer, createServer } from 'http';
+import { ServerOptions, Socket, Server as SocketIOServer } from 'socket.io';
+
+import {
+  KARMA_READY_DEFAULT_TIMEOUT,
+  KARMA_SOCKET_PING_INTERVAL,
+  KARMA_SOCKET_PING_TIMEOUT
+} from '../../../constants.js';
+import { TestStatus } from '../../../core/base/test-status.js';
+import { Disposable } from '../../../util/disposable/disposable.js';
+import { Disposer } from '../../../util/disposable/disposer.js';
+import { DeferredExecution } from '../../../util/future/deferred-execution.js';
+import { DeferredPromise } from '../../../util/future/deferred-promise.js';
+import { Execution } from '../../../util/future/execution.js';
+import { SimpleLogger } from '../../../util/logging/simple-logger.js';
+import { KarmaEvent, KarmaEventName } from './karma-event.js';
+import { KarmaConnectionStatus, KarmaTestRunProcessor } from './karma-test-run-processor.js';
+import { SpecCompleteResponse } from './spec-complete-response.js';
 
 interface KarmaTestListenerOptions {
   readonly karmaReadyTimeout?: number;
