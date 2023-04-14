@@ -64,6 +64,7 @@ export class ExtensionConfig implements Disposable {
   public readonly debuggerConfigName?: string;
   public readonly envFile?: string;
   public readonly environment: Readonly<Record<string, string>>;
+  public readonly envExclude: readonly string[];
   public readonly excludeFiles: readonly string[];
   public readonly flattenSingleChildFolders: boolean;
   public readonly logLevel: LogLevel;
@@ -130,6 +131,7 @@ export class ExtensionConfig implements Disposable {
     this.testGrouping = configStore.get(GeneralConfigSetting.TestGrouping)!;
     this.flattenSingleChildFolders = !!configStore.get(GeneralConfigSetting.FlattenSingleChildFolders);
     this.environment = getCombinedEnvironment(this.projectPath, configStore, fileHandler, logger);
+    this.envExclude = configStore.get<string[]>(GeneralConfigSetting.EnvExclude);
     this.testFramework = configStore.get(GeneralConfigSetting.TestFramework);
     this.reloadOnKarmaConfigChange = !!configStore.get(GeneralConfigSetting.ReloadOnKarmaConfigChange);
     this.customLauncher = getCustomLauncher(configStore);

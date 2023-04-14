@@ -13,12 +13,7 @@ import {
 } from '../../constants.js';
 import { FileHandler } from '../../util/filesystem/file-handler.js';
 import { Logger } from '../../util/logging/logger.js';
-import {
-  asNonBlankStringOrUndefined,
-  expandEnvironment,
-  normalizePath,
-  transformProperties
-} from '../../util/utils.js';
+import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, transformObject } from '../../util/utils.js';
 import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
 import { ContainerMode } from './extension-config.js';
@@ -98,18 +93,19 @@ export const getMergedDebuggerConfig = (
     workspaceFolderPath
   );
 
-  const replaceWorkspacePath = (value: string) =>
-    value.replace(/\${webRoot}/g, webRoot ?? workspaceFolderPath).replace(/\${workspaceFolder}/g, workspaceFolderPath);
-
-  const pathMapping = transformProperties(replaceWorkspacePath, {
-    ...baseDebugConfig.pathMapping,
-    ...extraPathMappings
+  const replaceWorkspacePath = (key: string, value: string) => ({
+    key,
+    value: value
+      .replace(/\${webRoot}/g, webRoot ?? workspaceFolderPath)
+      .replace(/\${workspaceFolder}/g, workspaceFolderPath)
   });
 
-  const sourceMapPathOverrides = transformProperties(replaceWorkspacePath, {
-    ...baseDebugConfig.sourceMapPathOverrides,
-    ...extraSourceMapPathOverrides
-  });
+  const pathMapping = transformObject({ ...baseDebugConfig.pathMapping, ...extraPathMappings }, replaceWorkspacePath);
+
+  const sourceMapPathOverrides = transformObject(
+    { ...baseDebugConfig.sourceMapPathOverrides, ...extraSourceMapPathOverrides },
+    replaceWorkspacePath
+  );
 
   const mergedDebuggerConfig: DebugConfiguration = { ...baseDebugConfig };
 

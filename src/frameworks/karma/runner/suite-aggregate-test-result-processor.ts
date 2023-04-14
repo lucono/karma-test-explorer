@@ -70,11 +70,11 @@ export class SuiteAggregateTestResultProcessor {
       const testResultDescription = !suiteExecutedAllTests
         ? `${totalTestCountDescription}`
         : failedTestCount === totalSuiteTestCount
-        ? `${totalTestCountDescription}, all failed`
+        ? `${totalTestCountDescription},${totalSuiteTestCount !== 1 ? ' all' : ''} failed`
         : passedTestCount === totalSuiteTestCount
-        ? `${totalTestCountDescription}, all passed`
+        ? `${totalTestCountDescription},${totalSuiteTestCount !== 1 ? ' all' : ''} passed`
         : skippedTestCount === totalSuiteTestCount
-        ? `${totalTestCountDescription}, all skipped`
+        ? `${totalTestCountDescription},${totalSuiteTestCount !== 1 ? ' all' : ''} skipped`
         : `${totalTestCountDescription}` +
           (failedTestCount > 0 ? `, ${failedTestCount} failed` : '') +
           (passedTestCount > 0 ? `, ${passedTestCount} passed` : '') +
@@ -85,7 +85,7 @@ export class SuiteAggregateTestResultProcessor {
         suite: testSuiteId,
         state: TestSuiteState.Completed,
         description: `(${testResultDescription})`,
-        tooltip: (testSuite ? `${testSuite.tooltip}  ` : '') + testResultDescription
+        tooltip: (testSuite?.tooltip ? `${testSuite.tooltip}  ` : '') + testResultDescription
       };
 
       this.testResultEventEmitter.fire(testEvent);

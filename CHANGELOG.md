@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.8.2 - Apr 15, 2023](#082---apr-15-2023)
   - [0.8.1 - Jan 30, 2023](#081---jan-30-2023)
   - [0.8.0 - Dec 11, 2022](#080---dec-11-2022)
   - [0.7.5 - Aug 31, 2022](#075---aug-31-2022)
@@ -25,6 +26,18 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
   - [0.1.0 - Sep 28, 2021](#010---sep-28-2021)
 </details>
 
+
+---
+## [0.8.2] - Apr 15, 2023
+
+### Added
+
+- New `karmaTestExplorer.envExclude` extension setting for specifying environment variables that should be excluded from the testing environment
+
+### Fixed
+
+- Fixed an issue which caused tooltip text for some tests to say 'undefined' after a test run
+- Addressed [CVE-2023-0842](https://github.com/advisories/GHSA-776f-qx25-q3cc) security vulnerability from transitive dependencies
 
 ---
 ## [0.8.1] - Jan 30, 2023

@@ -10,6 +10,7 @@ import { Disposer } from '../../util/disposable/disposer.js';
 import { SimpleLogger } from '../../util/logging/simple-logger.js';
 import { ProcessHandler } from '../../util/process/process-handler.js';
 import { ProcessLog } from '../../util/process/process-log.js';
+import { excludeSelectedEntries } from '../../util/utils.js';
 import { KarmaEnvironmentVariable } from './karma-environment-variable.js';
 import {
   KarmaCommandLineTestRunExecutor,
@@ -33,6 +34,7 @@ export type KarmaFactoryConfig = Pick<
   | 'browser'
   | 'customLauncher'
   | 'environment'
+  | 'envExclude'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
   | 'logLevel'
@@ -104,13 +106,17 @@ export class KarmaFactory implements TestFactory, Disposable {
   private createKarmaCommandLineTestRunExecutor(): KarmaCommandLineTestRunExecutor {
     this.logger.debug(() => 'Creating Karma command line test run executor');
 
-    const environment: Record<string, string | undefined> = {
-      ...process.env,
-      ...this.config.environment
-    };
+    this.logger.trace(() => `Pre-modification test run executor environment: ${JSON.stringify(process.env, null, 2)}`);
+
+    const combinedEnvironment = { ...process.env, ...this.config.environment };
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+
+    this.logger.trace(
+      () => `Post-modification test run executor environment: ${JSON.stringify(filteredEnvironment, null, 2)}`
+    );
 
     const options: KarmaCommandLineTestRunExecutorOptions = {
-      environment,
+      environment: filteredEnvironment,
       karmaProcessCommand: this.config.karmaProcessCommand,
       failOnStandardError: this.config.failOnStandardError,
       allowGlobalPackageFallback: this.config.allowGlobalPackageFallback
@@ -129,9 +135,19 @@ export class KarmaFactory implements TestFactory, Disposable {
   private createKarmaCommandLineTestServerExecutor(): KarmaCommandLineTestServerExecutor {
     this.logger.debug(() => 'Creating Karma test server executor');
 
+    this.logger.trace(
+      () => `Pre-modification test server executor environment: ${JSON.stringify(process.env, null, 2)}`
+    );
+
+    const combinedEnvironment = { ...process.env, ...this.config.environment };
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+
+    this.logger.trace(
+      () => `Post-modification test server executor environment: ${JSON.stringify(filteredEnvironment, null, 2)}`
+    );
+
     const environment: Record<string, string | undefined> = {
-      ...process.env,
-      ...this.config.environment,
+      ...filteredEnvironment,
       [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
