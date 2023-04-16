@@ -168,6 +168,7 @@ Setting                                       | Description
 `karmaTestExplorer.allowGlobalPackageFallback` | Allows use of global install of Karma or Angular if available and there is no local install in the project folder
 `karmaTestExplorer.env` | Additional environment variables to be set when running the tests. These override the values of the same variables if also provided through the `envFile` setting
 `karmaTestExplorer.envFile` | Path to a dotenv file containing environment variables to be set when running the tests
+`karmaTestExplorer.envExclude` | Environment variables that should be excluded from the testing environment
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.testTriggerMethod` | Specifies how test runs are triggered by default. You will usually not need to use this setting unless working around specific issues
@@ -388,6 +389,15 @@ Or to use variables in an external dot-env file:
 
 ```json
 "karmaTestExplorer.envFile": "path/to/file.env"
+```
+
+There is also the `karmaTestExplorer.envExclude` config option which is useful for excluding specific environment variables from the testing environment:
+
+```json
+"karmaTestExplorer.envExclude": [
+  "EXCLUDED_ENV_VAR_1",
+  "EXCLUDED_ENV_VAR_2"
+]
 ```
 
 <a href="#contents"><img align="right" height="24" src="img/back-to-top.png"></a>

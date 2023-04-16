@@ -10,56 +10,65 @@ export const getPropertyWithValue = <T>(object: Record<string, T>, propValue: T)
   return Object.keys(object).find(key => object[key] === propValue);
 };
 
-export const extractProperties = <T>(object: Record<string, T>, ...propNames: string[]): Record<string, T> => {
-  const objectSubset: Record<string, T> = {};
-  propNames.forEach(propName => (objectSubset[propName] = object[propName]));
-  return objectSubset;
-};
-
-export const transformProperties = <T>(
-  transformer: (value: T) => T,
-  object: Record<string, T>,
-  propNames?: string[]
-): Record<string, T> => {
-  const transformedObject: Record<string, T> = {};
-  const propsToTransform = propNames ?? Object.keys(object);
-  propsToTransform.forEach(propName => (transformedObject[propName] = transformer(object[propName])));
-  return transformedObject;
-};
-
 export const changePropertyCase = <T>(
   object: Readonly<Record<string, T>>,
   toCase: 'upper' | 'lower',
   ...propNames: string[]
 ): Record<string, T> => {
-  const adjustedObject: Record<string, T> = {};
+  const lowerCasePropsForAdjustment =
+    propNames.length > 0 ? propNames.map(propName => propName.toLocaleLowerCase()) : Object.keys(object);
+
   const adjustCase = toCase === 'lower' ? String.prototype.toLocaleLowerCase : String.prototype.toLocaleUpperCase;
-  const lowerCasePropsForAdjustment = propNames.map(propName => propName.toLocaleLowerCase());
 
-  Object.keys(object).forEach(originalProp => {
-    const adjustedProp = lowerCasePropsForAdjustment.includes(originalProp.toLocaleLowerCase())
-      ? adjustCase.apply(originalProp)
-      : originalProp;
-
-    adjustedObject[adjustedProp] = object[originalProp];
+  const adjustedObject: Record<string, T> = transformObject(object, (key, value) => {
+    const newKey = lowerCasePropsForAdjustment.includes(key.toLocaleLowerCase()) ? adjustCase.apply(key) : key;
+    return { key: newKey, value };
   });
 
   return adjustedObject;
 };
 
-export const removeAbsentProperties = <T>(
-  object: Readonly<Record<string, T | undefined>>
-): Record<string, NonNullable<T>> => {
-  const filteredObject: Record<string, NonNullable<T>> = {};
+export const selectEntries = <T>(object: Record<string, T>, ...propNames: string[]): Record<string, T> => {
+  const objectSubset: Record<string, T> = transformObject(object, (key, value) =>
+    propNames.includes(key) ? { key, value } : undefined
+  );
+  return objectSubset;
+};
 
-  Object.keys(object).forEach(prop => {
-    const propValue = object[prop];
-    if (propValue !== undefined && propValue !== null) {
-      filteredObject[prop] = propValue;
+export const excludeSelectedEntries = <T>(
+  object: Readonly<Record<string, T>>,
+  selector: readonly string[] | ((key: string, value: T) => boolean)
+): Record<string, T> => {
+  const entrySelector = typeof selector === 'function' ? selector : (key: string) => selector.includes(key);
+
+  const filteredObject: Record<string, T> = transformObject(object, (key, value) =>
+    entrySelector(key, value) === true ? undefined : { key, value }
+  );
+  return filteredObject;
+};
+
+export const excludeAbsentEntries = <T>(object: Readonly<Record<string, T>>): Record<string, NonNullable<T>> => {
+  const filteredObject: Record<string, T> = excludeSelectedEntries(
+    object,
+    (key, value) => value === null || value === undefined
+  );
+  return filteredObject as Record<string, NonNullable<T>>;
+};
+
+export const transformObject = <T>(
+  object: Record<string, T>,
+  transformer: (key: string, value: T) => { key: string; value: T } | undefined
+): Record<string, T> => {
+  const transformedObject: Record<string, T> = {};
+
+  Object.entries(object).forEach(([oldKey, oldValue]) => {
+    const newEntry = transformer(oldKey, oldValue);
+
+    if (newEntry !== undefined) {
+      transformedObject[newEntry.key] = newEntry.value;
     }
   });
-
-  return filteredObject;
+  return transformedObject;
 };
 
 export const generateRandomId = () => {
@@ -182,12 +191,12 @@ export const expandEnvironment = (
   let expandedEnvironment: Record<string, string> | undefined;
 
   try {
-    const nonAbsentProcessEnv = removeAbsentProperties(process.env);
+    const nonAbsentProcessEnv = excludeAbsentEntries(process.env);
     const processEnv = changePropertyCase(nonAbsentProcessEnv, 'upper', ...UPPERCASE_NORMALIZED_ENVIRONMENT_VARIABLES);
     const mergedProcessEnvironment = { ...processEnv, ...environment };
 
     expand({ parsed: mergedProcessEnvironment, ignoreProcessEnv: true } as any);
-    expandedEnvironment = extractProperties(mergedProcessEnvironment, ...Object.keys(environment));
+    expandedEnvironment = selectEntries(mergedProcessEnvironment, ...Object.keys(environment));
   } catch (error) {
     logger.error(
       () =>

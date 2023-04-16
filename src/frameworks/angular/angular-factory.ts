@@ -6,6 +6,7 @@ import { Disposer } from '../../util/disposable/disposer.js';
 import { SimpleLogger } from '../../util/logging/simple-logger.js';
 import { ProcessHandler } from '../../util/process/process-handler.js';
 import { ProcessLog } from '../../util/process/process-log.js';
+import { excludeSelectedEntries } from '../../util/utils.js';
 import {
   AngularTestServerExecutor,
   AngularTestServerExecutorOptions
@@ -23,6 +24,7 @@ export type AngularFactoryConfig = Pick<
   | 'browser'
   | 'customLauncher'
   | 'environment'
+  | 'envExclude'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
   | 'logLevel'
@@ -54,9 +56,21 @@ export class AngularFactory implements Partial<TestFactory> {
         `and karma config file '${this.config.projectKarmaConfigFilePath ?? '<none>'}'`
     );
 
+    this.logger.trace(
+      () => `Pre-modification test server executor environment: ${JSON.stringify(process.env, null, 2)}`
+    );
+
+    const combinedEnvironment = { ...process.env, ...this.config.environment };
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+
+    this.logger.trace(
+      () =>
+        `Post-modification test server executor environment after processing: ` +
+        `${JSON.stringify(filteredEnvironment, null, 2)}`
+    );
+
     const environment: Record<string, string | undefined> = {
-      ...process.env,
-      ...this.config.environment,
+      ...filteredEnvironment,
       [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',

@@ -1,14 +1,15 @@
 import {
   asNonBlankStringOrUndefined,
   asNonEmptyArrayOrUndefined,
-  isChildPath,
-  removeAbsentProperties
+  excludeAbsentEntries,
+  excludeSelectedEntries,
+  isChildPath
 } from '../../src/util/utils.js';
 
 describe('Utils', () => {
-  describe(`${removeAbsentProperties.name} function`, () => {
+  describe(`${excludeAbsentEntries.name} function`, () => {
     it('removes object properties with an undefined value', () => {
-      const resultObj = removeAbsentProperties({
+      const resultObj = excludeAbsentEntries({
         undefinedProp: undefined,
         randomProp: 'random value'
       });
@@ -16,7 +17,7 @@ describe('Utils', () => {
     });
 
     it('removes object properties with a null value', () => {
-      const resultObj = removeAbsentProperties({
+      const resultObj = excludeAbsentEntries({
         nullProp: null,
         randomProp: 'random value'
       });
@@ -26,7 +27,7 @@ describe('Utils', () => {
     });
 
     it("doesn't remove object properties with a zero number value", () => {
-      const resultObj = removeAbsentProperties({
+      const resultObj = excludeAbsentEntries({
         zeroNumberProp: 0,
         randomprop: 'random value'
       });
@@ -34,7 +35,7 @@ describe('Utils', () => {
     });
 
     it("doesn't remove object properties with an empty string value", () => {
-      const resultObj = removeAbsentProperties({
+      const resultObj = excludeAbsentEntries({
         emptyStringProp: '',
         randomProp: 'random value'
       });
@@ -42,7 +43,7 @@ describe('Utils', () => {
     });
 
     it('only removes object properties with a null or undefined value', () => {
-      const resultObj = removeAbsentProperties({
+      const resultObj = excludeAbsentEntries({
         undefinedProp: undefined,
         nullProp: null,
         emptyStringProp: '',
@@ -63,6 +64,54 @@ describe('Utils', () => {
           'nonFalseBooleanProp'
         ])
       );
+    });
+  });
+
+  describe(`${excludeSelectedEntries.name} function`, () => {
+    describe(`when using a string array selector`, () => {
+      it('excludes object keys matching the array entries when not empty', () => {
+        const selectedEntries = ['prop_1', 'prop_3'];
+
+        const resultObj = excludeSelectedEntries(
+          {
+            prop_1: 'value 1',
+            prop_2: 'value 2',
+            prop_3: 'value 3'
+          },
+          selectedEntries
+        );
+        expect(resultObj).toEqual({ prop_2: 'value 2' });
+      });
+
+      it("doesn't exclude any object entries when the selector array is empty", () => {
+        const selectedEntries: string[] = [];
+
+        const resultObj = excludeSelectedEntries(
+          {
+            prop_1: 'value 1',
+            prop_2: 'value 2',
+            prop_3: 'value 3'
+          },
+          selectedEntries
+        );
+        expect(resultObj).toEqual(resultObj);
+      });
+    });
+
+    describe(`when using a selector function`, () => {
+      it('excludes object keys matched by the selector', () => {
+        const entrySelector = (key: string, value: string) => key === 'prop_1' || value === 'value 3';
+
+        const resultObj = excludeSelectedEntries(
+          {
+            prop_1: 'value 1',
+            prop_2: 'value 2',
+            prop_3: 'value 3'
+          },
+          entrySelector
+        );
+        expect(resultObj).toEqual({ prop_2: 'value 2' });
+      });
     });
   });
 

@@ -2,11 +2,15 @@
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 
-This extension adds a rich and fully integrated testing experience to Visual Studio Code for TypeScript, JavaScript, or Angular projects that use [Karma](https://karma-runner.github.io/latest/index.html) for testing.
+This extension adds a rich and fully integrated testing experience to Visual Studio Code for Angular, TypeScript, and JavaScript projects that use [Karma](https://karma-runner.github.io/latest/index.html) for testing.
+
+![Karma Test Explorer screenshot](docs/img/extension-screenshot.png)
+
+It shows your Karma tests in a visual explorer in VS Code, adds code lenses and gutter decorations to your test files, and shows test failure details inline within your code at the point of each failure.
 
 ![Karma Test Explorer screenshot](docs/img/sidebar.png)
 
-It displays rich information about your tests in the Testing side bar (left image), including focused ⚡ and disabled 💤 tests. It also detects duplicated tests in your project and convniently flags them for action. Test results summary, including passed, failed and skipped tests, are displayed in the side bar after each test execution (right image).
+The side bar shows rich information about your tests, including focused ⚡ and disabled 💤 tests (left image), and details summarizing passed, failed and skipped tests after each test execution (right image).
 
 ---
 Please take a minute to rate this extension in the [marketplace](https://marketplace.visualstudio.com/items?itemName=lucono.karma-test-explorer) and star it on [GitHub](https://github.com/lucono/karma-test-explorer/stargazers). For issues, questions, or feature requests, see [Reporting Issues](docs/documentation.md#reporting-issues).
@@ -29,7 +33,7 @@ Karma Test Explorer is a complete rewrite of the deprecated [Angular/Karma Test 
 - Angular, Karma, Jasmine, and Mocha support
 - Multi-project / monorepo / multi-root workspace support
 - Live test validation of changing product code
-- Auto-detect and recommend fixes for various testing issues
+- Auto-detection and fix recommendations for various testing issues
 - [Much more](docs/documentation.md#features)
 
 ## Quick Start

@@ -73,7 +73,7 @@ export class SimpleProcess implements Process {
         `with args: ${JSON.stringify(processArguments)}`
     );
 
-    this.logger.trace(() => `Process ${this.uid} options: \n${JSON.stringify(runOptions)}`);
+    this.logger.trace(() => `Process ${this.uid} options: \n${JSON.stringify(runOptions, null, 2)}`);
 
     this.processExecution = deferredProcessExecution.execution();
 

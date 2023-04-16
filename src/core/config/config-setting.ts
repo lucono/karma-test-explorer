@@ -47,6 +47,7 @@ export enum GeneralConfigSetting {
   KarmaReporterLogLevel = 'karmaReporterLogLevel',
   Env = 'env',
   EnvFile = 'envFile',
+  EnvExclude = 'envExclude',
   AutoWatchEnabled = 'autoWatchEnabled',
   AutoWatchBatchDelay = 'autoWatchBatchDelay',
   KarmaReadyTimeout = 'karmaReadyTimeout',
