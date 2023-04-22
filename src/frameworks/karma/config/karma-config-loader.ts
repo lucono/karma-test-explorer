@@ -1,11 +1,8 @@
 import { CustomLauncher, InlinePluginDef, Config as KarmaConfig } from 'karma';
 import { resolve } from 'path';
 
-import {
-  CHROME_BROWSER_DEBUGGING_PORT_FLAG,
-  KARMA_BROWSER_CAPTURE_MIN_TIMEOUT,
-  KARMA_CUSTOM_LAUNCHER_BROWSER_NAME
-} from '../../../constants.js';
+import { KARMA_BROWSER_CAPTURE_MIN_TIMEOUT, KARMA_CUSTOM_LAUNCHER_BROWSER_NAME } from '../../../constants.js';
+import { BrowserHelperFactory } from '../../../core/config/browsers/browser-factory.js';
 import { Logger } from '../../../util/logging/logger.js';
 import { asNonBlankStringOrUndefined } from '../../../util/utils.js';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable.js';
@@ -67,6 +64,7 @@ export class KarmaConfigLoader {
     } else {
       const debugPortString = process.env[KarmaEnvironmentVariable.DebugPort];
       const debugPort: number | undefined = debugPortString ? parseInt(debugPortString, 10) : undefined;
+      this.logger.debug(() => `Using debug port: ${debugPort}`);
 
       const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher]!;
       const customLaucherObject = customLauncherString ? JSON.parse(customLauncherString) : {};
@@ -125,11 +123,7 @@ export class KarmaConfigLoader {
   }
 
   private addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined) {
-    if (!customLaucher || debugPort === undefined) {
-      return;
-    }
-    customLaucher.flags = customLaucher.flags?.map(flag =>
-      flag.startsWith(CHROME_BROWSER_DEBUGGING_PORT_FLAG) ? `${CHROME_BROWSER_DEBUGGING_PORT_FLAG}=${debugPort}` : flag
-    );
+    const browserHelper = BrowserHelperFactory.getBrowserHelper(customLaucher?.base ?? '');
+    browserHelper.addCustomLauncherDebugPort(customLaucher, debugPort);
   }
 }

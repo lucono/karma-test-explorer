@@ -1,22 +1,15 @@
 import { DebugConfiguration } from 'vscode';
 
 import { parse as parseDotEnvContent } from 'dotenv';
-import isDocker from 'is-docker';
-import { CustomLauncher } from 'karma';
+import { CustomLauncher, Config as KarmaConfig } from 'karma';
 import { resolve } from 'path';
 
-import {
-  CHROME_BROWSER_DEBUGGING_PORT_FLAG,
-  CHROME_DEFAULT_DEBUGGING_PORT,
-  KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS,
-  KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG
-} from '../../constants.js';
+import { CHROME_BROWSER_DEBUGGING_PORT_FLAG, CHROME_DEFAULT_DEBUGGING_PORT } from '../../constants.js';
 import { FileHandler } from '../../util/filesystem/file-handler.js';
 import { Logger } from '../../util/logging/logger.js';
 import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, transformObject } from '../../util/utils.js';
 import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
-import { ContainerMode } from './extension-config.js';
 
 export const getDefaultDebugPort = (
   browser: string | undefined,
@@ -48,34 +41,75 @@ export const getDefaultDebugPort = (
   return configuredPort ?? CHROME_DEFAULT_DEBUGGING_PORT;
 };
 
-export const getCustomLauncher = (config: ConfigStore<ProjectConfigSetting>): CustomLauncher => {
-  const configuredLauncher: CustomLauncher = config.get(GeneralConfigSetting.CustomLauncher);
-  const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
-  const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
+export const loadProjectKarmaConfigFile = (projectKarmaConfigPath: string): KarmaConfig => {
+  let loadedConfiguration: any = {};
+  const fakeConfig = {
+    set: (newConfig: any) => {
+      loadedConfiguration = { ...loadedConfiguration, ...newConfig };
+    }
+  };
 
-  const isContainerMode =
-    configuredContainerMode === ContainerMode.Enabled
-      ? true
-      : configuredContainerMode === ContainerMode.Disabled
-      ? false
-      : isDocker();
+  let projectKarmaConfigModule = require(projectKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
 
-  if ((configuredLauncher.base ?? '').toLowerCase().indexOf('chrome') === -1) {
-    return configuredLauncher;
+  // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
+  if (typeof projectKarmaConfigModule === 'object' && typeof projectKarmaConfigModule.default !== 'undefined') {
+    projectKarmaConfigModule = projectKarmaConfigModule.default;
   }
 
-  let launcherFlags = (configuredLauncher.flags ??= []);
+  projectKarmaConfigModule(fakeConfig);
+  return loadedConfiguration;
+};
 
-  if (isContainerMode && !launcherFlags.includes(KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG)) {
-    launcherFlags = [...launcherFlags, KARMA_BROWSER_CONTAINER_NO_SANDBOX_FLAG];
+export const getCustomLaunchConfiguration = (
+  config: ConfigStore<ProjectConfigSetting>,
+  projectConfig: KarmaConfig
+): {
+  browserType: string;
+  customLauncher: CustomLauncher | undefined;
+} => {
+  let browserType = config.get<string>(GeneralConfigSetting.Browser);
+  if (browserType !== '') {
+    if (projectConfig.customLaunchers?.[browserType] !== undefined) {
+      const customLauncher: CustomLauncher = projectConfig.customLaunchers[browserType];
+      return {
+        browserType: customLauncher.base,
+        customLauncher
+      };
+    }
+
+    return {
+      browserType,
+      customLauncher: undefined
+    };
   }
 
-  if (!isContainerMode && configuredLauncher.base === 'Chrome' && isNonHeadlessMode) {
-    launcherFlags = launcherFlags.filter(flag => !KARMA_BROWSER_CONTAINER_HEADLESS_FLAGS.includes(flag));
+  const customLauncherInsp = config.inspect<CustomLauncher>(GeneralConfigSetting.CustomLauncher);
+  const customLauncherConfigured =
+    (customLauncherInsp?.workspaceFolderValue ??
+      customLauncherInsp?.workspaceValue ??
+      customLauncherInsp?.globalValue) !== undefined;
+  if (customLauncherConfigured) {
+    const customLauncher = config.get<CustomLauncher>(GeneralConfigSetting.CustomLauncher);
+    return {
+      browserType: customLauncher.base,
+      customLauncher
+    };
   }
 
-  const customLauncher: CustomLauncher = { ...configuredLauncher, flags: launcherFlags };
-  return customLauncher;
+  browserType = Array.isArray(projectConfig.browsers) ? projectConfig.browsers[0] : 'Chrome';
+
+  if (projectConfig.customLaunchers?.[browserType] !== undefined) {
+    const customLauncher: CustomLauncher = projectConfig.customLaunchers[browserType];
+    return {
+      browserType: customLauncher.base,
+      customLauncher
+    };
+  }
+
+  return {
+    browserType,
+    customLauncher: undefined
+  };
 };
 
 export const getMergedDebuggerConfig = (

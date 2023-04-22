@@ -20,12 +20,13 @@ import {
 import { ProjectType } from '../base/project-type.js';
 import { TestFrameworkName } from '../base/test-framework-name.js';
 import { TestGrouping } from '../base/test-grouping.js';
+import { BrowserHelperFactory } from './browsers/browser-factory.js';
 import {
   getCombinedEnvironment,
-  getCustomLauncher,
-  getDefaultDebugPort,
+  getCustomLaunchConfiguration,
   getMergedDebuggerConfig,
-  getTestsBasePath
+  getTestsBasePath,
+  loadProjectKarmaConfigFile
 } from './config-helper.js';
 import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
@@ -134,7 +135,6 @@ export class ExtensionConfig implements Disposable {
     this.envExclude = configStore.get<string[]>(GeneralConfigSetting.EnvExclude);
     this.testFramework = configStore.get(GeneralConfigSetting.TestFramework);
     this.reloadOnKarmaConfigChange = !!configStore.get(GeneralConfigSetting.ReloadOnKarmaConfigChange);
-    this.customLauncher = getCustomLauncher(configStore);
     this.browser = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.Browser));
     this.testFiles = configStore.get<string[]>(GeneralConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
     this.allowGlobalPackageFallback = !!configStore.get(GeneralConfigSetting.AllowGlobalPackageFallback);
@@ -144,9 +144,18 @@ export class ExtensionConfig implements Disposable {
     this.showTestDefinitionTypeIndicators = !!configStore.get(GeneralConfigSetting.ShowTestDefinitionTypeIndicators);
     this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.DebuggerConfigName));
 
+    const projectConfig = loadProjectKarmaConfigFile(this.projectKarmaConfigFilePath);
+    const { browserType, customLauncher } = getCustomLaunchConfiguration(configStore, projectConfig);
+    const browserHelper = BrowserHelperFactory.getBrowserHelper(browserType);
+    this.customLauncher = browserHelper.getCustomLauncher(browserType, customLauncher, configStore);
+
+    const baseDebuggerConfig = configStore.has(GeneralConfigSetting.DebuggerConfig)
+      ? configStore.get<DebugConfiguration>(GeneralConfigSetting.DebuggerConfig)
+      : browserHelper.getDefaultDebuggerConfig();
+
     this.debuggerConfig = getMergedDebuggerConfig(
       normalizedWorkspacePath,
-      configStore.get(GeneralConfigSetting.DebuggerConfig)!,
+      baseDebuggerConfig,
       configStore.get(GeneralConfigSetting.WebRoot),
       configStore.get(GeneralConfigSetting.PathMapping),
       configStore.get(GeneralConfigSetting.SourceMapPathOverrides)
@@ -156,13 +165,10 @@ export class ExtensionConfig implements Disposable {
       filePath => normalizePath(resolve(this.projectPath, filePath))
     );
 
-    this.defaultDebugPort = getDefaultDebugPort(
-      this.browser,
-      this.customLauncher,
-      this.debuggerConfigName,
-      this.debuggerConfig,
-      configStore
-    );
+    this.defaultDebugPort =
+      this.browser || this.debuggerConfigName
+        ? undefined
+        : browserHelper.getDefaultDebugPort(this.customLauncher, this.debuggerConfig);
 
     this.excludeFiles = toSingleUniqueArray(
       configStore.get<string[]>(GeneralConfigSetting.ExcludeFiles),
