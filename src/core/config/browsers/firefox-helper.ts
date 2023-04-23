@@ -24,10 +24,20 @@ export class FirefoxBrowserHelper extends BrowserHelper {
     customLaucher: CustomLauncher | undefined,
     config: ConfigStore<ProjectConfigSetting>
   ): CustomLauncher {
-    const configuredLauncher: CustomLauncher = customLaucher ?? {
-      base: browserType,
-      flags: [`${this.debuggingPortFlag} ${BrowserHelper.DEFAULT_DEBUGGING_PORT}`]
-    };
+    const configuredLauncher: CustomLauncher =
+      customLaucher ??
+      ({
+        base: browserType,
+        flags: [
+          ...FirefoxBrowserHelper.HEADLESS_FLAGS,
+          `${this.debuggingPortFlag} ${BrowserHelper.DEFAULT_DEBUGGING_PORT}`
+        ],
+        prefs: {
+          'devtools.debugger.remote-enabled': true,
+          'devtools.chrome.enabled': true,
+          'devtools.debugger.prompt-connection': false
+        }
+      } as any);
 
     const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
     const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
@@ -47,5 +57,14 @@ export class FirefoxBrowserHelper extends BrowserHelper {
 
     const customLauncher: CustomLauncher = { ...configuredLauncher, flags: launcherFlags };
     return customLauncher;
+  }
+
+  public addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): void {
+    if (!customLaucher || debugPort === undefined) {
+      return;
+    }
+    customLaucher.flags = customLaucher.flags?.map(flag =>
+      flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag} ${debugPort}` : flag
+    );
   }
 }

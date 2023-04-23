@@ -38,7 +38,7 @@ export abstract class BrowserHelper {
       return;
     }
     customLaucher.flags = customLaucher.flags?.map(flag =>
-      flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag} ${debugPort}` : flag
+      flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag}=${debugPort}` : flag
     );
   }
 
