@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "orta.vscode-jest",
+        "hbenl.vscode-test-explorer",
+        "dbaeumer.vscode-eslint"
+    ]
+}

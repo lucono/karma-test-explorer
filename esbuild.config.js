@@ -24,7 +24,7 @@ export default {
   minifyIdentifiers: true,
   minifyWhitespace: true,
   minifySyntax: false,
-  sourcemap: false,
+  sourcemap: process.argv.includes('--dev'),
   keepNames: true,
   tsconfig: './tsconfig.json'
 };
