@@ -1,0 +1,74 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"label": "Build Karma Test Explorer",
+			"detail": "tsc"
+		},
+		{
+			"type": "npm",
+			"script": "bundle",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"label": "Bundle Karma Test Explorer",
+			"detail": "bundle"
+		},
+		{
+			"type": "npm",
+			"script": "bundle-dev",
+			"group": "build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"label": "Bundle Karma Test Explorer (Dev)",
+			"detail": "bundle-dev"
+		},
+		{
+			"dependsOn": [
+				"Clean Build Output",
+				"Build Karma Test Explorer",
+				"Bundle Karma Test Explorer (Dev)"
+			],
+			"dependsOrder": "sequence",
+			"label": "Rebuild Test Explorer (Dev)",
+			"problemMatcher": []
+		},
+		{
+			"dependsOn": [
+				"Clean Build Output",
+				"Build Karma Test Explorer",
+				"Bundle Karma Test Explorer"
+			],
+			"dependsOrder": "sequence",
+			"label": "Rebuild Test Explorer",
+			"problemMatcher": []
+		},
+		{
+			"dependsOn": [
+				"Rebuild Test Explorer"
+			],
+			"label": "Package Extension",
+			"type": "npm",
+			"script": "package",
+			"detail": "package",
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Clean Build Output",
+			"type": "npm",
+			"script": "clean",
+			"detail": "clean",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

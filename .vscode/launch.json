@@ -11,6 +11,13 @@
       ],
       "outFiles": [
         "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "Rebuild Test Explorer (Dev)",
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/dist/**",
+        "${workspaceFolder}/out/**",
+        "!**/node_modules/**"
       ]
     },
     {
