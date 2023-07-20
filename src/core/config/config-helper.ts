@@ -1,13 +1,20 @@
 import { DebugConfiguration } from 'vscode';
 
 import { parse as parseDotEnvContent } from 'dotenv';
-import { CustomLauncher, Config as KarmaConfig } from 'karma';
+import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 
 import { CHROME_BROWSER_DEBUGGING_PORT_FLAG, CHROME_DEFAULT_DEBUGGING_PORT } from '../../constants.js';
 import { FileHandler } from '../../util/filesystem/file-handler.js';
 import { Logger } from '../../util/logging/logger.js';
-import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, transformObject } from '../../util/utils.js';
+import {
+  asNonBlankStringOrUndefined,
+  expandEnvironment,
+  normalizePath,
+  stripJsComments,
+  transformObject
+} from '../../util/utils.js';
+import { BrowserHelperFactory } from './browsers/browser-factory.js';
 import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
 
@@ -41,45 +48,45 @@ export const getDefaultDebugPort = (
   return configuredPort ?? CHROME_DEFAULT_DEBUGGING_PORT;
 };
 
-export const loadProjectKarmaConfigFile = (projectKarmaConfigPath: string): KarmaConfig => {
-  let loadedConfiguration: any = {};
-  const fakeConfig = {
-    set: (newConfig: any) => {
-      loadedConfiguration = { ...loadedConfiguration, ...newConfig };
-    }
-  };
-
-  let projectKarmaConfigModule = require(projectKarmaConfigPath); // eslint-disable-line @typescript-eslint/no-var-requires
-
-  // https://github.com/karma-runner/karma/blob/v1.7.0/lib/config.js#L364
-  if (typeof projectKarmaConfigModule === 'object' && typeof projectKarmaConfigModule.default !== 'undefined') {
-    projectKarmaConfigModule = projectKarmaConfigModule.default;
-  }
-
-  projectKarmaConfigModule(fakeConfig);
-  return loadedConfiguration;
-};
-
+/**
+ * Attempts to parse custom launch configuration and browser type from user settings
+ * @param config - The project config settings
+ * @param projectKarmaConfigFilePath - The path to the karma.config.js file for this project
+ * @param fileHandler
+ * @param logger
+ * @returns An object containing the determined browser type, and whether it has been overriden in settings or not
+ * If the custom launcher is overriden in settings, this will also be returned
+ */
 export const getCustomLaunchConfiguration = (
   config: ConfigStore<ProjectConfigSetting>,
-  projectConfig: KarmaConfig
+  projectKarmaConfigFilePath: string,
+  fileHandler: FileHandler,
+  logger: Logger
 ): {
   browserType: string;
   customLauncher: CustomLauncher | undefined;
+  userOverride: boolean;
 } => {
-  let browserType = config.get<string>(GeneralConfigSetting.Browser);
-  if (browserType !== '') {
-    if (projectConfig.customLaunchers?.[browserType] !== undefined) {
-      const customLauncher: CustomLauncher = projectConfig.customLaunchers[browserType];
+  const rawConfig = getRawKarmaConfig(projectKarmaConfigFilePath, fileHandler);
+  const browserType = asNonBlankStringOrUndefined(config.get<string>(GeneralConfigSetting.Browser));
+
+  if (browserType !== undefined) {
+    const customLauncherBrowserType = getBrowserTypeFromKarmaConfigCustomLauncher(browserType, rawConfig) ?? '';
+    if (BrowserHelperFactory.isSupportedBrowser(customLauncherBrowserType)) {
+      logger.debug(() => `Using user-specified browser custom launcher: ${browserType}`);
+      //  Custom launcher will be ignored when the browser config is set, so return undefined custom launcher even though we got the base type from it
       return {
-        browserType: customLauncher.base,
-        customLauncher
+        browserType: customLauncherBrowserType,
+        customLauncher: undefined,
+        userOverride: true
       };
     }
 
+    logger.debug(() => `Using user-specified browser: ${browserType}`);
     return {
       browserType,
-      customLauncher: undefined
+      customLauncher: undefined,
+      userOverride: true
     };
   }
 
@@ -90,26 +97,71 @@ export const getCustomLaunchConfiguration = (
       customLauncherInsp?.globalValue) !== undefined;
   if (customLauncherConfigured) {
     const customLauncher = config.get<CustomLauncher>(GeneralConfigSetting.CustomLauncher);
+    logger.debug(() => `Using user-specified custom launcher based on: ${customLauncher.base}`);
+    //  User has specified the custom launcher configuration, so it must be returned
     return {
       browserType: customLauncher.base,
-      customLauncher
+      customLauncher,
+      userOverride: true
     };
   }
 
-  browserType = Array.isArray(projectConfig.browsers) ? projectConfig.browsers[0] : 'Chrome';
+  const karmaConfigBrowsers = getBrowsersFromKarmaConfig(rawConfig);
+  for (const browser of karmaConfigBrowsers) {
+    if (BrowserHelperFactory.isSupportedBrowser(browser)) {
+      logger.debug(() => `Using project-specified browser: ${browser}`);
+      return {
+        browserType: browser,
+        customLauncher: undefined,
+        userOverride: false
+      };
+    }
 
-  if (projectConfig.customLaunchers?.[browserType] !== undefined) {
-    const customLauncher: CustomLauncher = projectConfig.customLaunchers[browserType];
-    return {
-      browserType: customLauncher.base,
-      customLauncher
-    };
+    const browserType = getBrowserTypeFromKarmaConfigCustomLauncher(browser, rawConfig) ?? '';
+    if (BrowserHelperFactory.isSupportedBrowser(browserType)) {
+      logger.debug(() => `Using project-specified custom launcher: ${browser}`);
+      //  The custom launcher config will be looked up by the karma config loader, so we don't need to return it here
+      return {
+        browserType,
+        customLauncher: undefined,
+        userOverride: false
+      };
+    }
   }
 
+  logger.debug(() => 'Using default launcher');
   return {
-    browserType,
-    customLauncher: undefined
+    browserType: 'Chrome',
+    customLauncher: undefined,
+    userOverride: false
   };
+};
+
+const getRawKarmaConfig = (karmaConfigPath: string, fileHandler: FileHandler): string | undefined => {
+  const rawConfigContent = fileHandler.readFileSync(karmaConfigPath);
+  return rawConfigContent ? stripJsComments(rawConfigContent).replace(/\s/g, '') : undefined;
+};
+
+const getBrowsersFromKarmaConfig = (rawConfig: string | undefined): string[] => {
+  const matchResult = rawConfig ? /browsers:\[([^\]]*)\]/g.exec(rawConfig)?.[1] : '';
+  const browserList = matchResult?.split(',').map(entry => entry.replace(/(^['"`]|['"`]$)/g, '')) ?? [];
+
+  return browserList;
+};
+
+const getBrowserTypeFromKarmaConfigCustomLauncher = (
+  customBrowserName: string,
+  rawConfig: string | undefined
+): string | undefined => {
+  const matchResult = rawConfig
+    ? new RegExp(`["']?${customBrowserName}["']?:(\{[^\}]*\})`, 'g').exec(rawConfig)?.[1]
+    : '';
+  const configParts = matchResult?.split(',') ?? [];
+  const baseValue = configParts
+    .find(entry => entry.includes('base'))
+    ?.split(':')[1]
+    ?.replace(/(^['"`]|['"`]$)/g, '');
+  return asNonBlankStringOrUndefined(baseValue);
 };
 
 export const getMergedDebuggerConfig = (

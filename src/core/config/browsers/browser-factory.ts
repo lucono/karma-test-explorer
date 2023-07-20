@@ -18,4 +18,8 @@ export class BrowserHelperFactory {
       this.BROWSER_HELPER_INSTANCES[0]
     );
   }
+
+  public static isSupportedBrowser(browserType: string): boolean {
+    return this.BROWSER_HELPER_INSTANCES.some(helper => helper.isSupportedBrowser(browserType));
+  }
 }

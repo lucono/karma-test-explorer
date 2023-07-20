@@ -25,8 +25,7 @@ import {
   getCombinedEnvironment,
   getCustomLaunchConfiguration,
   getMergedDebuggerConfig,
-  getTestsBasePath,
-  loadProjectKarmaConfigFile
+  getTestsBasePath
 } from './config-helper.js';
 import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
@@ -61,6 +60,7 @@ export class ExtensionConfig implements Disposable {
   public readonly baseKarmaConfFilePath: string;
   public readonly browser?: string;
   public readonly customLauncher: Readonly<CustomLauncher>;
+  public readonly userSpecifiedLaunchConfig: Readonly<boolean>;
   public readonly debuggerConfig: Readonly<DebugConfiguration>;
   public readonly debuggerConfigName?: string;
   public readonly envFile?: string;
@@ -144,10 +144,15 @@ export class ExtensionConfig implements Disposable {
     this.showTestDefinitionTypeIndicators = !!configStore.get(GeneralConfigSetting.ShowTestDefinitionTypeIndicators);
     this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.DebuggerConfigName));
 
-    const projectConfig = loadProjectKarmaConfigFile(this.projectKarmaConfigFilePath);
-    const { browserType, customLauncher } = getCustomLaunchConfiguration(configStore, projectConfig);
+    const { browserType, customLauncher, userOverride } = getCustomLaunchConfiguration(
+      configStore,
+      this.projectKarmaConfigFilePath,
+      fileHandler,
+      logger
+    );
     const browserHelper = BrowserHelperFactory.getBrowserHelper(browserType);
     this.customLauncher = browserHelper.getCustomLauncher(browserType, customLauncher, configStore);
+    this.userSpecifiedLaunchConfig = userOverride;
 
     const baseDebuggerConfig = configStore.has(GeneralConfigSetting.DebuggerConfig)
       ? configStore.get<DebugConfiguration>(GeneralConfigSetting.DebuggerConfig)
