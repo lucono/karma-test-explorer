@@ -42,6 +42,10 @@ export class FirefoxBrowserHelper implements BrowserHelper {
         }
       } as any);
 
+    if (!this.isSupportedBrowser(configuredLauncher.base)) {
+      return configuredLauncher;
+    }
+
     const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
     const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
 

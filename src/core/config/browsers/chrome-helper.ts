@@ -36,6 +36,10 @@ export class ChromeBrowserHelper implements BrowserHelper {
       ]
     };
 
+    if (!this.isSupportedBrowser(configuredLauncher.base)) {
+      return configuredLauncher;
+    }
+
     const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
     const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
 
