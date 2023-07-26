@@ -76,7 +76,7 @@ export class KarmaConfigLoader {
         customLaucherObject = this.findMatchingCustomLauncherFromConfig(customLaucherObject, config);
       }
 
-      browserHelper.addCustomLauncherDebugPort(customLaucherObject, debugPort);
+      customLaucherObject = browserHelper.addCustomLauncherDebugPort(customLaucherObject, debugPort);
 
       this.logger.debug(() => `Using custom launcher: ${JSON.stringify(customLaucherObject, null, 2)}`);
       browser = KARMA_CUSTOM_LAUNCHER_BROWSER_NAME;

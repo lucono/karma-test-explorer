@@ -1,20 +1,19 @@
-import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 
-import { GeneralConfigSetting, ProjectConfigSetting } from '../config-setting.js';
-import { ConfigStore } from '../config-store.js';
+import { isContainerModeEnabled } from '../config-helper.js';
 import { ContainerMode } from '../extension-config.js';
 import { ChromeBrowserHelper } from './chrome-helper.js';
 
 export class ElectronBrowserHelper extends ChromeBrowserHelper {
-  public override get supportedBrowsers(): string[] {
+  public override get supportedBrowsers(): [string, ...string[]] {
     return ['Electron'];
   }
 
   public override getCustomLauncher(
     browserType: string,
     customLaucher: CustomLauncher | undefined,
-    config: ConfigStore<ProjectConfigSetting>
+    configuredContainerMode: ContainerMode | undefined,
+    isNonHeadlessMode: boolean
   ): CustomLauncher {
     const configuredLauncher: CustomLauncher = customLaucher ?? {
       base: browserType,
@@ -25,15 +24,7 @@ export class ElectronBrowserHelper extends ChromeBrowserHelper {
       return configuredLauncher;
     }
 
-    const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
-    const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
-
-    const isContainerMode =
-      configuredContainerMode === ContainerMode.Enabled
-        ? true
-        : configuredContainerMode === ContainerMode.Disabled
-        ? false
-        : isDocker();
+    const isContainerMode = isContainerModeEnabled(configuredContainerMode);
 
     if (!isContainerMode && isNonHeadlessMode) {
       const browserWindowOptions = ((configuredLauncher as any).browserWindowOptions ??= {});

@@ -151,7 +151,12 @@ export class ExtensionConfig implements Disposable {
       logger
     );
     const browserHelper = BrowserHelperFactory.getBrowserHelper(browserType);
-    this.customLauncher = browserHelper.getCustomLauncher(browserType, customLauncher, configStore);
+    this.customLauncher = browserHelper.getCustomLauncher(
+      browserType,
+      customLauncher,
+      configStore.get(GeneralConfigSetting.ContainerMode),
+      !!configStore.get(GeneralConfigSetting.NonHeadlessModeEnabled)
+    );
     this.userSpecifiedLaunchConfig = userOverride;
 
     const baseDebuggerConfig = configStore.has(GeneralConfigSetting.DebuggerConfig)

@@ -2,25 +2,25 @@ import { DebugConfiguration } from 'vscode';
 
 import { CustomLauncher } from 'karma';
 
-import { ProjectConfigSetting } from '../config-setting.js';
-import { ConfigStore } from '../config-store.js';
+import { ContainerMode } from '../extension-config.js';
 
 export interface BrowserHelper {
-  supportedBrowsers: string[];
+  supportedBrowsers: [string, ...string[]];
   debuggerType: string;
   debuggingPortFlag: string;
 
   getCustomLauncher(
     browserType: string,
     customLaucher: CustomLauncher | undefined,
-    config: ConfigStore<ProjectConfigSetting>
+    configuredContainerMode: ContainerMode | undefined,
+    isNonHeadlessMode: boolean
   ): CustomLauncher;
 
   isSupportedBrowser(browserType: string): boolean;
 
   getDefaultDebuggerConfig(): DebugConfiguration;
 
-  addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): void;
+  addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): CustomLauncher | undefined;
 
   getDefaultDebugPort(
     customLauncher: Readonly<CustomLauncher>,

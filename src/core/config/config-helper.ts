@@ -1,6 +1,7 @@
 import { DebugConfiguration } from 'vscode';
 
 import { parse as parseDotEnvContent } from 'dotenv';
+import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 
@@ -17,6 +18,7 @@ import {
 import { BrowserHelperFactory } from './browsers/browser-factory.js';
 import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
+import { ContainerMode } from './extension-config.js';
 
 export const getDefaultDebugPort = (
   browser: string | undefined,
@@ -267,3 +269,10 @@ export const stringSettingExists = (
   const value: string | undefined = config.get(setting);
   return (value ?? '').trim().length > 0;
 };
+
+export const isContainerModeEnabled = (configuredContainerMode: ContainerMode | undefined): boolean =>
+  configuredContainerMode === ContainerMode.Enabled
+    ? true
+    : configuredContainerMode === ContainerMode.Disabled
+    ? false
+    : isDocker();

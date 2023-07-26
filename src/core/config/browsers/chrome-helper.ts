@@ -1,10 +1,8 @@
 import { DebugConfiguration } from 'vscode';
 
-import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 
-import { GeneralConfigSetting, ProjectConfigSetting } from '../config-setting.js';
-import { ConfigStore } from '../config-store.js';
+import { isContainerModeEnabled } from '../config-helper.js';
 import { ContainerMode } from '../extension-config.js';
 import { BrowserHelper } from './browser-helper.js';
 
@@ -13,7 +11,7 @@ export class ChromeBrowserHelper implements BrowserHelper {
   private static NO_SANDBOX_FLAG: string = '--no-sandbox';
   private static HEADLESS_FLAGS: string[] = ['--headless', '--disable-gpu', '--disable-dev-shm-usage'];
 
-  public get supportedBrowsers(): string[] {
+  public get supportedBrowsers(): [string, ...string[]] {
     return ['Chrome', 'Chromium', 'Dartium'];
   }
   public get debuggerType(): string {
@@ -26,7 +24,8 @@ export class ChromeBrowserHelper implements BrowserHelper {
   public getCustomLauncher(
     browserType: string,
     customLaucher: CustomLauncher | undefined,
-    config: ConfigStore<ProjectConfigSetting>
+    configuredContainerMode: ContainerMode | undefined,
+    isNonHeadlessMode: boolean
   ): CustomLauncher {
     const configuredLauncher: CustomLauncher = customLaucher ?? {
       base: this.isSupportedBrowser(browserType) ? browserType : this.supportedBrowsers[0],
@@ -40,16 +39,7 @@ export class ChromeBrowserHelper implements BrowserHelper {
       return configuredLauncher;
     }
 
-    const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
-    const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
-
-    const isContainerMode =
-      configuredContainerMode === ContainerMode.Enabled
-        ? true
-        : configuredContainerMode === ContainerMode.Disabled
-        ? false
-        : isDocker();
-
+    const isContainerMode = isContainerModeEnabled(configuredContainerMode);
     let launcherFlags = (configuredLauncher.flags ??= []);
 
     if (isContainerMode && !launcherFlags.includes(ChromeBrowserHelper.NO_SANDBOX_FLAG)) {
@@ -80,13 +70,20 @@ export class ChromeBrowserHelper implements BrowserHelper {
     };
   }
 
-  public addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): void {
+  public addCustomLauncherDebugPort(
+    customLaucher: CustomLauncher,
+    debugPort: number | undefined
+  ): CustomLauncher | undefined {
     if (!customLaucher || debugPort === undefined) {
       return;
     }
-    customLaucher.flags = customLaucher.flags?.map(flag =>
-      flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag}=${debugPort}` : flag
-    );
+
+    return {
+      ...customLaucher,
+      flags: customLaucher.flags?.map(flag =>
+        flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag}=${debugPort}` : flag
+      )
+    };
   }
 
   public getDefaultDebugPort(

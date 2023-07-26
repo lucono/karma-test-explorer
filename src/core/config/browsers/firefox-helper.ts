@@ -1,10 +1,8 @@
 import { DebugConfiguration } from 'vscode';
 
-import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 
-import { GeneralConfigSetting, ProjectConfigSetting } from '../config-setting.js';
-import { ConfigStore } from '../config-store.js';
+import { isContainerModeEnabled } from '../config-helper.js';
 import { ContainerMode } from '../extension-config.js';
 import { BrowserHelper } from './browser-helper.js';
 
@@ -12,7 +10,7 @@ export class FirefoxBrowserHelper implements BrowserHelper {
   public static DEFAULT_DEBUGGING_PORT: number | undefined = 9222;
   private static HEADLESS_FLAGS: string[] = ['-headless'];
 
-  public get supportedBrowsers(): string[] {
+  public get supportedBrowsers(): [string, ...string[]] {
     return ['Firefox'];
   }
   public get debuggerType(): string {
@@ -25,7 +23,8 @@ export class FirefoxBrowserHelper implements BrowserHelper {
   public getCustomLauncher(
     browserType: string,
     customLaucher: CustomLauncher | undefined,
-    config: ConfigStore<ProjectConfigSetting>
+    configuredContainerMode: ContainerMode | undefined,
+    isNonHeadlessMode: boolean
   ): CustomLauncher {
     const configuredLauncher: CustomLauncher =
       customLaucher ??
@@ -46,16 +45,7 @@ export class FirefoxBrowserHelper implements BrowserHelper {
       return configuredLauncher;
     }
 
-    const configuredContainerMode: ContainerMode = config.get(GeneralConfigSetting.ContainerMode);
-    const isNonHeadlessMode = !!config.get(GeneralConfigSetting.NonHeadlessModeEnabled);
-
-    const isContainerMode =
-      configuredContainerMode === ContainerMode.Enabled
-        ? true
-        : configuredContainerMode === ContainerMode.Disabled
-        ? false
-        : isDocker();
-
+    const isContainerMode = isContainerModeEnabled(configuredContainerMode);
     let launcherFlags = (configuredLauncher.flags ??= []);
 
     if (!isContainerMode && !configuredLauncher.base.includes('Headless') && isNonHeadlessMode) {
@@ -82,13 +72,20 @@ export class FirefoxBrowserHelper implements BrowserHelper {
     };
   }
 
-  public addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): void {
+  public addCustomLauncherDebugPort(
+    customLaucher: CustomLauncher,
+    debugPort: number | undefined
+  ): CustomLauncher | undefined {
     if (!customLaucher || debugPort === undefined) {
-      return;
+      return undefined;
     }
-    customLaucher.flags = customLaucher.flags?.map(flag =>
-      flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag} ${debugPort}` : flag
-    );
+
+    return {
+      ...customLaucher,
+      flags: customLaucher.flags?.map(flag =>
+        flag.startsWith(this.debuggingPortFlag) ? `${this.debuggingPortFlag} ${debugPort}` : flag
+      )
+    };
   }
 
   public getDefaultDebugPort(
