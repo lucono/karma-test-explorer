@@ -27,6 +27,10 @@ export class ChromeBrowserHelper implements BrowserHelper {
     configuredContainerMode: ContainerMode | undefined,
     isNonHeadlessMode: boolean
   ): CustomLauncher {
+    if (customLaucher && !this.isSupportedBrowser(customLaucher.base)) {
+      return customLaucher;
+    }
+
     const configuredLauncher: CustomLauncher = customLaucher ?? {
       base: this.isSupportedBrowser(browserType) ? browserType : this.supportedBrowsers[0],
       flags: [
@@ -34,10 +38,6 @@ export class ChromeBrowserHelper implements BrowserHelper {
         `${this.debuggingPortFlag}=${ChromeBrowserHelper.DEFAULT_DEBUGGING_PORT}`
       ]
     };
-
-    if (!this.isSupportedBrowser(configuredLauncher.base)) {
-      return configuredLauncher;
-    }
 
     const isContainerMode = isContainerModeEnabled(configuredContainerMode);
     let launcherFlags = (configuredLauncher.flags ??= []);

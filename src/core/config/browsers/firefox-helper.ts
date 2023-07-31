@@ -26,10 +26,14 @@ export class FirefoxBrowserHelper implements BrowserHelper {
     configuredContainerMode: ContainerMode | undefined,
     isNonHeadlessMode: boolean
   ): CustomLauncher {
+    if (customLaucher && !this.isSupportedBrowser(customLaucher.base)) {
+      return customLaucher;
+    }
+
     const configuredLauncher: CustomLauncher =
       customLaucher ??
       ({
-        base: browserType,
+        base: this.isSupportedBrowser(browserType) ? browserType : this.supportedBrowsers[0],
         flags: [
           ...FirefoxBrowserHelper.HEADLESS_FLAGS,
           `${this.debuggingPortFlag} ${FirefoxBrowserHelper.DEFAULT_DEBUGGING_PORT}`
@@ -40,10 +44,6 @@ export class FirefoxBrowserHelper implements BrowserHelper {
           'devtools.debugger.prompt-connection': false
         }
       } as any);
-
-    if (!this.isSupportedBrowser(configuredLauncher.base)) {
-      return configuredLauncher;
-    }
 
     const isContainerMode = isContainerModeEnabled(configuredContainerMode);
     let launcherFlags = (configuredLauncher.flags ??= []);

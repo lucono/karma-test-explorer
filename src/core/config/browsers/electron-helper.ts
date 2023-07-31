@@ -15,14 +15,14 @@ export class ElectronBrowserHelper extends ChromeBrowserHelper {
     configuredContainerMode: ContainerMode | undefined,
     isNonHeadlessMode: boolean
   ): CustomLauncher {
+    if (customLaucher && !this.isSupportedBrowser(customLaucher.base)) {
+      return customLaucher;
+    }
+
     const configuredLauncher: CustomLauncher = customLaucher ?? {
-      base: browserType,
+      base: this.isSupportedBrowser(browserType) ? browserType : this.supportedBrowsers[0],
       flags: [`${this.debuggingPortFlag}=${ElectronBrowserHelper.DEFAULT_DEBUGGING_PORT}`]
     };
-
-    if (!this.isSupportedBrowser(configuredLauncher.base)) {
-      return configuredLauncher;
-    }
 
     const isContainerMode = isContainerModeEnabled(configuredContainerMode);
 
