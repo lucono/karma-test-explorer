@@ -1,3 +1,4 @@
+import { walkSync } from '@nodelib/fs.walk';
 import { join } from 'path';
 
 import { FileHandler } from '../../util/filesystem/file-handler.js';
@@ -12,6 +13,7 @@ export const getAngularWorkspaceInfo = (
   logger: Logger
 ): AngularWorkspaceInfo | undefined => {
   return (
+    getProjectJsonWorkspaceInfo(angularConfigRootPath, fileHandler, logger) ??
     getAngularJsonWorkspaceInfo(angularConfigRootPath, fileHandler, logger) ??
     getAngularCliJsonWorkspaceInfo(angularConfigRootPath, fileHandler, logger)
   );
@@ -137,4 +139,53 @@ const getAngularCliJsonWorkspaceInfo = (
     defaultProject
   };
   return workspaceInfo;
+};
+
+const getProjectJsonWorkspaceInfo = (
+  angularConfigRootPath: string,
+  fileHandler: FileHandler,
+  logger: Logger
+): AngularWorkspaceInfo | undefined => {
+  if (!fileHandler.existsSync(normalizePath(join(angularConfigRootPath, 'nx.json')))) {
+    logger.debug(() => `${angularConfigRootPath}: not nx root`);
+    return undefined;
+  }
+
+  const projects = walkSync(angularConfigRootPath, {
+    deepFilter: v => !v.path.startsWith('.') && !v.path.startsWith('node_modules'),
+    entryFilter: v => v.name === 'project.json'
+  })
+    .map<AngularProjectInfo | undefined>(projectJsonFileEntry => {
+      let projectJson: any;
+
+      try {
+        const projectJsonContent = fileHandler.readFileSync(projectJsonFileEntry.path, 'utf-8');
+        projectJson = projectJsonContent ? JSON.parse(projectJsonContent) : undefined;
+      } catch (error) {
+        logger.warn(() => `Cannot get nx project for config file '${projectJsonFileEntry.path}': ${error}`);
+      }
+
+      if (!projectJson) {
+        logger.warn(() => 'Cannot parse project.json');
+        return undefined;
+      }
+
+      const karmaConfig = projectJson.targets?.test?.options?.karmaConfig;
+
+      const karmaConfigPath = karmaConfig ? normalizePath(join(angularConfigRootPath, karmaConfig)) : undefined;
+      if (!karmaConfigPath) {
+        logger.warn(() => `unknown karma config path`);
+        return undefined;
+      }
+
+      return { name: projectJson.name, rootPath: angularConfigRootPath, karmaConfigPath };
+    })
+    .filter((project): project is AngularProjectInfo => project !== undefined);
+
+  if (projects.length === 0) {
+    logger.warn(() => `${angularConfigRootPath}: no nx projects`);
+    return undefined;
+  }
+
+  return { projects: projects, defaultProject: undefined };
 };

@@ -58,7 +58,7 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     const runOptions: SimpleProcessOptions = {
       cwd: this.projectPath,
-      shell: false,
+      shell: true,
       env: environment,
       failOnStandardError: this.options.failOnStandardError,
       parentProcessName: AngularTestServerExecutor.name,

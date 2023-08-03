@@ -297,7 +297,7 @@ const processAddedProjects = (
       : [];
 
   projects.forEach(project => {
-    logger.info(() => `Registering project: ${project.projectPath}`);
+    logger.info(() => `Registering project: ${project.shortName}, path: ${project.projectPath}`);
     allWorkspaceProjects.add(project);
 
     const shouldActivateProject = projectPathsToActivate.includes(project.projectPath);
