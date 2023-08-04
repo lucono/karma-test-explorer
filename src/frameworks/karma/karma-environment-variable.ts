@@ -10,5 +10,6 @@ export enum KarmaEnvironmentVariable {
   CustomLauncher = 'KarmaTestExplorer_customLauncher',
   ExtensionLogLevel = 'KarmaTestExplorer_extensionLogLevel',
   KarmaLogLevel = 'KarmaTestExplorer_karmaLogLevel',
-  KarmaReporterLogLevel = 'KarmaTestExplorer_karmaReporterLogLevel'
+  KarmaReporterLogLevel = 'KarmaTestExplorer_karmaReporterLogLevel',
+  UserSpecifiedLaunchConfig = 'KarmaTestExplorer_userSpecifiedLaunchConfig'
 }

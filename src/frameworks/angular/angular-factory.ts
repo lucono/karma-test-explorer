@@ -23,6 +23,7 @@ export type AngularFactoryConfig = Pick<
   | 'projectKarmaConfigFilePath'
   | 'browser'
   | 'customLauncher'
+  | 'userSpecifiedLaunchConfig'
   | 'environment'
   | 'envExclude'
   | 'failOnStandardError'
@@ -75,6 +76,7 @@ export class AngularFactory implements Partial<TestFactory> {
       [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
+      [KarmaEnvironmentVariable.UserSpecifiedLaunchConfig]: this.config.userSpecifiedLaunchConfig ? 'true' : '',
       [KarmaEnvironmentVariable.ExtensionLogLevel]: `${this.config.logLevel}`,
       [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
       [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`
