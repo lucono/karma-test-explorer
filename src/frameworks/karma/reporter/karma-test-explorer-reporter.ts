@@ -50,7 +50,7 @@ export function KarmaTestExplorerReporter(
   const worker = new Worker(workerScriptFile, { workerData });
 
   logger.debug(
-    () => `Using socket port from '${KarmaEnvironmentVariable.KarmaSocketPort}' env variable: ${socketPort}`
+    () => `Using socket port from '${KarmaEnvironmentVariable.KarmaSocketPort}' environment variable: ${socketPort}`
   );
 
   logger.debug(

@@ -33,9 +33,8 @@ export type KarmaFactoryConfig = Pick<
   | 'baseKarmaConfFilePath'
   | 'browser'
   | 'customLauncher'
-  | 'userSpecifiedLaunchConfig'
   | 'environment'
-  | 'envExclude'
+  | 'excludedEnvironmentVariables'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
   | 'logLevel'
@@ -110,7 +109,7 @@ export class KarmaFactory implements TestFactory, Disposable {
     this.logger.trace(() => `Pre-modification test run executor environment: ${JSON.stringify(process.env, null, 2)}`);
 
     const combinedEnvironment = { ...process.env, ...this.config.environment };
-    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.excludedEnvironmentVariables);
 
     this.logger.trace(
       () => `Post-modification test run executor environment: ${JSON.stringify(filteredEnvironment, null, 2)}`
@@ -141,7 +140,7 @@ export class KarmaFactory implements TestFactory, Disposable {
     );
 
     const combinedEnvironment = { ...process.env, ...this.config.environment };
-    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.excludedEnvironmentVariables);
 
     this.logger.trace(
       () => `Post-modification test server executor environment: ${JSON.stringify(filteredEnvironment, null, 2)}`
@@ -150,10 +149,9 @@ export class KarmaFactory implements TestFactory, Disposable {
     const environment: Record<string, string | undefined> = {
       ...filteredEnvironment,
       [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
-      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
+      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-      [KarmaEnvironmentVariable.UserSpecifiedLaunchConfig]: this.config.userSpecifiedLaunchConfig ? 'true' : '',
       [KarmaEnvironmentVariable.ExtensionLogLevel]: `${this.config.logLevel}`,
       [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
       [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`

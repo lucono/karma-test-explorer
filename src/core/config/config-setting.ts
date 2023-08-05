@@ -16,7 +16,8 @@ export enum ExternalConfigSetting {
   Projects = 'projects', // FIXME: Deprecated - remove
   RootPath = 'rootPath',
   ProjectRootPath = 'projectRootPath', // FIXME: Deprecated - remove
-  KarmaConfFilePath = 'karmaConfFilePath'
+  KarmaConfFilePath = 'karmaConfFilePath', // FIXME: Deprecated - remove
+  KarmaConfigFilePath = 'karmaConfigFilePath'
 }
 
 export enum GeneralConfigSetting {
@@ -28,10 +29,12 @@ export enum GeneralConfigSetting {
   EnabledParserPlugins = 'enabledParserPlugins',
   Browser = 'browser',
   CustomLauncher = 'customLauncher',
-  NonHeadlessModeEnabled = 'nonHeadlessModeEnabled',
+  NonHeadlessModeEnabled = 'nonHeadlessModeEnabled', // FIXME: Deprecated - remove
+  ShowBrowserWindow = 'showBrowserWindow',
   TestsBasePath = 'testsBasePath',
   TestFiles = 'testFiles',
-  ExcludeFiles = 'excludeFiles',
+  ExcludeFiles = 'excludeFiles', // FIXME: Deprecated - remove
+  ExcludedFiles = 'excludedFiles',
   TestGrouping = 'testGrouping',
   FlattenSingleChildFolders = 'flattenSingleChildFolders',
   ReloadOnChangedFiles = 'reloadOnChangedFiles',
@@ -45,9 +48,12 @@ export enum GeneralConfigSetting {
   LogLevel = 'logLevel',
   KarmaLogLevel = 'karmaLogLevel',
   KarmaReporterLogLevel = 'karmaReporterLogLevel',
-  Env = 'env',
-  EnvFile = 'envFile',
-  EnvExclude = 'envExclude',
+  Env = 'env', // FIXME: Deprecated - remove
+  EnvironmentVariables = 'environmentVariables',
+  EnvFile = 'envFile', // FIXME: Deprecated - remove
+  EnvironmentFile = 'environmentFile',
+  EnvExclude = 'envExclude', // FIXME: Deprecated - remove
+  ExcludedEnvironmentVariables = 'excludedEnvironmentVariables',
   AutoWatchEnabled = 'autoWatchEnabled',
   AutoWatchBatchDelay = 'autoWatchBatchDelay',
   KarmaReadyTimeout = 'karmaReadyTimeout',
@@ -60,3 +66,14 @@ export enum GeneralConfigSetting {
   ShowTestDefinitionTypeIndicators = 'showTestDefinitionTypeIndicators',
   ShowOnlyFocusedTests = 'showOnlyFocusedTests'
 }
+
+export const DEPRECATED_CONFIG_SETTINGS: (ExternalConfigSetting | GeneralConfigSetting)[] = [
+  ExternalConfigSetting.Projects,
+  ExternalConfigSetting.ProjectRootPath,
+  ExternalConfigSetting.KarmaConfFilePath,
+  GeneralConfigSetting.NonHeadlessModeEnabled,
+  GeneralConfigSetting.Env,
+  GeneralConfigSetting.EnvFile,
+  GeneralConfigSetting.EnvExclude,
+  GeneralConfigSetting.ExcludeFiles
+];

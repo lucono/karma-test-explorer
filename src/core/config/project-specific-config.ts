@@ -4,10 +4,10 @@ export type ProjectSpecificConfigSetting =
   | ExternalConfigSetting.ProjectRootPath
   | ExternalConfigSetting.RootPath
   | ExternalConfigSetting.ProjectType
-  | ExternalConfigSetting.KarmaConfFilePath
+  | ExternalConfigSetting.KarmaConfigFilePath
   | GeneralConfigSetting.TestFramework
   | GeneralConfigSetting.TestFiles
-  | GeneralConfigSetting.ExcludeFiles
+  | GeneralConfigSetting.ExcludedFiles
   | GeneralConfigSetting.TestsBasePath;
 
 export type ProjectSpecificConfig = { [key in ExternalConfigSetting.RootPath]: string } & {

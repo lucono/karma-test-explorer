@@ -1,54 +1,15 @@
-import { DebugConfiguration } from 'vscode';
-
 import { parse as parseDotEnvContent } from 'dotenv';
 import isDocker from 'is-docker';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 
-import { CHROME_BROWSER_DEBUGGING_PORT_FLAG, CHROME_DEFAULT_DEBUGGING_PORT } from '../../constants.js';
 import { FileHandler } from '../../util/filesystem/file-handler.js';
 import { Logger } from '../../util/logging/logger.js';
-import {
-  asNonBlankStringOrUndefined,
-  expandEnvironment,
-  normalizePath,
-  stripJsComments,
-  transformObject
-} from '../../util/utils.js';
-import { BrowserHelperFactory } from './browsers/browser-factory.js';
-import { GeneralConfigSetting, ProjectConfigSetting } from './config-setting.js';
+import { asNonBlankStringOrUndefined, expandEnvironment, normalizePath, stripJsComments } from '../../util/utils.js';
+import { BrowserHelperProvider } from './browsers/browser-helper-provider.js';
+import { GeneralConfigSetting, ProjectConfigSetting, WorkspaceConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
 import { ContainerMode } from './extension-config.js';
-
-export const getDefaultDebugPort = (
-  browser: string | undefined,
-  customLauncher: CustomLauncher,
-  debuggerConfigName: string | undefined,
-  debuggerConfig: DebugConfiguration,
-  config: ConfigStore<ProjectConfigSetting>
-): number | undefined => {
-  if (browser || debuggerConfigName) {
-    return;
-  }
-  const defaultCustomLauncher = config.inspect<CustomLauncher>(GeneralConfigSetting.CustomLauncher)?.defaultValue;
-  const defaultDebuggerConfig = config.inspect<DebugConfiguration>(GeneralConfigSetting.DebuggerConfig)?.defaultValue;
-
-  if (customLauncher.base !== defaultCustomLauncher?.base || debuggerConfig.type !== defaultDebuggerConfig?.type) {
-    return;
-  }
-
-  let configuredPort: number | undefined;
-
-  const browserDebugPortFlag = customLauncher.flags?.find(flag => flag.startsWith(CHROME_BROWSER_DEBUGGING_PORT_FLAG));
-
-  if (browserDebugPortFlag) {
-    const portPosition = browserDebugPortFlag.search(/[0-9]+$/g);
-    const portString = portPosition !== -1 ? browserDebugPortFlag.substring(portPosition) : undefined;
-    configuredPort = portString ? parseInt(portString, 10) : undefined;
-  }
-
-  return configuredPort ?? CHROME_DEFAULT_DEBUGGING_PORT;
-};
 
 /**
  * Attempts to parse custom launch configuration and browser type from user settings
@@ -59,84 +20,65 @@ export const getDefaultDebugPort = (
  * @returns An object containing the determined browser type, and whether it has been overriden in settings or not
  * If the custom launcher is overriden in settings, this will also be returned
  */
-export const getCustomLaunchConfiguration = (
-  config: ConfigStore<ProjectConfigSetting>,
-  projectKarmaConfigFilePath: string,
+export const getBrowserType = (
+  configuredBrowserType: string | undefined,
+  configuredCustomLauncher: CustomLauncher | undefined,
+  projectKarmaConfigFilePath: string | undefined,
+  browserHelperProvider: BrowserHelperProvider,
   fileHandler: FileHandler,
   logger: Logger
-): {
-  browserType: string;
-  customLauncher: CustomLauncher | undefined;
-  userOverride: boolean;
-} => {
-  const rawConfig = getRawKarmaConfig(projectKarmaConfigFilePath, fileHandler);
-  const browserType = asNonBlankStringOrUndefined(config.get<string>(GeneralConfigSetting.Browser));
+): string => {
+  const rawConfig = projectKarmaConfigFilePath ? getRawKarmaConfig(projectKarmaConfigFilePath, fileHandler) : undefined;
 
-  if (browserType !== undefined) {
-    const customLauncherBrowserType = getBrowserTypeFromKarmaConfigCustomLauncher(browserType, rawConfig) ?? '';
-    if (BrowserHelperFactory.isSupportedBrowser(customLauncherBrowserType)) {
-      logger.debug(() => `Using user-specified browser custom launcher: ${browserType}`);
-      //  Custom launcher will be ignored when the browser config is set, so return undefined custom launcher even though we got the base type from it
-      return {
-        browserType: customLauncherBrowserType,
-        customLauncher: undefined,
-        userOverride: true
-      };
-    }
+  if (configuredBrowserType) {
+    const karmaConfiguredBrowserType = getBrowserTypeFromKarmaConfigCustomLauncher(configuredBrowserType, rawConfig);
 
-    logger.debug(() => `Using user-specified browser: ${browserType}`);
-    return {
-      browserType,
-      customLauncher: undefined,
-      userOverride: true
-    };
+    const browserType =
+      karmaConfiguredBrowserType && browserHelperProvider.isSupportedBrowser(karmaConfiguredBrowserType)
+        ? karmaConfiguredBrowserType
+        : configuredBrowserType;
+
+    logger.debug(
+      () =>
+        `Using configured browser from ` +
+        `${browserType === configuredBrowserType ? 'extension settings' : 'karma config'}: ` +
+        `${configuredBrowserType}`
+    );
+
+    return browserType;
   }
 
-  const customLauncherInsp = config.inspect<CustomLauncher>(GeneralConfigSetting.CustomLauncher);
-  const customLauncherConfigured =
-    (customLauncherInsp?.workspaceFolderValue ??
-      customLauncherInsp?.workspaceValue ??
-      customLauncherInsp?.globalValue) !== undefined;
-  if (customLauncherConfigured) {
-    const customLauncher = config.get<CustomLauncher>(GeneralConfigSetting.CustomLauncher);
-    logger.debug(() => `Using user-specified custom launcher based on: ${customLauncher.base}`);
-    //  User has specified the custom launcher configuration, so it must be returned
-    return {
-      browserType: customLauncher.base,
-      customLauncher,
-      userOverride: true
-    };
+  if (configuredCustomLauncher) {
+    logger.debug(() => `Using user-specified custom launcher with base type: ${configuredCustomLauncher.base}`);
+
+    return configuredCustomLauncher.base;
   }
 
   const karmaConfigBrowsers = getBrowsersFromKarmaConfig(rawConfig);
-  for (const browser of karmaConfigBrowsers) {
-    if (BrowserHelperFactory.isSupportedBrowser(browser)) {
-      logger.debug(() => `Using project-specified browser: ${browser}`);
-      return {
-        browserType: browser,
-        customLauncher: undefined,
-        userOverride: false
-      };
+
+  for (const karmaConfigBrowser of karmaConfigBrowsers) {
+    if (browserHelperProvider.isSupportedBrowser(karmaConfigBrowser)) {
+      logger.debug(() => `Selecting Karma config browser: ${karmaConfigBrowser}`);
+
+      return karmaConfigBrowser;
     }
 
-    const browserType = getBrowserTypeFromKarmaConfigCustomLauncher(browser, rawConfig) ?? '';
-    if (BrowserHelperFactory.isSupportedBrowser(browserType)) {
-      logger.debug(() => `Using project-specified custom launcher: ${browser}`);
-      //  The custom launcher config will be looked up by the karma config loader, so we don't need to return it here
-      return {
-        browserType,
-        customLauncher: undefined,
-        userOverride: false
-      };
+    const browserType = getBrowserTypeFromKarmaConfigCustomLauncher(karmaConfigBrowser, rawConfig);
+
+    if (browserType && browserHelperProvider.isSupportedBrowser(browserType)) {
+      logger.debug(
+        () => `Selecting Karma config custom launcher '${karmaConfigBrowser}' with browser type: ${browserType}`
+      );
+
+      return browserType;
     }
   }
 
-  logger.debug(() => 'Using default launcher');
-  return {
-    browserType: 'Chrome',
-    customLauncher: undefined,
-    userOverride: false
-  };
+  const defaultBrowserType = browserHelperProvider.getDefaultBrowserHelper().debuggerType;
+
+  logger.debug(() => `Using default browser type: ${defaultBrowserType}`);
+
+  return defaultBrowserType;
 };
 
 const getRawKarmaConfig = (karmaConfigPath: string, fileHandler: FileHandler): string | undefined => {
@@ -166,51 +108,6 @@ const getBrowserTypeFromKarmaConfigCustomLauncher = (
   return asNonBlankStringOrUndefined(baseValue);
 };
 
-export const getMergedDebuggerConfig = (
-  workspaceFolderPath: string,
-  baseDebugConfig: DebugConfiguration,
-  webRootOverride?: string,
-  extraPathMappings?: Readonly<Record<string, string>>,
-  extraSourceMapPathOverrides?: Readonly<Record<string, string>>
-): DebugConfiguration => {
-  const hasPathMapping = baseDebugConfig.pathMapping || extraPathMappings;
-  const hasSourceMapPathOverrides = baseDebugConfig.sourceMapPathOverrides || extraSourceMapPathOverrides;
-
-  const webRoot: string | undefined = (webRootOverride ?? baseDebugConfig.webRoot)?.replace(
-    /\${workspaceFolder}/g,
-    workspaceFolderPath
-  );
-
-  const replaceWorkspacePath = (key: string, value: string) => ({
-    key,
-    value: value
-      .replace(/\${webRoot}/g, webRoot ?? workspaceFolderPath)
-      .replace(/\${workspaceFolder}/g, workspaceFolderPath)
-  });
-
-  const pathMapping = transformObject({ ...baseDebugConfig.pathMapping, ...extraPathMappings }, replaceWorkspacePath);
-
-  const sourceMapPathOverrides = transformObject(
-    { ...baseDebugConfig.sourceMapPathOverrides, ...extraSourceMapPathOverrides },
-    replaceWorkspacePath
-  );
-
-  const mergedDebuggerConfig: DebugConfiguration = { ...baseDebugConfig };
-
-  if (webRoot) {
-    mergedDebuggerConfig.webRoot = webRoot;
-  }
-
-  if (hasPathMapping) {
-    mergedDebuggerConfig.pathMapping = pathMapping;
-  }
-
-  if (hasSourceMapPathOverrides) {
-    mergedDebuggerConfig.sourceMapPathOverrides = sourceMapPathOverrides;
-  }
-  return mergedDebuggerConfig;
-};
-
 export const getTestsBasePath = (
   projectPath: string,
   config: ConfigStore<ProjectConfigSetting>
@@ -225,49 +122,65 @@ export const getTestsBasePath = (
 };
 
 export const getCombinedEnvironment = (
-  projectRootPath: string,
-  config: ConfigStore<ProjectConfigSetting>,
+  configuredEnvironment: Record<string, string>,
+  environmentFile: string | undefined,
   fileHandler: FileHandler,
   logger: Logger
 ): Record<string, string> => {
-  const envMap: Record<string, string> = config.get(GeneralConfigSetting.Env) ?? {};
-  let environment: Record<string, string> = { ...envMap };
+  let environment: Record<string, string> = { ...configuredEnvironment };
 
-  const envFile: string | undefined = stringSettingExists(config, GeneralConfigSetting.EnvFile)
-    ? resolve(projectRootPath, config.get<string>(GeneralConfigSetting.EnvFile)!)
-    : undefined;
-
-  if (envFile) {
-    logger.info(() => `Reading environment from file: ${envFile}`);
+  if (environmentFile) {
+    logger.info(() => `Reading environment from file: ${environmentFile}`);
 
     try {
-      const envFileContent = fileHandler.readFileSync(envFile);
+      const envFileContent = fileHandler.readFileSync(environmentFile);
 
       if (!envFileContent) {
-        throw new Error(`Failed to read configured environment file: ${envFile}`);
+        throw new Error(`Failed to read configured environment file: ${environmentFile}`);
       }
       const envFileEnvironment = parseDotEnvContent(envFileContent);
       const entryCount = Object.keys(envFileEnvironment).length;
-      logger.info(() => `Fetched ${entryCount} entries from environment file: ${envFile}`);
+      logger.info(() => `Fetched ${entryCount} entries from environment file: ${environmentFile}`);
 
       const mergedEnvironment = { ...envFileEnvironment, ...environment };
       const expandedEnvironment = expandEnvironment(mergedEnvironment, logger);
 
       environment = expandedEnvironment ?? mergedEnvironment;
     } catch (error) {
-      logger.error(() => `Failed to get environment from file '${envFile}': ${error}`);
+      logger.error(() => `Failed to get environment from file '${environmentFile}': ${error}`);
     }
   }
 
   return environment;
 };
 
-export const stringSettingExists = (
-  config: ConfigStore<ProjectConfigSetting>,
-  setting: GeneralConfigSetting
+export const isSettingConfigured = <T extends ProjectConfigSetting | WorkspaceConfigSetting>(
+  configSetting: T,
+  workspaceConfig: ConfigStore<T>
 ): boolean => {
-  const value: string | undefined = config.get(setting);
-  return (value ?? '').trim().length > 0;
+  const setting = workspaceConfig.inspect(configSetting);
+
+  const isSettingConfigured =
+    setting?.workspaceFolderValue !== undefined ||
+    setting?.workspaceValue !== undefined ||
+    setting?.globalValue !== undefined;
+
+  return isSettingConfigured;
+};
+
+export const getConfigValue = <
+  T,
+  K extends ProjectConfigSetting | WorkspaceConfigSetting = ProjectConfigSetting | WorkspaceConfigSetting
+>(
+  workspaceConfig: ConfigStore<K>,
+  configSetting: K,
+  ...configSettingAliases: K[]
+): T => {
+  const configuredSetting: K =
+    [configSetting, ...configSettingAliases].find(setting => isSettingConfigured(setting, workspaceConfig)) ??
+    configSetting;
+
+  return workspaceConfig.get<T>(configuredSetting);
 };
 
 export const isContainerModeEnabled = (configuredContainerMode: ContainerMode | undefined): boolean =>

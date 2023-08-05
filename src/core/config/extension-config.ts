@@ -4,7 +4,7 @@ import { ParserPlugin } from '@babel/parser';
 import { CustomLauncher } from 'karma';
 import { resolve } from 'path';
 
-import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS } from '../../constants.js';
+import { ALWAYS_EXCLUDED_TEST_FILE_GLOBS, EXTENSION_DEBUGGER_LABEL } from '../../constants.js';
 import { KarmaLogLevel } from '../../frameworks/karma/karma-log-level.js';
 import { Disposable } from '../../util/disposable/disposable.js';
 import { Disposer } from '../../util/disposable/disposer.js';
@@ -20,12 +20,13 @@ import {
 import { ProjectType } from '../base/project-type.js';
 import { TestFrameworkName } from '../base/test-framework-name.js';
 import { TestGrouping } from '../base/test-grouping.js';
-import { BrowserHelperFactory } from './browsers/browser-factory.js';
+import { BrowserHelperProvider } from './browsers/browser-helper-provider.js';
 import {
+  getBrowserType,
   getCombinedEnvironment,
-  getCustomLaunchConfiguration,
-  getMergedDebuggerConfig,
-  getTestsBasePath
+  getConfigValue,
+  getTestsBasePath,
+  isSettingConfigured
 } from './config-helper.js';
 import { GeneralConfigSetting, InternalConfigSetting, ProjectConfigSetting } from './config-setting.js';
 import { ConfigStore } from './config-store.js';
@@ -55,18 +56,17 @@ export class ExtensionConfig implements Disposable {
   public readonly projectKarmaConfigFilePath?: string;
 
   // General Settings
-  public readonly autoWatchBatchDelay?: number;
+  public readonly autoWatchBatchDelay: number;
   public readonly autoWatchEnabled: boolean;
   public readonly baseKarmaConfFilePath: string;
   public readonly browser?: string;
   public readonly customLauncher: Readonly<CustomLauncher>;
-  public readonly userSpecifiedLaunchConfig: Readonly<boolean>;
   public readonly debuggerConfig: Readonly<DebugConfiguration>;
   public readonly debuggerConfigName?: string;
-  public readonly envFile?: string;
+  public readonly environmentFile?: string;
   public readonly environment: Readonly<Record<string, string>>;
-  public readonly envExclude: readonly string[];
-  public readonly excludeFiles: readonly string[];
+  public readonly excludedEnvironmentVariables: readonly string[];
+  public readonly excludedFiles: readonly string[];
   public readonly flattenSingleChildFolders: boolean;
   public readonly logLevel: LogLevel;
   public readonly karmaLogLevel: KarmaLogLevel;
@@ -131,59 +131,124 @@ export class ExtensionConfig implements Disposable {
     this.karmaReadyTimeout = configStore.get(GeneralConfigSetting.KarmaReadyTimeout)!;
     this.testGrouping = configStore.get(GeneralConfigSetting.TestGrouping)!;
     this.flattenSingleChildFolders = !!configStore.get(GeneralConfigSetting.FlattenSingleChildFolders);
-    this.environment = getCombinedEnvironment(this.projectPath, configStore, fileHandler, logger);
-    this.envExclude = configStore.get<string[]>(GeneralConfigSetting.EnvExclude);
     this.testFramework = configStore.get(GeneralConfigSetting.TestFramework);
     this.reloadOnKarmaConfigChange = !!configStore.get(GeneralConfigSetting.ReloadOnKarmaConfigChange);
     this.browser = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.Browser));
-    this.testFiles = configStore.get<string[]>(GeneralConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
     this.allowGlobalPackageFallback = !!configStore.get(GeneralConfigSetting.AllowGlobalPackageFallback);
     this.excludeDisabledTests = !!configStore.get(GeneralConfigSetting.ExcludeDisabledTests);
     this.showOnlyFocusedTests = !!configStore.get(GeneralConfigSetting.ShowOnlyFocusedTests);
     this.showUnmappedTests = !!configStore.get(GeneralConfigSetting.ShowUnmappedTests);
     this.showTestDefinitionTypeIndicators = !!configStore.get(GeneralConfigSetting.ShowTestDefinitionTypeIndicators);
-    this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.DebuggerConfigName));
 
-    const { browserType, customLauncher, userOverride } = getCustomLaunchConfiguration(
+    // -- Test Files
+
+    const configuredExcludedFiles = getConfigValue<string[]>(
       configStore,
+      GeneralConfigSetting.ExcludedFiles,
+      GeneralConfigSetting.ExcludeFiles
+    );
+
+    this.testFiles = configStore.get<string[]>(GeneralConfigSetting.TestFiles).map(fileGlob => normalizePath(fileGlob));
+
+    this.excludedFiles = toSingleUniqueArray(configuredExcludedFiles, ALWAYS_EXCLUDED_TEST_FILE_GLOBS).map(fileGlob =>
+      normalizePath(fileGlob)
+    );
+
+    // -- Custom Launcher
+
+    const configuredBrowser = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.Browser));
+
+    const configuredCustomLauncher = isSettingConfigured(GeneralConfigSetting.CustomLauncher, configStore)
+      ? configStore.get<CustomLauncher>(GeneralConfigSetting.CustomLauncher)
+      : undefined;
+
+    const browserHelperProvider = new BrowserHelperProvider();
+
+    const browserType = getBrowserType(
+      configuredBrowser,
+      configuredCustomLauncher,
       this.projectKarmaConfigFilePath,
+      browserHelperProvider,
       fileHandler,
       logger
     );
-    const browserHelper = BrowserHelperFactory.getBrowserHelper(browserType);
+
+    const browserHelper = browserHelperProvider.getBrowserHelper(browserType);
+
+    logger.debug(() => `Using browser helper with debugger type: ${browserHelper.debuggerType}`);
+
+    const showBrowserWindow = getConfigValue(
+      configStore,
+      GeneralConfigSetting.ShowBrowserWindow,
+      GeneralConfigSetting.NonHeadlessModeEnabled
+    );
+
+    const isHeadlessMode = !showBrowserWindow;
+
     this.customLauncher = browserHelper.getCustomLauncher(
       browserType,
-      customLauncher,
+      configuredCustomLauncher,
       configStore.get(GeneralConfigSetting.ContainerMode),
-      !!configStore.get(GeneralConfigSetting.NonHeadlessModeEnabled)
+      isHeadlessMode
     );
-    this.userSpecifiedLaunchConfig = userOverride;
 
-    const baseDebuggerConfig = configStore.has(GeneralConfigSetting.DebuggerConfig)
+    logger.debug(() => `Using custom launcher: ${JSON.stringify(this.customLauncher, undefined, 2)}}`);
+
+    // -- Debugger
+
+    this.debuggerConfigName = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.DebuggerConfigName));
+
+    const configuredDebuggerConfig = isSettingConfigured(GeneralConfigSetting.DebuggerConfig, configStore)
       ? configStore.get<DebugConfiguration>(GeneralConfigSetting.DebuggerConfig)
-      : browserHelper.getDefaultDebuggerConfig();
+      : undefined;
 
-    this.debuggerConfig = getMergedDebuggerConfig(
-      normalizedWorkspacePath,
-      baseDebuggerConfig,
-      configStore.get(GeneralConfigSetting.WebRoot),
-      configStore.get(GeneralConfigSetting.PathMapping),
-      configStore.get(GeneralConfigSetting.SourceMapPathOverrides)
+    logger.trace(() => `Configured debugger config: ${JSON.stringify(configuredDebuggerConfig, undefined, 2)}}`);
+
+    const debuggerConfig = browserHelper.getDebuggerConfig({
+      baseDebugConfig: configuredDebuggerConfig,
+      workspaceFolderPath: normalizedWorkspacePath,
+      webRootOverride: configStore.get(GeneralConfigSetting.WebRoot),
+      extraPathMappings: configStore.get(GeneralConfigSetting.PathMapping),
+      extraSourceMapPathOverrides: configStore.get(GeneralConfigSetting.SourceMapPathOverrides)
+    });
+
+    this.debuggerConfig = {
+      ...debuggerConfig,
+      name: `${EXTENSION_DEBUGGER_LABEL} (${debuggerConfig.type})`,
+      type: debuggerConfig.type,
+      request: debuggerConfig.request
+    };
+
+    logger.debug(() => `Using debugger config: ${JSON.stringify(this.debuggerConfig, undefined, 2)}}`);
+
+    this.defaultDebugPort =
+      this.browser || this.debuggerConfigName
+        ? undefined
+        : browserHelper.getDebugPort(this.customLauncher, this.debuggerConfig);
+
+    logger.debug(() => `Using default debug port: ${this.defaultDebugPort}}`);
+
+    // -- Environment
+
+    const configuredEnvironment: Record<string, string> =
+      getConfigValue(configStore, GeneralConfigSetting.EnvironmentVariables, GeneralConfigSetting.Env) ?? {};
+
+    const unresolvedEnvironmentFile = asNonBlankStringOrUndefined(
+      getConfigValue(configStore, GeneralConfigSetting.EnvironmentFile, GeneralConfigSetting.EnvFile)
+    );
+
+    this.environmentFile = unresolvedEnvironmentFile ? resolve(this.projectPath, unresolvedEnvironmentFile) : undefined;
+    this.environment = getCombinedEnvironment(configuredEnvironment, this.environmentFile, fileHandler, logger);
+
+    this.excludedEnvironmentVariables = getConfigValue(
+      configStore,
+      GeneralConfigSetting.ExcludedEnvironmentVariables,
+      GeneralConfigSetting.EnvExclude
     );
 
     this.reloadOnChangedFiles = (configStore.get<string[]>(GeneralConfigSetting.ReloadOnChangedFiles) || []).map(
       filePath => normalizePath(resolve(this.projectPath, filePath))
     );
-
-    this.defaultDebugPort =
-      this.browser || this.debuggerConfigName
-        ? undefined
-        : browserHelper.getDefaultDebugPort(this.customLauncher, this.debuggerConfig);
-
-    this.excludeFiles = toSingleUniqueArray(
-      configStore.get<string[]>(GeneralConfigSetting.ExcludeFiles),
-      ALWAYS_EXCLUDED_TEST_FILE_GLOBS
-    ).map(fileGlob => normalizePath(fileGlob));
   }
 
   public async dispose() {

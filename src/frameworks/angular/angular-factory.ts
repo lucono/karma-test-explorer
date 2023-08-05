@@ -23,9 +23,8 @@ export type AngularFactoryConfig = Pick<
   | 'projectKarmaConfigFilePath'
   | 'browser'
   | 'customLauncher'
-  | 'userSpecifiedLaunchConfig'
   | 'environment'
-  | 'envExclude'
+  | 'excludedEnvironmentVariables'
   | 'failOnStandardError'
   | 'allowGlobalPackageFallback'
   | 'logLevel'
@@ -62,7 +61,7 @@ export class AngularFactory implements Partial<TestFactory> {
     );
 
     const combinedEnvironment = { ...process.env, ...this.config.environment };
-    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.envExclude);
+    const filteredEnvironment = excludeSelectedEntries(combinedEnvironment, this.config.excludedEnvironmentVariables);
 
     this.logger.trace(
       () =>
@@ -73,10 +72,9 @@ export class AngularFactory implements Partial<TestFactory> {
     const environment: Record<string, string | undefined> = {
       ...filteredEnvironment,
       [KarmaEnvironmentVariable.AutoWatchEnabled]: `${this.config.autoWatchEnabled}`,
-      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay ?? ''}`,
+      [KarmaEnvironmentVariable.AutoWatchBatchDelay]: `${this.config.autoWatchBatchDelay}`,
       [KarmaEnvironmentVariable.Browser]: this.config.browser ?? '',
       [KarmaEnvironmentVariable.CustomLauncher]: JSON.stringify(this.config.customLauncher),
-      [KarmaEnvironmentVariable.UserSpecifiedLaunchConfig]: this.config.userSpecifiedLaunchConfig ? 'true' : '',
       [KarmaEnvironmentVariable.ExtensionLogLevel]: `${this.config.logLevel}`,
       [KarmaEnvironmentVariable.KarmaLogLevel]: `${this.config.karmaLogLevel}`,
       [KarmaEnvironmentVariable.KarmaReporterLogLevel]: `${this.config.karmaReporterLogLevel}`

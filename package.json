@@ -1,11 +1,11 @@
 {
 	"name": "karma-test-explorer",
 	"displayName": "Karma Test Explorer (for Angular, Jasmine, and Mocha)",
-	"description": "View and run your Karma or Angular tests in the VS Code Testing side bar",
-	"icon": "docs/img/extension-icon-128.png",
+	"description": "A rich, visual, and fully integrated VS Code testing and debugging experience for Angular and Karma tests",
+	"icon": "docs/img/extension-icon-256.png",
 	"author": "Lucas Ononiwu",
 	"publisher": "lucono",
-	"version": "0.8.2",
+	"version": "0.9.0",
 	"type": "module",
 	"license": "MIT",
 	"homepage": "https://github.com/lucono/karma-test-explorer",
@@ -16,6 +16,7 @@
 	"bugs": {
 		"url": "https://github.com/lucono/karma-test-explorer/issues"
 	},
+	"qna": "https://github.com/lucono/karma-test-explorer/discussions/categories/q-a",
 	"categories": [
 		"Testing"
 	],
@@ -27,9 +28,9 @@
 		"karma-jasmine",
 		"mocha",
 		"karma-mocha",
-		"testing",
 		"javascript",
-		"typescript"
+		"typescript",
+		"testing"
 	],
 	"main": "./dist/main.cjs",
 	"exports": "./dist/main.cjs",
@@ -86,7 +87,7 @@
 		"@types/which": "^3.0.0",
 		"@typescript-eslint/eslint-plugin": "^5.58.0",
 		"@typescript-eslint/parser": "^5.58.0",
-		"@vscode/vsce": "^2.19.0",
+		"@vscode/vsce": "^2.20.1",
 		"esbuild": "^0.17.16",
 		"esbuild-plugin-write-file": "^0.0.4",
 		"eslint": "^8.38.0",
@@ -113,23 +114,17 @@
 		"hbenl.vscode-test-explorer"
 	],
 	"activationEvents": [
+		"workspaceContains:**/karma.config.{js,ts}",
+		"workspaceContains:**/{.angular-cli,angular}.json",
 		"onLanguage:javascript",
 		"onLanguage:typescript",
-		"onStartupFinished",
 		"onView:test-explorer",
-		"onCommand:test-explorer.reload",
-		"onCommand:test-explorer.rerun",
-		"onCommand:test-explorer.redebug",
-		"onCommand:test-explorer.cancel",
-		"onCommand:test-explorer.run-all",
-		"onCommand:test-explorer.run-file",
-		"onCommand:test-explorer.run-test-at-cursor",
-		"onCommand:test-explorer.debug-test-at-cursor"
+		"onStartupFinished"
 	],
 	"contributes": {
 		"configuration": {
-			"type": "object",
 			"title": "Karma Test Explorer",
+			"type": "object",
 			"properties": {
 				"karmaTestExplorer.enableExtension": {
 					"markdownDescription": "Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision",
@@ -236,7 +231,15 @@
 					}
 				},
 				"karmaTestExplorer.nonHeadlessModeEnabled": {
-					"markdownDescription": "Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden",
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.showBrowserWindow`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.showBrowserWindow`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.showBrowserWindow`",
+					"type": "boolean",
+					"scope": "resource",
+					"default": false
+				},
+				"karmaTestExplorer.showBrowserWindow": {
+					"markdownDescription": "Enables the browser UI to be displayed for testing. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden",
 					"type": "boolean",
 					"scope": "resource",
 					"default": false
@@ -285,6 +288,14 @@
 					"default": 9976
 				},
 				"karmaTestExplorer.karmaConfFilePath": {
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.karmaConfigFilePath`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.karmaConfigFilePath`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.karmaConfigFilePath`",
+					"type": "string",
+					"scope": "resource",
+					"default": "karma.conf.js"
+				},
+				"karmaTestExplorer.karmaConfigFilePath": {
 					"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project workspace root path)",
 					"type": "string",
 					"scope": "resource",
@@ -325,6 +336,18 @@
 					]
 				},
 				"karmaTestExplorer.excludeFiles": {
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.excludedFiles`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.excludedFiles`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.excludedFiles`",
+					"type": "array",
+					"items": {
+						"type": "string",
+						"uniqueItems": true
+					},
+					"scope": "resource",
+					"default": []
+				},
+				"karmaTestExplorer.excludedFiles": {
 					"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project workspace root path). The `node_modules` folder is always excluded",
 					"type": "array",
 					"items": {
@@ -453,8 +476,8 @@
 					"markdownDescription": "The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as Karma config's `autoWatchBatchDelay` option and overrides it when set",
 					"type": "number",
 					"scope": "resource",
-					"exclusiveMinimum": 0,
-					"default": null
+					"exclusiveMinimum": -1,
+					"default": -1
 				},
 				"karmaTestExplorer.karmaReadyTimeout": {
 					"markdownDescription": "The duration in milliseconds after which the extension will stop listening and give up if Karma is not started, connected to the extension, and ready for testing",
@@ -513,15 +536,18 @@
 						"name",
 						"type"
 					],
-					"default": {
-						"name": "Karma Test Explorer Debugging",
-						"type": "chrome",
-						"request": "attach",
-						"browserAttachLocation": "workspace",
-						"address": "localhost",
-						"port": 9222,
-						"timeout": 60000
-					}
+					"examples": [
+						{
+							"name": "Karma Test Explorer Debugging",
+							"type": "chrome",
+							"request": "attach",
+							"browserAttachLocation": "workspace",
+							"address": "localhost",
+							"port": 9222,
+							"webRoot": "${workspaceFolder}",
+							"timeout": 60000
+						}
+					]
 				},
 				"karmaTestExplorer.webRoot": {
 					"markdownDescription": "The web root to be used when debugging the Karma tests in VS Code. This takes precedence over the `webRoot` property in the `debuggerConfig` setting and supports using the `${workspaceFolder}` variable for the absolute workspace folder path. This setting is similar to the `webRoot` property of a VS Code launch configuration entry in the `.vscode/launch.json` file",
@@ -558,18 +584,46 @@
 					]
 				},
 				"karmaTestExplorer.env": {
-					"markdownDescription": "Additional environment variables to be set when running the tests. These take precedence over those from the `envFile` setting",
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.environmentVariables`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.environmentVariables`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.environmentVariables`",
+					"type": "object",
+					"scope": "resource",
+					"default": {}
+				},
+				"karmaTestExplorer.environmentVariables": {
+					"markdownDescription": "Additional environment variables to be set when running the tests. These take precedence over those from the `environmentFile` setting",
 					"type": "object",
 					"scope": "resource",
 					"default": {}
 				},
 				"karmaTestExplorer.envFile": {
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.environmentFile`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.environmentFile`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.environmentFile`",
+					"type": "string",
+					"scope": "resource",
+					"default": ""
+				},
+				"karmaTestExplorer.environmentFile": {
 					"markdownDescription": "Path to environment file containing environment variables to be set when running the tests",
 					"type": "string",
 					"scope": "resource",
 					"default": ""
 				},
 				"karmaTestExplorer.envExclude": {
+					"markdownDescription": "This setting has been renamed to `karmaTestExplorer.excludedEnvironmentVariables`. Please update your setting to use the new name.",
+					"deprecationMessage": "Rename this setting to `karmaTestExplorer.excludedEnvironmentVariables`",
+					"markdownDeprecationMessage": "Rename this setting to `karmaTestExplorer.excludedEnvironmentVariables`",
+					"type": "array",
+					"items": {
+						"type": "string",
+						"uniqueItems": true
+					},
+					"scope": "resource",
+					"default": []
+				},
+				"karmaTestExplorer.excludedEnvironmentVariables": {
 					"markdownDescription": "Environment variables that should be excluded from the testing environment",
 					"type": "array",
 					"items": {
@@ -588,7 +642,7 @@
 					"default": null
 				},
 				"karmaTestExplorer.projectWorkspaces": {
-					"markdownDescription": "Experimental and subject to change in future releases! This is a list, each entry of which is either a string of the relative path (relative to the VS Code workspace root folder) to a project workspace for testing, or an object having a `rootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project workspace - `projectType`, `karmaConfFilePath`, `testFramework`, `testFiles`, `excludeFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project workspace",
+					"markdownDescription": "Experimental and subject to change in future releases! This is a list, each entry of which is either a string of the relative path (relative to the VS Code workspace root folder) to a project workspace for testing, or an object having a `rootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project workspace - `projectType`, `karmaConfigFilePath`, `testFramework`, `testFiles`, `excludedFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project workspace",
 					"type": "array",
 					"scope": "resource",
 					"default": [],
@@ -630,6 +684,13 @@
 										]
 									},
 									"karmaConfFilePath": {
+										"markdownDescription": "This setting has been renamed to `karmaConfigFilePath`. Please update your setting to use the new name.",
+										"deprecationMessage": "Rename this setting to `karmaConfigFilePath`",
+										"markdownDeprecationMessage": "Rename this setting to `karmaConfigFilePath`",
+										"type": "string",
+										"scope": "resource"
+									},
+									"karmaConfigFilePath": {
 										"markdownDescription": "The path where the `karma.conf.js` file is located (relative to the project workspace root path)",
 										"type": "string",
 										"scope": "resource"
@@ -660,6 +721,17 @@
 										"minItems": 1
 									},
 									"excludeFiles": {
+										"markdownDescription": "This setting has been renamed to `excludedFiles`. Please update your setting to use the new name.",
+										"deprecationMessage": "Rename this setting to `excludedFiles`",
+										"markdownDeprecationMessage": "Rename this setting to `excludedFiles`",
+										"type": "array",
+										"items": {
+											"type": "string",
+											"uniqueItems": true
+										},
+										"scope": "resource"
+									},
+									"excludedFiles": {
 										"markdownDescription": "The path glob patterns identifying files to be excluded from `testFiles` (relative to the project workspace root path). The `node_modules` folder is always excluded",
 										"type": "array",
 										"items": {

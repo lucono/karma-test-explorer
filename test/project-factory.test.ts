@@ -33,7 +33,7 @@ describe('Project Factory', () => {
 
     beforeEach(() => {
       configStore.set(ExternalConfigSetting.EnableExtension, true);
-      configStore.set(ExternalConfigSetting.KarmaConfFilePath, '');
+      configStore.set(ExternalConfigSetting.KarmaConfigFilePath, '');
 
       mockWorkspaceFolderFsPath =
         process.platform === 'win32' ? 'C:/fake/workspace/project' : '/fake/workspace/project';

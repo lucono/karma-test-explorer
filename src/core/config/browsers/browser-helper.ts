@@ -4,26 +4,38 @@ import { CustomLauncher } from 'karma';
 
 import { ContainerMode } from '../extension-config.js';
 
+export type DebugConfigurationData = Omit<DebugConfiguration, 'name'>;
+
+export type DebuggerConfigOptions = {
+  baseDebugConfig?: DebugConfigurationData;
+  webRootOverride?: string;
+  extraPathMappings?: Readonly<Record<string, string>>;
+  extraSourceMapPathOverrides?: Readonly<Record<string, string>>;
+  workspaceFolderPath?: string;
+};
+
 export interface BrowserHelper {
-  supportedBrowsers: [string, ...string[]];
-  debuggerType: string;
-  debuggingPortFlag: string;
+  readonly supportedBrowsers: readonly [string, ...string[]];
+  readonly debuggerType: string;
+
+  isSupportedBrowser(browserType: string): boolean;
+
+  getDebuggerConfig(options?: DebuggerConfigOptions): DebugConfigurationData;
+
+  getDebugPort(
+    customLauncher: Readonly<CustomLauncher>,
+    debugConfig: Readonly<DebugConfigurationData>
+  ): number | undefined;
 
   getCustomLauncher(
     browserType: string,
     customLaucher: CustomLauncher | undefined,
-    configuredContainerMode: ContainerMode | undefined,
-    isNonHeadlessMode: boolean
+    containerMode: ContainerMode | undefined,
+    isHeadlessMode: boolean
   ): CustomLauncher;
 
-  isSupportedBrowser(browserType: string): boolean;
-
-  getDefaultDebuggerConfig(): DebugConfiguration;
-
-  addCustomLauncherDebugPort(customLaucher: CustomLauncher, debugPort: number | undefined): CustomLauncher | undefined;
-
-  getDefaultDebugPort(
-    customLauncher: Readonly<CustomLauncher>,
-    debuggerConfig: Readonly<DebugConfiguration>
-  ): number | undefined;
+  getCustomLauncherWithDebugPort(
+    customLaucher: CustomLauncher,
+    debugPort: number | undefined
+  ): CustomLauncher | undefined;
 }

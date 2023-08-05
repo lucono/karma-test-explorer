@@ -1,4 +1,4 @@
-import { DebugSession, EventEmitter, WorkspaceFolder, debug } from 'vscode';
+import { DebugConfiguration, DebugSession, EventEmitter, WorkspaceFolder, debug } from 'vscode';
 import {
   RetireEvent,
   TestLoadFinishedEvent,
@@ -16,6 +16,7 @@ import { DeferredPromise } from '../util/future/deferred-promise.js';
 import { Execution } from '../util/future/execution.js';
 import { SimpleLogger } from '../util/logging/simple-logger.js';
 import { ProcessHandler } from '../util/process/process-handler.js';
+import { replaceUrlPort } from '../util/utils.js';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events.js';
 import { CancellationRequestedError } from './cancellation-requested-error.js';
 import { ExtensionConfig } from './config/extension-config.js';
@@ -131,10 +132,22 @@ export class KarmaTestExplorer implements Disposable {
 
         const serverStartInfo: ServerStartInfo = await this.testManager.start();
 
-        const debuggerConfig = this.config.debuggerConfigName || {
-          ...this.config.debuggerConfig,
-          port: serverStartInfo.debugPort ?? this.config.debuggerConfig.port
+        const configuredDebuggerConfig = this.config.debuggerConfig;
+
+        const debugUrl =
+          'url' in configuredDebuggerConfig
+            ? replaceUrlPort(configuredDebuggerConfig.url, serverStartInfo.karmaPort) ?? configuredDebuggerConfig.url
+            : undefined;
+
+        const debuggerConfig: string | DebugConfiguration = this.config.debuggerConfigName || {
+          ...configuredDebuggerConfig,
+          port: serverStartInfo.debugPort ?? configuredDebuggerConfig.port,
+          url: debugUrl
         };
+
+        this.logger.debug(
+          () => `Debugging with debugger configuration: ${JSON.stringify(debuggerConfig, undefined, 2)}`
+        );
 
         const debuggerConfigName = typeof debuggerConfig === 'string' ? debuggerConfig : debuggerConfig.name;
         const debuggerPort = typeof debuggerConfig !== 'string' ? debuggerConfig.port : undefined;
@@ -144,7 +157,7 @@ export class KarmaTestExplorer implements Disposable {
             () =>
               `Starting debug session configuration '${debuggerConfigName}' ` +
               'with requested --> available debug port: ' +
-              `${this.config.debuggerConfig.port ?? '<none>'} --> ${debuggerPort}`
+              `${configuredDebuggerConfig.port ?? '<none>'} --> ${debuggerPort}`
           );
         } else {
           this.logger.debug(() => `Starting debug session configuration '${debuggerConfigName}'`);
@@ -161,7 +174,7 @@ export class KarmaTestExplorer implements Disposable {
         debugSessionExecution = this.testDebugger.startDebugSession(
           this.workspaceFolder,
           debuggerConfig,
-          DEBUG_SESSION_START_TIMEOUT
+          configuredDebuggerConfig.timeout ?? DEBUG_SESSION_START_TIMEOUT
         );
 
         debugSession = await debugSessionExecution.started();

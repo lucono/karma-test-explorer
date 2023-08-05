@@ -1,11 +1,13 @@
-import { WorkspaceFolder } from 'vscode';
+import { WorkspaceFolder, window } from 'vscode';
 
 import { basename, join, relative, resolve } from 'path';
 import type { PackageJson } from 'type-fest';
 
 import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants.js';
 import { ProjectType } from './core/base/project-type.js';
+import { getConfigValue, isSettingConfigured } from './core/config/config-helper.js';
 import {
+  DEPRECATED_CONFIG_SETTINGS,
   ExternalConfigSetting,
   GeneralConfigSetting,
   InternalConfigSetting,
@@ -76,11 +78,10 @@ export class ProjectFactory implements Disposable {
         `One or more inclusion conditions were satisfied: ${workspaceFolderPath}`
     );
 
-    const configuredProjectWorkspaces: (string | ProjectSpecificConfig)[] =
-      workspaceConfig.get(ExternalConfigSetting.ProjectWorkspaces) ?? [];
+    this.performDeprecatedSettingsCheckForWorkspaceFolder(workspaceConfig); // FIXME: Will create duplicate prompts for each workspace folder
 
-    const configuredDeprecatedProjects: (string | ProjectSpecificConfig)[] =
-      workspaceConfig.get(ExternalConfigSetting.Projects) ?? [];
+    const configuredProjectWorkspaces: (string | ProjectSpecificConfig)[] =
+      getConfigValue(workspaceConfig, ExternalConfigSetting.ProjectWorkspaces, ExternalConfigSetting.Projects) ?? [];
 
     const configuredDeprecatedProjectRootPath = asNonBlankStringOrUndefined(
       workspaceConfig.get(ExternalConfigSetting.ProjectRootPath)
@@ -89,8 +90,6 @@ export class ProjectFactory implements Disposable {
     const configuredProjects =
       configuredProjectWorkspaces.length > 0
         ? configuredProjectWorkspaces
-        : configuredDeprecatedProjects.length > 0
-        ? configuredDeprecatedProjects
         : configuredDeprecatedProjectRootPath
         ? [configuredDeprecatedProjectRootPath]
         : [''];
@@ -244,9 +243,13 @@ export class ProjectFactory implements Disposable {
         workspaceFolderProjects.push(project);
       });
     } else {
-      const karmaConfigPath = normalizePath(
-        resolve(absoluteProjectRootPath, projectFolderConfig.get(ExternalConfigSetting.KarmaConfFilePath)!)
-      );
+      const configuredRelativeKarmaConfigPath: string = getConfigValue(
+        projectFolderConfig,
+        ExternalConfigSetting.KarmaConfigFilePath,
+        ExternalConfigSetting.KarmaConfFilePath
+      )!;
+
+      const karmaConfigPath = normalizePath(resolve(absoluteProjectRootPath, configuredRelativeKarmaConfigPath));
 
       if (!this.fileHandler.existsSync(karmaConfigPath)) {
         this.logger.debug(
@@ -296,6 +299,26 @@ export class ProjectFactory implements Disposable {
     return workspaceFolderProjects;
   }
 
+  private performDeprecatedSettingsCheckForWorkspaceFolder(workspaceConfig: ConfigStore<WorkspaceConfigSetting>) {
+    const deprecatedExtensionSettingsInUse = DEPRECATED_CONFIG_SETTINGS.filter(deprecatedSetting =>
+      isSettingConfigured(deprecatedSetting, workspaceConfig)
+    );
+
+    if (deprecatedExtensionSettingsInUse.length === 0) {
+      return;
+    }
+
+    const shortenedSettingsNames = deprecatedExtensionSettingsInUse
+      .map(setting => setting.substring(setting.lastIndexOf('.')))
+      .join(', ');
+
+    window.showWarningMessage(
+      `${EXTENSION_NAME} found the following outdated ` +
+        `extension options in your VS Code settings. ` +
+        `Please remove or update them - ${shortenedSettingsNames}.`
+    );
+  }
+
   private shouldEnableTestingForWorkspaceFolder(
     workspaceFolderPath: string,
     workspaceConfig: ConfigStore<WorkspaceConfigSetting>
@@ -324,11 +347,7 @@ export class ProjectFactory implements Disposable {
     const configuredExtensionSetting = [
       ...Object.values(GeneralConfigSetting),
       ...Object.values(ExternalConfigSetting)
-    ].find(
-      configSetting =>
-        workspaceConfig.inspect(configSetting)?.workspaceFolderValue !== undefined ||
-        workspaceConfig.inspect(configSetting)?.workspaceValue !== undefined
-    );
+    ].find(configSetting => isSettingConfigured(configSetting, workspaceConfig));
 
     if (configuredExtensionSetting !== undefined) {
       this.logger.debug(

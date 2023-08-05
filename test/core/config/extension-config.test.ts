@@ -3,7 +3,7 @@ import { DebugConfiguration } from 'vscode';
 import { MockProxy, mock } from 'jest-mock-extended';
 import { CustomLauncher } from 'karma';
 
-import { GeneralConfigSetting } from '../../../src/core/config/config-setting.js';
+import { GeneralConfigSetting, InternalConfigSetting } from '../../../src/core/config/config-setting.js';
 import { ConfigStore } from '../../../src/core/config/config-store.js';
 import { ExtensionConfig } from '../../../src/core/config/extension-config.js';
 import { FileHandler } from '../../../src/util/filesystem/file-handler.js';
@@ -24,7 +24,7 @@ describe('ExtensionConfig', () => {
     mockConfigDefaults = new Map();
 
     mockConfigValues.set(GeneralConfigSetting.TestFiles, []);
-    mockConfigValues.set(GeneralConfigSetting.ExcludeFiles, []);
+    mockConfigValues.set(GeneralConfigSetting.ExcludedFiles, []);
     mockConfigValues.set(GeneralConfigSetting.ReloadOnChangedFiles, []);
 
     mockConfigStore = {
@@ -48,14 +48,6 @@ describe('ExtensionConfig', () => {
         new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
       );
       expect(extensionConfig.defaultDebugPort).toEqual(undefined);
-    });
-
-    it('sets the user override flag', () => {
-      const extensionConfig = withUnixPaths(
-        new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
-      );
-
-      expect(extensionConfig.userSpecifiedLaunchConfig).toBe(true);
     });
   });
 
@@ -169,13 +161,13 @@ describe('ExtensionConfig', () => {
             expect(extensionConfig.defaultDebugPort).toEqual(1234);
           });
 
-          it('uses port 9222 as the default debug port if `start-debugger-server` launcher flag is not present', () => {
+          it('uses port 6000 as the default debug port if `start-debugger-server` launcher flag is not present', () => {
             customLauncherConfig.flags = [];
 
             const extensionConfig = withUnixPaths(
               new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
             );
-            expect(extensionConfig.defaultDebugPort).toEqual(9222);
+            expect(extensionConfig.defaultDebugPort).toEqual(6000);
           });
         });
 
@@ -193,7 +185,7 @@ describe('ExtensionConfig', () => {
             expect(extensionConfig.defaultDebugPort).not.toBeDefined();
           });
 
-          it('does not default to port 9222 if the `start-debugger-server` launcher flag is not present', () => {
+          it('does not set a default debug port if the `start-debugger-server` launcher flag is not present', () => {
             customLauncherConfig.flags = [];
 
             const extensionConfig = withUnixPaths(
@@ -237,19 +229,12 @@ describe('ExtensionConfig', () => {
         expect(extensionConfig.defaultDebugPort).not.toBeDefined();
       });
     });
-
-    it('sets the user override flag', () => {
-      const extensionConfig = withUnixPaths(
-        new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
-      );
-
-      expect(extensionConfig.userSpecifiedLaunchConfig).toBe(true);
-    });
   });
 
   describe('no `browser` or `customLauncher` setting', () => {
     describe('and the karma config contains a supported browser', () => {
       beforeEach(() => {
+        mockConfigValues.set(InternalConfigSetting.ProjectKarmaConfigFilePath, 'karma.conf.js');
         mockFileHandler.readFileSync.mockReturnValue(`
           module.exports = function (config) {
             config.set({
@@ -277,6 +262,7 @@ describe('ExtensionConfig', () => {
     describe('and the karma config does not contain a supported browser', () => {
       describe('and does contain a parseable supported browser custom launcher', () => {
         beforeEach(() => {
+          mockConfigValues.set(InternalConfigSetting.ProjectKarmaConfigFilePath, 'karma.conf.js');
           mockFileHandler.readFileSync.mockReturnValue(`
             module.exports = function (config) {
               config.set({
@@ -305,13 +291,6 @@ describe('ExtensionConfig', () => {
             new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
           );
           expect(extensionConfig.customLauncher.base).toEqual('Firefox');
-        });
-
-        it('uses port 9222 as the default debug port', () => {
-          const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
-          );
-          expect(extensionConfig.defaultDebugPort).toEqual(9222);
         });
       });
 
@@ -347,22 +326,7 @@ describe('ExtensionConfig', () => {
           );
           expect(extensionConfig.customLauncher.base).toEqual('Chrome');
         });
-
-        it('uses port 9222 as the default debug port', () => {
-          const extensionConfig = withUnixPaths(
-            new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
-          );
-          expect(extensionConfig.defaultDebugPort).toEqual(9222);
-        });
       });
-    });
-
-    it('does not set the user override flag', () => {
-      const extensionConfig = withUnixPaths(
-        new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
-      );
-
-      expect(extensionConfig.userSpecifiedLaunchConfig).toBe(false);
     });
   });
 
@@ -407,7 +371,7 @@ describe('ExtensionConfig', () => {
         });
 
         it('does not remove the `--headless` flag when non headless mode is enabled', () => {
-          mockConfigValues.set(GeneralConfigSetting.NonHeadlessModeEnabled, true);
+          mockConfigValues.set(GeneralConfigSetting.ShowBrowserWindow, true);
 
           customLauncherConfig.flags = ['--no-sandbox', '--headless'];
 
@@ -435,7 +399,7 @@ describe('ExtensionConfig', () => {
         });
 
         it('does not remove the `-headless` flag when non headless mode is enabled', () => {
-          mockConfigValues.set(GeneralConfigSetting.NonHeadlessModeEnabled, true);
+          mockConfigValues.set(GeneralConfigSetting.ShowBrowserWindow, true);
 
           customLauncherConfig.flags = ['-headless'];
 
@@ -461,7 +425,7 @@ describe('ExtensionConfig', () => {
         });
 
         it('does not configure the show parameter when non headless mode is enabled', () => {
-          mockConfigValues.set(GeneralConfigSetting.NonHeadlessModeEnabled, true);
+          mockConfigValues.set(GeneralConfigSetting.ShowBrowserWindow, true);
 
           const extensionConfig = withUnixPaths(
             new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
@@ -511,9 +475,9 @@ describe('ExtensionConfig', () => {
       mockConfigValues.set(GeneralConfigSetting.ContainerMode, 'disabled');
     });
 
-    describe('an `NonHeadlessModeEnabled` setting is false', () => {
+    describe('an `ShowBrowserWindow` setting is false', () => {
       beforeEach(() => {
-        mockConfigValues.set(GeneralConfigSetting.NonHeadlessModeEnabled, '');
+        mockConfigValues.set(GeneralConfigSetting.ShowBrowserWindow, '');
       });
 
       describe('and a custom launcher', () => {
@@ -593,9 +557,9 @@ describe('ExtensionConfig', () => {
       });
     });
 
-    describe('an `NonHeadlessModeEnabled` setting is true', () => {
+    describe('an `ShowBrowserWindow` setting is true', () => {
       beforeEach(() => {
-        mockConfigValues.set(GeneralConfigSetting.NonHeadlessModeEnabled, 'true');
+        mockConfigValues.set(GeneralConfigSetting.ShowBrowserWindow, 'true');
       });
 
       describe('and a custom launcher', () => {
@@ -711,12 +675,12 @@ describe('ExtensionConfig', () => {
     });
   });
 
-  describe('when the `excludeFiles` setting is configured', () => {
+  describe('when the `excludedFiles` setting is configured', () => {
     let configuredExcludeFiles: string[];
 
     beforeEach(() => {
       configuredExcludeFiles = [];
-      mockConfigValues.set(GeneralConfigSetting.ExcludeFiles, configuredExcludeFiles);
+      mockConfigValues.set(GeneralConfigSetting.ExcludedFiles, configuredExcludeFiles);
     });
 
     it('includes the node_modules folder if it was not included in the configured exclusion list', () => {
@@ -725,7 +689,7 @@ describe('ExtensionConfig', () => {
         new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
       );
 
-      expect(extensionConfig.excludeFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
+      expect(extensionConfig.excludedFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
     });
 
     it('retains the node_modules folder if it was included in the configured exclusion list', () => {
@@ -734,7 +698,7 @@ describe('ExtensionConfig', () => {
         new ExtensionConfig(mockConfigStore, '/fake/workspace/path', mockFileHandler, mockLogger)
       );
 
-      expect(extensionConfig.excludeFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
+      expect(extensionConfig.excludedFiles).toEqual(expect.arrayContaining(['**/node_modules/**/*']));
     });
   });
 });

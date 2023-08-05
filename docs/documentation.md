@@ -83,7 +83,7 @@ Duplicated tests in your project are also detected and convniently flagged for a
 |Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | When&nbsp;Required | Config&nbsp;Setting
 |:-------|---------------|----------------
 |Specify the path to the project relative to the workspace folder | If the root path of the project is not the same as the VS Code workspace folder root | `karmaTestExplorer.projectWorkspaces`
-|Specify the path to the `karma.conf.js` file relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfFilePath`
+|Specify the path to the `karma.conf.js` file relative to the project root folder | If the `karma.conf.js` file has a different filename, or is not located in the project root folder | `karmaTestExplorer.karmaConfigFilePath`
 |Specify project [test files](#specifying-test-files) | Always recommended, for better performance | `karmaTestExplorer.testFiles`
 |Ensure you DO NOT have any of these Test Explorer UI settings configured | Required to prevent conflict with Karma Test Explorer functionality | `testExplorer.useNativeTesting` and `testExplorer.onStart` and `testExplorer.onReload`
 |Provide any other relevant [settings](#extension-settings) | Optionally, use any other Karma Test Explorer [settings](#extension-settings) that are relevant to your needs to further customize it to the your project and team| See [all settings](#extension-settings)
@@ -149,10 +149,10 @@ Though Karma Test Explorer comes with many configuration options that make it fl
 Setting                                       | Description
 -----------------------------------------------|---------------------------------------------------------------
 `karmaTestExplorer.enableExtension` | Explicitly enables or disables Karma Test Explorer when its default project inspection to automatically enable or disable itself does not yield the desired decision
-`karmaTestExplorer.projectWorkspaces` | Experimental and subject to change in future releases! This is a list, each entry of which is either a string of the relative path (relative to the VS Code workspace root folder) to a project workspace for testing, or an object having a `rootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project workspace - `projectType`, `karmaConfFilePath`, `testFramework`, `testFiles`, `excludeFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project workspace
+`karmaTestExplorer.projectWorkspaces` | Experimental and subject to change in future releases! This is a list, each entry of which is either a string of the relative path (relative to the VS Code workspace root folder) to a project workspace for testing, or an object having a `rootPath` property with the value of that path. The object format also accepts the following optional properties which can be used to provide the corresponding settings specifically for that project workspace - `projectType`, `karmaConfigFilePath`, `testFramework`, `testFiles`, `excludedFiles`, `testsBasePath`. Like other Karma Test Explorer settings, when not explicitly configured, most settings will be auto-detected where possible with reasonable values for each project workspace
 `karmaTestExplorer.projectType` | The type of the project. This will be auto-detected if not specified. Specify the right project type if not correctly auto-detected
 `karmaTestExplorer.testFramework` | The test framework used by the project. This will be auto-detected if not specified. Specify the right test framework if not correctly auto-detected
-`karmaTestExplorer.karmaConfFilePath` | The path where the `karma.conf.js` file is located (relative to the project root path)
+`karmaTestExplorer.karmaConfigFilePath` | The path where the `karma.conf.js` file is located (relative to the project root path)
 `karmaTestExplorer.testGrouping` | How tests should be grouped in the Test view side bar
 `karmaTestExplorer.flattenSingleChildFolders` | Flattens paths consisting of single child folders when using folder-based test grouping
 `karmaTestExplorer.showTestDefinitionTypeIndicators` | Show test definition type indicators such as tests defined as focused or disabled
@@ -164,11 +164,11 @@ Setting                                       | Description
 `karmaTestExplorer.customLauncher` | Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file
 `karmaTestExplorer.autoWatchEnabled` | Enables automatic re-run of tests when the files change
 `karmaTestExplorer.autoWatchBatchDelay` | The delay in milliseconds when autoWatch is enabled for batching multiple file changes into a single rerun. This is the same as Karma config's `autoWatchBatchDelay` option and overrides it when set
-`karmaTestExplorer.nonHeadlessModeEnabled` | Enables non-headless testing so that the browser UI is displayed when running tests. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden
+`karmaTestExplorer.showBrowserWindow` | Allows the browser UI to be displayed for testing. Has no effect when running in a container, or when the default value of the `customLauncher` or `browser` config settings are overridden
 `karmaTestExplorer.allowGlobalPackageFallback` | Allows use of global install of Karma or Angular if available and there is no local install in the project folder
-`karmaTestExplorer.env` | Additional environment variables to be set when running the tests. These override the values of the same variables if also provided through the `envFile` setting
-`karmaTestExplorer.envFile` | Path to a dotenv file containing environment variables to be set when running the tests
-`karmaTestExplorer.envExclude` | Environment variables that should be excluded from the testing environment
+`karmaTestExplorer.environmentVariables` | Additional environment variables to be set when running the tests. These override the values of the same variables if also provided through the `environmentFile` setting
+`karmaTestExplorer.environmentFile` | Path to a dotenv file containing environment variables to be set when running the tests
+`karmaTestExplorer.excludedEnvironmentVariables` | Environment variables that should be excluded from the testing environment
 `karmaTestExplorer.karmaProcessCommand` | The command or path to an executable to use for launching Karma. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.angularProcessCommand` | The command or path to an executable to use for launching or running Angular tests. This is useful for using a custom script or different command other than the default
 `karmaTestExplorer.testTriggerMethod` | Specifies how test runs are triggered by default. You will usually not need to use this setting unless working around specific issues
@@ -177,7 +177,7 @@ Setting                                       | Description
 `karmaTestExplorer.failOnStandardError` | Treats any Karma, Angular, or other testing stderr output as a failure. This can sometimes be useful for uncovering testing issues
 `karmaTestExplorer.testsBasePath` | The base folder containing the test files (relative to the project root path for Karma projects, or the project `root` path specified in `angular.json` for Angular workspace projects). If not specified, defaults to the longest common path of the tests discovered in the project
 `karmaTestExplorer.testFiles` | The path glob patterns identifying the test files (relative to the project root path)
-`karmaTestExplorer.excludeFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to the project root path). The `node_modules` folder is always excluded
+`karmaTestExplorer.excludedFiles` | The path glob patterns identifying files to be excluded from `testFiles` (relative to the project root path). The `node_modules` folder is always excluded
 `karmaTestExplorer.reloadOnKarmaConfigChange` | Enables reloading of Karma on changes to the Karma configuration file
 `karmaTestExplorer.reloadOnChangedFiles` | The files which when modified will trigger a Karma reload
 `karmaTestExplorer.karmaReadyTimeout` | The duration in milliseconds after which the extension will stop listening and give up if Karma is not started, connected to the extension, and ready for testing
@@ -276,9 +276,9 @@ Specifying multiple projects with some additional per-project configuration:
 "karmaTestExplorer.projectWorkspaces": [
   {
     "rootPath": "path/to/project-1/root",
-    "karmaConfFilePath": "relative/to/rootPath/karma.conf.js",
+    "karmaConfigFilePath": "relative/to/rootPath/karma.conf.js",
     "testFiles": ["test/**/*.spec.ts"],
-    "excludeFiles": ["test/path/to/exclude"]
+    "excludedFiles": ["test/path/to/exclude"]
   },
   {
     "rootPath": "path/to/project-2/root",
@@ -304,9 +304,9 @@ Specifying multiple projects while only providing additional configuration for s
 
 ## Non-Headless Testing
 
-Though by default Karma Test Explorer runs tests headlessly (using a headless instance of Chrome), it also has support for non-headless testing which can be enabled with the `karmaTestExplorer.nonHeadlessModeEnabled` setting. When this is enabled, the browser UI will be displayed when Karma Test Explorer is started, and you will be able to see your tests being executed in the browser.
+Though by default Karma Test Explorer runs tests headlessly (using a headless instance of Chrome), it also has support for non-headless testing which can be enabled with the `karmaTestExplorer.showBrowserWindow` setting. When this is enabled, the browser UI will be displayed when Karma Test Explorer is started, and you will be able to see your tests being executed in the browser.
 
-Non-headless testing through the `nonHeadlessModeEnabled` setting is not supported in certain scenarios where non-headless usage would normaly not be possible, such as when running in a container. It is also not supported when the default value of the `customLauncher` or `browser` config settings have been overridden to use a non-Chrome browser, which is the default browser used by Karma Test Explorer. It is however supported in all other cases, including when running on WSLg (Windows Subsystem for Linux GUI) on Windows 11.
+Non-headless testing through the `showBrowserWindow` setting is not supported in certain scenarios where non-headless usage would normaly not be possible, such as when running in a container. It is also not supported when the default value of the `customLauncher` or `browser` config settings have been overridden to use a non-Chrome browser, which is the default browser used by Karma Test Explorer. It is however supported in all other cases, including when running on WSLg (Windows Subsystem for Linux GUI) on Windows 11.
 
 Also note that for regular headless testing, Karma Test Explorer supports any browser (Chrome or non-Chrome) with a Karma launcher implementation that is installed in the project, including Firefox, Edge, and others.
 
@@ -373,12 +373,12 @@ And in your VS Code project's settings file:
 
 ## Providing Environment Variables
 
-The `karmaTestExplorer.env` and `karmaTestExplorer.envFile` config options can be used to provide any environment variables that are required by your test execution setup (such as for instance, using the `CHROME_PATH` or `CHROME_BIN` environment variable to specify the path to a custom browser process used for running your tests).
+The `karmaTestExplorer.environmentVariables` and `karmaTestExplorer.environmentFile` config options can be used to provide any environment variables that are required by your test execution setup (such as for instance, using the `CHROME_PATH` or `CHROME_BIN` environment variable to specify the path to a custom browser process used for running your tests).
 
 Example, in your VS Code project's settings file:
 
 ```json
-"karmaTestExplorer.env": {
+"karmaTestExplorer.environmentVariables": {
   "ENV_VAR_1": "env_var_1_value",
   "ENV_VAR_2": "env_var_2_value",
   "ENV_VAR_3": "env_var_3_value"
@@ -388,13 +388,13 @@ Example, in your VS Code project's settings file:
 Or to use variables in an external dot-env file:
 
 ```json
-"karmaTestExplorer.envFile": "path/to/file.env"
+"karmaTestExplorer.environmentFile": "path/to/file.env"
 ```
 
-There is also the `karmaTestExplorer.envExclude` config option which is useful for excluding specific environment variables from the testing environment:
+There is also the `karmaTestExplorer.excludedEnvironmentVariables` config option which is useful for excluding specific environment variables from the testing environment:
 
 ```json
-"karmaTestExplorer.envExclude": [
+"karmaTestExplorer.excludedEnvironmentVariables": [
   "EXCLUDED_ENV_VAR_1",
   "EXCLUDED_ENV_VAR_2"
 ]

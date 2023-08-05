@@ -133,8 +133,8 @@ export class MainFactory {
     if (this.config.reloadOnKarmaConfigChange && this.config.projectKarmaConfigFilePath) {
       reloadTriggerFiles.push(this.config.projectKarmaConfigFilePath);
     }
-    if (this.config.envFile) {
-      reloadTriggerFiles.push(this.config.envFile);
+    if (this.config.environmentFile) {
+      reloadTriggerFiles.push(this.config.environmentFile);
     }
 
     const fileWatcherOptions: FileWatcherOptions = {
@@ -273,7 +273,7 @@ export class MainFactory {
 
   private createTestLocator(fileHandler: FileHandler): TestLocator {
     const testLocatorOptions: TestLocatorOptions = {
-      ignore: [...this.config.excludeFiles],
+      ignore: [...this.config.excludedFiles],
       cwd: this.config.projectPath
     };
 
@@ -357,9 +357,8 @@ export class MainFactory {
       karmaLogLevel: this.config.karmaLogLevel,
       karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
-      userSpecifiedLaunchConfig: this.config.userSpecifiedLaunchConfig,
       environment: this.config.environment,
-      envExclude: this.config.envExclude,
+      excludedEnvironmentVariables: this.config.excludedEnvironmentVariables,
       browser: this.config.browser,
       karmaProcessCommand: this.config.karmaProcessCommand,
       testTriggerMethod: this.config.testTriggerMethod,
@@ -389,9 +388,8 @@ export class MainFactory {
       karmaLogLevel: this.config.karmaLogLevel,
       karmaReporterLogLevel: this.config.karmaReporterLogLevel,
       customLauncher: this.config.customLauncher,
-      userSpecifiedLaunchConfig: this.config.userSpecifiedLaunchConfig,
       environment: this.config.environment,
-      envExclude: this.config.envExclude,
+      excludedEnvironmentVariables: this.config.excludedEnvironmentVariables,
       browser: this.config.browser,
       angularProcessCommand: this.config.angularProcessCommand,
       failOnStandardError: this.config.failOnStandardError,

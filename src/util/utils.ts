@@ -75,6 +75,16 @@ export const generateRandomId = () => {
   return Math.random().toString(36).slice(2);
 };
 
+export const replaceUrlPort = (url: string, port: number): string | undefined => {
+  try {
+    const urlObject = new URL(url);
+    urlObject.port = port.toString();
+    return urlObject.toString();
+  } catch (error) {
+    return undefined;
+  }
+};
+
 export const asNonBlankStringOrUndefined = (value?: string): string | undefined => {
   return (value ?? '').trim().length > 0 ? value : undefined;
 };

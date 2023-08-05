@@ -83,7 +83,7 @@ describe('KarmaFactory', () => {
           excludedEnvVar: 'excluded',
           otherEnvVar: 'bar'
         };
-        (mockConfig as Writeable<KarmaFactoryConfig>).envExclude = ['excludedEnvVar'];
+        (mockConfig as Writeable<KarmaFactoryConfig>).excludedEnvironmentVariables = ['excludedEnvVar'];
 
         expect(MockKarmaCommandLineTestRunExecutor).not.toHaveBeenCalled();
 
@@ -190,7 +190,7 @@ describe('KarmaFactory', () => {
             excludedEnvVar: 'excluded',
             otherEnvVar: 'bar'
           };
-          (mockConfig as Writeable<KarmaFactoryConfig>).envExclude = ['excludedEnvVar'];
+          (mockConfig as Writeable<KarmaFactoryConfig>).excludedEnvironmentVariables = ['excludedEnvVar'];
 
           expect(MockKarmaCommandLineTestServerExecutor).not.toHaveBeenCalled();
 

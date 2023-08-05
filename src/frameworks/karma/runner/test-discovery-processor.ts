@@ -30,7 +30,9 @@ export class TestDiscoveryProcessor implements Disposable {
   }
 
   public processTests(discoveredSpecs: SpecCompleteResponse[]): TestSuiteInfo {
+    this.logger.debug(() => `Creating tests from ${discoveredSpecs.length} discovered specs`);
     const builtTests = this.testBuilder.buildTests(discoveredSpecs);
+
     const allTestsAreFiltered = discoveredSpecs.length > 0 && builtTests.length === 0;
 
     if (allTestsAreFiltered) {
@@ -46,6 +48,7 @@ export class TestDiscoveryProcessor implements Disposable {
       return this.createEmptySuite();
     }
 
+    this.logger.debug(() => `Organizing discovered tests`);
     const discoveredTestSuite = this.testSuiteOrganizer.organizeTests(builtTests);
 
     const testCountEvaluator = (test: TestInfo): TestDiscoveryCount => ({

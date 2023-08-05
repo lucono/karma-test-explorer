@@ -56,7 +56,7 @@ describe('AngularFactory', () => {
         excludedEnvVar: 'excluded',
         otherEnvVar: 'bar'
       };
-      (mockConfig as Writeable<AngularFactoryConfig>).envExclude = ['excludedEnvVar'];
+      (mockConfig as Writeable<AngularFactoryConfig>).excludedEnvironmentVariables = ['excludedEnvVar'];
 
       expect(MockAngularTestServerExecutor).not.toHaveBeenCalled();
 

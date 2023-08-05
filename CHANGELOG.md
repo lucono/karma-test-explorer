@@ -7,6 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
+  - [0.9.0 - Aug 6, 2023](#090---aug-6-2023)
   - [0.8.2 - Apr 15, 2023](#082---apr-15-2023)
   - [0.8.1 - Jan 30, 2023](#081---jan-30-2023)
   - [0.8.0 - Dec 11, 2022](#080---dec-11-2022)
@@ -28,6 +29,26 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
+## [0.9.0] - Aug 6, 2023
+
+### Added
+
+- Support for the non-Chrome browsers - Electron, Edge, and Firefox variants. Feature contributed by [@BTMorton](https://github.com/BTMorton) - thanks!
+
+### Changed
+
+- The following settings have been renamed for friendlier access in the settings editor:
+  - `karmaConfFilePath` to `karmaConfigFilePath`,
+  - `nonHeadlessModeEnabled` to `showBrowserWindow`,
+  - `env` to `environmentVariables`,
+  - `envFile` to `environmentFile`,
+  - `envExclude` to `excludedEnvironmentVariables`,
+  - `excludeFiles` to `excludedFiles`
+
+### Fixed
+
+- Addressed [CVE-2023-32695](https://github.com/advisories/GHSA-cqmj-92xf-r6r9), [CVE-2023-31125](https://github.com/advisories/GHSA-q9mw-68c2-j6m5), [CVE-2023-26115](https://github.com/advisories/GHSA-j8xg-fqg3-53r7), [CVE-2022-25883](https://github.com/advisories/GHSA-c2qf-rxjj-qqgw) security vulnerabilities from transitive dependencies
+
 ## [0.8.2] - Apr 15, 2023
 
 ### Added
@@ -261,7 +282,7 @@ _Karma Test Explorer is officially out of Preview!_
 - Watch mode (the `autoWatchEnabled` setting) is now enabled by default
 - When not set, the `autoWatchBatchDelay` setting now defaults to the configured or default value in the project's Karma config file. Previously, this value always defaulted to 5 secs and you had to explicitly set it to the same value as the project Karma config if desired
 - The `karmaTestExplorer.karmaProcessExecutable` config setting has been renamed to `karmaTestExplorer.karmaProcessCommand`, aligning the naming of both it and the newly added `karmaTestExplorer.angularProcessCommand` setting
-- The `karmaTestExplorer.containerModeEnabled` boolean setting has been renamed to an enum `karmaTestExplorer.containerMode` setting, with possible values of `auto` (the default when not set), `enabled`, or `disabled`. Without updating existing pfoject configurations, this should not casue any change in behavior for projects already using the old setting to enable container mode because the new setting's default value of `auto` will allow container-based environments to still be detected and optimized by default
+- The `karmaTestExplorer.containerModeEnabled` boolean setting has been renamed to an enum `karmaTestExplorer.containerMode` setting, with possible values of `auto` (the default when not set), `enabled`, or `disabled`. Without updating existing project configurations, this should not cause any change in behavior for projects already using the old setting to enable container mode because the new setting's default value of `auto` will allow container-based environments to still be detected and optimized by default
 - Test files that are auto-detected by default has expanded to also include filenames starting with `test` or `spec` or `unit`, followed by a dot (`.`) or a hyphen (`-`) or an underscore (`_`). Previously, only those ending with `test` or `spec` or `unit`, preceded with a dot (`.`) or a hyphen (`-`) or an underscore (`_`) would be detected by default
 - The `node_modules` folder is now always excluded from search during test discovery even if the `karmaTestExplorer.excludeFiles` setting is specified without explicitly having `node_modules` on the excluded list. Previously, this would cause `node_modules` not to be excluded
 

@@ -333,19 +333,37 @@ export class KarmaTestEventProcessor {
       capturedTests[processedSpec.status].push(processedSpec)
     );
 
-    const failedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Failed]);
-    const passedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Success]);
-    const skippedTests = this.testBuilder.buildTests(capturedTests[TestStatus.Skipped]);
+    const failedSpecs = capturedTests[TestStatus.Failed];
+    const passedSpecs = capturedTests[TestStatus.Success];
+    const skippedSpecs = capturedTests[TestStatus.Skipped];
+
+    this.logger.debug(() => `Creating tests from ${failedSpecs.length} failed specs`);
+    const failedTests = this.testBuilder.buildTests(failedSpecs);
+
+    this.logger.debug(() => `Creating tests from ${passedSpecs.length} passed specs`);
+    const passedTests = this.testBuilder.buildTests(passedSpecs);
+
+    this.logger.debug(() => `Creating tests from ${skippedSpecs.length} skipped specs`);
+    const skippedTests = this.testBuilder.buildTests(skippedSpecs);
 
     const folderGroupingOptions: TestSuiteFolderGroupingOptions = {
       flattenSingleChildFolders: false,
       flattenSingleSuiteFiles: false
     };
 
+    this.logger.debug(() => `Organizing failed tests`);
+    const failedTestsSuite = this.testSuiteOrganizer.organizeTests(failedTests, folderGroupingOptions);
+
+    this.logger.debug(() => `Organizing passed tests`);
+    const passedTestsSuite = this.testSuiteOrganizer.organizeTests(passedTests, folderGroupingOptions);
+
+    this.logger.debug(() => `Organizing skipped tests`);
+    const skippedTestsSuite = this.testSuiteOrganizer.organizeTests(skippedTests, folderGroupingOptions);
+
     const organizedTestResults: TestResults = {
-      Failed: this.testSuiteOrganizer.organizeTests(failedTests, folderGroupingOptions),
-      Success: this.testSuiteOrganizer.organizeTests(passedTests, folderGroupingOptions),
-      Skipped: this.testSuiteOrganizer.organizeTests(skippedTests, folderGroupingOptions)
+      Failed: failedTestsSuite,
+      Success: passedTestsSuite,
+      Skipped: skippedTestsSuite
     };
 
     this.suiteTestResultEmitter.processTestResults(organizedTestResults);

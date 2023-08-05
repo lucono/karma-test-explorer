@@ -53,7 +53,7 @@ export class FileWatcher {
 
     this.logger.trace(
       () =>
-        `Monitored files ( configured --> normalized): ` +
+        `Monitored files (configured --> normalized): ` +
         `${JSON.stringify(this.reloadTriggerFiles, null, 2)} --> ` +
         `${JSON.stringify(reloadTriggerFilesRelativePaths, null, 2)}`
     );

@@ -4,6 +4,7 @@ import { LogLevel } from './util/logging/log-level.js';
 export const EXTENSION_NAME = 'Karma Test Explorer';
 export const EXTENSION_CONFIG_PREFIX = 'karmaTestExplorer';
 export const EXTENSION_OUTPUT_CHANNEL_NAME = EXTENSION_NAME;
+export const EXTENSION_DEBUGGER_LABEL = 'Karma Test Explorer Debugging';
 export const DEFAULT_LOG_LEVEL = LogLevel.INFO;
 export const DEBUG_SESSION_START_TIMEOUT = 1000 * 15;
 export const STATUS_BAR_MESASGE_MIN_DURATION = 1000 * 60;
@@ -24,8 +25,5 @@ export const KARMA_BROWSER_CAPTURE_MIN_TIMEOUT = 1000 * 90;
 export const KARMA_TEST_EVENT_INTERVAL_TIMEOUT = 1000 * 60;
 
 // Others
-export const DEFAULT_KARMA_AND_ANGULAR_CONFIG_GLOBS = ['**/karma.conf.*', '**/angular.json', '**/.angular-cli.json'];
 export const ALWAYS_EXCLUDED_TEST_FILE_GLOBS = ['**/node_modules/**/*'];
-export const CHROME_BROWSER_DEBUGGING_PORT_FLAG = '--remote-debugging-port';
-export const CHROME_DEFAULT_DEBUGGING_PORT = 9222;
 export const DEFAULT_FILE_ENCODING: BufferEncoding = 'utf-8';
