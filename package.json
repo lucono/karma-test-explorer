@@ -710,6 +710,29 @@
 											"The TDD (Test Driven Development) interface of the Mocha test framework. Watch mode is not supported with this framework"
 										]
 									},
+									"browser": {
+										"markdownDescription": "The browser that will be launched by Karma for testing, which can be the name of any valid custom launcher defined or available in the Karma config file. This takes precedence over the `customLauncher` setting",
+										"type": "string",
+										"scope": "resource",
+										"default": ""
+									},
+									"customLauncher": {
+										"markdownDescription": "Specify the karma custom launcher configuration for launching the test browser, similar to a custom launcher entry in a karma config file. The default uses the same debug port as the default `debuggerConfig` setting to attach the debugger to the browser. Therefore, if providing a custom value for `customLauncher`, ensure that both the `customLauncher` and `debuggerConfig` settings use matching debug ports",
+										"type": "object",
+										"scope": "resource",
+										"required": [
+											"base"
+										],
+										"default": {
+											"base": "Chrome",
+											"flags": [
+												"--headless",
+												"--disable-gpu",
+												"--disable-dev-shm-usage",
+												"--remote-debugging-port=9222"
+											]
+										}
+									},
 									"testFiles": {
 										"markdownDescription": "The path glob patterns identifying the test files (relative to the project workspace root path)",
 										"type": "array",

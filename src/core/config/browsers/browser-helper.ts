@@ -29,9 +29,9 @@ export interface BrowserHelper {
 
   getCustomLauncher(
     browserType: string,
-    customLaucher: CustomLauncher | undefined,
-    containerMode: ContainerMode | undefined,
-    isHeadlessMode: boolean
+    customLaucher?: CustomLauncher,
+    containerMode?: ContainerMode,
+    isHeadlessMode?: boolean
   ): CustomLauncher;
 
   getCustomLauncherWithDebugPort(

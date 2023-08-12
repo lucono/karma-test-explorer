@@ -156,7 +156,7 @@ export class ExtensionConfig implements Disposable {
 
     // -- Custom Launcher
 
-    const configuredBrowser = asNonBlankStringOrUndefined(configStore.get(GeneralConfigSetting.Browser));
+    const configuredBrowser = this.browser;
 
     const configuredCustomLauncher = isSettingConfigured(GeneralConfigSetting.CustomLauncher, configStore)
       ? configStore.get<CustomLauncher>(GeneralConfigSetting.CustomLauncher)

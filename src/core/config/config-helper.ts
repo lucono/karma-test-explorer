@@ -11,15 +11,6 @@ import { GeneralConfigSetting, ProjectConfigSetting, WorkspaceConfigSetting } fr
 import { ConfigStore } from './config-store.js';
 import { ContainerMode } from './extension-config.js';
 
-/**
- * Attempts to parse custom launch configuration and browser type from user settings
- * @param config - The project config settings
- * @param projectKarmaConfigFilePath - The path to the karma.config.js file for this project
- * @param fileHandler
- * @param logger
- * @returns An object containing the determined browser type, and whether it has been overriden in settings or not
- * If the custom launcher is overriden in settings, this will also be returned
- */
 export const getBrowserType = (
   configuredBrowserType: string | undefined,
   configuredCustomLauncher: CustomLauncher | undefined,

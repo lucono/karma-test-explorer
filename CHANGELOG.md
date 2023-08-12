@@ -7,7 +7,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 <details>
   <summary>Releases</summary>
 
-  - [0.9.0 - Aug 6, 2023](#090---aug-6-2023)
+  - [0.9.0 - Aug 15, 2023](#090---aug-15-2023)
   - [0.8.2 - Apr 15, 2023](#082---apr-15-2023)
   - [0.8.1 - Jan 30, 2023](#081---jan-30-2023)
   - [0.8.0 - Dec 11, 2022](#080---dec-11-2022)
@@ -29,7 +29,7 @@ The format of this changelog is loosely based on [Keep a Changelog](https://keep
 
 
 ---
-## [0.9.0] - Aug 6, 2023
+## [0.9.0] - Aug 15, 2023
 
 ### Added
 

@@ -6,6 +6,8 @@ export type ProjectSpecificConfigSetting =
   | ExternalConfigSetting.ProjectType
   | ExternalConfigSetting.KarmaConfigFilePath
   | GeneralConfigSetting.TestFramework
+  | GeneralConfigSetting.Browser
+  | GeneralConfigSetting.CustomLauncher
   | GeneralConfigSetting.TestFiles
   | GeneralConfigSetting.ExcludedFiles
   | GeneralConfigSetting.TestsBasePath;

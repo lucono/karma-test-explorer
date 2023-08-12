@@ -1,4 +1,4 @@
-import { WorkspaceFolder, window } from 'vscode';
+import { WorkspaceFolder } from 'vscode';
 
 import { basename, join, relative, resolve } from 'path';
 import type { PackageJson } from 'type-fest';
@@ -7,7 +7,6 @@ import { EXTENSION_CONFIG_PREFIX, EXTENSION_NAME } from './constants.js';
 import { ProjectType } from './core/base/project-type.js';
 import { getConfigValue, isSettingConfigured } from './core/config/config-helper.js';
 import {
-  DEPRECATED_CONFIG_SETTINGS,
   ExternalConfigSetting,
   GeneralConfigSetting,
   InternalConfigSetting,
@@ -78,8 +77,6 @@ export class ProjectFactory implements Disposable {
         `One or more inclusion conditions were satisfied: ${workspaceFolderPath}`
     );
 
-    this.performDeprecatedSettingsCheckForWorkspaceFolder(workspaceConfig); // FIXME: Will create duplicate prompts for each workspace folder
-
     const configuredProjectWorkspaces: (string | ProjectSpecificConfig)[] =
       getConfigValue(workspaceConfig, ExternalConfigSetting.ProjectWorkspaces, ExternalConfigSetting.Projects) ?? [];
 
@@ -98,7 +95,7 @@ export class ProjectFactory implements Disposable {
 
     const workspaceFolderProjects = configuredProjects
       .map(configuredProject => {
-        const projectSpecificSettings =
+        const projectSpecificSettings: ProjectSpecificConfig =
           typeof configuredProject === 'string'
             ? { [ExternalConfigSetting.RootPath]: configuredProject }
             : configuredProject;
@@ -297,26 +294,6 @@ export class ProjectFactory implements Disposable {
       project1.longName.toLocaleLowerCase().localeCompare(project2.longName.toLocaleLowerCase())
     );
     return workspaceFolderProjects;
-  }
-
-  private performDeprecatedSettingsCheckForWorkspaceFolder(workspaceConfig: ConfigStore<WorkspaceConfigSetting>) {
-    const deprecatedExtensionSettingsInUse = DEPRECATED_CONFIG_SETTINGS.filter(deprecatedSetting =>
-      isSettingConfigured(deprecatedSetting, workspaceConfig)
-    );
-
-    if (deprecatedExtensionSettingsInUse.length === 0) {
-      return;
-    }
-
-    const shortenedSettingsNames = deprecatedExtensionSettingsInUse
-      .map(setting => setting.substring(setting.lastIndexOf('.')))
-      .join(', ');
-
-    window.showWarningMessage(
-      `${EXTENSION_NAME} found the following outdated ` +
-        `extension options in your VS Code settings. ` +
-        `Please remove or update them - ${shortenedSettingsNames}.`
-    );
   }
 
   private shouldEnableTestingForWorkspaceFolder(

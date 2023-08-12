@@ -53,26 +53,44 @@ export class KarmaConfigLoader {
       : config.autoWatchBatchDelay;
 
     // -- Browser and Custom Launcher settings --
+    const debugPortString = process.env[KarmaEnvironmentVariable.DebugPort];
+    const debugPort: number | undefined = debugPortString ? parseInt(debugPortString, 10) : undefined;
+
+    this.logger.debug(() => `Using debug port: ${debugPort}`);
+
     const requestedBrowser = process.env[KarmaEnvironmentVariable.Browser];
 
     let browser: string;
     let customLauncher: CustomLauncher | undefined;
+    const browserHelperProvider = new BrowserHelperProvider();
 
     if (requestedBrowser) {
       this.logger.debug(() => `Using requested karma browser: ${requestedBrowser}`);
 
-      browser = requestedBrowser;
-      customLauncher = undefined;
+      let matchingCustomLauncher = this.findMatchingCustomLauncherFromConfig(config, requestedBrowser);
+      const browserType = matchingCustomLauncher?.base ?? requestedBrowser;
+
+      const browserHelper = browserHelperProvider.isSupportedBrowser(browserType)
+        ? browserHelperProvider.getBrowserHelper(requestedBrowser)
+        : undefined;
+
+      matchingCustomLauncher = matchingCustomLauncher ?? browserHelper?.getCustomLauncher(browserType);
+
+      matchingCustomLauncher = matchingCustomLauncher
+        ? browserHelper?.getCustomLauncherWithDebugPort(matchingCustomLauncher, debugPort)
+        : undefined;
+
+      if (matchingCustomLauncher) {
+        browser = KARMA_CUSTOM_LAUNCHER_BROWSER_NAME;
+        customLauncher = matchingCustomLauncher;
+      } else {
+        browser = requestedBrowser;
+        customLauncher = undefined;
+      }
     } else {
-      const debugPortString = process.env[KarmaEnvironmentVariable.DebugPort];
-      const debugPort: number | undefined = debugPortString ? parseInt(debugPortString, 10) : undefined;
-
-      this.logger.debug(() => `Using debug port: ${debugPort}`);
-
       const customLauncherString = process.env[KarmaEnvironmentVariable.CustomLauncher]!;
       const customLauncherObject: CustomLauncher = customLauncherString ? JSON.parse(customLauncherString) : {};
 
-      const browserHelperProvider = new BrowserHelperProvider();
       const browserHelper = browserHelperProvider.getBrowserHelper(customLauncherObject?.base);
 
       customLauncher =
@@ -128,5 +146,20 @@ export class KarmaConfigLoader {
     const reporters = Array.isArray(config.reporters) ? config.reporters : [];
     reporters.splice(0, reporters.length, reporterName);
     config.reporters = reporters;
+  }
+
+  private findMatchingCustomLauncherFromConfig(
+    config: KarmaConfig,
+    configuredBrowser: string
+  ): CustomLauncher | undefined {
+    const customLaunchers = config.customLaunchers ?? {};
+
+    for (const customLauncherName of Object.keys(customLaunchers)) {
+      if (configuredBrowser === customLauncherName) {
+        return customLaunchers[customLauncherName];
+      }
+    }
+
+    return undefined;
   }
 }

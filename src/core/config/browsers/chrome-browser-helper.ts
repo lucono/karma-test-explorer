@@ -114,9 +114,9 @@ export class ChromeBrowserHelper implements BrowserHelper {
 
   public getCustomLauncher(
     browserType: string,
-    customLaucher: CustomLauncher | undefined,
-    configuredContainerMode: ContainerMode | undefined,
-    isHeadlessMode: boolean
+    customLaucher?: CustomLauncher,
+    configuredContainerMode?: ContainerMode,
+    isHeadlessMode: boolean = true
   ): CustomLauncher {
     if (customLaucher && !this.isSupportedBrowser(customLaucher.base)) {
       return customLaucher;
