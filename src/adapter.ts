@@ -38,6 +38,7 @@ import { SimpleLogger } from './util/logging/simple-logger.js';
 import { PortAcquisitionClient } from './util/port/port-acquisition-client.js';
 import { PortAcquisitionManager } from './util/port/port-acquisition-manager.js';
 import { getJsonCircularReferenceReplacer } from './util/utils.js';
+import { DefaultCommand } from './workspace.js';
 
 export class Adapter implements TestAdapter, Disposable {
   private readonly logLevel: LogLevel;
@@ -64,7 +65,8 @@ export class Adapter implements TestAdapter, Disposable {
     private readonly projectNamespace: string,
     configStore: ConfigStore<ProjectConfigSetting>,
     portAcquisitionManager: PortAcquisitionManager,
-    projectStatusDisplay: StatusDisplay
+    projectStatusDisplay: StatusDisplay,
+    private readonly defaultCommand: DefaultCommand
   ) {
     this.logLevel = configStore.get<LogLevel>(GeneralConfigSetting.LogLevel);
     this.outputChannelLog = new OutputChannelLog(`${EXTENSION_OUTPUT_CHANNEL_NAME} (${this.projectNamespace})`);
@@ -154,7 +156,8 @@ export class Adapter implements TestAdapter, Disposable {
       this.testRunEmitter as EventEmitter<TestResultEvent>,
       this.retireEmitter,
       this.testServerLog,
-      this.createLogger(MainFactory.name)
+      this.createLogger(MainFactory.name),
+      this.defaultCommand
     );
     testExplorerDisposables.push(factory);
 

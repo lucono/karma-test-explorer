@@ -11,6 +11,7 @@ import { ProcessLog } from '../../util/process/process-log.js';
 import { Process } from '../../util/process/process.js';
 import { SimpleProcessOptions } from '../../util/process/simple-process.js';
 import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../util/utils.js';
+import { DefaultCommand } from '../../workspace.js';
 import { KarmaEnvironmentVariable } from '../karma/karma-environment-variable.js';
 
 export interface AngularTestServerExecutorOptions {
@@ -32,7 +33,8 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     private readonly baseKarmaConfigFile: string,
     private readonly processHandler: ProcessHandler,
     private readonly logger: SimpleLogger,
-    private readonly options: AngularTestServerExecutorOptions = {}
+    private readonly options: AngularTestServerExecutorOptions = {},
+    private readonly defaultCommand: DefaultCommand
   ) {}
 
   public executeServerStart(karmaPort: number, karmaSocketPort: number, debugPort?: number): Process {
@@ -58,14 +60,12 @@ export class AngularTestServerExecutor implements TestServerExecutor {
 
     const runOptions: SimpleProcessOptions = {
       cwd: this.projectPath,
-      shell: true,
+      shell: false,
       env: environment,
       failOnStandardError: this.options.failOnStandardError,
       parentProcessName: AngularTestServerExecutor.name,
       processLog: this.options.serverProcessLog
     };
-
-    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
 
     let command: string;
     let processArguments: string[] = [];
@@ -73,17 +73,21 @@ export class AngularTestServerExecutor implements TestServerExecutor {
     if (this.options.angularProcessCommand) {
       command = this.options.angularProcessCommand;
     } else {
+      const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
+
       const angularLocalInstallPath = getPackageInstallPathForProjectRoot(
-        '@angular/cli',
+        this.defaultCommand.package,
         this.projectInstallRootPath,
         this.logger,
         { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback }
       );
-      const angularBinaryPath = angularLocalInstallPath ? join(angularLocalInstallPath, 'bin', 'ng') : undefined;
+      const angularBinaryPath = angularLocalInstallPath
+        ? join(angularLocalInstallPath, ...this.defaultCommand.path)
+        : undefined;
 
       if (!angularBinaryPath) {
         throw new Error(
-          `Angular CLI does not seem to be installed. You may ` +
+          `${this.defaultCommand.package} does not seem to be installed. You may ` +
             `need to install your project dependencies or ` +
             `specify the right path to your project using the ` +
             `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ProjectWorkspaces} ` +

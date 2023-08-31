@@ -11,6 +11,7 @@ import { SimpleLogger } from '../../util/logging/simple-logger.js';
 import { ProcessHandler } from '../../util/process/process-handler.js';
 import { ProcessLog } from '../../util/process/process-log.js';
 import { excludeSelectedEntries } from '../../util/utils.js';
+import { DefaultCommand } from '../../workspace.js';
 import { KarmaEnvironmentVariable } from './karma-environment-variable.js';
 import {
   KarmaCommandLineTestRunExecutor,
@@ -54,7 +55,8 @@ export class KarmaFactory implements TestFactory, Disposable {
     private readonly config: KarmaFactoryConfig,
     private readonly processHandler: ProcessHandler,
     private readonly serverProcessLog: ProcessLog,
-    private readonly logger: SimpleLogger
+    private readonly logger: SimpleLogger,
+    private readonly defaultCommand: DefaultCommand
   ) {
     this.disposables.push(this.logger);
   }
@@ -180,7 +182,8 @@ export class KarmaFactory implements TestFactory, Disposable {
       this.config.projectKarmaConfigFilePath,
       this.processHandler,
       this.createLogger(KarmaCommandLineTestServerExecutor.name),
-      options
+      options,
+      this.defaultCommand
     );
     this.disposables.push(testServerExecutor);
     return testServerExecutor;

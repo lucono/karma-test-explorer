@@ -239,7 +239,8 @@ export class ProjectFactory implements Disposable {
           config: angularChildProjectConfig,
           isPrimary: angularWorkspace.defaultProject
             ? angularChildProjectInfo.name === angularWorkspace.defaultProject.name
-            : false
+            : false,
+          defaultCommand: angularWorkspace.defaultCommand
         };
         workspaceFolderProjects.push(project);
       });
@@ -286,7 +287,8 @@ export class ProjectFactory implements Disposable {
         topLevelProjectPath: absoluteProjectRootPath,
         shortProjectPath: relative(workspaceFolderPath, absoluteProjectRootPath),
         config: projectConfig,
-        isPrimary: true
+        isPrimary: true,
+        defaultCommand: { package: 'karma', path: ['bin', 'karma'] }
       };
       workspaceFolderProjects.push(project);
     }

@@ -28,6 +28,7 @@ import { PortAcquisitionClient } from '../util/port/port-acquisition-client.js';
 import { ProcessHandler } from '../util/process/process-handler.js';
 import { ProcessLog } from '../util/process/process-log.js';
 import { stripJsComments } from '../util/utils.js';
+import { DefaultCommand } from '../workspace.js';
 import { ProjectType } from './base/project-type.js';
 import { TestDefinitionProvider } from './base/test-definition-provider.js';
 import { TestLoadEvent, TestResultEvent, TestRunEvent } from './base/test-events.js';
@@ -83,7 +84,8 @@ export class MainFactory {
     private readonly testResultEventEmitter: EventEmitter<TestResultEvent>,
     private readonly testRetireEventEmitter: EventEmitter<RetireEvent>,
     private readonly testServerLog: LogAppender,
-    private readonly logger: SimpleLogger
+    private readonly logger: SimpleLogger,
+    private readonly defaultCommand: DefaultCommand
   ) {
     this.disposables.push(logger);
 
@@ -371,7 +373,8 @@ export class MainFactory {
       karmaFactoryConfig,
       this.processHandler,
       serverProcessLog,
-      this.createLogger(KarmaFactory.name)
+      this.createLogger(KarmaFactory.name),
+      this.defaultCommand
     );
   }
 
@@ -400,7 +403,8 @@ export class MainFactory {
       angularFactoryConfig,
       this.processHandler,
       serverProcessLog,
-      this.createLogger(AngularFactory.name)
+      this.createLogger(AngularFactory.name),
+      this.defaultCommand
     );
   }
 

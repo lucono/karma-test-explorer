@@ -11,6 +11,7 @@ import { ProcessLog } from '../../../util/process/process-log.js';
 import { Process } from '../../../util/process/process.js';
 import { SimpleProcessOptions } from '../../../util/process/simple-process.js';
 import { getNodeExecutablePath, getPackageInstallPathForProjectRoot } from '../../../util/utils.js';
+import { DefaultCommand } from '../../../workspace.js';
 import { KarmaEnvironmentVariable } from '../karma-environment-variable.js';
 
 export interface KarmaCommandLineTestServerExecutorOptions {
@@ -30,7 +31,8 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
     private readonly projectKarmaConfigFile: string,
     private readonly processHandler: ProcessHandler,
     private readonly logger: SimpleLogger,
-    private readonly options: KarmaCommandLineTestServerExecutorOptions
+    private readonly options: KarmaCommandLineTestServerExecutorOptions,
+    private readonly defaultCommand: DefaultCommand
   ) {
     this.disposables.push(logger);
   }
@@ -61,22 +63,27 @@ export class KarmaCommandLineTestServerExecutor implements TestServerExecutor {
       processLog: this.options.serverProcessLog
     };
 
-    const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
-
     let command: string;
     let processArguments: string[] = [];
 
     if (this.options.karmaProcessCommand) {
       command = this.options.karmaProcessCommand;
     } else {
-      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot('karma', this.projectPath, this.logger, {
-        allowGlobalPackageFallback: this.options.allowGlobalPackageFallback
-      });
-      const karmaBinaryPath = karmaLocalInstallPath ? join(karmaLocalInstallPath, 'bin', 'karma') : undefined;
+      const nodeExecutablePath = getNodeExecutablePath(this.options.environment?.PATH);
+
+      const karmaLocalInstallPath = getPackageInstallPathForProjectRoot(
+        this.defaultCommand.package,
+        this.projectPath,
+        this.logger,
+        { allowGlobalPackageFallback: this.options.allowGlobalPackageFallback }
+      );
+      const karmaBinaryPath = karmaLocalInstallPath
+        ? join(karmaLocalInstallPath, ...this.defaultCommand.path)
+        : undefined;
 
       if (!karmaBinaryPath) {
         throw new Error(
-          `Karma does not seem to be installed. You may ` +
+          `${this.defaultCommand.package} does not seem to be installed. You may ` +
             `need to install your project dependencies or ` +
             `specify the right path to your project using the ` +
             `${EXTENSION_CONFIG_PREFIX}.${ExternalConfigSetting.ProjectWorkspaces} ` +

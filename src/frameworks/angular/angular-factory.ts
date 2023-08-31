@@ -7,6 +7,7 @@ import { SimpleLogger } from '../../util/logging/simple-logger.js';
 import { ProcessHandler } from '../../util/process/process-handler.js';
 import { ProcessLog } from '../../util/process/process-log.js';
 import { excludeSelectedEntries } from '../../util/utils.js';
+import { DefaultCommand } from '../../workspace.js';
 import {
   AngularTestServerExecutor,
   AngularTestServerExecutorOptions
@@ -41,7 +42,8 @@ export class AngularFactory implements Partial<TestFactory> {
     private readonly config: AngularFactoryConfig,
     private readonly processHandler: ProcessHandler,
     private readonly serverProcessLog: ProcessLog,
-    private readonly logger: SimpleLogger
+    private readonly logger: SimpleLogger,
+    private readonly defaultCommand: DefaultCommand
   ) {
     this.disposables.push(this.logger);
   }
@@ -96,7 +98,8 @@ export class AngularFactory implements Partial<TestFactory> {
       this.config.baseKarmaConfFilePath,
       this.processHandler,
       new SimpleLogger(this.logger, AngularTestServerExecutor.name),
-      options
+      options,
+      this.defaultCommand
     );
     this.disposables.push(serverExecutor);
     return serverExecutor;

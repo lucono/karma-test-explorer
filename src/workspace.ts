@@ -5,6 +5,11 @@ import { ProjectType } from './core/base/project-type.js';
 import { ProjectConfigSetting } from './core/config/config-setting.js';
 import { ConfigStore } from './core/config/config-store.js';
 
+export interface DefaultCommand {
+  package: string;
+  path: string[];
+}
+
 export interface WorkspaceProject {
   readonly shortName: string;
   readonly longName: string;
@@ -18,4 +23,5 @@ export interface WorkspaceProject {
   readonly config: ConfigStore<ProjectConfigSetting>;
   readonly isPrimary: boolean;
   adapter?: Adapter;
+  readonly defaultCommand: DefaultCommand;
 }

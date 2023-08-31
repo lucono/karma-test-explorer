@@ -4,8 +4,11 @@ import { join } from 'path';
 import { FileHandler } from '../../util/filesystem/file-handler.js';
 import { Logger } from '../../util/logging/logger.js';
 import { normalizePath } from '../../util/utils.js';
+import { DefaultCommand } from '../../workspace.js';
 import { AngularProjectInfo } from './angular-project-info.js';
 import { AngularWorkspaceInfo } from './angular-workspace-info.js';
+
+const DefaultAngularCommand: DefaultCommand = { package: '@angular/cli', path: ['bin', 'ng'] };
 
 export const getAngularWorkspaceInfo = (
   angularConfigRootPath: string,
@@ -73,7 +76,8 @@ const getAngularJsonWorkspaceInfo = (
   }
   const workspaceInfo: AngularWorkspaceInfo = {
     projects,
-    defaultProject
+    defaultProject,
+    defaultCommand: DefaultAngularCommand
   };
   return workspaceInfo;
 };
@@ -136,7 +140,8 @@ const getAngularCliJsonWorkspaceInfo = (
   }
   const workspaceInfo: AngularWorkspaceInfo = {
     projects,
-    defaultProject
+    defaultProject,
+    defaultCommand: DefaultAngularCommand
   };
   return workspaceInfo;
 };
@@ -187,5 +192,5 @@ const getProjectJsonWorkspaceInfo = (
     return undefined;
   }
 
-  return { projects: projects, defaultProject: undefined };
+  return { projects: projects, defaultProject: undefined, defaultCommand: { package: 'nx', path: ['bin', 'nx'] } };
 };

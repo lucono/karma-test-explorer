@@ -394,7 +394,8 @@ const createProjectAdapter = (
       projectNamespace,
       project.config,
       sharedAdapterComponents.portAcquisitionManager,
-      sharedAdapterComponents.multiStatusDisplay.createDisplay(project.shortName)
+      sharedAdapterComponents.multiStatusDisplay.createDisplay(project.shortName),
+      project.defaultCommand
     );
     testHub.registerTestAdapter(projectAdapter);
 
