@@ -2,7 +2,7 @@
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 
-### Note: &nbsp; With the [deprecation](https://github.com/karma-runner/karma#karma-is-deprecated-and-is-not-accepting-new-features-or-general-bug-fixes) of Karma runner, Karma Test Explorer is now in maintenance mode and will not be releasing any more features.
+### Note: &nbsp; With the [deprecation](https://github.com/karma-runner/karma#karma-is-deprecated-and-is-not-accepting-new-features-or-general-bug-fixes) of Karma runner, Karma Test Explorer is now in maintenance mode and will not be releasing any more features or bug fixes.
 
 ---
 
