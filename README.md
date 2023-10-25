@@ -2,6 +2,10 @@
 
 # Karma Test Explorer (for Angular, Jasmine, and Mocha)
 
+### Note: &nbsp; With the [deprecation](https://github.com/karma-runner/karma#karma-is-deprecated-and-is-not-accepting-new-features-or-general-bug-fixes) of Karma runner, Karma Test Explorer is now in maintenance mode and will not be releasing any more features.
+
+---
+
 This extension adds a rich and fully integrated testing experience to Visual Studio Code for Angular, TypeScript, and JavaScript projects that use [Karma](https://karma-runner.github.io/latest/index.html) for testing.
 
 ![Karma Test Explorer screenshot](docs/img/extension-screenshot.png)
