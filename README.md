@@ -2,6 +2,9 @@
 
 # With the [deprecation](https://github.com/karma-runner/karma#karma-is-deprecated-and-is-not-accepting-new-features-or-general-bug-fixes) of Karma runner, Karma Test Explorer is now also deprecated. It will no longer be releasing any new features or bug fixes.
 
+### If you continue to use Karma and this extension, you are encouraged to seek support for any new issues by posting in the [Discussions](https://github.com/lucono/karma-test-explorer/discussions) area to possibly get help from other users.
+
+---
 
 [![Build and Test](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml/badge.svg)](https://github.com/lucono/karma-test-explorer/actions/workflows/node.js.yml)
 
